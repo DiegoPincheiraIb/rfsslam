@@ -14,7 +14,7 @@ function [y, S_vec, m] = generateMeasurements(p_k, c_k, n_features, limit, noise
 %         deviations
 %
 % Outputs:
-% y [4xn_measurements] - measurements [timestep, x, y, z]
+% y [5xn_measurements] - measurements [timestep, x, y, z, correspondence]
 % S [9xn_measurements] - measurement uncertainty covariance reshaped as
 %                        9x1 vector
 % m [3xn_features] - map of observed features
@@ -52,7 +52,7 @@ for k = 1:k_max
          % generate a measurement
          n_features = n_features + 1;
          p_m_k = -limit + (limit*2).*rand(3,1);
-         if(norm(p_m_k) < limit)
+         if(norm(p_m_k) > limit)
              n_features = n_features - 1;
          else
             m(:,n_features) = C_k_i'*p_m_k + p_k_i;
@@ -61,22 +61,20 @@ for k = 1:k_max
 end
 
 % Generate measurements
-y = zeros(4, n_features*length(p_k)); % preallocate lots of memory
+y = zeros(5, n_features*length(p_k)); % preallocate lots of memory
 S_vec = zeros(9, n_features*length(p_k));
 y_n = 0;
 for k = 1:k_max
     for n = 1:n_features
         C_k = reshape(c_k(:,k), 3, 3);
         p_m_k = measureModel(p_k(:,k), C_k, m(:,n));
-        measureCov = [0.2, 0, 0;
-                      0, 0.2, 0;
-                      0, 0, 0.2];
+        measureCov = diag(noise);
         
         % apply measurement limits if any
         if( norm(p_m_k) <= limit)
             y_n = y_n + 1;
             e = [noise(1)*randn; noise(2)*randn; noise(3)*randn];
-            y(:, y_n) = [k; p_m_k + e];
+            y(:, y_n) = [k; p_m_k + e; n];
             S_vec(:, y_n) = reshape(measureCov, 9, 1);
         end
  
