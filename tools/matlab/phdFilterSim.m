@@ -11,7 +11,7 @@
 
 clear all;
 close all;
-rand('seed', 4);
+rand('seed', 1);
 
 % Simulation settings
 k_max = 1000;
@@ -54,7 +54,11 @@ end
 time_birth = zeros(0, k_max);
 time_propogation = zeros(0, k_max);
 time_update = zeros(0, k_max);
+time_sorting = zeros(0, k_max);
 time_merging = zeros(0, k_max);
+map_size_birth = zeros(0, k_max);
+map_size_update = zeros(0, k_max);
+map_size_merging = zeros(0, k_max);
 
 %% Some book-keeping
 birth_Gaussian_mDist_min = []; % This is used to reduce number of birth Gaussians
@@ -138,6 +142,7 @@ for k = k_sim_start:k_max % k_sim_end % k_max
     end
     
     time_birth(k) = toc(t_birth);
+    map_size_birth(k) = M_size(i);
     fprintf('%d birth Gaussians created\n', n_birth);
     
     %% Vehicle Pose Prediction (proposal distribution)
@@ -172,6 +177,9 @@ for k = k_sim_start:k_max % k_sim_end % k_max
     fprintf('Updating Map\n');
     t_update = tic;
     
+    % Keep track of which feature is outside field of view
+    Features_inside_FOV_before_update = cell(i);
+    
     for i = 1:n_particles
 
         fprintf('Particle %d :: starting map size : %d Gaussians\n', i, M_size(i));
@@ -183,7 +191,7 @@ for k = k_sim_start:k_max % k_sim_end % k_max
         
         p_k = p_k__i(:, k, i);
         C_k = reshape(C_vec_k__i(:, k, i), 3, 3);
-        P_d{i} = zeros(M_size(i), 1); % assume everything is outside sensing area at first
+        Features_inside_FOV_before_update{i} = zeros(M_size(i), 1); 
         
         new_gaussian_weight_numerator_table = zeros(M_size_before_update, idx_current_obs_end - idx_current_obs_start + 1);
         new_gaussian_weight_table_feature_correspondence = new_gaussian_weight_numerator_table;
@@ -200,6 +208,7 @@ for k = k_sim_start:k_max % k_sim_end % k_max
             P_detection = 0;
             if(r <= y_rangeLim)      
                 % inside sensing area
+                Features_inside_FOV_before_update{i}(m) = 1;
                 P_detection = 0.95;
             end
             P_missed_detection = 1 - P_detection;
@@ -291,11 +300,11 @@ for k = k_sim_start:k_max % k_sim_end % k_max
                 end
             end
         end
-        
-        fprintf('Particle %d :: updated map size : %d Gaussians\n', i, M_size(i));
-        
+             
     end
+    map_size_update(k) = M_size(i);
     time_update(k) = toc(t_update);
+    fprintf('Particle %d :: updated map size : %d Gaussians\n', i, M_size(i));
     
     %% Merging and Pruning of Gaussians
     % Processed Gaussians will be marked with sorted_weights[m] = 0
@@ -311,12 +320,42 @@ for k = k_sim_start:k_max % k_sim_end % k_max
         d_threshold = 1; % Mahalanobis distance threshold for Gaussian merging
         w_threshold = 0.1; % Weight threshold for pruning
         
+        % Pre-allocate storage for merged Gaussians
+        % This will become the new map set at the end of current timestep
+        % Assume worst-case where no Gaussians are merged
+        x_merged = zeros(3, map_size_limit);
+        S_merged = zeros(9, map_size_limit);
+        w_merged = zeros(1, map_size_limit);
+        merged_count = 0;
+        prune_count_ = 0;
+        
+        % PHD Filter 2.0
+        % If feature is outside sensor FOV, do not check merging or pruning
+        % and automatically move this set to the new merged set
+        for m = 1:length(Features_inside_FOV_before_update{i})
+            if Features_inside_FOV_before_update{i}(m) == 0
+                merged_count = merged_count + 1;
+                w_merged(:, merged_count) = M{i,3}(m);
+                x_merged(:, merged_count) = M{i,1}(:,m);
+                S_merged(:, merged_count) = M{i,2}(:,m);
+                
+                % Set weight to zero for sorting
+                % Feature will go to end up at the end of the sorted list
+                % for merging and pruning, and will be discarded
+                M{i,3}(m) = 0; 
+            end
+        end
+        
+        % Sort features according to weight
+        % Features outside FOV already have weights of 0
+        % Features below a certain threshold will get pruned, along with
+        % features outside the sensor FOV
         [sorted_weights, weight_order] = sort(M{i,3}(1:M_size(i)), 2, 'descend');
         for m = 1:length(weight_order)
             if sorted_weights(m) < 0.01
                 sorted_weights(m:end) = [];
                 weight_order(m:end) = [];
-                break
+                break;
             end
         end
         
@@ -325,14 +364,6 @@ for k = k_sim_start:k_max % k_sim_end % k_max
         x_ = zeros(3, length(weight_order));
         S_ = zeros(9, length(weight_order));
         w_ = zeros(1, length(weight_order));
-        
-        % Pre-allocate storage for merged Gaussians
-        % Assume worst-case where no Gaussians are merged
-        x_merged = zeros(3, map_size_limit);
-        S_merged = zeros(9, map_size_limit);
-        w_merged = zeros(1, map_size_limit);
-        merged_count = 0;
-        prune_count_ = 0;
         
         for m = 1:length(weight_order)
             if(sorted_weights(m) ~= 0)  % Do not process if Gaussian has already been used
@@ -421,12 +452,13 @@ for k = k_sim_start:k_max % k_sim_end % k_max
         M{i,1} = x_merged;
         M{i,2} = S_merged;
         M{i,3} = w_merged;
-        
-        time_merging(k) = toc(t_merging);
-        
-        fprintf('Particle %d :: pruned : %d Gaussians\n', i, prune_count_);
-        fprintf('Particle %d :: new map size : %d Gaussians\n', i, merged_count);
+   
     end
+    
+    time_merging(k) = toc(t_merging);
+    map_size_merging(k) = M_size(i);
+    fprintf('Particle %d :: pruned : %d Gaussians\n', i, prune_count_);
+    fprintf('Particle %d :: new map size : %d Gaussians\n', i, merged_count);
     
     %% Determine particle weight and resmaple
     for i = 1:n_particles
@@ -462,6 +494,13 @@ plot(1:k_max, time_birth, 'r');
 plot(1:k_max, time_propogation, 'g');
 plot(1:k_max, time_update, 'b');
 plot(1:k_max, time_merging, 'k');
+grid on
+
+figure;
+hold on
+%plot(1:k_max, map_size_birth, 'r');
+plot(1:k_max, map_size_update, 'b');
+plot(1:k_max, map_size_merging, 'k');
 grid on
 
 
