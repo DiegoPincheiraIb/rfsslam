@@ -11,15 +11,16 @@
 
 clear all;
 close all;
-rand('seed', 1);
+rand('seed', 2);
+randn('seed', 2);
 
 % Simulation settings
 k_max = 1000;
 n_features = 100;
 y_rangeLim = 5;
 %noise_motion = [0.05, 0.05, 0.05, 0.01, 0.01, 0.01];
-noise_motion = 0.000001*[0.005, 0.005, 0.005, 0.001, 0.001, 0.001];
-noise_obs = [0.05, 0.01, 0.01];
+noise_motion = 0.0001*[0.005, 0.005, 0.005, 0.001, 0.001, 0.001]; % we want to generate displacements with low noise
+noise_obs = 2*[0.05, 0.01, 0.01];
 [p_k, c_k, d_k, D_vec_k] = generateTrajectory(k_max, 0.1, [1, 0.1], noise_motion);
 [y, Y_vec, map] = generateMeasurements(p_k, c_k, n_features, y_rangeLim, noise_obs);
 
@@ -31,8 +32,11 @@ grid on
 axis equal
 
 % Filter settings
-n_particles = 1;
+n_particles = 100;
 map_size_limit = 10000; % number of Gaussians in each particle's map
+noise_motion = noise_motion * 20000; % assume motion noise is larger than it is
+noise_obs = noise_obs * 1; % inflate noise for Kalman filter
+resampling_interval = 10;
 
 % Vehicle trajectory (6-dof poses) for each particle
 p_k__i = zeros(3, k_max, n_particles); 
@@ -50,12 +54,18 @@ for i = 1:n_particles
     M{i,3} = zeros(1, map_size_limit);
 end
 
+% Particle weighting
+particle_weight = ones(n_particles, k_max);
+w_before_update = zeros(n_particles, k_max);
+w_after_update = zeros(n_particles, k_max);
+
 % Performance evaluation
 time_birth = zeros(0, k_max);
 time_propogation = zeros(0, k_max);
 time_update = zeros(0, k_max);
 time_sorting = zeros(0, k_max);
 time_merging = zeros(0, k_max);
+time_resampling = zeros(0, k_max);
 map_size_birth = zeros(0, k_max);
 map_size_update = zeros(0, k_max);
 map_size_merging = zeros(0, k_max);
@@ -67,7 +77,7 @@ k_first_measurement = y(1,1);
 idx_prev_obs_start= 1;
 idx_current_obs_start= 1;
 % find the start index of observations
-while y(1, idx_current_obs_start) < k_first_measurement
+while y(1, idx_current_obs_start) == k_first_measurement
     idx_current_obs_start = idx_current_obs_start + 1;
     if(idx_current_obs_start > length(y(1,:)))
         break;
@@ -77,8 +87,8 @@ idx_prev_obs_end = idx_current_obs_start - 1;
 idx_current_obs_end = idx_current_obs_start;
 
 k_sim_start = k_first_measurement + 1;
-k_sim_end = k_first_measurement + 500;
-for k = k_sim_start:k_max % k_sim_end % k_max
+k_sim_end = k_max;
+for k = k_sim_start:k_sim_end;
     
     fprintf('\nTimestep k = %d\n', k);
 
@@ -97,7 +107,7 @@ for k = k_sim_start:k_max % k_sim_end % k_max
     % map set from the previous timestep
     % Hence we will add the birth gaussians directly to set M
     
-    fprintf('Creating %d birth Gaussians\n', idx_prev_obs_end - idx_prev_obs_start + 1);
+    %fprintf('Creating %d birth Gaussians\n', idx_prev_obs_end - idx_prev_obs_start + 1);
     t_birth = tic;
     
     for i = 1:n_particles
@@ -139,15 +149,17 @@ for k = k_sim_start:k_max % k_sim_end % k_max
             end
             
         end
+        
+        w_before_update(i, k) = sum( M{i,3} );
     end
     
     time_birth(k) = toc(t_birth);
     map_size_birth(k) = M_size(i);
-    fprintf('%d birth Gaussians created\n', n_birth);
+    %fprintf('%d birth Gaussians created\n', n_birth);
     
     %% Vehicle Pose Prediction (proposal distribution)
     
-    fprintf('Propogating particles\n');
+    %fprintf('Propogating particles\n');
     
     t_propogation = tic;
     d_k_km = d_k(:,k);
@@ -161,9 +173,16 @@ for k = k_sim_start:k_max % k_sim_end % k_max
         
         % Displacement sampling
         eTran_k_km__i = [noise_motion(1)*randn; noise_motion(2)*randn; noise_motion(3)*randn];
+        eRot_vec_k_km__i = [noise_motion(4)*randn; noise_motion(5)*randn; noise_motion(6)*randn];
+        eRot_k_km__i = aa2Rmat(eRot_vec_k_km__i);
+        
+        if i == 1 % For testing, particle 1 traverses the actual trajectory
+            eTran_k_km__i = eTran_k_km__i * 0;
+            eRot_k_km__i = eye(3);
+        end
+        
         d_k_km__i = d_k_km + eTran_k_km__i;
-        eRot_k_km__i = [noise_motion(4)*randn; noise_motion(5)*randn; noise_motion(6)*randn];
-        D_k_km__i = aa2Rmat(eRot_k_km__i)*D_k_km;
+        D_k_km__i = eRot_k_km__i*D_k_km;
 
         % Propogate particle
         [p_k, C_k] = motionModel(p_km, C_km, d_k_km__i, D_k_km__i);
@@ -174,7 +193,7 @@ for k = k_sim_start:k_max % k_sim_end % k_max
     
     %% Map update - Correction for features inside sensing area
     
-    fprintf('Updating Map\n');
+    %fprintf('Updating Map\n');
     t_update = tic;
     
     % Keep track of which feature is outside field of view
@@ -182,7 +201,7 @@ for k = k_sim_start:k_max % k_sim_end % k_max
     
     for i = 1:n_particles
 
-        fprintf('Particle %d :: starting map size : %d Gaussians\n', i, M_size(i));
+        %fprintf('Particle %d :: starting map size : %d Gaussians\n', i, M_size(i));
         M_size_before_update = M_size(i);
         
         % For every pair of features - measurement, make new Gaussian
@@ -206,7 +225,7 @@ for k = k_sim_start:k_max % k_sim_end % k_max
             r = norm(p_m_k);
 
             P_detection = 0;
-            if(r <= y_rangeLim)      
+            if(r <= y_rangeLim) 
                 % inside sensing area
                 Features_inside_FOV_before_update{i}(m) = 1;
                 P_detection = 0.95;
@@ -241,7 +260,7 @@ for k = k_sim_start:k_max % k_sim_end % k_max
                 
                 % Updated covariance
                 P_m_k = (eye(3) - K*H) * P_m_km;
-                P_m_k = (P_m_k + P_m_k')/2;
+                P_m_k = (P_m_k + P_m_k')/2;            
                 P_m_vec_k = reshape(P_m_k, 9, 1);
                 
                 % For debug, check P_k is invertible
@@ -300,11 +319,12 @@ for k = k_sim_start:k_max % k_sim_end % k_max
                 end
             end
         end
-             
+        w_after_update(i, k) = sum( M{i,3} );   
     end
+    
     map_size_update(k) = M_size(i);
     time_update(k) = toc(t_update);
-    fprintf('Particle %d :: updated map size : %d Gaussians\n', i, M_size(i));
+    %fprintf('Particle %d :: updated map size : %d Gaussians\n', i, M_size(i));
     
     %% Merging and Pruning of Gaussians
     % Processed Gaussians will be marked with sorted_weights[m] = 0
@@ -312,7 +332,7 @@ for k = k_sim_start:k_max % k_sim_end % k_max
     % Todo - determine cutoff point for weights that are too small
     %        i.e., lower portion of weight_order
     
-    fprintf('Feature merging and pruning\n')
+    %fprintf('Feature merging and pruning\n')
     t_merging = tic;
     
     for i = 1:n_particles;
@@ -457,16 +477,124 @@ for k = k_sim_start:k_max % k_sim_end % k_max
     
     time_merging(k) = toc(t_merging);
     map_size_merging(k) = M_size(i);
-    fprintf('Particle %d :: pruned : %d Gaussians\n', i, prune_count_);
-    fprintf('Particle %d :: new map size : %d Gaussians\n', i, merged_count);
+    %fprintf('Particle %d :: pruned : %d Gaussians\n', i, prune_count_);
+    %fprintf('Particle %d :: new map size : %d Gaussians\n', i, merged_count);
     
     %% Determine particle weight and resmaple
     for i = 1:n_particles
-        
+        particle_weight(i, k) = exp(w_after_update(i, k) - w_before_update(i, k)) * particle_weight(i, k-1);
     end
     
-    %% Particle Resampling
+    % Particle Resampling
     
+    if mod(k, resampling_interval) == 0 && resampling_interval ~= 0;
+        
+        t_resampling = tic;
+    
+        new_particle_set_correspondence = zeros(n_particles, 1);
+        total_weight = 0;
+        for i = 1 : n_particles
+            total_weight = total_weight + particle_weight(i, k);
+        end
+        sum_normalized_weight_squared = 0;
+        for i = 1 : n_particles
+            sum_normalized_weight_squared = sum_normalized_weight_squared + particle_weight(i, k) / total_weight;
+        end
+        effective_n_particles = 1 / sum_normalized_weight_squared;
+        sampling_itvl = total_weight / n_particles;
+        sample_offset = rand * sampling_itvl;
+        cumulative_weight = 0;
+        particles_sampled = 0;
+        for i = 1 : n_particles
+            cumulative_weight = cumulative_weight + particle_weight(i, k);
+            while(cumulative_weight >= sample_offset)
+                particles_sampled = particles_sampled + 1;
+                new_particle_set_correspondence(particles_sampled) = i;
+                sample_offset = sample_offset + sampling_itvl;
+                if sample_offset > total_weight
+                    break; 
+                end
+            end
+        end
+
+        % Need to be smart about creatig new particles to avoid excessive work
+        particle_set_free_spot_ = zeros(n_particles, 1);
+        i = 1;
+        while i < new_particle_set_correspondence(1); 
+            particle_set_free_spot_(i) = 1; 
+            i = i + 1;
+        end
+
+        % Find free slots - particles in this slot will not be used again
+        % therefore we can safely overwrite them
+        m = 0;
+        for i = 2 : n_particles
+            m_ = new_particle_set_correspondence(i - 1);
+            m = new_particle_set_correspondence(i);            
+            if m - m_ >= 2
+                for j = m_ + 1 : m - 1
+                    particle_set_free_spot_(j) = 1;
+                end
+            end
+        end
+        if m < n_particles;
+            for j = m+1 : n_particles
+                particle_set_free_spot_(j) = 1;
+            end
+        end
+
+        %display(particle_weight(:,k));
+        %display(new_particle_set_correspondence);
+        %display(particle_set_free_spot_);
+        
+        % Do the actual copying
+
+        % i = first element in new_particle_set_correspondence is always 
+        % unique so we do not do anything
+
+        free_spot_idx_ = 1;
+
+        for i = 2 : n_particles 
+
+            m_ = new_particle_set_correspondence(i - 1);
+            m = new_particle_set_correspondence(i);
+
+            % If m is not the same as m_, it is appearing for the first time
+            % and we do not need to do anything
+
+            % If m is same as m_, we need to make another copy of m_
+            % to a free slot
+
+            % find the next free spot
+            if m == m_
+                while particle_set_free_spot_(free_spot_idx_) == 0
+                    free_spot_idx_ = free_spot_idx_ + 1; 
+                end
+                particle_set_free_spot_(free_spot_idx_) = 0;
+
+                % now make a copy of m to this slot
+
+                % Copy particle pose
+                p_k__i(:, :, free_spot_idx_) = p_k__i(:, :, m);
+                C_vec_k__i(:, :, free_spot_idx_) = C_vec_k__i(:, :, m);
+
+                % Copy map
+                M{free_spot_idx_, 1} = M{m, 1};
+                M{free_spot_idx_, 2} = M{m, 2};
+                M{free_spot_idx_, 3} = M{m, 3};
+                M_size(free_spot_idx_) = M_size(m);
+            end
+
+        end
+
+        % Equalize all weights
+        for i = 1 : n_particles 
+            particle_weight(i, k) = 1;
+        end
+        
+        time_resampling(k) = toc(t_resampling);
+    
+    end
     
     %% Update parameters for next timestep
     idx_prev_obs_start = idx_current_obs_start;
@@ -475,10 +603,11 @@ for k = k_sim_start:k_max % k_sim_end % k_max
 end
 
 %figure;
-for i = 1:n_particles
+for i = 2:n_particles
     plot3(p_k__i(1, k_sim_start:k_sim_end, i), p_k__i(2, k_sim_start:k_sim_end, i), p_k__i(3, k_sim_start:k_sim_end, i), 'g-' );
     hold on
 end
+plot3(p_k__i(1, k_sim_start:k_sim_end, 1), p_k__i(2, k_sim_start:k_sim_end, 1), p_k__i(3, k_sim_start:k_sim_end, 1), 'r-', 'LineWidth', 2);
 for m = 1:M_size(1)
     x = M{1,1}(:,m);
     if M{1,3}(m) > 0.5
@@ -494,15 +623,28 @@ plot(1:k_max, time_birth, 'r');
 plot(1:k_max, time_propogation, 'g');
 plot(1:k_max, time_update, 'b');
 plot(1:k_max, time_merging, 'k');
+if(resampling_interval ~= 0)
+    plot((resampling_interval:resampling_interval:k_max), time_resampling(resampling_interval:resampling_interval:k_max), 'm');
+end
 grid on
+
+%figure;
+%hold on
+%plot(1:k_max, map_size_birth, 'r');
+%plot(1:k_max, map_size_update, 'b');
+%plot(1:k_max, map_size_merging, 'k');
+%grid on
 
 figure;
 hold on
-%plot(1:k_max, map_size_birth, 'r');
-plot(1:k_max, map_size_update, 'b');
-plot(1:k_max, map_size_merging, 'k');
-grid on
+for i = 2:n_particles
+    plot(1:k_max, particle_weight(i,1:k_max), 'g-');
+end
+grid on;
+plot(1:k_max, particle_weight(1,1:k_max), 'r-', 'LineWidth', 2);
+% 
+% figure;
+% plot(1:k_max, exp(w_after_update(1, :) - w_before_update(1, :)), 'r-');
+% grid on;
 
-
-    
 
