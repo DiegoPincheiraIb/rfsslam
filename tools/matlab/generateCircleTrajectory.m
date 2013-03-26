@@ -1,9 +1,9 @@
-function [p_k, c_k, d_k_km, D_vec_k_km] = generateTrajectory(k_max, dt, v_max, noise)
+function [p_k, c_k, d_k_km, D_vec_k_km] = generateCircleTrajectory(k_max, dt, v_max, noise)
 
-% function generateTrajectory
+% function generateCircleTrajectory
 % Keith Leung 2013
 %
-% Generate a smooth trajectory in 3d
+% Generate a circular trajectory in 3d
 %
 % Inputs:
 % k_max - length of trajectory
@@ -54,17 +54,10 @@ C_k_dr = eye(3);
 
 v_k = [(v_max_linear).*rand; 0; 0];
 w_k = -v_max_rot + (v_max_rot*2).*rand(3,1);
+w_k(1) = 0;
 
 for k = 2:k_max
-    
-    if(mod(k, 100) == 0)
-       v_k = zeros(3,1);
-       while(norm(v_k) < 0.5)
-        v_k = [(v_max_linear).*rand; 0; 0];
-        w_k = -v_max_rot + (v_max_rot*2).*rand(3,1);
-       end
-    end
-   
+
     % displacements
     
     d_k_km_ = v_k*dt;
@@ -91,9 +84,9 @@ for k = 2:k_max
     
 end
 
-% figure;
-% plot3(p_k(1,:), p_k(2,:), p_k(3,:), 'b-');
-% hold on
-% plot3(p_k_dr(1,:), p_k_dr(2,:), p_k_dr(3,:), 'r-');
-% grid on
-% axis equal
+figure;
+plot3(p_k(1,:), p_k(2,:), p_k(3,:), 'b-');
+hold on
+plot3(p_k_dr(1,:), p_k_dr(2,:), p_k_dr(3,:), 'r-');
+grid on
+axis equal

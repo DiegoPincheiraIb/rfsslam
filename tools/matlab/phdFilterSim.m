@@ -15,13 +15,13 @@ rand('seed', 2);
 randn('seed', 2);
 
 % Simulation settings
-k_max = 1000;
+k_max = 1500;
 n_features = 100;
 y_rangeLim = 5;
 %noise_motion = [0.05, 0.05, 0.05, 0.01, 0.01, 0.01];
 noise_motion = 0.0001*[0.005, 0.005, 0.005, 0.001, 0.001, 0.001]; % we want to generate displacements with low noise
 noise_obs = 2*[0.05, 0.01, 0.01];
-[p_k, c_k, d_k, D_vec_k] = generateTrajectory(k_max, 0.1, [1, 0.1], noise_motion);
+[p_k, c_k, d_k, D_vec_k] = generateCircleTrajectory(k_max, 0.1, [1, 0.1], noise_motion);
 [y, Y_vec, map] = generateMeasurements(p_k, c_k, n_features, y_rangeLim, noise_obs);
 
 figure;
@@ -36,7 +36,6 @@ n_particles = 100;
 map_size_limit = 10000; % number of Gaussians in each particle's map
 noise_motion = noise_motion * 20000; % assume motion noise is larger than it is
 noise_obs = noise_obs * 1; % inflate noise for Kalman filter
-resampling_interval = 10;
 
 % Vehicle trajectory (6-dof poses) for each particle
 p_k__i = zeros(3, k_max, n_particles); 
@@ -486,21 +485,22 @@ for k = k_sim_start:k_sim_end;
     end
     
     % Particle Resampling
-    
-    if mod(k, resampling_interval) == 0 && resampling_interval ~= 0;
         
-        t_resampling = tic;
-    
-        new_particle_set_correspondence = zeros(n_particles, 1);
-        total_weight = 0;
-        for i = 1 : n_particles
-            total_weight = total_weight + particle_weight(i, k);
-        end
-        sum_normalized_weight_squared = 0;
-        for i = 1 : n_particles
-            sum_normalized_weight_squared = sum_normalized_weight_squared + particle_weight(i, k) / total_weight;
-        end
-        effective_n_particles = 1 / sum_normalized_weight_squared;
+    t_resampling = tic;
+
+    new_particle_set_correspondence = zeros(n_particles, 1);
+    total_weight = 0;
+    for i = 1 : n_particles
+        total_weight = total_weight + particle_weight(i, k);
+    end
+    sum_normalized_weight_squared = 0;
+    for i = 1 : n_particles
+        sum_normalized_weight_squared = sum_normalized_weight_squared + (particle_weight(i, k) / total_weight)^2;
+    end
+    effective_n_particles = 1 / sum_normalized_weight_squared;
+
+    if(effective_n_particles <= n_particles / 2)
+
         sampling_itvl = total_weight / n_particles;
         sample_offset = rand * sampling_itvl;
         cumulative_weight = 0;
@@ -517,84 +517,66 @@ for k = k_sim_start:k_sim_end;
             end
         end
 
-        % Need to be smart about creatig new particles to avoid excessive work
-        particle_set_free_spot_ = zeros(n_particles, 1);
-        i = 1;
-        while i < new_particle_set_correspondence(1); 
-            particle_set_free_spot_(i) = 1; 
-            i = i + 1;
+        % Check which entries we can overwrite
+        particle_set_free_spot_ = ones(n_particles, 1);
+        j = 1;
+        for i = 1 : n_particles         
+             if i == new_particle_set_correspondence(j)
+                 % particle i will not get overwritten
+                 particle_set_free_spot_(i) = 0;
+                 new_particle_set_correspondence(j) = -1; 
+                 j = j + 1;
+                 if j > n_particles
+                    break;
+                 end
+                 while i == new_particle_set_correspondence(j)
+                     j = j + 1; 
+                     if j > n_particles
+                         break;
+                     end
+                 end 
+                 if j > n_particles
+                    break;
+                 end
+            end     
         end
 
-        % Find free slots - particles in this slot will not be used again
-        % therefore we can safely overwrite them
-        m = 0;
-        for i = 2 : n_particles
-            m_ = new_particle_set_correspondence(i - 1);
-            m = new_particle_set_correspondence(i);            
-            if m - m_ >= 2
-                for j = m_ + 1 : m - 1
-                    particle_set_free_spot_(j) = 1;
-                end
-            end
-        end
-        if m < n_particles;
-            for j = m+1 : n_particles
-                particle_set_free_spot_(j) = 1;
-            end
-        end
+        display(particle_weight(:,k));
+        display(new_particle_set_correspondence);
+        display(particle_set_free_spot_);
 
-        %display(particle_weight(:,k));
-        %display(new_particle_set_correspondence);
-        %display(particle_set_free_spot_);
-        
         % Do the actual copying
-
-        % i = first element in new_particle_set_correspondence is always 
-        % unique so we do not do anything
-
         free_spot_idx_ = 1;
-
-        for i = 2 : n_particles 
-
-            m_ = new_particle_set_correspondence(i - 1);
-            m = new_particle_set_correspondence(i);
-
-            % If m is not the same as m_, it is appearing for the first time
-            % and we do not need to do anything
-
-            % If m is same as m_, we need to make another copy of m_
-            % to a free slot
-
-            % find the next free spot
-            if m == m_
+        for i = 1 : n_particles 
+            j = new_particle_set_correspondence(i);
+            if j >= 1
+                % put particle j from old set into a free spot in new set
                 while particle_set_free_spot_(free_spot_idx_) == 0
                     free_spot_idx_ = free_spot_idx_ + 1; 
                 end
                 particle_set_free_spot_(free_spot_idx_) = 0;
 
-                % now make a copy of m to this slot
-
                 % Copy particle pose
-                p_k__i(:, :, free_spot_idx_) = p_k__i(:, :, m);
-                C_vec_k__i(:, :, free_spot_idx_) = C_vec_k__i(:, :, m);
-
+                p_k__i(:, :, free_spot_idx_) = p_k__i(:, :, j);
+                C_vec_k__i(:, :, free_spot_idx_) = C_vec_k__i(:, :, j);
                 % Copy map
-                M{free_spot_idx_, 1} = M{m, 1};
-                M{free_spot_idx_, 2} = M{m, 2};
-                M{free_spot_idx_, 3} = M{m, 3};
-                M_size(free_spot_idx_) = M_size(m);
+                M{free_spot_idx_, 1} = M{j, 1};
+                M{free_spot_idx_, 2} = M{j, 2};
+                M{free_spot_idx_, 3} = M{j, 3};
+                M_size(free_spot_idx_) = M_size(j);
             end
-
         end
 
         % Equalize all weights
         for i = 1 : n_particles 
             particle_weight(i, k) = 1;
         end
-        
-        time_resampling(k) = toc(t_resampling);
-    
+
     end
+
+
+    time_resampling(k) = toc(t_resampling);
+    
     
     %% Update parameters for next timestep
     idx_prev_obs_start = idx_current_obs_start;
@@ -603,14 +585,15 @@ for k = k_sim_start:k_sim_end;
 end
 
 %figure;
-for i = 2:n_particles
+for i = 1:n_particles
     plot3(p_k__i(1, k_sim_start:k_sim_end, i), p_k__i(2, k_sim_start:k_sim_end, i), p_k__i(3, k_sim_start:k_sim_end, i), 'g-' );
     hold on
 end
-plot3(p_k__i(1, k_sim_start:k_sim_end, 1), p_k__i(2, k_sim_start:k_sim_end, 1), p_k__i(3, k_sim_start:k_sim_end, 1), 'r-', 'LineWidth', 2);
+[max_weight, max_index] = max(particle_weight(:,k_max));
+plot3(p_k__i(1, k_sim_start:k_sim_end, max_index), p_k__i(2, k_sim_start:k_sim_end, max_index), p_k__i(3, k_sim_start:k_sim_end, max_index), 'r-', 'LineWidth', 2);
 for m = 1:M_size(1)
-    x = M{1,1}(:,m);
-    if M{1,3}(m) > 0.5
+    x = M{max_index,1}(:,m);
+    if M{max_index,3}(m) > 0.25
         plot3(x(1), x(2), x(3), 'ro'); 
     end
 end
@@ -623,9 +606,8 @@ plot(1:k_max, time_birth, 'r');
 plot(1:k_max, time_propogation, 'g');
 plot(1:k_max, time_update, 'b');
 plot(1:k_max, time_merging, 'k');
-if(resampling_interval ~= 0)
-    plot((resampling_interval:resampling_interval:k_max), time_resampling(resampling_interval:resampling_interval:k_max), 'm');
-end
+plot(1:k_max, time_resampling, 'm.');
+
 grid on
 
 %figure;
