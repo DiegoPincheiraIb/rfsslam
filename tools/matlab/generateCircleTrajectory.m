@@ -52,9 +52,13 @@ D_vec_k_km(:, 1) = [1, 0, 0, 0, 1, 0, 0, 0, 1];
 p_k_dr = zeros(3, k_max);
 C_k_dr = eye(3);
 
-v_k = [(v_max_linear).*rand; 0; 0];
+v_min_linear = 0.5;
+v_k = [(v_max_linear - v_min_linear).*rand + v_min_linear; 0; 0];
 w_k = -v_max_rot + (v_max_rot*2).*rand(3,1);
 w_k(1) = 0;
+
+display(v_k)
+display(w_k)
 
 for k = 2:k_max
 
@@ -84,9 +88,9 @@ for k = 2:k_max
     
 end
 
-figure;
-plot3(p_k(1,:), p_k(2,:), p_k(3,:), 'b-');
-hold on
-plot3(p_k_dr(1,:), p_k_dr(2,:), p_k_dr(3,:), 'r-');
-grid on
-axis equal
+% figure;
+% plot3(p_k(1,:), p_k(2,:), p_k(3,:), 'b-');
+% hold on
+% plot3(p_k_dr(1,:), p_k_dr(2,:), p_k_dr(3,:), 'r-');
+% grid on
+% axis equal

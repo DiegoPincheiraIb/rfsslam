@@ -191,3 +191,22 @@ set(gca, 'box', 'off')
 set(gca,'ZColor',get(gca,'Color'))
 
 export_fig -r180 -opengl pruned -pdf -eps -png
+
+%% Prior
+
+mean = mean -10 + 20*rand(size(mean)); 
+weight = weight -0.4 + 0.8*rand(size(weight));
+
+figure;
+[prior h_prior] = drawGaussianMixture(mean, cov, weight, drawLim, drawRes);
+ZLim([0, 0.02]);
+colormap('summer')
+set(gcf, 'Color', 'w');
+set(gcf, 'Position', [0, 0, fig_width, fig_height]);
+grid off;
+set(gca, 'ZTick', []);
+set(gca, 'ZTickLabel', [])
+set(gca, 'box', 'off')
+set(gca,'ZColor',get(gca,'Color'))
+
+export_fig -r180 -opengl prior -pdf -eps -png

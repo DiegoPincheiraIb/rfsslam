@@ -11,18 +11,21 @@
 
 clear all;
 close all;
-rand('seed', 2);
-randn('seed', 2);
+rand('seed', 3);
+randn('seed', 3);
 
 % Simulation settings
-k_max = 1500;
+k_max = 1000;
 n_features = 100;
 y_rangeLim = 5;
 %noise_motion = [0.05, 0.05, 0.05, 0.01, 0.01, 0.01];
 noise_motion = 0.0001*[0.005, 0.005, 0.005, 0.001, 0.001, 0.001]; % we want to generate displacements with low noise
-noise_obs = 2*[0.05, 0.01, 0.01];
-[p_k, c_k, d_k, D_vec_k] = generateCircleTrajectory(k_max, 0.1, [1, 0.1], noise_motion);
+noise_obs = [0.05, 0.01, 0.01];
+[p_k, c_k, d_k, D_vec_k] = generateTrajectory(k_max, 0.1, [1, 0.1], noise_motion);
+%[p_k, c_k, d_k, D_vec_k] = generateCircleTrajectory(k_max, 0.1, [1, 0.1], noise_motion);
 [y, Y_vec, map] = generateMeasurements(p_k, c_k, n_features, y_rangeLim, noise_obs);
+p_k_groundtruth = p_k;
+c_k_groundtruth = c_k;
 
 figure;
 plot3(p_k(1,:), p_k(2,:), p_k(3,:), 'b-');
@@ -36,6 +39,7 @@ n_particles = 100;
 map_size_limit = 10000; % number of Gaussians in each particle's map
 noise_motion = noise_motion * 20000; % assume motion noise is larger than it is
 noise_obs = noise_obs * 1; % inflate noise for Kalman filter
+resample_interval = 0;
 
 % Vehicle trajectory (6-dof poses) for each particle
 p_k__i = zeros(3, k_max, n_particles); 
@@ -54,20 +58,28 @@ for i = 1:n_particles
 end
 
 % Particle weighting
+particle_weighting_strategy = 1; % 0 for empty strategy, 1 for single feature
 particle_weight = ones(n_particles, k_max);
-w_before_update = zeros(n_particles, k_max);
-w_after_update = zeros(n_particles, k_max);
+w_before_update = zeros(n_particles, k_max); % for empty strategy
+w_after_update = zeros(n_particles, k_max); % for empty strategy
+v_eval_pos = zeros(3, n_particles); % For single feature strategy
+v_before_update = zeros(n_particles, k_max); % For single feature strategy
+v_after_update = zeros(n_particles, k_max); % For single feature strategy
+measurement_likelihood_factor = zeros(n_particles, k_max);
+similarity_factor = zeros(n_particles, k_max);
+feature_count_factor = zeros(n_particles, k_max);
 
 % Performance evaluation
-time_birth = zeros(0, k_max);
-time_propogation = zeros(0, k_max);
-time_update = zeros(0, k_max);
-time_sorting = zeros(0, k_max);
-time_merging = zeros(0, k_max);
-time_resampling = zeros(0, k_max);
-map_size_birth = zeros(0, k_max);
-map_size_update = zeros(0, k_max);
-map_size_merging = zeros(0, k_max);
+time_birth = zeros(1, k_max);
+time_propogation = zeros(1, k_max);
+time_update = zeros(1, k_max);
+time_sorting = zeros(1, k_max);
+time_merging = zeros(1, k_max);
+time_weighting = zeros(1, k_max);
+time_resampling = zeros(1, k_max);
+map_size_birth = zeros(1, k_max);
+map_size_update = zeros(1, k_max);
+map_size_merging = zeros(1, k_max);
 
 %% Some book-keeping
 birth_Gaussian_mDist_min = []; % This is used to reduce number of birth Gaussians
@@ -149,7 +161,8 @@ for k = k_sim_start:k_sim_end;
             
         end
         
-        w_before_update(i, k) = sum( M{i,3} );
+        w_before_update(i, k) = sum( M{i,3}(1:M_size(i)) );
+        
     end
     
     time_birth(k) = toc(t_birth);
@@ -175,10 +188,10 @@ for k = k_sim_start:k_sim_end;
         eRot_vec_k_km__i = [noise_motion(4)*randn; noise_motion(5)*randn; noise_motion(6)*randn];
         eRot_k_km__i = aa2Rmat(eRot_vec_k_km__i);
         
-        if i == 1 % For testing, particle 1 traverses the actual trajectory
-            eTran_k_km__i = eTran_k_km__i * 0;
-            eRot_k_km__i = eye(3);
-        end
+        %if i == 1 % For testing, particle 1 traverses the actual trajectory
+        %    eTran_k_km__i = eTran_k_km__i * 0;
+        %    eRot_k_km__i = eye(3);
+        %end
         
         d_k_km__i = d_k_km + eTran_k_km__i;
         D_k_km__i = eRot_k_km__i*D_k_km;
@@ -215,6 +228,10 @@ for k = k_sim_start:k_sim_end;
         new_gaussian_weight_table_feature_correspondence = new_gaussian_weight_numerator_table;
         new_gaussian_mDist_table = inf(M_size_before_update, idx_current_obs_end - idx_current_obs_start + 1);
         
+        % For determining Gaussuan weights later
+        w_max_before_update = 0;
+        m_max_before_update = 0;
+        
         for m = 1:M_size_before_update 
             
             % Determine probability of detection for feature m    
@@ -228,6 +245,12 @@ for k = k_sim_start:k_sim_end;
                 % inside sensing area
                 Features_inside_FOV_before_update{i}(m) = 1;
                 P_detection = 0.95;
+                
+                w = M{i,3}(m);
+                if w > w_max_before_update
+                    w_max_before_update = w;
+                    m_max_before_update = m;
+                end
             end
             P_missed_detection = 1 - P_detection;
             
@@ -319,11 +342,77 @@ for k = k_sim_start:k_sim_end;
             end
         end
         w_after_update(i, k) = sum( M{i,3} );   
+
+        % Evaluate Gaussians at chosen position for weighting
+        v_eval_pos(:,i) = M{i,1}(:,m_max_before_update);
+        v_before_update(i, k) = 0;
+        for j = 1 : M_size_before_update
+            if Features_inside_FOV_before_update{i}(j) == 1; % This condition is a hack to make things go faster - ok if covariance S is small
+                u = M{i,1}(:,j);
+                S = reshape(M{i,2}(:,j), 3, 3);
+                w = M{i,3}(j) / P_missed_detection; % we want the weight before the update
+                d = v_eval_pos(:,i) - u;
+                md = d' / S * d;
+                v_before_update(i, k) = v_before_update(i, k) + w * (2*pi)^(-3/2) * det(S)^(-0.5) * exp(-0.5 * md);
+            end
+        end
+        
     end
     
     map_size_update(k) = M_size(i);
     time_update(k) = toc(t_update);
     %fprintf('Particle %d :: updated map size : %d Gaussians\n', i, M_size(i));
+    
+    
+    %% Determine particle weight
+   
+    t_weighting = tic;
+    for i = 1:n_particles
+        feature_count_factor(i, k) = exp(w_after_update(i, k) - w_before_update(i, k));
+        
+        if particle_weighting_strategy == 0
+           particle_weight(i, k) = feature_count_factor(i, k) * particle_weight(i, k-1);
+        
+        elseif particle_weighting_strategy == 1
+            
+            v_after_update(i, k) = 0;
+            for j = 1 : M_size(i)
+                u = M{i,1}(:,j);
+                S = reshape(M{i,2}(:,j), 3, 3);
+                w = M{i,3}(j);
+                d = v_eval_pos(:,i) - u;
+                md = d' / S * d;
+                v_after_update(i, k) = v_after_update(i, k) + w * (2*pi)^(-3/2) * det(S)^(-0.5) * exp(-0.5 * md);
+            end
+            similarity_factor(i,k) = v_before_update(i, k) / v_after_update(i, k);
+            
+            n_measurements = idx_current_obs_end - idx_current_obs_start + 1; 
+            measurement_likelihood_factor(i,k) = 0;
+            p_k = p_k__i(:, k, i);
+            C_k = reshape(C_vec_k__i(:, k, i), 3, 3);
+            p_m = v_eval_pos(:,i);
+            p_m_k = measureModel(p_k, C_k, p_m); % predicted measurement of p_m
+            det_R = det(R);
+            for n = idx_current_obs_start : idx_current_obs_end 
+                p_m_k_act = y(2:4, n); % actual meaurement
+                d = p_m_k_act - p_m_k;
+                md = d' / R * d;
+                g = (2*pi)^(-3/2) * det_R^(-0.5) * exp(-0.5 * md); % measurement likelihood
+                measurement_likelihood_factor(i,k) = measurement_likelihood_factor(i,k) + g;
+            end
+            measurement_likelihood_factor(i,k) = P_detection * measurement_likelihood_factor(i,k) + (1-P_detection) * P_false;
+            
+            particle_weight(i, k) = measurement_likelihood_factor(i,k) * particle_weight(i, k-1);
+            %particle_weight(i, k) = measurement_likelihood_factor(i,k) * similarity_factor(i,k) * feature_count_factor(i, k) * particle_weight(i, k-1);
+            
+        end
+              
+    end
+    % Scale the weights so that they are close to 1
+    particle_weight(:, k) = particle_weight(:, k) / mean(particle_weight(:, k));
+    
+    time_weighting(k) = toc(t_weighting);
+    
     
     %% Merging and Pruning of Gaussians
     % Processed Gaussians will be marked with sorted_weights[m] = 0
@@ -337,7 +426,7 @@ for k = k_sim_start:k_sim_end;
     for i = 1:n_particles;
         
         d_threshold = 1; % Mahalanobis distance threshold for Gaussian merging
-        w_threshold = 0.1; % Weight threshold for pruning
+        w_threshold = (1 - P_detection) / 2;  % (1 - P_detection); % Weight threshold for pruning, must be higher than prob of missed detection!
         
         % Pre-allocate storage for merged Gaussians
         % This will become the new map set at the end of current timestep
@@ -432,7 +521,7 @@ for k = k_sim_start:k_sim_end;
                          
                 w_merged_ = sum(w_(1:gaussians_to_merge_));
                 
-                if( w_merged_ > w_threshold)
+                if( w_merged_ >= w_threshold)
                     
                     x_merged_ = zeros(3,1);
                     for n = 1:gaussians_to_merge_
@@ -479,101 +568,101 @@ for k = k_sim_start:k_sim_end;
     %fprintf('Particle %d :: pruned : %d Gaussians\n', i, prune_count_);
     %fprintf('Particle %d :: new map size : %d Gaussians\n', i, merged_count);
     
-    %% Determine particle weight and resmaple
-    for i = 1:n_particles
-        particle_weight(i, k) = exp(w_after_update(i, k) - w_before_update(i, k)) * particle_weight(i, k-1);
-    end
+   
     
-    % Particle Resampling
+    %% Particle Resampling
         
     t_resampling = tic;
 
-    new_particle_set_correspondence = zeros(n_particles, 1);
-    total_weight = 0;
-    for i = 1 : n_particles
-        total_weight = total_weight + particle_weight(i, k);
-    end
-    sum_normalized_weight_squared = 0;
-    for i = 1 : n_particles
-        sum_normalized_weight_squared = sum_normalized_weight_squared + (particle_weight(i, k) / total_weight)^2;
-    end
-    effective_n_particles = 1 / sum_normalized_weight_squared;
+    if resample_interval ~= -1
 
-    if(effective_n_particles <= n_particles / 2)
-
-        sampling_itvl = total_weight / n_particles;
-        sample_offset = rand * sampling_itvl;
-        cumulative_weight = 0;
-        particles_sampled = 0;
+        new_particle_set_correspondence = zeros(n_particles, 1);
+        total_weight = 0;
         for i = 1 : n_particles
-            cumulative_weight = cumulative_weight + particle_weight(i, k);
-            while(cumulative_weight >= sample_offset)
-                particles_sampled = particles_sampled + 1;
-                new_particle_set_correspondence(particles_sampled) = i;
-                sample_offset = sample_offset + sampling_itvl;
-                if sample_offset > total_weight
-                    break; 
+            total_weight = total_weight + particle_weight(i, k);
+        end
+        sum_normalized_weight_squared = 0;
+        for i = 1 : n_particles
+            sum_normalized_weight_squared = sum_normalized_weight_squared + (particle_weight(i, k) / total_weight)^2;
+        end
+        effective_n_particles = 1 / sum_normalized_weight_squared;
+
+        if(effective_n_particles <= n_particles / 2)
+
+            sampling_itvl = total_weight / n_particles;
+            sample_offset = rand * sampling_itvl;
+            cumulative_weight = 0;
+            particles_sampled = 0;
+            for i = 1 : n_particles
+                cumulative_weight = cumulative_weight + particle_weight(i, k);
+                while(cumulative_weight >= sample_offset)
+                    particles_sampled = particles_sampled + 1;
+                    new_particle_set_correspondence(particles_sampled) = i;
+                    sample_offset = sample_offset + sampling_itvl;
+                    if sample_offset > total_weight
+                        break; 
+                    end
                 end
             end
-        end
 
-        % Check which entries we can overwrite
-        particle_set_free_spot_ = ones(n_particles, 1);
-        j = 1;
-        for i = 1 : n_particles         
-             if i == new_particle_set_correspondence(j)
-                 % particle i will not get overwritten
-                 particle_set_free_spot_(i) = 0;
-                 new_particle_set_correspondence(j) = -1; 
-                 j = j + 1;
-                 if j > n_particles
-                    break;
-                 end
-                 while i == new_particle_set_correspondence(j)
-                     j = j + 1; 
+            % Check which entries we can overwrite
+            particle_set_free_spot_ = ones(n_particles, 1);
+            j = 1;
+            for i = 1 : n_particles         
+                 if i == new_particle_set_correspondence(j)
+                     % particle i will not get overwritten
+                     particle_set_free_spot_(i) = 0;
+                     new_particle_set_correspondence(j) = -1; 
+                     j = j + 1;
                      if j > n_particles
-                         break;
+                        break;
                      end
-                 end 
-                 if j > n_particles
-                    break;
-                 end
-            end     
-        end
-
-        display(particle_weight(:,k));
-        display(new_particle_set_correspondence);
-        display(particle_set_free_spot_);
-
-        % Do the actual copying
-        free_spot_idx_ = 1;
-        for i = 1 : n_particles 
-            j = new_particle_set_correspondence(i);
-            if j >= 1
-                % put particle j from old set into a free spot in new set
-                while particle_set_free_spot_(free_spot_idx_) == 0
-                    free_spot_idx_ = free_spot_idx_ + 1; 
-                end
-                particle_set_free_spot_(free_spot_idx_) = 0;
-
-                % Copy particle pose
-                p_k__i(:, :, free_spot_idx_) = p_k__i(:, :, j);
-                C_vec_k__i(:, :, free_spot_idx_) = C_vec_k__i(:, :, j);
-                % Copy map
-                M{free_spot_idx_, 1} = M{j, 1};
-                M{free_spot_idx_, 2} = M{j, 2};
-                M{free_spot_idx_, 3} = M{j, 3};
-                M_size(free_spot_idx_) = M_size(j);
+                     while i == new_particle_set_correspondence(j)
+                         j = j + 1; 
+                         if j > n_particles
+                             break;
+                         end
+                     end 
+                     if j > n_particles
+                        break;
+                     end
+                end     
             end
-        end
 
-        % Equalize all weights
-        for i = 1 : n_particles 
-            particle_weight(i, k) = 1;
+            %display(particle_weight(:,k));
+            %display(new_particle_set_correspondence);
+            %display(particle_set_free_spot_);
+
+            % Do the actual copying
+            free_spot_idx_ = 1;
+            for i = 1 : n_particles 
+                j = new_particle_set_correspondence(i);
+                if j >= 1
+                    % put particle j from old set into a free spot in new set
+                    while particle_set_free_spot_(free_spot_idx_) == 0
+                        free_spot_idx_ = free_spot_idx_ + 1; 
+                    end
+                    particle_set_free_spot_(free_spot_idx_) = 0;
+
+                    % Copy particle pose
+                    p_k__i(:, :, free_spot_idx_) = p_k__i(:, :, j);
+                    C_vec_k__i(:, :, free_spot_idx_) = C_vec_k__i(:, :, j);
+                    % Copy map
+                    M{free_spot_idx_, 1} = M{j, 1};
+                    M{free_spot_idx_, 2} = M{j, 2};
+                    M{free_spot_idx_, 3} = M{j, 3};
+                    M_size(free_spot_idx_) = M_size(j);
+                end
+            end
+
+            % Equalize all weights
+            for i = 1 : n_particles 
+                particle_weight(i, k) = 1;
+            end
+
         end
 
     end
-
 
     time_resampling(k) = toc(t_resampling);
     
@@ -584,30 +673,57 @@ for k = k_sim_start:k_sim_end;
     idx_current_obs_start = idx_current_obs_end + 1;
 end
 
-%figure;
+%% Figures - plotting for particle with highest weight at the end
+
+
+% plot trajectories of all particles and find the one closest to the
+% groundtruth
+
+d_min = norm(p_k_groundtruth(:, k_sim_end) - p_k__i(:, k_sim_end, 1) );
+min_dist_index = 1;
+min_dist_weight = particle_weight(1, k_max);
 for i = 1:n_particles
     plot3(p_k__i(1, k_sim_start:k_sim_end, i), p_k__i(2, k_sim_start:k_sim_end, i), p_k__i(3, k_sim_start:k_sim_end, i), 'g-' );
     hold on
+    
+    d = norm(p_k_groundtruth(:, k_sim_end) - p_k__i(:, k_sim_end, i) );
+    if d < d_min
+        d_min = d;
+        min_dist_index = i;
+        min_dist_weight = particle_weight(i, k_max);
+    end
 end
+
 [max_weight, max_index] = max(particle_weight(:,k_max));
+display(max_weight);
+display(min_dist_weight);
+
 plot3(p_k__i(1, k_sim_start:k_sim_end, max_index), p_k__i(2, k_sim_start:k_sim_end, max_index), p_k__i(3, k_sim_start:k_sim_end, max_index), 'r-', 'LineWidth', 2);
-for m = 1:M_size(1)
+for m = 1:M_size(max_index)
     x = M{max_index,1}(:,m);
     if M{max_index,3}(m) > 0.25
         plot3(x(1), x(2), x(3), 'ro'); 
+    end
+end
+plot3(p_k__i(1, k_sim_start:k_sim_end, min_dist_index), p_k__i(2, k_sim_start:k_sim_end, min_dist_index), p_k__i(3, k_sim_start:k_sim_end, min_dist_index), 'm-', 'LineWidth', 2);
+for m = 1:M_size(min_dist_index)
+    x = M{min_dist_index,1}(:,m);
+    if M{min_dist_index,3}(m) > 0.25
+        plot3(x(1), x(2), x(3), 'mo'); 
     end
 end
 grid on
 axis equal
 
 figure;
+title('timing analysis')
 hold on
 plot(1:k_max, time_birth, 'r');
 plot(1:k_max, time_propogation, 'g');
 plot(1:k_max, time_update, 'b');
 plot(1:k_max, time_merging, 'k');
+plot(1:k_max, time_weighting, 'c');
 plot(1:k_max, time_resampling, 'm.');
-
 grid on
 
 %figure;
@@ -618,15 +734,38 @@ grid on
 %grid on
 
 figure;
+title('particle weights')
 hold on
-for i = 2:n_particles
-    plot(1:k_max, particle_weight(i,1:k_max), 'g-');
+for i = 1:n_particles
+    plot(1:k_max, particle_weight(i,1:k_max), 'b-');
 end
 grid on;
-plot(1:k_max, particle_weight(1,1:k_max), 'r-', 'LineWidth', 2);
+plot(1:k_max, particle_weight(max_index ,1:k_max), 'r-', 'LineWidth', 2);
+plot(1:k_max, particle_weight(min_dist_index ,1:k_max), 'm-', 'LineWidth', 2);
+
+% figure;
+% title('measurement likelihood factor')
+% hold on
+% for i = 1:n_particles
+%     plot(1:k_max, measurement_likelihood_factor(i,:), 'b-');
+% end
+% plot(1:k_max, measurement_likelihood_factor(max_index ,:), 'r-', 'LineWidth', 2);
+% grid on
 % 
 % figure;
-% plot(1:k_max, exp(w_after_update(1, :) - w_before_update(1, :)), 'r-');
-% grid on;
-
-
+% title('similarity factor')
+% hold on
+% for i = 1:n_particles
+%     plot(1:k_max, similarity_factor(i,:), 'b-');
+% end
+% plot(1:k_max, similarity_factor(max_index ,:), 'r-', 'LineWidth', 2);
+% grid on
+% 
+% figure;
+% title('feature count factor')
+% hold on
+% for i = 1:n_particles
+%     plot(1:k_max, feature_count_factor(i,:), 'b-');
+% end
+% plot(1:k_max, feature_count_factor(max_index ,:), 'r-', 'LineWidth', 2);
+% grid on
