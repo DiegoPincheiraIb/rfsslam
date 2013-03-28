@@ -1,6 +1,6 @@
-function [p_k, c_k, d_k_km, D_vec_k_km] = generateCircleTrajectory(k_max, dt, v_max, noise)
+function [p_k, c_k, d_k_km, D_vec_k_km] = generateCircleTrajectory(k_max, dt, v_max)
 
-% function generateCircleTrajectory
+% function generateCiecleTrajectory
 % Keith Leung 2013
 %
 % Generate a circular trajectory in 3d
@@ -19,7 +19,7 @@ function [p_k, c_k, d_k_km, D_vec_k_km] = generateCircleTrajectory(k_max, dt, v_
 % D_vec_k_km - vehicle odometry for rotation (rotation matrix reshaped to
 %              9x1)
 
-if(nargin ~= 4)
+if(nargin ~= 3)
     error('generateTrajectory:nargChk', 'generateTrajectory takes 3 inputs only');
 end
 if(~isscalar(k_max))
@@ -27,9 +27,6 @@ if(~isscalar(k_max))
 end
 if(length(v_max) ~= 2 || ~isvector(v_max))
     error('generateTrajectory:sizeChk', 'Input v_max must be a vector of length 2');
-end
-if(length(noise) ~= 6 || ~isvector(noise))
-    error('generateTrajectory:sizeChk', 'Input noise must be a vector of length 6');
 end
 if(~isscalar(dt))
     error('generateTrajectory:sizeChk', 'Input dt must be scalar');
@@ -48,49 +45,30 @@ d_k_km = zeros(3, k_max);
 D_vec_k_km = zeros(9, k_max);
 D_vec_k_km(:, 1) = [1, 0, 0, 0, 1, 0, 0, 0, 1];
 
-% Dead reckoning results (not outputed at the moment)
-p_k_dr = zeros(3, k_max);
-C_k_dr = eye(3);
-
-v_min_linear = 0.5;
+v_min_linear = 0.7;
 v_k = [(v_max_linear - v_min_linear).*rand + v_min_linear; 0; 0];
 w_k = -v_max_rot + (v_max_rot*2).*rand(3,1);
 w_k(1) = 0;
 
-display(v_k)
-display(w_k)
+angular_speed = norm(w_k);
+angular_displacement_expected = angular_speed * k_max;
+if angular_displacement_expected < 2*pi
+    w_k = w_k * 2 * pi / angular_displacement_expected;
+end
 
 for k = 2:k_max
-
-    % displacements
-    
+   
+    % displacements    
     d_k_km_ = v_k*dt;
     rot_k_km_ = w_k*dt;
     D_k_km_ = aa2Rmat(rot_k_km_);
     
+    d_k_km(:, k) = d_k_km_;
+    D_vec_k_km(:, k) = reshape(D_k_km_, 9, 1);
+    
     % determine pose
-    [p_k(:,k) C_k] = motionModel(p_km, C_km, d_k_km_, D_k_km_); 
+    [p_k(:,k) C_k] = motionModel(p_k(:,k-1), C_km, d_k_km_, D_k_km_); 
     c_k(:,k) = reshape(C_k, 9, 1); 
-    
-    % Odometry measurements
-    noise_translate = [noise(1)*randn; noise(2)*randn; noise(3)*randn];
-    d_k_km(:,k) = d_k_km_ + noise_translate;
-    noise_rotation = [noise(4)*randn; noise(5)*randn; noise(6)*randn];
-    D_k_km_ = aa2Rmat(rot_k_km_ + noise_rotation);
-    D_vec_k_km(:,k) = reshape(D_k_km_, 9, 1);
-    
-    % dead reckoning
-    [p_k_dr(:,k) C_k_dr] = motionModel(p_k_dr(:,k-1), C_k_dr, d_k_km_, D_k_km_); 
-    
-    % update for next timestep
-    p_km = p_k(:,k);
     C_km = C_k;
     
 end
-
-% figure;
-% plot3(p_k(1,:), p_k(2,:), p_k(3,:), 'b-');
-% hold on
-% plot3(p_k_dr(1,:), p_k_dr(2,:), p_k_dr(3,:), 'r-');
-% grid on
-% axis equal

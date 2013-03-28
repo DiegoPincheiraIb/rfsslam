@@ -19,17 +19,38 @@ k_max = 1000;
 n_features = 100;
 y_rangeLim = 5;
 %noise_motion = [0.05, 0.05, 0.05, 0.01, 0.01, 0.01];
-noise_motion = 0.0001*[0.005, 0.005, 0.005, 0.001, 0.001, 0.001]; % we want to generate displacements with low noise
+noise_motion = [0.005, 0.005, 0.005, 0.002, 0.002, 0.002]; % we want to generate displacements with low noise
 noise_obs = [0.05, 0.01, 0.01];
-[p_k, c_k, d_k, D_vec_k] = generateTrajectory(k_max, 0.1, [1, 0.1], noise_motion);
-%[p_k, c_k, d_k, D_vec_k] = generateCircleTrajectory(k_max, 0.1, [1, 0.1], noise_motion);
-[y, Y_vec, map] = generateMeasurements(p_k, c_k, n_features, y_rangeLim, noise_obs);
+%[p_k, c_k, d_k_noiseFree, D_vec_k_noiseFree] = generateTrajectory(k_max, 0.1, [1, 0.1]);
+[p_k, c_k, d_k_noiseFree, D_vec_k_noiseFree] = generateCircleTrajectory(k_max, 0.1, [1, 0.1]);
 p_k_groundtruth = p_k;
 c_k_groundtruth = c_k;
 
+% figure;
+% plot3(p_k_groundtruth(1,:), p_k_groundtruth(2,:), p_k_groundtruth(3,:), 'b-');
+% grid on
+% axis equal
+
+[d_k, D_vec_k] = generateOdometry(d_k_noiseFree, D_vec_k_noiseFree, noise_motion);
+
+% figure
+% title('Dead reckoning Monte-Carlo simulation')
+% hold on
+% plot3(p_k_groundtruth(1,:), p_k_groundtruth(2,:), p_k_groundtruth(3,:), 'r-');
+% for n = 1:100
+%     [d_k, D_vec_k] = generateOdometry(d_k_noiseFree, D_vec_k_noiseFree, noise_motion);
+%     [p_k_dr, C_k_dr] = deadReckoning(d_k, D_vec_k);
+%     plot3(p_k_dr(1,:), p_k_dr(2,:), p_k_dr(3,:), 'b-');
+% end
+% grid on
+% axis equal
+
+[y, Y_vec, map] = generateMeasurements(p_k, c_k, n_features, y_rangeLim, noise_obs);
+
+
 figure;
-plot3(p_k(1,:), p_k(2,:), p_k(3,:), 'b-');
 hold on
+plot3(p_k_groundtruth(1,:), p_k_groundtruth(2,:), p_k_groundtruth(3,:), 'b-');
 plot3(map(1,:), map(2,:), map(3,:), 'k.');
 grid on
 axis equal
@@ -37,8 +58,8 @@ axis equal
 % Filter settings
 n_particles = 100;
 map_size_limit = 10000; % number of Gaussians in each particle's map
-noise_motion = noise_motion * 20000; % assume motion noise is larger than it is
-noise_obs = noise_obs * 1; % inflate noise for Kalman filter
+noise_motion = noise_motion * 1; 
+noise_obs = noise_obs * 1.5; % inflate noise for Kalman filter
 resample_interval = 0;
 
 % Vehicle trajectory (6-dof poses) for each particle
@@ -188,10 +209,10 @@ for k = k_sim_start:k_sim_end;
         eRot_vec_k_km__i = [noise_motion(4)*randn; noise_motion(5)*randn; noise_motion(6)*randn];
         eRot_k_km__i = aa2Rmat(eRot_vec_k_km__i);
         
-        %if i == 1 % For testing, particle 1 traverses the actual trajectory
-        %    eTran_k_km__i = eTran_k_km__i * 0;
-        %    eRot_k_km__i = eye(3);
-        %end
+        if i == 1 % Since we are not sampling a large number of particles, just have one sampled at the mean
+            eTran_k_km__i = eTran_k_km__i * 0;
+            eRot_k_km__i = eye(3);
+        end
         
         d_k_km__i = d_k_km + eTran_k_km__i;
         D_k_km__i = eRot_k_km__i*D_k_km;
@@ -231,6 +252,8 @@ for k = k_sim_start:k_sim_end;
         % For determining Gaussuan weights later
         w_max_before_update = 0;
         m_max_before_update = 0;
+        w_max_after_update = 0;
+        m_max_afterupdate = 0;
         
         for m = 1:M_size_before_update 
             
@@ -276,7 +299,6 @@ for k = k_sim_start:k_sim_end;
                 S_det = det(S); % Will use later for measurement likelihood
                 S_inv = eye(3)/S; % Will use later for measurement likelihood
                 
-
                 % Kalman gain, *move inside for-loop if R is measurement dependent 
                 K = P_m_km*H'/S;
                 
@@ -284,9 +306,6 @@ for k = k_sim_start:k_sim_end;
                 P_m_k = (eye(3) - K*H) * P_m_km;
                 P_m_k = (P_m_k + P_m_k')/2;            
                 P_m_vec_k = reshape(P_m_k, 9, 1);
-                
-                % For debug, check P_k is invertible
-                P_m_k_inv = inv(P_m_k);
 
                 for n = idx_current_obs_start : idx_current_obs_end % for each measurement of this timestep
                     
@@ -338,24 +357,57 @@ for k = k_sim_start:k_sim_end;
                 idx = new_gaussian_weight_table_feature_correspondence(m, n);
                 if(idx ~= 0) % idx can be 0 if p_detection = 0, in which case we don't bother creating new Gaussians for this feature
                     M{i,3}(idx) = new_gaussian_weight_numerator_table(m,n) /  weight_denom(n);
+                    
+                    % For single-strategy particle weighting - we want to
+                    % find the Gaussian with the highest weight
+                    w = M{i,3}(idx);
+                    if w > w_max_after_update
+                        w_max_after_update = w;
+                        m_max_after_update = idx;
+                    end
+                    
                 end
             end
         end
         w_after_update(i, k) = sum( M{i,3} );   
-
+        
         % Evaluate Gaussians at chosen position for weighting
-        v_eval_pos(:,i) = M{i,1}(:,m_max_before_update);
-        v_before_update(i, k) = 0;
-        for j = 1 : M_size_before_update
-            if Features_inside_FOV_before_update{i}(j) == 1; % This condition is a hack to make things go faster - ok if covariance S is small
-                u = M{i,1}(:,j);
-                S = reshape(M{i,2}(:,j), 3, 3);
-                w = M{i,3}(j) / P_missed_detection; % we want the weight before the update
-                d = v_eval_pos(:,i) - u;
-                md = d' / S * d;
-                v_before_update(i, k) = v_before_update(i, k) + w * (2*pi)^(-3/2) * det(S)^(-0.5) * exp(-0.5 * md);
+%         v_eval_pos(:,i) = M{i,1}(:,m_max_before_update);
+%         v_before_update(i, k) = 0;
+%         for j = 1 : M_size_before_update
+%             if Features_inside_FOV_before_update{i}(j) == 1; % This condition is a hack to make things go faster - ok if covariance S is small
+%                 u = M{i,1}(:,j);
+%                 S = reshape(M{i,2}(:,j), 3, 3);
+%                 w = M{i,3}(j) / P_missed_detection; % we want the weight before the update
+%                 d = v_eval_pos(:,i) - u;
+%                 md = d' / S * d;
+%                 v_before_update(i, k) = v_before_update(i, k) + w * (2*pi)^(-3/2) * det(S)^(-0.5) * exp(-0.5 * md);
+%             end
+%         end
+        
+        % Evaluate Gaussians at chosen position for weighting
+        v_eval_pos(:,i) = M{i,1}(:,m_max_after_update);
+        v_after_update(i, k) = 0;
+        for m = 1:M_size_before_update
+            
+            j = new_gaussian_weight_table_feature_correspondence(m, 1);
+            if j == 0
+                continue;
             end
-        end
+            S = reshape(M{i,2}(:,j), 3, 3);
+            S_inv = eye(3) / S;
+            common_gaussian_factor_ = (2*pi)^(-3/2) * det(S)^(-0.5);
+            
+            for n = 1:idx_current_obs_end - idx_current_obs_start + 1
+                j = new_gaussian_weight_table_feature_correspondence(m, n);
+        
+                u = M{i,1}(:,j);
+                w = M{i,3}(j); % we want the weight before the update
+                d = v_eval_pos(:,i) - u;
+                md = d' * S_inv * d;
+                v_after_update(i, k) = v_after_update(i, k) + w * common_gaussian_factor_ * exp(-0.5 * md);
+            end
+        end  
         
     end
     
