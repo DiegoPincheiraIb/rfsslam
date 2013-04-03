@@ -66,6 +66,27 @@ end
 idx_prev_obs_end = idx_current_obs_start - 1;
 idx_current_obs_end = idx_current_obs_start;
 
+
+% Animation
+x_gt_min = floor(p_k_groundtruth(1,1) )-5;
+x_gt_max = ceil(p_k_groundtruth(1,1) )+5;
+x_gt_min = -5;
+x_gt_max = 35;
+figure
+title('animation');
+hold on
+grid on
+xlim([-5 25]);
+h_p_k = plot(p_k(1,1), 0, 'ro', 'MarkerSize', 10);
+h_birth = plot(0, 0, 'm-');
+h_obs = plot(0, 0, 'b-');
+h_updated = plot(0, 0, 'r-');
+h_obs_lim_max = line( [p_k(1,1) + y_rangeLim  p_k(1,1) + y_rangeLim], [-0.25 0.25] );
+h_obs_lim_min = line( [p_k(1,1) - y_rangeLim  p_k(1,1) - y_rangeLim], [-0.25 0.25] );
+for m = 1:n_features
+    line(  [map(1,m) map(1,m)], [-1 0], 'Color', 'k' );
+end
+
 k_sim_start = k_first_measurement + 1;
 k_sim_end = k_max;
 for k = k_sim_start:k_sim_end;
@@ -122,7 +143,7 @@ for k = k_sim_start:k_sim_end;
 
                     M{i,1}(:, M_size(i)) = p_m_i;
                     M{i,2}(:, M_size(i)) = reshape(Sp_m_i, 9, 1);
-                    M{i,3}(M_size(i)) = 1; % constant birth weight - should relate to probability of detection?
+                    M{i,3}(M_size(i)) = 0.25; % constant birth weight - should relate to probability of detection?
 
 
                     % Plot birth position
@@ -139,6 +160,17 @@ for k = k_sim_start:k_sim_end;
             w_before_update(i, k) = sum( M{i,3}(1:M_size(i)) );
 
         end
+        
+        x_plot = x_gt_min : 0.05 : x_gt_max;
+        y_plot = zeros( 1, length(x_plot) );
+        for m = 1:M_size(1)
+            u = M{1,1}(1,m);
+            cov = M{1,2}(1,m);
+            w = M{1,3}(m);
+            y_plot = y_plot + w*pdf('normal', x_plot, u, sqrt(cov));
+        end
+        delete(h_birth);
+        h_birth = plot(x_plot, y_plot, 'm-');
     
     end
     
@@ -179,6 +211,18 @@ for k = k_sim_start:k_sim_end;
         C_vec_k__i(:, k, i) = reshape(C_k, 9, 1);
     end
     time_propogation(k) = toc(t_propogation);
+    
+    delete(h_p_k);
+    delete(h_obs_lim_max);
+    delete(h_obs_lim_min);
+    h_p_k = plot(p_k(1,1), 0, 'ro', 'MarkerSize', 10);
+    h_obs_lim_max = line( [p_k(1,1) + y_rangeLim  p_k(1,1) + y_rangeLim], [-0.25 0.25] );
+    h_obs_lim_min = line( [p_k(1,1) - y_rangeLim  p_k(1,1) - y_rangeLim], [-0.25 0.25] );
+    x_gt_min = min(floor(p_k_groundtruth(1,k) )-5, x_gt_min);
+    x_gt_max = max(ceil(p_k_groundtruth(1,k) )+5, x_gt_max);
+    
+    pause(0.01);
+    
     
     if y(1, idx_current_obs_start) == k
     
@@ -238,7 +282,7 @@ for k = k_sim_start:k_sim_end;
                 if P_detection > 0 % Do not need to copy and update feature position if P_detection = 0
 
                     % Map feature position covariance
-                    P_m_km = reshape(M{i,2}(:,m), 3, 3);
+                    P_m_km = M{i,2}(1,m);
 
                     % Map feature weight
                     w_km = M{i,3}(m);
@@ -247,23 +291,23 @@ for k = k_sim_start:k_sim_end;
                     % measurement model Jacobian
                     % expected measurement model is p_m_k = C_k * (p_m - p_k) + noise;  
                     % Note that, p_k is a particle (sample)
-                    H = C_k; % *Measure model dependent, move inside for-loop if measuremnet dependent*
+                    H = 1; % *Measure model dependent, move inside for-loop if measuremnet dependent*
 
                     % measurement noise
-                    R = diag(noise_obs); % *Measure model dependent, move inside for-loop if measurement dependent*
+                    R = noise_obs(1, 1); % *Measure model dependent, move inside for-loop if measurement dependent*
 
                     % innovation convariance, *move inside for-loop if R is measurement dependent 
                     S = H*P_m_km*H' + R;
                     S_det = det(S); % Will use later for measurement likelihood
-                    S_inv = eye(3)/S; % Will use later for measurement likelihood
+                    S_inv = 1/S; % Will use later for measurement likelihood
 
                     % Kalman gain, *move inside for-loop if R is measurement dependent 
                     K = P_m_km*H'/S;
 
                     % Updated covariance
-                    P_m_k = (eye(3) - K*H) * P_m_km;
+                    P_m_k = (1 - K*H) * P_m_km;
                     P_m_k = (P_m_k + P_m_k')/2;            
-                    P_m_vec_k = reshape(P_m_k, 9, 1);
+                    P_m_vec_k = reshape([P_m_k, 0, 0, 0, 0, 0, 0, 0, 0], 9, 1);
 
                     for n = idx_current_obs_start : idx_current_obs_end
                         % for each measurement of this timestep
@@ -288,7 +332,7 @@ for k = k_sim_start:k_sim_end;
                         % weight until we get all weights associated with same
                         % measurement, so we have to store numerators in a table
                         g_mahalanobis_dist = innov' * S_inv * innov;
-                        g = (2*pi)^(-3/2) * S_det^(-0.5) * exp(-0.5 * g_mahalanobis_dist); % measurement likelihood
+                        g = (2*pi)^(-0.5) * S_det^(-0.5) * exp(-0.5 * g_mahalanobis_dist); % measurement likelihood
 
                         % Table (m x n) for weighting factor numerator
                         new_gaussian_weight_numerator_table(m, n - idx_current_obs_start + 1) = w_km * P_detection * g;
@@ -346,10 +390,11 @@ for k = k_sim_start:k_sim_end;
     %         end
 
             % Evaluate Gaussians at chosen position for weighting
+           
             
             v_before_update(i, k) = 0;
             v_after_update(i, k) = 0;
-            
+             
             if m_max_after_update == 0 % We have measurements but there are no features that we expect inside field of view
                 v_before_update(i, k) = 1;
                 v_after_update(i, k) = 1;
@@ -358,23 +403,22 @@ for k = k_sim_start:k_sim_end;
                 for m = 1:M_size_before_update
 
                     u = M{i,1}(:,m);
-                    S = reshape(M{i,2}(:,m), 3, 3);
-                    S_inv = eye(3) / S;
+                    S = M{i,2}(1,m);
+                    S_inv = 1 / S;
                     w = M{i,3}(m); 
                     if Features_inside_FOV_before_update{i}(m) == 1
                         w = w / P_missed_detection; 
                     end
                     d = v_eval_pos(:,i) - u;
                     md = d' * S_inv * d;
-                    v_before_update(i, k) = v_before_update(i, k) + w * (2*pi)^(-3/2) * det(S)^(-0.5) * exp(-0.5 * md);
+                    v_before_update(i, k) = v_before_update(i, k) + w * (2*pi)^(-0.5) * det(S)^(-0.5) * exp(-0.5 * md);
 
                     j = new_gaussian_weight_table_feature_correspondence(m, 1);
                     if j == 0
                         continue;
                     end
-                    S = reshape(M{i,2}(:,j), 3, 3);
-                    S_inv = eye(3) / S;
-                    common_gaussian_factor_ = (2*pi)^(-3/2) * det(S)^(-0.5);
+
+                    common_gaussian_factor_ = (2*pi)^(-0.5) * det(S)^(-0.5);
 
                     for n = 1:idx_current_obs_end - idx_current_obs_start + 1
                         j = new_gaussian_weight_table_feature_correspondence(m, n);
@@ -385,16 +429,38 @@ for k = k_sim_start:k_sim_end;
                         md = d' * S_inv * d;
                         v_after_update(i, k) = v_after_update(i, k) + w * common_gaussian_factor_ * exp(-0.5 * md);
                     end
-                    
+
                 end  
             end
-            
+
         end
 
         map_size_update(k) = M_size(i);
         time_update(k) = toc(t_update);
         %fprintf('Particle %d :: updated map size : %d Gaussians\n', i, M_size(i));
-
+        
+        
+        x_plot = min(floor(p_k__i(1,k,1) - y_rangeLim*1.5), x_gt_min) : 0.05 : max(ceil(p_k__i(1,k,1) + y_rangeLim*1.5), x_gt_max);
+        y_plot = zeros( 1, length(x_plot) );
+        for n = idx_current_obs_start : idx_current_obs_end
+            u = p_k__i(1,k,1) + y(2, n);
+            cov = R;
+            y_plot = y_plot + pdf('normal', x_plot, u, sqrt(cov));
+        end
+        delete(h_obs);
+        h_obs = plot(x_plot, y_plot, 'b-');
+        
+        x_plot = x_gt_min : 0.05 : x_gt_max;
+        y_plot = zeros( 1, length(x_plot) );
+        for m = 1:M_size(1)
+            u = M{1,1}(1,m);
+            cov = M{1,2}(1,m);
+            w = M{1,3}(m);
+            y_plot = y_plot + w*pdf('normal', x_plot, u, sqrt(cov));
+        end
+        delete(h_updated);
+        h_updated = plot(x_plot, y_plot, 'r-');
+        pause(0.01);
 
         %% Determine particle weight
 
@@ -407,15 +473,16 @@ for k = k_sim_start:k_sim_end;
 
             elseif particle_weighting_strategy == 1
 
-                v_after_update(i, k) = 0;
-                for j = 1 : M_size(i)
-                    u = M{i,1}(:,j);
-                    S = reshape(M{i,2}(:,j), 3, 3);
-                    w = M{i,3}(j);
-                    d = v_eval_pos(:,i) - u;
-                    md = d' / S * d;
-                    v_after_update(i, k) = v_after_update(i, k) + w * (2*pi)^(-3/2) * det(S)^(-0.5) * exp(-0.5 * md);
-                end
+%                 v_after_update(i, k) = 0;
+%                 for j = 1 : M_size(i)
+%                     u = M{i,1}(:,j);
+%                     S = M{i,2}(1,j);
+%                     w = M{i,3}(j);
+%                     d = v_eval_pos(:,i) - u;
+%                     md = d' / S * d;
+%                     v_after_update(i, k) = v_after_update(i, k) + w * (2*pi)^(-0.5) * det(S)^(-0.5) * exp(-0.5 * md);
+%                 end
+                
                 similarity_factor(i,k) = v_before_update(i, k) / v_after_update(i, k);
 
                 n_measurements = idx_current_obs_end - idx_current_obs_start + 1; 
@@ -424,12 +491,12 @@ for k = k_sim_start:k_sim_end;
                 C_k = reshape(C_vec_k__i(:, k, i), 3, 3);
                 p_m = v_eval_pos(:,i);
                 p_m_k = measureModel(p_k, C_k, p_m); % predicted measurement of p_m
-                det_R = det(R);
+                det_R = det(R(1,1));
                 for n = idx_current_obs_start : idx_current_obs_end 
                     p_m_k_act = y(2:4, n); % actual meaurement
                     d = p_m_k_act - p_m_k;
-                    md = d' / R * d;
-                    g = (2*pi)^(-3/2) * det_R^(-0.5) * exp(-0.5 * md); % measurement likelihood
+                    md = d' / R(1,1) * d;
+                    g = (2*pi)^(-0.5) * det_R^(-0.5) * exp(-0.5 * md); % measurement likelihood
                     measurement_likelihood_factor(i,k) = measurement_likelihood_factor(i,k) + g;
                 end
                 measurement_likelihood_factor(i,k) = P_detection * measurement_likelihood_factor(i,k) + (1-P_detection) * P_false;
@@ -488,8 +555,8 @@ for k = k_sim_start:k_sim_end;
 
             % Sort features according to weight
             % Features outside FOV already have weights of 0
-            % Features below a certain threshold will get pruned, along with
-            % features outside the sensor FOV
+            % Features below a certain threshold will get pruned
+            
             [sorted_weights, weight_order] = sort(M{i,3}(1:M_size(i)), 2, 'descend');
             for m = 1:length(weight_order)
                 if sorted_weights(m) < 0.01
@@ -513,7 +580,7 @@ for k = k_sim_start:k_sim_end;
                     idx_m = weight_order(m);  % Find the index before sorting was performed
                     x_m = M{i,1}(:,idx_m);
                     S_vec_m = M{i,2}(:,idx_m);
-                    S_m = reshape(S_vec_m, 3, 3);
+                    S_m = S_vec_m(1,1);
                     w_m = M{i,3}(idx_m);
 
                     gaussians_to_merge_ = 1;
@@ -527,7 +594,7 @@ for k = k_sim_start:k_sim_end;
                             idx_n = weight_order(n);  % Find the index before sorting was performed
                             x_n = M{i,1}(:,idx_n);
                             S_vec_n = M{i,2}(:,idx_n);
-                            S_n = reshape(S_vec_n, 3, 3);
+                            S_n = S_vec_n(1,1);
                             w_n = M{i,3}(idx_n);
 
                             % Check if n should be merged with m
@@ -561,24 +628,24 @@ for k = k_sim_start:k_sim_end;
                         end
                         x_merged_ = x_merged_ / w_merged_;
 
-                        S_merged_ = zeros(3,3);
+                        S_merged_ = 0;
                         for n = 1:gaussians_to_merge_
                             w_n = w_(:, n);
                             x_n = x_(:, n);
-                            S_n = reshape(S_(:, n), 3, 3);
-                            d_n = x_merged_ - x_n;
+                            S_n = S_(1, n);
+                            d_n = x_merged_ - x_n; d_n = d_n(1);
                             S_merged_ = S_merged_ + w_n*(S_n + d_n*d_n');
                         end
                         S_merged_ = S_merged_ / w_merged_;
-                        S_vec_merged_ = reshape(S_merged_, 9, 1); 
-                        S_merged_inv_ = inv(S_merged_);
+                        S_vec_merged_ = reshape([S_merged_, 0, 0, 0, 0, 0, 0, 0, 0], 9, 1); 
+                        
 
                         merged_count = merged_count + 1;
                         w_merged(:, merged_count) = w_merged_;
                         x_merged(:, merged_count) = x_merged_;
                         S_merged(:, merged_count) = S_vec_merged_;
 
-                        %plot3(x_merged(1, merged_count), x_merged(2, merged_count), x_merged(3, merged_count), 'g.'); 
+                        
 
                     else
                         prune_count_ = prune_count_ + 1;
