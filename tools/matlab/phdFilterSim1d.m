@@ -122,9 +122,42 @@ for k = k_sim_start:k_sim_end;
             n_birth = 0;
             for obs_idx = idx_prev_obs_start : idx_prev_obs_end
 
-                % Control birth Gaussians based on likelihood of previous
-                % measurements
-                if isempty(birth_Gaussian_mDist_min) || birth_Gaussian_mDist_min(obs_idx - idx_prev_obs_start + 1) > 2
+                % Control birth Gaussians based on likelihood of previous measurements
+                
+                % We only checked with features that we think were inside
+                % the sensor field of view at the previous time step.
+                % If a measurement does not associate any any features
+                % inside the field of view, we should also check outside.
+                
+                new_feature_is_likely = 0;
+                if isempty(birth_Gaussian_mDist_min) || birth_Gaussian_mDist_min(i, obs_idx - idx_prev_obs_start + 1) > birth_Gaussian_likelihood_threshold
+                    new_feature_is_likely = 1;
+
+                    % Check with features that may be outside sensor FOV
+                    for m = 1 : M_size(i)
+                        
+                        p_m_k_act = y(2:4, obs_idx); 
+                        p_m_k = M{i,1}(:, m) - p_k__i(:,k-1,1);
+                        P_m_k = M{i,2}(1, m);
+                        
+                        innov = p_m_k_act - p_m_k;
+                        H = 1;
+                        R = noise_obs(1, 1);
+                        S = H*P_m_k*H' + R;
+
+                        g_mahalanobis_dist = innov' / S * innov;
+                        
+                        if g_mahalanobis_dist < birth_Gaussian_likelihood_threshold
+                            new_feature_is_likely = 0;
+                            break; % we found a feature that the measurement isw likely to have come from 
+                        end
+                        
+                    end
+                    % Without the above in place, many new Gaussians get
+                    % created
+                end
+                
+                if new_feature_is_likely == 1
 
                     M_size(i) = M_size(i) + 1; % Increase the birth set size by 1 for particle i
                     n_birth = n_birth + 1;
@@ -171,6 +204,7 @@ for k = k_sim_start:k_sim_end;
         end
         delete(h_birth);
         h_birth = plot(x_plot, y_plot, 'm-');
+        pause(0.005);
     
     end
     
@@ -221,8 +255,14 @@ for k = k_sim_start:k_sim_end;
     x_gt_min = min(floor(p_k_groundtruth(1,k) )-5, x_gt_min);
     x_gt_max = max(ceil(p_k_groundtruth(1,k) )+5, x_gt_max);
     
-    pause(0.01);
+    pause(0.005);
     
+    if y(1, idx_current_obs_start) ~= k
+        if(h_obs) ~= 0
+            delete(h_obs);
+            h_obs = 0;
+        end
+    end
     
     if y(1, idx_current_obs_start) == k
     
@@ -233,6 +273,10 @@ for k = k_sim_start:k_sim_end;
 
         % Keep track of which feature is outside field of view
         Features_inside_FOV_before_update = cell(i);
+        
+        % For deciding whether birth Gaussians should be created the next
+        % timestep
+        birth_Gaussian_mDist_min = zeros( n_particles, idx_current_obs_end - idx_current_obs_start + 1);
 
         for i = 1:n_particles
 
@@ -250,7 +294,7 @@ for k = k_sim_start:k_sim_end;
             new_gaussian_weight_numerator_table = zeros(M_size_before_update, idx_current_obs_end - idx_current_obs_start + 1);
             new_gaussian_weight_table_feature_correspondence = new_gaussian_weight_numerator_table;
             new_gaussian_mDist_table = inf(M_size_before_update, idx_current_obs_end - idx_current_obs_start + 1);
-
+            
             % For determining Gaussuan weights later
             w_max_before_update = 0;
             m_max_before_update = 0;
@@ -350,8 +394,7 @@ for k = k_sim_start:k_sim_end;
             clutterPHD = P_false; % update this later
 
             % sum each column, i.e, for each measurement, total weights for all features
-            weights_total = sum(new_gaussian_weight_numerator_table, 1); 
-            birth_Gaussian_mDist_min = min(new_gaussian_mDist_table, [], 1);
+            weights_total = sum(new_gaussian_weight_numerator_table, 1);
             weight_denom = weights_total + clutterPHD;
 
             % Now update the weights
@@ -432,6 +475,9 @@ for k = k_sim_start:k_sim_end;
 
                 end  
             end
+            
+            % For controlling birth Gaussians for the next timestep
+            birth_Gaussian_mDist_min(i, :) = min(new_gaussian_mDist_table, [], 1);
 
         end
 
@@ -447,7 +493,9 @@ for k = k_sim_start:k_sim_end;
             cov = R;
             y_plot = y_plot + pdf('normal', x_plot, u, sqrt(cov));
         end
-        delete(h_obs);
+        if h_obs ~= 0
+            delete(h_obs);
+        end 
         h_obs = plot(x_plot, y_plot, 'b-');
         
         x_plot = x_gt_min : 0.05 : x_gt_max;
@@ -460,7 +508,7 @@ for k = k_sim_start:k_sim_end;
         end
         delete(h_updated);
         h_updated = plot(x_plot, y_plot, 'r-');
-        pause(0.01);
+        pause(0.005);
 
         %% Determine particle weight
 

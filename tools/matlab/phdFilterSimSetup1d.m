@@ -45,7 +45,10 @@ map_size_limit = 1000; % number of Gaussians in each particle's map
 noise_motion = noise_motion * 1; 
 noise_obs = noise_obs * 5 ; % inflate noise for Kalman filter
 resample_interval = 0;
+
+% PHD Filter Settings
 particle_weighting_strategy = 1; % 0 for empty strategy, 1 for single feature
+birth_Gaussian_likelihood_threshold = 2;
 
 % figure
 % title('Dead reckoning Monte-Carlo simulation')
