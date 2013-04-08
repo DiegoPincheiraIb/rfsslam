@@ -55,7 +55,7 @@ for k = 2:k_max
         v_k = [(v_max_linear).*rand; 0; 0];
         w_k = -v_max_rot + (v_max_rot*2).*rand(3,1);
        end
-       if k >= k_max / 2
+       if (mod(k / 500, 2) - 1 >= 0)
            v_k = -v_k; 
        end
     end

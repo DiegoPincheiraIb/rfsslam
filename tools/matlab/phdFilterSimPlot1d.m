@@ -3,15 +3,14 @@
 figure;
 title('Vehicle Position');
 hold on
-plot(1:k_max, p_k_groundtruth(1,:), 'b-');
-grid on
-
 for i = 1:n_particles
     plot(k_sim_start:k_sim_end, p_k__i(1, k_sim_start:k_sim_end, i), 'g-' );
     hold on
 end
 [max_weight, max_index] = max(particle_weight(:,k_max));
 plot(k_sim_start:k_sim_end, p_k__i(1, k_sim_start:k_sim_end, max_index), 'r-', 'LineWidth', 2);
+plot(1:k_max, p_k_groundtruth(1,:), 'b-');
+grid on
 
 figure;
 hold on
@@ -33,15 +32,20 @@ figure;
 grid on
 hold on
 title('Feature Hypothesis Density');
-for m = 1:M_size(max_index)
-    u = M{max_index,1}(1,m);
-    cov = M{max_index,2}(1,m);
-    w = M{max_index,3}(m);
-    y = y + w*pdf('normal', x, u, sqrt(cov));
-    plot(u, w, 'k.', 'markersize', 5);
+total_particle_weight = sum(particle_weight(:,k_max));
+for i = 1:n_particles
+    for m = 1:M_size(i)
+        u = M{i,1}(1,m);
+        cov = M{i,2}(1,m);
+        w = M{i,3}(m);
+        y = y + w*pdf('normal', x, u, sqrt(cov))*particle_weight(i,k_max)/total_particle_weight;
+        plot(u, w, 'k.', 'markersize', 5);
+    end
 end
 plot(x, y, 'r-');
-plot(map(1,:), 0.1, 'b.', 'markersize', 5);
+for m = 1:length(map(1,:))
+    line( [map(1,m), map(1,m)], [-0.25 0], 'Color', 'b');
+end
 
 figure;
 title('timing analysis')

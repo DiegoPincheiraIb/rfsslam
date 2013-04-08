@@ -86,13 +86,17 @@ h_obs_lim_min = line( [p_k(1,1) - y_rangeLim  p_k(1,1) - y_rangeLim], [-0.25 0.2
 for m = 1:n_features
     line(  [map(1,m) map(1,m)], [-1 0], 'Color', 'k' );
 end
+[max_weight i_max_weight] = max(particle_weight(:,1));
 
 k_sim_start = k_first_measurement + 1;
 k_sim_end = k_max;
 for k = k_sim_start:k_sim_end;
     
     fprintf('\nTimestep k = %d\n', k);
-    
+    if idx_current_obs_start > length(y(1,:))
+        idx_current_obs_start = idx_current_obs_start - 1;
+        idx_current_obs_end = idx_current_obs_start;
+    end
     if y(1, idx_current_obs_start) == k
 
         while y(1, idx_current_obs_end) < k + 1
@@ -196,10 +200,10 @@ for k = k_sim_start:k_sim_end;
         
         x_plot = x_gt_min : 0.05 : x_gt_max;
         y_plot = zeros( 1, length(x_plot) );
-        for m = 1:M_size(1)
-            u = M{1,1}(1,m);
-            cov = M{1,2}(1,m);
-            w = M{1,3}(m);
+        for m = 1:M_size(i_max_weight)
+            u = M{i_max_weight,1}(1,m);
+            cov = M{i_max_weight,2}(1,m);
+            w = M{i_max_weight,3}(m);
             y_plot = y_plot + w*pdf('normal', x_plot, u, sqrt(cov));
         end
         delete(h_birth);
@@ -243,15 +247,21 @@ for k = k_sim_start:k_sim_end;
         [p_k, C_k] = motionModel(p_km, C_km, d_k_km__i, D_k_km__i);
         p_k__i(:, k, i) = p_k;
         C_vec_k__i(:, k, i) = reshape(C_k, 9, 1);
+        
+        if i == 1 && force_particle_on_true_trajectory == 1 
+            p_k__i(:, k, i) = p_k_groundtruth(:, k);
+            C_vec_k__i(:, k, i) = c_k_groundtruth(:, k);
+        end
+        
     end
     time_propogation(k) = toc(t_propogation);
     
     delete(h_p_k);
     delete(h_obs_lim_max);
     delete(h_obs_lim_min);
-    h_p_k = plot(p_k(1,1), 0, 'ro', 'MarkerSize', 10);
-    h_obs_lim_max = line( [p_k(1,1) + y_rangeLim  p_k(1,1) + y_rangeLim], [-0.25 0.25] );
-    h_obs_lim_min = line( [p_k(1,1) - y_rangeLim  p_k(1,1) - y_rangeLim], [-0.25 0.25] );
+    h_p_k = plot(p_k__i(1,k,i_max_weight), 0, 'ro', 'MarkerSize', 10);
+    h_obs_lim_max = line( [p_k__i(1,k,i_max_weight) + y_rangeLim  p_k__i(1,k,i_max_weight) + y_rangeLim], [-0.25 0.25] );
+    h_obs_lim_min = line( [p_k__i(1,k,i_max_weight) - y_rangeLim  p_k__i(1,k,i_max_weight) - y_rangeLim], [-0.25 0.25] );
     x_gt_min = min(floor(p_k_groundtruth(1,k) )-5, x_gt_min);
     x_gt_max = max(ceil(p_k_groundtruth(1,k) )+5, x_gt_max);
     
@@ -300,6 +310,10 @@ for k = k_sim_start:k_sim_end;
             m_max_before_update = 0;
             w_max_after_update = 0;
             m_max_after_update = 0;
+            
+            r = zeros(M_size_before_update, 1); % expected feature range
+            r_plus =  y_rangeLim + sensor_limit_upper_buffer;
+            r_minus = y_rangeLim - sensor_limit_lower_buffer;
 
             for m = 1:M_size_before_update 
 
@@ -307,13 +321,18 @@ for k = k_sim_start:k_sim_end;
                 % inside sensing range
                 p_m = M{i,1}(:,m);
                 p_m_k = measureModel(p_k, C_k, p_m);
-                r = norm(p_m_k);
+                r(m) = norm(p_m_k);
 
                 P_detection = 0;
-                if(r <= y_rangeLim) 
+                if(r(m) <= r_plus) 
                     % inside sensing area
                     Features_inside_FOV_before_update{i}(m) = 1;
                     P_detection = 0.95;
+                    
+%                     r_dropOff = y_rangeLim - 0.25;
+%                     if r > r_dropOff
+%                         P_detection = P_detection - P_detection/(y_rangeLim - r_dropOff)*(r - r_dropOff);
+%                     end
 
                     w = M{i,3}(m);
                     if w > w_max_before_update
@@ -386,7 +405,21 @@ for k = k_sim_start:k_sim_end;
                         new_gaussian_weight_table_feature_correspondence(m, n - idx_current_obs_start + 1) = M_size(i);
 
                     end
-
+                    
+                    % If this feature is close to the sensor range limit
+                    % and we don't get any good measurements to it,
+                    % reconsider it as outside the sensor range limit                   
+%                     r_uncertainy_probability_of_detection = y_rangeLim - 0.5;
+%                     if r > r_uncertainy_probability_of_detection && r < y_rangeLim
+%                         min_likelihood_mDist = min( new_gaussian_mDist_table(m, :) );
+%                         if( min_likelihood_mDist > 3) % make this threshold a settings variable later
+%                             % We don't have a close measurement to feature
+%                             M{i,3}(m) = M{i,3}(m) / P_missed_detection; % revert as if P_detection = 0;
+%                             new_gaussian_weight_table_feature_correspondence(m, :) = 0 * new_gaussian_weight_table_feature_correspondence(m, :);
+%                             new_gaussian_weight_numerator_table(m, :) = 0 * new_gaussian_weight_numerator_table(m, :);
+%                         end
+%                     end
+                    
                 end
             end
 
@@ -398,12 +431,13 @@ for k = k_sim_start:k_sim_end;
             weight_denom = weights_total + clutterPHD;
 
             % Now update the weights
+            gaussian_weight_table = new_gaussian_weight_numerator_table * 0;
             for m = 1:M_size_before_update
                 for n = 1:idx_current_obs_end - idx_current_obs_start + 1
                     idx = new_gaussian_weight_table_feature_correspondence(m, n);
                     if(idx ~= 0) % idx can be 0 if p_detection = 0, in which case we don't bother creating new Gaussians for this feature
                         M{i,3}(idx) = new_gaussian_weight_numerator_table(m,n) /  weight_denom(n);
-
+                        gaussian_weight_table(m, n) = M{i,3}(idx);
                         % For single-strategy particle weighting - we want to
                         % find the Gaussian with the highest weight
                         w = M{i,3}(idx);
@@ -413,6 +447,16 @@ for k = k_sim_start:k_sim_end;
                         end
 
                     end
+                end
+            end
+            
+            % Features in the probability of detection ambiguity zone
+            for m = 1:M_size_before_update
+                if(r(m) <= r_plus && r(m) >= r_minus) 
+                    w_minus = M{i,3}(m) / P_missed_detection; % This was the weight before update
+                    w_plus = sum(gaussian_weight_table(m, :)); 
+                    w_delta = max( P_detection * w_minus - w_plus , 0 ); % Weight taken away by negative information
+                    M{i,3}(m) = M{i,3}(m) + w_delta;
                 end
             end
             
@@ -486,10 +530,10 @@ for k = k_sim_start:k_sim_end;
         %fprintf('Particle %d :: updated map size : %d Gaussians\n', i, M_size(i));
         
         
-        x_plot = min(floor(p_k__i(1,k,1) - y_rangeLim*1.5), x_gt_min) : 0.05 : max(ceil(p_k__i(1,k,1) + y_rangeLim*1.5), x_gt_max);
+        x_plot = min(floor(p_k__i(1,k,i_max_weight) - y_rangeLim*1.5), x_gt_min) : 0.05 : max(ceil(p_k__i(1,k,i_max_weight) + y_rangeLim*1.5), x_gt_max);
         y_plot = zeros( 1, length(x_plot) );
         for n = idx_current_obs_start : idx_current_obs_end
-            u = p_k__i(1,k,1) + y(2, n);
+            u = p_k__i(1,k,i_max_weight) + y(2, n);
             cov = R;
             y_plot = y_plot + pdf('normal', x_plot, u, sqrt(cov));
         end
@@ -500,10 +544,10 @@ for k = k_sim_start:k_sim_end;
         
         x_plot = x_gt_min : 0.05 : x_gt_max;
         y_plot = zeros( 1, length(x_plot) );
-        for m = 1:M_size(1)
-            u = M{1,1}(1,m);
-            cov = M{1,2}(1,m);
-            w = M{1,3}(m);
+        for m = 1:M_size(i_max_weight)
+            u = M{i_max_weight,1}(1,m);
+            cov = M{i_max_weight,2}(1,m);
+            w = M{i_max_weight,3}(m);
             y_plot = y_plot + w*pdf('normal', x_plot, u, sqrt(cov));
         end
         delete(h_updated);
@@ -519,7 +563,7 @@ for k = k_sim_start:k_sim_end;
             if particle_weighting_strategy == 0
                particle_weight(i, k) = feature_count_factor(i, k) * particle_weight(i, k-1);
 
-            elseif particle_weighting_strategy == 1
+            elseif particle_weighting_strategy == 1 || particle_weighting_strategy == 2
 
 %                 v_after_update(i, k) = 0;
 %                 for j = 1 : M_size(i)
@@ -549,15 +593,19 @@ for k = k_sim_start:k_sim_end;
                 end
                 measurement_likelihood_factor(i,k) = P_detection * measurement_likelihood_factor(i,k) + (1-P_detection) * P_false;
 
-                %particle_weight(i, k) = measurement_likelihood_factor(i,k) * particle_weight(i, k-1);
-                particle_weight(i, k) = measurement_likelihood_factor(i,k) * similarity_factor(i,k) * feature_count_factor(i, k) * particle_weight(i, k-1);
+                if particle_weighting_strategy == 2
+                    particle_weight(i, k) = measurement_likelihood_factor(i,k) * similarity_factor(i,k) * particle_weight(i, k-1);
+                elseif particle_weighting_strategy == 1
+                    particle_weight(i, k) = measurement_likelihood_factor(i,k) * similarity_factor(i,k) * feature_count_factor(i, k) * particle_weight(i, k-1);
+                end
 
             end
 
         end
         % Scale the weights so that they are close to 1
         particle_weight(:, k) = particle_weight(:, k) / mean(particle_weight(:, k));
-
+        [max_weight i_max_weight] = max(particle_weight(:,k));
+        
         time_weighting(k) = toc(t_weighting);
 
 
@@ -572,7 +620,7 @@ for k = k_sim_start:k_sim_end;
 
         for i = 1:n_particles;
 
-            d_threshold = 1; % Mahalanobis distance threshold for Gaussian merging
+            d_threshold = merging_mahalanoblis_distance_threshold ; % Mahalanobis distance threshold for Gaussian merging
             w_threshold = (1 - P_detection) / 2;  % (1 - P_detection); % Weight threshold for pruning, must be higher than prob of missed detection!
 
             % Pre-allocate storage for merged Gaussians
@@ -682,7 +730,7 @@ for k = k_sim_start:k_sim_end;
                             x_n = x_(:, n);
                             S_n = S_(1, n);
                             d_n = x_merged_ - x_n; d_n = d_n(1);
-                            S_merged_ = S_merged_ + w_n*(S_n + d_n*d_n');
+                            S_merged_ = S_merged_ + w_n*(S_n + feature_merging_covarance_inflation_factor*d_n*d_n');
                         end
                         S_merged_ = S_merged_ / w_merged_;
                         S_vec_merged_ = reshape([S_merged_, 0, 0, 0, 0, 0, 0, 0, 0], 9, 1); 
@@ -734,7 +782,7 @@ for k = k_sim_start:k_sim_end;
             end
             effective_n_particles = 1 / sum_normalized_weight_squared;
 
-            if(effective_n_particles <= n_particles / 2)
+            if(effective_n_particles <= effective_particle_threshold)
 
                 sampling_itvl = total_weight / n_particles;
                 sample_offset = rand * sampling_itvl;
