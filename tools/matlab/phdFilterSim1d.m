@@ -76,7 +76,8 @@ figure
 title('animation');
 hold on
 grid on
-xlim([-5 25]);
+xlim([-5 30]);
+ylim([-2 20]);
 h_p_k = plot(p_k(1,1), 0, 'ro', 'MarkerSize', 10);
 h_birth = plot(0, 0, 'm-');
 h_obs = plot(0, 0, 'b-');
@@ -327,7 +328,7 @@ for k = k_sim_start:k_sim_end;
                 if(r(m) <= r_plus) 
                     % inside sensing area
                     Features_inside_FOV_before_update{i}(m) = 1;
-                    P_detection = 0.95;
+                    P_detection = P_detection_static;
                     
 %                     r_dropOff = y_rangeLim - 0.25;
 %                     if r > r_dropOff
@@ -423,8 +424,8 @@ for k = k_sim_start:k_sim_end;
                 end
             end
 
-            P_false = 0.02; % update this later
-            clutterPHD = P_false; % update this later
+            P_false = P_falseAlarm_static; 
+            clutterPHD = P_false;
 
             % sum each column, i.e, for each measurement, total weights for all features
             weights_total = sum(new_gaussian_weight_numerator_table, 1);

@@ -3,12 +3,12 @@
 
 clear all;
 close all;
-rand('seed', 6);
-randn('seed', 6);
+rand('seed', 10);
+randn('seed', 10);
 
 %% Simulation settings
-k_max = 1000;
-n_features = 10;
+k_max = 2000;
+n_features = 15;
 y_rangeLim = 5;
 
 force_particle_on_true_trajectory = 0;
@@ -31,8 +31,11 @@ no_measurement_noise = 0;
 % [y, Y_vec, map] = generateMeasurements(p_k, c_k, n_features, y_rangeLim, noise_obs);
 
 % 1d Trajectory
-noise_motion = [0.03, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15]; 
+noise_motion = [0.04, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15]; 
 noise_obs = [0.1, 1e-10, 1e-10];
+P_detection_static = 0.95;
+P_falseAlarm_static = 0.05;
+
 [p_k, c_k, d_k_noiseFree, D_vec_k_noiseFree] = generate1dTrajectory(k_max, 0.1, [1, 0.1]);
 [d_k, D_vec_k] = generate1dOdometry(d_k_noiseFree, D_vec_k_noiseFree, noise_motion);
 map = generate1dFeatures(p_k, c_k, n_features, y_rangeLim);
@@ -41,6 +44,9 @@ if no_measurement_noise == 1
     noise_obs(1) = noise_obs(1) * 1e-10;
 end
 [y, Y_vec] = generate1dMeasurements(p_k, c_k, map, y_rangeLim, noise_obs);
+[y, Y_vec] = generate1dMissedDetections(y, Y_vec, P_detection_static);
+[y, Y_vec] = generate1dFalseAlarms(y, Y_vec, y_rangeLim, P_falseAlarm_static);
+P_detection_static = sum(y(5,:) ~= -1)/length(y(5,:));
 noise_obs = noise_obs_;
 if no_measurement_noise == 1
     Y_vec(1,:) = Y_vec(1,:) / 1e-10;
@@ -61,9 +67,9 @@ effective_particle_threshold = n_particles / 2;
 % PHD Filter Settings
 sensor_limit_upper_buffer = 0.25;
 sensor_limit_lower_buffer = 0.25;
-particle_weighting_strategy = 1; % 0 for empty strategy, 1 for single feature proper, 2 for single feature without exp term
+particle_weighting_strategy = 2; % 0 for empty strategy, 1 for single feature proper, 2 for single feature without exp term
 birth_Gaussian_likelihood_threshold = 2;
-merging_mahalanoblis_distance_threshold = 0.25;
+merging_mahalanoblis_distance_threshold = 0.10;
 feature_merging_covarance_inflation_factor = 2;
 
 % Simulator Seed
