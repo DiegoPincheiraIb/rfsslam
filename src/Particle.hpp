@@ -7,7 +7,7 @@
 #include "GaussianMixture.hpp"
 
 /** 
- *  \class particle
+ *  \class Particle
  *  \brief A class for a particle in the rao-blackwellized particle filter
  *
  *  \author Keith Leung
