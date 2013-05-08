@@ -462,144 +462,167 @@ for k = k_sim_start:k_sim_end;
 
         t_weighting = tic;
         for i = 1:n_particles
+                 
+            % Choose map set for particle
+            n_measurements = idx_current_obs_end - idx_current_obs_start + 1; 
+            if (particle_weighting_feautre_set_max_size >= 0)
+                weighting_map_set_size = min(particle_weighting_feautre_set_max_size, n_measurements);
+            else
+                weighting_map_set_size = n_measurements;
+            end
+
+            if weighting_map_set_size > 0
+                
+                if particle_weighting_random_map == 0
+                
+                    weighting_map_set = -ones(weighting_map_set_size, 2); % [map_feature_index weight]
+                    smallest_weight_idx = 1;
+                    if M_size(i) > M_size_before_update(i)
+                        for j = M_size_before_update(i) + 1:M_size(i)
+                            w = M{i,3}(j);
+                            for m = 1:weighting_map_set_size
+                                if w > weighting_map_set(m, 2)
+                                    weighting_map_set(smallest_weight_idx, 1) = j;
+                                    weighting_map_set(smallest_weight_idx, 2) = w; 
+                                    break;
+                                end
+                            end
+                            smallest_weight = weighting_map_set(1, 2);
+                            smallest_weight_idx = 1;
+                            for m = 2:weighting_map_set_size
+                                if weighting_map_set(m, 2) < smallest_weight
+                                    smallest_weight = weighting_map_set(m, 2);
+                                    smallest_weight_idx = m;
+                                end
+                            end
+                        end
+                    end
+
+                    for j = 1:weighting_map_set_size
+                        if weighting_map_set(j, 1) < 0.5 % todo move this to setup
+                            weighting_map_set(j, 1) = -1;
+                            weighting_map_set_size = weighting_map_set_size - 1;
+                        end
+                    end
+
+                    map_eval_pos = zeros(3, weighting_map_set_size);
+                    for j = 1:weighting_map_set_size
+                        map_eval_pos(:, j) = M{i,1}(:,weighting_map_set(j, 1));
+                    end
+                    
+                elseif particle_weighting_random_map == 1
+                    
+                    % Pick random map (to show it doesn't really work)
+                    map_eval_pos = zeros(3, weighting_map_set_size);
+                    p_k = p_k__i(:, k, i);
+                    for j = 1:weighting_map_set_size
+                        map_eval_pos(1, j) = map_eval_pos(1, j) + p_k(1) + rand * y_rangeLim * 2 - y_rangeLim; 
+                    end
+                end
+
+            end
             
             % 1. Feature count difference
             feature_count_factor(i, k) = exp(w_after_update(i, k) - w_before_update(i, k));
 
-            if particle_weighting_strategy == 0
-               particle_weight(i, k) = feature_count_factor(i, k) * particle_weight(i, k-1);
+            % 2. Map intensity Ratio
 
-            elseif particle_weighting_strategy == 1 || particle_weighting_strategy == 2
-                
-                % Choose map set for particle
-                n_measurements = idx_current_obs_end - idx_current_obs_start + 1; 
-                weighting_map_set = -ones(n_measurements, 2); % [map_feature_index weight]
-                smallest_weight_idx = 1;
-                if M_size(i) > M_size_before_update(i)
-                    for j = M_size_before_update(i) + 1:M_size(i)
-                        w = M{i,3}(j);
-                        for m = 1:n_measurements
-                            if w > weighting_map_set(m, 2)
-                                weighting_map_set(smallest_weight_idx, 1) = j;
-                                weighting_map_set(smallest_weight_idx, 2) = w; 
-                                break;
-                            end
-                        end
-                        smallest_weight = weighting_map_set(1, 2);
-                        smallest_weight_idx = 1;
-                        for m = 2:n_measurements
-                            if weighting_map_set(m, 2) < smallest_weight
-                                smallest_weight = weighting_map_set(m, 2);
-                                smallest_weight_idx = m;
-                            end
-                        end
-                    end
-                end
-                weighting_map_set_size = 0;
-                for j = 1:n_measurements
-                    if weighting_map_set(j, 1) < 0.5 % todo move this to setup
-                        weighting_map_set(j, 1) = -1;
-                    end
-                    if weighting_map_set(j, 1) ~= -1
-                        weighting_map_set_size = weighting_map_set_size + 1;
-                    end
-                end
-                
-                % 2. Map intensity Ratio
-                
-                if weighting_map_set_size > 0
-                    v_before_update(i, k) = 0;
-                    v_after_update(i, k) = 0;
-                else
-                    v_before_update(i, k) = 1;
-                    v_after_update(i, k) = 1;
-                end
-                
-                for j = 1:n_measurements
-                    if weighting_map_set(j, 1) ~= -1
-                            
-                        v_eval_pos(:,i) = M{i,1}(:,weighting_map_set(j, 1));
+            if weighting_map_set_size > 0
+                v_before_update(i, k) = 0;
+                v_after_update(i, k) = 0;
+            else
+                v_before_update(i, k) = 1;
+                v_after_update(i, k) = 1;
+            end
 
-                        for m = 1:M_size_before_update(i)
-                            u = M{i,1}(:,m);
-                            S = M{i,2}(1,m);
-                            S_inv = 1 / S;
-                            w = weights_before_update{i}(m); 
-                            d = v_eval_pos(:,i) - u;
-                            md = d' * S_inv * d;
-                            v_before_update(i, k) = v_before_update(i, k) + w * (2*pi)^(-0.5) * det(S)^(-0.5) * exp(-0.5 * md);
-                        end
+            for j = 1:weighting_map_set_size
 
-                        for m = 1:M_size(i)
-                            u = M{i,1}(:,m);
-                            S = M{i,2}(1,m);
-                            S_inv = 1 / S;
-                            w = M{i,3}(m); 
-                            d = v_eval_pos(:,i) - u;
-                            md = d' * S_inv * d;
-                            v_after_update(i, k)  = v_after_update(i, k)  + w * (2*pi)^(-0.5) * det(S)^(-0.5) * exp(-0.5 * md);
-                        end  
-                        
-                    end
+                for m = 1:M_size_before_update(i)
+                    u = M{i,1}(:,m);
+                    S = M{i,2}(1,m);
+                    S_inv = 1 / S;
+                    w = weights_before_update{i}(m); 
+                    d = map_eval_pos(:, j) - u;
+                    md = d' * S_inv * d;
+                    v_before_update(i, k) = v_before_update(i, k) + w * (2*pi)^(-0.5) * det(S)^(-0.5) * exp(-0.5 * md);
                 end
-                
-                similarity_factor(i,k) = v_before_update(i, k) / v_after_update(i, k);
-                
-                % 3. Measurement Likelihood 
-               
-                if weighting_map_set_size == 0
-                    measurement_likelihood_factor(i,k) = clutterDensity ^ (idx_current_obs_end - idx_current_obs_start + 1) / P_falseAlarm_static;
-                else
-                    measurement_likelihood_factor(i,k) = 0;
-                    p_k = p_k__i(:, k, i);
-                    C_k = reshape(C_vec_k__i(:, k, i), 3, 3);
-                    
-                    likelihoodTable = zeros(n_measurements, weighting_map_set_size);
-                    table_feature_idx = 0;
-                    for j = 1:n_measurements
-                        if weighting_map_set(j, 1) ~= -1
-                            
-                            table_feature_idx = table_feature_idx + 1;
-                            
-                            p_m = M{i,1}(:,weighting_map_set(j, 1));
-                            p_m_k = measureModel(p_k, C_k, p_m); % predicted measurement of p_m
-                            det_R = det(R(1,1));
-                            
-                            for n = idx_current_obs_start : idx_current_obs_end 
-                                p_m_k_act = y(2:4, n); % actual meaurement
-                                d = p_m_k_act - p_m_k;
-                                md = d' / R(1,1) * d;
-                                g = (2*pi)^(-0.5) * det_R^(-0.5) * exp(-0.5 * md); 
-                                likelihoodTable(n - idx_current_obs_start + 1, table_feature_idx) = g;
-                            end
-                            
-                        end
-                    end
-                    
-                    likelihoodThreshold = 0.001; % move this to setup file
-                    
-                    % Look for rows that sum to less than threshold, and
-                    % consider these measurements as clutter
-                    measurement_is_clutter = sum(likelihoodTable, 2) >= likelihoodThreshold;
-                    n_clutter_measurements = 0;
-                    for j = n_measurements: -1 : 1
-                        if sum(likelihoodTable(j,:)) < likelihoodThreshold
-                            likelihoodTable(j, :) = [];
-                            n_clutter_measurements = n_clutter_measurements + 1;
-                        end
-                    end
-                    
-                    measurement_likelihood_factor(i,k) = P_detection_static * multiFeatureLikelihood(likelihoodTable, likelihoodThreshold, clutterDensity, P_falseAlarm_static) * clutterDensity ^ n_clutter_measurements;
-                    while(measurement_likelihood_factor(i,k) == 0)
-                        likelihoodTable = [likelihoodTable ones(n_measurements,1)];
-                        n_clutter_measurements = n_clutter_measurements + 1;
-                        measurement_likelihood_factor(i,k) = P_detection_static * multiFeatureLikelihood(likelihoodTable, likelihoodThreshold, clutterDensity, P_falseAlarm_static)  * clutterDensity ^ n_clutter_measurements;
-                    end
-                end
-                
-                particle_weight(i, k) = measurement_likelihood_factor(i,k) * similarity_factor(i,k) * feature_count_factor(i, k) * particle_weight(i, k-1);
+
+                for m = 1:M_size(i)
+                    u = M{i,1}(:,m);
+                    S = M{i,2}(1,m);
+                    S_inv = 1 / S;
+                    w = M{i,3}(m); 
+                    d = map_eval_pos(:, j) - u;
+                    md = d' * S_inv * d;
+                    v_after_update(i, k)  = v_after_update(i, k)  + w * (2*pi)^(-0.5) * det(S)^(-0.5) * exp(-0.5 * md);
+                end  
 
             end
+
+            if v_after_update(i,k) == 0
+                v_after_update(i,k) = realmin('single'); 
+            end
+            if v_before_update(i,k) == 0
+                v_before_update(i,k) = realmin('single'); 
+            end
+            similarity_factor(i,k) = v_before_update(i, k) / v_after_update(i, k);
+
+            % 3. Measurement Likelihood 
+
+            if weighting_map_set_size == 0
+                measurement_likelihood_factor(i,k) = clutterDensity ^ (idx_current_obs_end - idx_current_obs_start + 1) / P_falseAlarm_static;
+            else
+                measurement_likelihood_factor(i,k) = 0;
+                p_k = p_k__i(:, k, i);
+                C_k = reshape(C_vec_k__i(:, k, i), 3, 3);
+
+                likelihoodTable = zeros(n_measurements, weighting_map_set_size);
+                table_feature_idx = 0;
+                for j = 1:weighting_map_set_size
+                    
+                        table_feature_idx = table_feature_idx + 1;
+
+                        p_m = map_eval_pos(:, j);
+                        p_m_k = measureModel(p_k, C_k, p_m); % predicted measurement of p_m
+                        det_R = det(R(1,1));
+
+                        for n = idx_current_obs_start : idx_current_obs_end 
+                            p_m_k_act = y(2:4, n); % actual meaurement
+                            d = p_m_k_act - p_m_k;
+                            md = d' / R(1,1) * d;
+                            g = (2*pi)^(-0.5) * det_R^(-0.5) * exp(-0.5 * md); 
+                            likelihoodTable(n - idx_current_obs_start + 1, table_feature_idx) = g;
+                        end
+
+                end
+
+                likelihoodThreshold = 0.001; % move this to setup file
+
+                % Look for rows that sum to less than threshold, and
+                % consider these measurements as clutter
+                measurement_is_clutter = sum(likelihoodTable, 2) >= likelihoodThreshold;
+                n_clutter_measurements = 0;
+                for j = n_measurements: -1 : 1
+                    if sum(likelihoodTable(j,:)) < likelihoodThreshold
+                        likelihoodTable(j, :) = [];
+                        n_clutter_measurements = n_clutter_measurements + 1;
+                        n_measurements = n_measurements - 1;
+                    end
+                end
+
+                measurement_likelihood_factor(i,k) = P_detection_static^weighting_map_set_size * multiFeatureLikelihood(likelihoodTable, likelihoodThreshold, clutterDensity, P_falseAlarm_static) * clutterDensity ^ n_clutter_measurements;
+                n_missed_detection = 0;
+                while(measurement_likelihood_factor(i,k) == 0)
+                    likelihoodTable = [likelihoodTable ones(n_measurements,1)];
+                    n_clutter_measurements = n_clutter_measurements + 1;
+                    n_missed_detection = n_missed_detection + 1;
+                    measurement_likelihood_factor(i,k) = P_detection_static^(weighting_map_set_size - n_missed_detection) * (1 - P_detection_static)^n_missed_detection * multiFeatureLikelihood(likelihoodTable, likelihoodThreshold, clutterDensity, P_falseAlarm_static)  * clutterDensity ^ n_clutter_measurements;
+                end
+            end
+            
+
+            particle_weight(i, k) = measurement_likelihood_factor(i,k) * similarity_factor(i,k) * feature_count_factor(i, k) * particle_weight(i, k-1);
+
 
         end
         
@@ -874,7 +897,4 @@ for k = k_sim_start:k_sim_end;
     end
 end
 
-%% Figures - plotting for particle with highest weight at the end
-
-%phdFilterSimPlot;
 

@@ -47,23 +47,23 @@ for m = 1:length(map(1,:))
     line( [map(1,m), map(1,m)], [-0.25 0], 'Color', 'b');
 end
 
-figure;
-title('timing analysis')
-hold on
-plot(1:k_max, time_birth, 'r');
-plot(1:k_max, time_propogation, 'g');
-plot(1:k_max, time_update, 'b');
-plot(1:k_max, time_merging, 'k');
-plot(1:k_max, time_weighting, 'c');
-plot(1:k_max, time_resampling, 'm.');
-grid on
+% figure;
+% title('timing analysis')
+% hold on
+% plot(1:k_max, time_birth, 'r');
+% plot(1:k_max, time_propogation, 'g');
+% plot(1:k_max, time_update, 'b');
+% plot(1:k_max, time_merging, 'k');
+% plot(1:k_max, time_weighting, 'c');
+% plot(1:k_max, time_resampling, 'm.');
+% grid on
 
-figure;
-title('particle weights')
-hold on
-for i = 1:n_particles
-    plot(1:k_max, particle_weight(i,1:k_max), 'b-');
-end
-grid on;
-plot(1:k_max, particle_weight(max_index ,1:k_max), 'r-', 'LineWidth', 2);
+% figure;
+% title('particle weights')
+% hold on
+% for i = 1:n_particles
+%     plot(1:k_max, particle_weight(i,1:k_max), 'b-');
+% end
+% grid on;
+% plot(1:k_max, particle_weight(max_index ,1:k_max), 'r-', 'LineWidth', 2);
 
