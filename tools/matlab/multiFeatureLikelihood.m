@@ -1,26 +1,26 @@
-% Multi-feature weighting approximation
+function [likelihoodAllSeq] = multiFeatureLikelihood(T, t, c, Ec, showPermutations)
+
+% Function multiFeatureLikelihood
+% Multi-feature weighting approximation for the PHD Filter
 % Keith Leung 2013
-clear all 
+%
+% Inputs:
+%   T - likelihood table [number of measurements x number of features]
+%   t - likelihood table threshold (entries below this value -> 0)
+%   c - uniform clutter density
+%   Ec - expected clutter
+%
+% Output:
+%   likelihoodAllSeq
 
-% Input: likelihood table [ number of measurements x number of features ]
-T = diag(1:11);
-T = T + 0.01*ones(length(T));
-T(1, length(T)) = 2;
-T(length(T), 1) = 2;
-T = [0.01*ones(length(T), 3) T];
-T = T';
+if nargin == 4
+    showPermutations = 0;
+end
 
-% Input: Small likelihood Threshold - any likelihood below this is treated as 0
-likelihoodThreshold = 0.01;
-
-% Input: clutter density
-cluter = 0.01;
-
-% Output likelihood all sequences
+likelihoodThreshold = t;
 likelihoodAllSeq = 0;
 
 % Feature sequence, interpret as z1 measures M(1), z2 measures M(2) ...
-
 % If |Z| <= |M|, interpret A as Z, B as M
 % If |Z| >  |M|, interpret A as M, B as Z
 T_size = size(T);
@@ -32,9 +32,6 @@ else
     cardB = T_size(1);    
 end
 B = 1 : cardB;
-
-% Timing analysis
-timer = tic;
 
 isLastSequence = 0;
 while(isLastSequence == 0)
@@ -69,13 +66,13 @@ while(isLastSequence == 0)
         end
 
     end
+    
+    %if(showPermutations == 1 && likelihoodCurSeq ~= 0)
+    %    disp(B);
+    %end
+    %disp(B);
 
     likelihoodAllSeq = likelihoodAllSeq + likelihoodCurSeq;
-    
-    % Uncomment to show all non zero likelihood sequences 
-    %if likelihoodCurSeq ~= 0
-    %    disp(M);
-    %end
     
     % If there are more features than measurements
     % M(cardZ + 1 : cardM) are not used, so fast forward
@@ -131,8 +128,6 @@ end
 
 % Account for clutter if |Z| > |M|
 if T_size(1) > T_size(2)
-    likelihoodAllSeq = likelihoodAllSeq * (T_size(1) - T_size(2)) * clutter;
+    likelihoodAllSeq = likelihoodAllSeq * c^(T_size(1) - T_size(2)) / Ec;
 end
 
-disp(likelihoodAllSeq);
-toc(timer);

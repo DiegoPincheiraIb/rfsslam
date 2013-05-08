@@ -79,6 +79,7 @@ grid on
 xlim([-5 30]);
 ylim([-2 20]);
 h_p_k = plot(p_k(1,1), 0, 'ro', 'MarkerSize', 10);
+h_p_k_gt = plot(p_k(1,1), 0, 'ro', 'MarkerSize', 10);
 h_birth = plot(0, 0, 'm-');
 h_obs = plot(0, 0, 'b-');
 h_updated = plot(0, 0, 'r-');
@@ -183,14 +184,6 @@ for k = k_sim_start:k_sim_end;
                     M{i,2}(:, M_size(i)) = reshape(Sp_m_i, 9, 1);
                     M{i,3}(M_size(i)) = 0.25; % constant birth weight - should relate to probability of detection?
 
-
-                    % Plot birth position
-                    %plot3(p_m_i(1), p_m_i(2), p_m_i(3), 'r.'); 
-                    % Plot real position
-                    %c_m = y(5, obs_idx);
-                    %p_m_i = map(:, c_m);
-                    %plot3(p_m_i(1), p_m_i(2), p_m_i(3), 'k.'); 
-
                 end
 
             end
@@ -258,9 +251,11 @@ for k = k_sim_start:k_sim_end;
     time_propogation(k) = toc(t_propogation);
     
     delete(h_p_k);
+    delete(h_p_k_gt);
     delete(h_obs_lim_max);
     delete(h_obs_lim_min);
     h_p_k = plot(p_k__i(1,k,i_max_weight), 0, 'ro', 'MarkerSize', 10);
+    h_p_k_gt = plot(p_k_groundtruth(1,k), -0.5, 'bo', 'MarkerSize', 10);
     h_obs_lim_max = line( [p_k__i(1,k,i_max_weight) + y_rangeLim  p_k__i(1,k,i_max_weight) + y_rangeLim], [-0.25 0.25] );
     h_obs_lim_min = line( [p_k__i(1,k,i_max_weight) - y_rangeLim  p_k__i(1,k,i_max_weight) - y_rangeLim], [-0.25 0.25] );
     x_gt_min = min(floor(p_k_groundtruth(1,k) )-5, x_gt_min);
@@ -288,11 +283,14 @@ for k = k_sim_start:k_sim_end;
         % For deciding whether birth Gaussians should be created the next
         % timestep
         birth_Gaussian_mDist_min = zeros( n_particles, idx_current_obs_end - idx_current_obs_start + 1);
+        
+        M_size_before_update = zeros(n_particles, 1);
+        weights_before_update = cell(n_particles, 1);
 
         for i = 1:n_particles
 
-            %fprintf('Particle %d :: starting map size : %d Gaussians\n', i, M_size(i));
-            M_size_before_update = M_size(i);
+            M_size_before_update(i) = M_size(i);
+            weights_before_update{i} = M{i,3}(1:M_size_before_update(i));
 
             % For every pair of features - measurement, make new Gaussian
             % New Gaussians are appended to the end of M
@@ -302,21 +300,15 @@ for k = k_sim_start:k_sim_end;
             C_k = reshape(C_vec_k__i(:, k, i), 3, 3);
             Features_inside_FOV_before_update{i} = zeros(M_size(i), 1); 
 
-            new_gaussian_weight_numerator_table = zeros(M_size_before_update, idx_current_obs_end - idx_current_obs_start + 1);
+            new_gaussian_weight_numerator_table = zeros(M_size_before_update(i), idx_current_obs_end - idx_current_obs_start + 1);
             new_gaussian_weight_table_feature_correspondence = new_gaussian_weight_numerator_table;
-            new_gaussian_mDist_table = inf(M_size_before_update, idx_current_obs_end - idx_current_obs_start + 1);
+            new_gaussian_mDist_table = inf(M_size_before_update(i), idx_current_obs_end - idx_current_obs_start + 1);
             
-            % For determining Gaussuan weights later
-            w_max_before_update = 0;
-            m_max_before_update = 0;
-            w_max_after_update = 0;
-            m_max_after_update = 0;
-            
-            r = zeros(M_size_before_update, 1); % expected feature range
+            r = zeros(M_size_before_update(i), 1); % expected feature range
             r_plus =  y_rangeLim + sensor_limit_upper_buffer;
             r_minus = y_rangeLim - sensor_limit_lower_buffer;
 
-            for m = 1:M_size_before_update 
+            for m = 1:M_size_before_update(i) 
 
                 % Determine probability of detection for feature m    
                 % inside sensing range
@@ -329,17 +321,7 @@ for k = k_sim_start:k_sim_end;
                     % inside sensing area
                     Features_inside_FOV_before_update{i}(m) = 1;
                     P_detection = P_detection_static;
-                    
-%                     r_dropOff = y_rangeLim - 0.25;
-%                     if r > r_dropOff
-%                         P_detection = P_detection - P_detection/(y_rangeLim - r_dropOff)*(r - r_dropOff);
-%                     end
 
-                    w = M{i,3}(m);
-                    if w > w_max_before_update
-                        w_max_before_update = w;
-                        m_max_before_update = m;
-                    end
                 end
                 P_missed_detection = 1 - P_detection;
 
@@ -407,20 +389,6 @@ for k = k_sim_start:k_sim_end;
 
                     end
                     
-                    % If this feature is close to the sensor range limit
-                    % and we don't get any good measurements to it,
-                    % reconsider it as outside the sensor range limit                   
-%                     r_uncertainy_probability_of_detection = y_rangeLim - 0.5;
-%                     if r > r_uncertainy_probability_of_detection && r < y_rangeLim
-%                         min_likelihood_mDist = min( new_gaussian_mDist_table(m, :) );
-%                         if( min_likelihood_mDist > 3) % make this threshold a settings variable later
-%                             % We don't have a close measurement to feature
-%                             M{i,3}(m) = M{i,3}(m) / P_missed_detection; % revert as if P_detection = 0;
-%                             new_gaussian_weight_table_feature_correspondence(m, :) = 0 * new_gaussian_weight_table_feature_correspondence(m, :);
-%                             new_gaussian_weight_numerator_table(m, :) = 0 * new_gaussian_weight_numerator_table(m, :);
-%                         end
-%                     end
-                    
                 end
             end
 
@@ -433,93 +401,27 @@ for k = k_sim_start:k_sim_end;
 
             % Now update the weights
             gaussian_weight_table = new_gaussian_weight_numerator_table * 0;
-            for m = 1:M_size_before_update
+            for m = 1:M_size_before_update(i)
                 for n = 1:idx_current_obs_end - idx_current_obs_start + 1
                     idx = new_gaussian_weight_table_feature_correspondence(m, n);
                     if(idx ~= 0) % idx can be 0 if p_detection = 0, in which case we don't bother creating new Gaussians for this feature
                         M{i,3}(idx) = new_gaussian_weight_numerator_table(m,n) /  weight_denom(n);
                         gaussian_weight_table(m, n) = M{i,3}(idx);
-                        % For single-strategy particle weighting - we want to
-                        % find the Gaussian with the highest weight
-                        w = M{i,3}(idx);
-                        if w > w_max_after_update
-                            w_max_after_update = w;
-                            m_max_after_update = idx;
-                        end
-
                     end
                 end
             end
             
             % Features in the probability of detection ambiguity zone
-            for m = 1:M_size_before_update
+            for m = 1:M_size_before_update(i)
                 if(r(m) <= r_plus && r(m) >= r_minus) 
-                    w_minus = M{i,3}(m) / P_missed_detection; % This was the weight before update
+                    w_minus = weights_before_update{i}(m);
                     w_plus = sum(gaussian_weight_table(m, :)); 
-                    w_delta = max( P_detection * w_minus - w_plus , 0 ); % Weight taken away by negative information
+                    w_delta = max( P_detection_static * w_minus - w_plus , 0 ); % Weight taken away by negative information
                     M{i,3}(m) = M{i,3}(m) + w_delta;
                 end
             end
             
             w_after_update(i, k) = sum( M{i,3} );   
-
-            % Evaluate Gaussians at chosen position for weighting
-    %         v_eval_pos(:,i) = M{i,1}(:,m_max_before_update);
-    %         v_before_update(i, k) = 0;
-    %         for j = 1 : M_size_before_update
-    %             if Features_inside_FOV_before_update{i}(j) == 1; % This condition is a hack to make things go faster - ok if covariance S is small
-    %                 u = M{i,1}(:,j);
-    %                 S = reshape(M{i,2}(:,j), 3, 3);
-    %                 w = M{i,3}(j) / P_missed_detection; % we want the weight before the update
-    %                 d = v_eval_pos(:,i) - u;
-    %                 md = d' / S * d;
-    %                 v_before_update(i, k) = v_before_update(i, k) + w * (2*pi)^(-3/2) * det(S)^(-0.5) * exp(-0.5 * md);
-    %             end
-    %         end
-
-            % Evaluate Gaussians at chosen position for weighting
-           
-            
-            v_before_update(i, k) = 0;
-            v_after_update(i, k) = 0;
-             
-            if m_max_after_update == 0 % We have measurements but there are no features that we expect inside field of view
-                v_before_update(i, k) = 1;
-                v_after_update(i, k) = 1;
-            else % There are features in field of view
-                v_eval_pos(:,i) = M{i,1}(:,m_max_after_update);
-                for m = 1:M_size_before_update
-
-                    u = M{i,1}(:,m);
-                    S = M{i,2}(1,m);
-                    S_inv = 1 / S;
-                    w = M{i,3}(m); 
-                    if Features_inside_FOV_before_update{i}(m) == 1
-                        w = w / P_missed_detection; 
-                    end
-                    d = v_eval_pos(:,i) - u;
-                    md = d' * S_inv * d;
-                    v_before_update(i, k) = v_before_update(i, k) + w * (2*pi)^(-0.5) * det(S)^(-0.5) * exp(-0.5 * md);
-
-                    j = new_gaussian_weight_table_feature_correspondence(m, 1);
-                    if j == 0
-                        continue;
-                    end
-
-                    common_gaussian_factor_ = (2*pi)^(-0.5) * det(S)^(-0.5);
-
-                    for n = 1:idx_current_obs_end - idx_current_obs_start + 1
-                        j = new_gaussian_weight_table_feature_correspondence(m, n);
-
-                        u = M{i,1}(:,j);
-                        w = M{i,3}(j); 
-                        d = v_eval_pos(:,i) - u;
-                        md = d' * S_inv * d;
-                        v_after_update(i, k) = v_after_update(i, k) + w * common_gaussian_factor_ * exp(-0.5 * md);
-                    end
-
-                end  
-            end
             
             % For controlling birth Gaussians for the next timestep
             birth_Gaussian_mDist_min(i, :) = min(new_gaussian_mDist_table, [], 1);
@@ -555,54 +457,153 @@ for k = k_sim_start:k_sim_end;
         h_updated = plot(x_plot, y_plot, 'r-');
         pause(0.005);
 
+        
         %% Determine particle weight
 
         t_weighting = tic;
         for i = 1:n_particles
+            
+            % 1. Feature count difference
             feature_count_factor(i, k) = exp(w_after_update(i, k) - w_before_update(i, k));
 
             if particle_weighting_strategy == 0
                particle_weight(i, k) = feature_count_factor(i, k) * particle_weight(i, k-1);
 
             elseif particle_weighting_strategy == 1 || particle_weighting_strategy == 2
+                
+                % Choose map set for particle
+                n_measurements = idx_current_obs_end - idx_current_obs_start + 1; 
+                weighting_map_set = -ones(n_measurements, 2); % [map_feature_index weight]
+                smallest_weight_idx = 1;
+                if M_size(i) > M_size_before_update(i)
+                    for j = M_size_before_update(i) + 1:M_size(i)
+                        w = M{i,3}(j);
+                        for m = 1:n_measurements
+                            if w > weighting_map_set(m, 2)
+                                weighting_map_set(smallest_weight_idx, 1) = j;
+                                weighting_map_set(smallest_weight_idx, 2) = w; 
+                                break;
+                            end
+                        end
+                        smallest_weight = weighting_map_set(1, 2);
+                        smallest_weight_idx = 1;
+                        for m = 2:n_measurements
+                            if weighting_map_set(m, 2) < smallest_weight
+                                smallest_weight = weighting_map_set(m, 2);
+                                smallest_weight_idx = m;
+                            end
+                        end
+                    end
+                end
+                weighting_map_set_size = 0;
+                for j = 1:n_measurements
+                    if weighting_map_set(j, 1) < 0.5 % todo move this to setup
+                        weighting_map_set(j, 1) = -1;
+                    end
+                    if weighting_map_set(j, 1) ~= -1
+                        weighting_map_set_size = weighting_map_set_size + 1;
+                    end
+                end
+                
+                % 2. Map intensity Ratio
+                
+                if weighting_map_set_size > 0
+                    v_before_update(i, k) = 0;
+                    v_after_update(i, k) = 0;
+                else
+                    v_before_update(i, k) = 1;
+                    v_after_update(i, k) = 1;
+                end
+                
+                for j = 1:n_measurements
+                    if weighting_map_set(j, 1) ~= -1
+                            
+                        v_eval_pos(:,i) = M{i,1}(:,weighting_map_set(j, 1));
 
-%                 v_after_update(i, k) = 0;
-%                 for j = 1 : M_size(i)
-%                     u = M{i,1}(:,j);
-%                     S = M{i,2}(1,j);
-%                     w = M{i,3}(j);
-%                     d = v_eval_pos(:,i) - u;
-%                     md = d' / S * d;
-%                     v_after_update(i, k) = v_after_update(i, k) + w * (2*pi)^(-0.5) * det(S)^(-0.5) * exp(-0.5 * md);
-%                 end
+                        for m = 1:M_size_before_update(i)
+                            u = M{i,1}(:,m);
+                            S = M{i,2}(1,m);
+                            S_inv = 1 / S;
+                            w = weights_before_update{i}(m); 
+                            d = v_eval_pos(:,i) - u;
+                            md = d' * S_inv * d;
+                            v_before_update(i, k) = v_before_update(i, k) + w * (2*pi)^(-0.5) * det(S)^(-0.5) * exp(-0.5 * md);
+                        end
+
+                        for m = 1:M_size(i)
+                            u = M{i,1}(:,m);
+                            S = M{i,2}(1,m);
+                            S_inv = 1 / S;
+                            w = M{i,3}(m); 
+                            d = v_eval_pos(:,i) - u;
+                            md = d' * S_inv * d;
+                            v_after_update(i, k)  = v_after_update(i, k)  + w * (2*pi)^(-0.5) * det(S)^(-0.5) * exp(-0.5 * md);
+                        end  
+                        
+                    end
+                end
                 
                 similarity_factor(i,k) = v_before_update(i, k) / v_after_update(i, k);
-
-                n_measurements = idx_current_obs_end - idx_current_obs_start + 1; 
-                measurement_likelihood_factor(i,k) = 0;
-                p_k = p_k__i(:, k, i);
-                C_k = reshape(C_vec_k__i(:, k, i), 3, 3);
-                p_m = v_eval_pos(:,i);
-                p_m_k = measureModel(p_k, C_k, p_m); % predicted measurement of p_m
-                det_R = det(R(1,1));
-                for n = idx_current_obs_start : idx_current_obs_end 
-                    p_m_k_act = y(2:4, n); % actual meaurement
-                    d = p_m_k_act - p_m_k;
-                    md = d' / R(1,1) * d;
-                    g = (2*pi)^(-0.5) * det_R^(-0.5) * exp(-0.5 * md); % measurement likelihood
-                    measurement_likelihood_factor(i,k) = measurement_likelihood_factor(i,k) + g;
+                
+                % 3. Measurement Likelihood 
+               
+                if weighting_map_set_size == 0
+                    measurement_likelihood_factor(i,k) = clutterDensity ^ (idx_current_obs_end - idx_current_obs_start + 1) / P_falseAlarm_static;
+                else
+                    measurement_likelihood_factor(i,k) = 0;
+                    p_k = p_k__i(:, k, i);
+                    C_k = reshape(C_vec_k__i(:, k, i), 3, 3);
+                    
+                    likelihoodTable = zeros(n_measurements, weighting_map_set_size);
+                    table_feature_idx = 0;
+                    for j = 1:n_measurements
+                        if weighting_map_set(j, 1) ~= -1
+                            
+                            table_feature_idx = table_feature_idx + 1;
+                            
+                            p_m = M{i,1}(:,weighting_map_set(j, 1));
+                            p_m_k = measureModel(p_k, C_k, p_m); % predicted measurement of p_m
+                            det_R = det(R(1,1));
+                            
+                            for n = idx_current_obs_start : idx_current_obs_end 
+                                p_m_k_act = y(2:4, n); % actual meaurement
+                                d = p_m_k_act - p_m_k;
+                                md = d' / R(1,1) * d;
+                                g = (2*pi)^(-0.5) * det_R^(-0.5) * exp(-0.5 * md); 
+                                likelihoodTable(n - idx_current_obs_start + 1, table_feature_idx) = g;
+                            end
+                            
+                        end
+                    end
+                    
+                    likelihoodThreshold = 0.001; % move this to setup file
+                    
+                    % Look for rows that sum to less than threshold, and
+                    % consider these measurements as clutter
+                    measurement_is_clutter = sum(likelihoodTable, 2) >= likelihoodThreshold;
+                    n_clutter_measurements = 0;
+                    for j = n_measurements: -1 : 1
+                        if sum(likelihoodTable(j,:)) < likelihoodThreshold
+                            likelihoodTable(j, :) = [];
+                            n_clutter_measurements = n_clutter_measurements + 1;
+                        end
+                    end
+                    
+                    measurement_likelihood_factor(i,k) = P_detection_static * multiFeatureLikelihood(likelihoodTable, likelihoodThreshold, clutterDensity, P_falseAlarm_static) * clutterDensity ^ n_clutter_measurements;
+                    while(measurement_likelihood_factor(i,k) == 0)
+                        likelihoodTable = [likelihoodTable ones(n_measurements,1)];
+                        n_clutter_measurements = n_clutter_measurements + 1;
+                        measurement_likelihood_factor(i,k) = P_detection_static * multiFeatureLikelihood(likelihoodTable, likelihoodThreshold, clutterDensity, P_falseAlarm_static)  * clutterDensity ^ n_clutter_measurements;
+                    end
                 end
-                measurement_likelihood_factor(i,k) = P_detection * measurement_likelihood_factor(i,k) + (1-P_detection) * P_false;
-
-                if particle_weighting_strategy == 2
-                    particle_weight(i, k) = measurement_likelihood_factor(i,k) * similarity_factor(i,k) * particle_weight(i, k-1);
-                elseif particle_weighting_strategy == 1
-                    particle_weight(i, k) = measurement_likelihood_factor(i,k) * similarity_factor(i,k) * feature_count_factor(i, k) * particle_weight(i, k-1);
-                end
+                
+                particle_weight(i, k) = measurement_likelihood_factor(i,k) * similarity_factor(i,k) * feature_count_factor(i, k) * particle_weight(i, k-1);
 
             end
 
         end
+        
+        
         % Scale the weights so that they are close to 1
         particle_weight(:, k) = particle_weight(:, k) / mean(particle_weight(:, k));
         [max_weight i_max_weight] = max(particle_weight(:,k));
@@ -622,7 +623,7 @@ for k = k_sim_start:k_sim_end;
         for i = 1:n_particles;
 
             d_threshold = merging_mahalanoblis_distance_threshold ; % Mahalanobis distance threshold for Gaussian merging
-            w_threshold = (1 - P_detection) / 2;  % (1 - P_detection); % Weight threshold for pruning, must be higher than prob of missed detection!
+            w_threshold = (1 - P_detection_static) / 2;  % (1 - P_detection); % Weight threshold for pruning, must be higher than prob of missed detection!
 
             % Pre-allocate storage for merged Gaussians
             % This will become the new map set at the end of current timestep
@@ -731,7 +732,7 @@ for k = k_sim_start:k_sim_end;
                             x_n = x_(:, n);
                             S_n = S_(1, n);
                             d_n = x_merged_ - x_n; d_n = d_n(1);
-                            S_merged_ = S_merged_ + w_n*(S_n + feature_merging_covarance_inflation_factor*d_n*d_n');
+                            S_merged_ = S_merged_ + w_n*(S_n + feature_merging_covarance_inflation_factor*(d_n*d_n'));
                         end
                         S_merged_ = S_merged_ / w_merged_;
                         S_vec_merged_ = reshape([S_merged_, 0, 0, 0, 0, 0, 0, 0, 0], 9, 1); 
