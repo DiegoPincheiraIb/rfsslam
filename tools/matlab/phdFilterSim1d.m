@@ -17,6 +17,10 @@ C_vec_k__i = zeros(9, k_max, n_particles);
 for i = 1:n_particles
     C_vec_k__i(:, 1, i) = reshape(eye(3), 9, 1); 
 end
+p_k_dr = zeros(3, k_max);
+C_k_dr = zeros(9, k_max);
+C_k_dr(:,1) = reshape(eye(3), 9, 1); 
+p_k_weighted = zeros(1, k_max);
 
 % Per particle map
 M = cell(n_particles, 3); % M{:,1} mean, M{:,2} cov reshaped as 9x1 vector, M{:,3} weight 
@@ -26,6 +30,11 @@ for i = 1:n_particles
     M{i,2} = zeros(9, map_size_limit); 
     M{i,3} = zeros(1, map_size_limit);
 end
+featuresObserved = zeros(n_features, 1);
+nFeaturesObserved = zeros(k_max, 1);
+nFeaturesEstimate = zeros(n_particles, k_max);
+nFeaturesEstimateAllParticles = zeros(k_max, 1);
+map_estimate_error = zeros(k_max, 1);
 
 % Particle weighting
 particle_weight = ones(n_particles, k_max);
@@ -78,8 +87,13 @@ hold on
 grid on
 xlim([-5 30]);
 ylim([-2 20]);
-h_p_k = plot(p_k(1,1), 0, 'ro', 'MarkerSize', 10);
-h_p_k_gt = plot(p_k(1,1), 0, 'ro', 'MarkerSize', 10);
+h_p_k = plot(p_k(1,1), 0, 'ro', 'MarkerSize', 5);
+h_p_k_gt = plot(p_k(1,1), 0, 'ko', 'MarkerSize', 10);
+p_k_particles = zeros(n_particles, 1);
+for i = 1:n_particles
+    p_k_particles(i) = p_k__i(1, 1, i); 
+end
+h_p_k_particles = plot(p_k_particles, -0.5, 'r.');
 h_birth = plot(0, 0, 'm-');
 h_obs = plot(0, 0, 'b-');
 h_updated = plot(0, 0, 'r-');
@@ -248,14 +262,25 @@ for k = k_sim_start:k_sim_end;
         end
         
     end
+    
+    C_k_dr_vec = reshape(C_k_dr(:,k-1), 3, 3);
+    [p_k_dr(:,k), C_k_dr_vec] = motionModel(p_k_dr(:,k-1), C_k_dr_vec, d_k_km, D_k_km);
+    C_k_dr(:,k) = reshape(C_k_dr_vec, 9, 1);
+    
     time_propogation(k) = toc(t_propogation);
     
     delete(h_p_k);
     delete(h_p_k_gt);
     delete(h_obs_lim_max);
     delete(h_obs_lim_min);
-    h_p_k = plot(p_k__i(1,k,i_max_weight), 0, 'ro', 'MarkerSize', 10);
-    h_p_k_gt = plot(p_k_groundtruth(1,k), -0.5, 'bo', 'MarkerSize', 10);
+    delete(h_p_k_particles);
+    h_p_k = plot(p_k__i(1,k,i_max_weight), 0, 'ro', 'MarkerSize', 5);
+    h_p_k_gt = plot(p_k_groundtruth(1,k), -0.5, 'ko', 'MarkerSize', 10);
+    p_k_particles = zeros(n_particles, 1);
+    for i = 1:n_particles
+        p_k_particles(i) = p_k__i(1, k, i); 
+    end
+    h_p_k_particles = plot(p_k_particles, -0.5, 'r.');
     h_obs_lim_max = line( [p_k__i(1,k,i_max_weight) + y_rangeLim  p_k__i(1,k,i_max_weight) + y_rangeLim], [-0.25 0.25] );
     h_obs_lim_min = line( [p_k__i(1,k,i_max_weight) - y_rangeLim  p_k__i(1,k,i_max_weight) - y_rangeLim], [-0.25 0.25] );
     x_gt_min = min(floor(p_k_groundtruth(1,k) )-5, x_gt_min);
@@ -886,8 +911,52 @@ for k = k_sim_start:k_sim_end;
 
         time_resampling(k) = toc(t_resampling);
 
-    
-    
+        %% Calculate Errors
+        
+        % Trajectory errors
+        
+        for i = 1:n_particles
+            p_k_weighted(k) = p_k_weighted(k) + particle_weight(i,k) * p_k__i(1, k, i);
+        end
+        p_k_weighted(k) = p_k_weighted(k) / sum(particle_weight(:,k));
+        
+        % Map errors
+        
+        for i = 1:n_particles
+            nFeaturesEstimate(i,k) = sum(M{i,3}(1:M_size(i)));
+        end
+        nFeaturesEstimateAllParticles(k) = sum (particle_weight(:,k) .* nFeaturesEstimate(:,k)) / sum(particle_weight(:,k));
+        for n = idx_current_obs_start : idx_current_obs_end
+            idx = y(5,n);
+            if(idx > 0)
+                featuresObserved(idx) = 1;
+            end
+        end
+        nFeaturesObserved(k) = sum(featuresObserved);
+        
+        cutoff = 5;
+        c2 = cutoff ^ 2;
+        dist_error_all_particles2 = 0;
+        for i = 1:n_particles    
+            dist_error2_all_features_for_particle_i = 0;
+            for j = 1:M_size(i) % estimated map
+                e = M{i,1}(:,j) - map(:,1);
+                min_dist2 = e'*e;
+                for m = 2:n_features % find closest groundtruth feature
+                    e = M{i,1}(:,j) - map(:,m); 
+                    dist2 = e'*e;
+                    min_dist2 = min(min_dist2, dist2);
+                end
+                min_dist2 = min(min_dist2, c2);
+                gaussian_weight = M{i,3}(j);
+                min_dist2 = min_dist2 * gaussian_weight;
+                dist_error2_all_features_for_particle_i = dist_error2_all_features_for_particle_i + min_dist2;
+            end
+            dist_error_all_particles2 = dist_error_all_particles2 + particle_weight(i,k)^2 * dist_error2_all_features_for_particle_i;
+        end
+        dim_error = c2 * abs(nFeaturesObserved(k) - nFeaturesEstimateAllParticles(k));
+        map_estimate_error(k) = sqrt( (dist_error_all_particles2 + dim_error) / nFeaturesObserved(k) );
+        
         %% Update parameters for next timestep
         idx_prev_obs_start = idx_current_obs_start;
         idx_prev_obs_end = idx_current_obs_end;

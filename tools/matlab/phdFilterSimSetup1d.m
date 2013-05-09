@@ -3,11 +3,11 @@
 
 clear all;
 close all;
-rand('seed', 18); %8-8, 68-8, 18-10
-randn('seed', 18); %8-8, 68-8, 18-10
+rand('seed', 18); %8-8, 68-8, 18-10, 18-np=10-k=3000
+randn('seed', 18); %8-8, 68-8, 18-10,
 
 %% Simulation settings
-k_max = 1000;
+k_max = 3000;
 n_features = 10;
 y_rangeLim = 5;
 
@@ -68,7 +68,7 @@ effective_particle_threshold = n_particles / 2;
 % PHD Filter Settings
 sensor_limit_upper_buffer = 0.25;
 sensor_limit_lower_buffer = 0.25;
-particle_weighting_feautre_set_max_size = -1;
+particle_weighting_feautre_set_max_size = 0;
 particle_weighting_random_map = 0;
 birth_Gaussian_likelihood_threshold = 2;
 merging_mahalanoblis_distance_threshold = 0.10;

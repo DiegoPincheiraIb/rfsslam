@@ -3,13 +3,16 @@
 figure;
 title('Vehicle Position');
 hold on
+
 for i = 1:n_particles
-    plot(k_sim_start:k_sim_end, p_k__i(1, k_sim_start:k_sim_end, i), 'g-' );
+    plot(k_sim_start:k_sim_end, p_k__i(1, k_sim_start:k_sim_end, i), 'b-' );
     hold on
 end
 [max_weight, max_index] = max(particle_weight(:,k_max));
 plot(k_sim_start:k_sim_end, p_k__i(1, k_sim_start:k_sim_end, max_index), 'r-', 'LineWidth', 2);
-plot(1:k_max, p_k_groundtruth(1,:), 'b-');
+plot(k_sim_start:k_sim_end, p_k_weighted(k_sim_start:k_sim_end), 'm-', 'LineWidth', 2);
+plot(1:k_max, p_k_groundtruth(1,:), 'k-');
+plot(1:k_max, p_k_dr(1,:), 'g-');
 grid on
 
 figure;
@@ -17,11 +20,15 @@ hold on
 title('Vehicle Position Estimate Error');
 for i = 1:n_particles
     error = p_k__i(1, k_sim_start:k_sim_end, i) - p_k_groundtruth(1, k_sim_start:k_sim_end);
-    plot(k_sim_start:k_sim_end, error, 'g-' );
+    plot(k_sim_start:k_sim_end, error, 'b-' );
     hold on
 end
 error = p_k__i(1, k_sim_start:k_sim_end, max_index) - p_k_groundtruth(1, k_sim_start:k_sim_end);
 plot(k_sim_start:k_sim_end, error, 'r-', 'LineWidth', 2);
+error = p_k_weighted(k_sim_start:k_sim_end) - p_k_groundtruth(1, k_sim_start:k_sim_end);
+plot(k_sim_start:k_sim_end, error, 'm-', 'LineWidth', 2);
+error = p_k_dr(1, k_sim_start:k_sim_end) - p_k_groundtruth(1, k_sim_start:k_sim_end);
+plot(k_sim_start:k_sim_end, error, 'g-', 'LineWidth', 2);
 grid on;
 
 x_min = floor( min(p_k__i(1,:)) ) - 5;
@@ -46,6 +53,19 @@ plot(x, y, 'r-');
 for m = 1:length(map(1,:))
     line( [map(1,m), map(1,m)], [-0.25 0], 'Color', 'b');
 end
+
+figure;
+grid on;
+hold on;
+title('Map Dimensionality Estimate');
+plot(k_sim_start:k_sim_end, nFeaturesEstimateAllParticles(k_sim_start:k_sim_end), 'r-');
+plot(k_sim_start:k_sim_end, nFeaturesObserved(k_sim_start:k_sim_end), 'k-', 'LineWidth', 2);
+
+figure;
+grid on;
+hold on;
+title('Map Estimate Error');
+plot(k_sim_start:k_sim_end, map_estimate_error(k_sim_start:k_sim_end), 'r-', 'LineWidth', 2);
 
 % figure;
 % title('timing analysis')
