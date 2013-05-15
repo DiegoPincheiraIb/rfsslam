@@ -61,9 +61,9 @@ c_k_groundtruth = c_k;
 n_particles = 25;
 map_size_limit = 1000; % number of Gaussians in each particle's map
 noise_motion = noise_motion * 1; 
-noise_obs = noise_obs * 3 ; % inflate noise for Kalman filter
+noise_obs = noise_obs * 2 ; % inflate noise for Kalman filter
 resample_interval = 0;
-effective_particle_threshold = n_particles / 2;
+effective_particle_threshold = n_particles / 4;
 
 % PHD Filter Settings
 sensor_limit_upper_buffer = 0.25;
@@ -71,8 +71,11 @@ sensor_limit_lower_buffer = 0.25;
 particle_weighting_feautre_set_max_size = 0;
 particle_weighting_random_map = 0;
 birth_Gaussian_likelihood_threshold = 2;
-merging_mahalanoblis_distance_threshold = 0.10;
-feature_merging_covarance_inflation_factor = 2;
+merging_mahalanoblis_distance_threshold = 0.1;
+feature_merging_covarance_inflation_factor = 5;
+
+% Evaluation Settings
+cutoff = 1; 
 
 % Simulator Seed
 rand('seed', 6);

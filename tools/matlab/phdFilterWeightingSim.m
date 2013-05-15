@@ -14,21 +14,27 @@ nFeatures_max = 7;
 nParticles = 1;
 R = [0.1,0; 0,0.1];
 P_detection = 0.95;
-applyThreshold = 1;
+applyThreshold = 0;
 likelihoodThreshold = 0.05;
-clutterExpected = 1.0;
-clutterExpectedExp = exp(0.1);
+clutterExpected = [1.0 5.0 20.0];
+clutterExpectedExp = exp(clutterExpected);
 clutterDensity = clutterExpected / 20^2;
 
-ml_sums = zeros(nFeatures_max, 11);
-ml_errors = zeros(nFeatures_max, 11);
 Pd_trial = 1:-0.025:0.1;
 
+ml_sums = zeros(nFeatures_max, length(Pd_trial), length(clutterExpected));
+ml_errors = zeros(nFeatures_max, length(Pd_trial), length(clutterExpected));
+
 for nFeatures = 1:nFeatures_max
-for Pd_trial_counter = 1:length(Pd_trial);
+for Pd_trial_counter = 1:length(Pd_trial)
+for clutterCounter = 1:length(clutterExpected);
+    
+    clutterExpectedExp = exp(clutterExpected(clutterCounter));
+    clutterDensity = clutterExpected(clutterCounter) / 20^2;
+    
     
 P_detection = Pd_trial(Pd_trial_counter);
-display(sprintf('trial %d -- %f', nFeatures, P_detection));
+display(sprintf('trial %d -- %f -- %f', nFeatures, P_detection, clutterExpected(clutterCounter)));
 
 % Randomly generate a bunch of features in 2d, also to serve as prior map
 map = [workspace(3) - workspace(1), 0; 0, workspace(4) - workspace(2)]*rand(2, nFeatures) +  [workspace(1); workspace(2)]*ones(1, nFeatures);
@@ -130,10 +136,10 @@ for i = 1:nParticles
             
             for i = 2:length(mxzLikelihood(:,1)) % row
                 
-                for j = 
+                
             end
             
-            f4 = f4 + likelihoodProduct;
+            f4 = f4 + likelihoodProdclutterExpected
             
             
         end
@@ -144,10 +150,11 @@ for i = 1:nParticles
     
 end
 
-ml_sums(nFeatures, Pd_trial_counter) = sum(ml(1:n_features_observed + 1));
-ml_errors(nFeatures, Pd_trial_counter) = sum(ml(1:n_features_observed));
+ml_sums(nFeatures, Pd_trial_counter, clutterCounter) = sum(ml(1:n_features_observed + 1));
+ml_errors(nFeatures, Pd_trial_counter, clutterCounter) = sum(ml(1:n_features_observed));
 %display(ml_sum);
 
+end
 end
 end
 
@@ -155,8 +162,9 @@ display(ml_errors)
 save('approximationError_0.2Clutter.mat');
 
 figure;
-for i = 1:n_features_observed
-    plot( Pd_trial, ml_errors(i, :) ./ ml_sums(i,:) * 100, '-k')
+plot_nFeature = 5;
+for c = 1:length(clutterExpected)
+    plot( Pd_trial, ml_errors(plot_nFeature, :, c) ./ ml_sums(plot_nFeature, :, c) * 100, '-k')
     hold on
 end
 %set(gca,'YScale','log');

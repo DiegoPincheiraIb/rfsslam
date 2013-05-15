@@ -21,6 +21,7 @@ p_k_dr = zeros(3, k_max);
 C_k_dr = zeros(9, k_max);
 C_k_dr(:,1) = reshape(eye(3), 9, 1); 
 p_k_weighted = zeros(1, k_max);
+p_k_max_weight = zeros(1, k_max);
 
 % Per particle map
 M = cell(n_particles, 3); % M{:,1} mean, M{:,2} cov reshaped as 9x1 vector, M{:,3} weight 
@@ -34,7 +35,9 @@ featuresObserved = zeros(n_features, 1);
 nFeaturesObserved = zeros(k_max, 1);
 nFeaturesEstimate = zeros(n_particles, k_max);
 nFeaturesEstimateAllParticles = zeros(k_max, 1);
-map_estimate_error = zeros(k_max, 1);
+nFeaturesEstimateMaxWeightParticle = zeros(k_max, 1);
+map_estimate_error_all_particles = zeros(k_max, 1);
+map_estimate_error_highest_weight_particle = zeros(k_max, 1);
 
 % Particle weighting
 particle_weight = ones(n_particles, k_max);
@@ -913,12 +916,23 @@ for k = k_sim_start:k_sim_end;
 
         %% Calculate Errors
         
+        % Highest weight particle
+        highest_weight_particle_idx = 1;
+        highest_weight = particle_weight(1,k);
+        for i = 2:n_particles
+             if particle_weight(i,k) > highest_weight
+                  highest_weight_particle_idx = i;
+                  highest_weight = particle_weight(i,k);
+             end
+        end
+        
         % Trajectory errors
         
         for i = 1:n_particles
             p_k_weighted(k) = p_k_weighted(k) + particle_weight(i,k) * p_k__i(1, k, i);
         end
         p_k_weighted(k) = p_k_weighted(k) / sum(particle_weight(:,k));
+        p_k_max_weight(k) = p_k__i(1, k, highest_weight_particle_idx); 
         
         % Map errors
         
@@ -926,6 +940,7 @@ for k = k_sim_start:k_sim_end;
             nFeaturesEstimate(i,k) = sum(M{i,3}(1:M_size(i)));
         end
         nFeaturesEstimateAllParticles(k) = sum (particle_weight(:,k) .* nFeaturesEstimate(:,k)) / sum(particle_weight(:,k));
+        nFeaturesEstimateMaxWeightParticle(k) = nFeaturesEstimate(highest_weight_particle_idx,k);
         for n = idx_current_obs_start : idx_current_obs_end
             idx = y(5,n);
             if(idx > 0)
@@ -934,9 +949,10 @@ for k = k_sim_start:k_sim_end;
         end
         nFeaturesObserved(k) = sum(featuresObserved);
         
-        cutoff = 5;
+        
         c2 = cutoff ^ 2;
         dist_error_all_particles2 = 0;
+        dist_error_highest_weight_particle2 = 0;
         for i = 1:n_particles    
             dist_error2_all_features_for_particle_i = 0;
             for j = 1:M_size(i) % estimated map
@@ -949,13 +965,19 @@ for k = k_sim_start:k_sim_end;
                 end
                 min_dist2 = min(min_dist2, c2);
                 gaussian_weight = M{i,3}(j);
-                min_dist2 = min_dist2 * gaussian_weight;
+                min_dist2 = min_dist2 * gaussian_weight^2;
                 dist_error2_all_features_for_particle_i = dist_error2_all_features_for_particle_i + min_dist2;
             end
             dist_error_all_particles2 = dist_error_all_particles2 + particle_weight(i,k)^2 * dist_error2_all_features_for_particle_i;
+            if i == highest_weight_particle_idx
+                dist_error_highest_weight_particle2 = dist_error2_all_features_for_particle_i;
+            end
         end
-        dim_error = c2 * abs(nFeaturesObserved(k) - nFeaturesEstimateAllParticles(k));
-        map_estimate_error(k) = sqrt( (dist_error_all_particles2 + dim_error) / nFeaturesObserved(k) );
+        dist_error_all_particles2 = dist_error_all_particles2 /  sum(particle_weight(:,k))^2;
+        dim_error_all_particles = c2 * abs(nFeaturesObserved(k) - nFeaturesEstimateAllParticles(k));
+        dim_error_highest_weight_particle = c2 * abs(nFeaturesObserved(k) - nFeaturesEstimateMaxWeightParticle(k));
+        map_estimate_error_all_particles(k) = sqrt( (dist_error_all_particles2 + dim_error_all_particles) / nFeaturesObserved(k) );
+        map_estimate_error_highest_weight_particle(k) = sqrt( (dist_error_highest_weight_particle2 + dim_error_highest_weight_particle) / nFeaturesObserved(k) );
         
         %% Update parameters for next timestep
         idx_prev_obs_start = idx_current_obs_start;
