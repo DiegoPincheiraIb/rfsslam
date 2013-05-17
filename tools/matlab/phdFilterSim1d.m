@@ -80,38 +80,42 @@ idx_current_obs_end = idx_current_obs_start;
 
 
 % Animation
-x_gt_min = floor(p_k_groundtruth(1,1) )-5;
-x_gt_max = ceil(p_k_groundtruth(1,1) )+5;
-x_gt_min = -5;
-x_gt_max = 35;
-figure
-title('animation');
-hold on
-grid on
-xlim([-5 30]);
-ylim([-2 20]);
-h_p_k = plot(p_k(1,1), 0, 'ro', 'MarkerSize', 5);
-h_p_k_gt = plot(p_k(1,1), 0, 'ko', 'MarkerSize', 10);
-p_k_particles = zeros(n_particles, 1);
-for i = 1:n_particles
-    p_k_particles(i) = p_k__i(1, 1, i); 
+if(visualize)
+    x_gt_min = floor(p_k_groundtruth(1,1) )-5;
+    x_gt_max = ceil(p_k_groundtruth(1,1) )+5;
+    x_gt_min = -5;
+    x_gt_max = 35;
+    figure
+    hold on
+    grid on
+    xlim([-5 30]);
+    ylim([-2 20]);
+    h_p_k = plot(p_k(1,1), 0, 'ro', 'MarkerSize', 5);
+    h_p_k_gt = plot(p_k(1,1), 0, 'ko', 'MarkerSize', 10);
+    p_k_particles = zeros(n_particles, 1);
+    for i = 1:n_particles
+        p_k_particles(i) = p_k__i(1, 1, i); 
+    end
+    h_p_k_particles = plot(p_k_particles, -0.5, 'r.');
+    h_birth = plot(0, 0, 'm-');
+    h_obs = plot(0, 0, 'b-');
+    h_updated = plot(0, 0, 'r-');
+    h_obs_lim_max = line( [p_k(1,1) + y_rangeLim  p_k(1,1) + y_rangeLim], [-0.25 0.25] );
+    h_obs_lim_min = line( [p_k(1,1) - y_rangeLim  p_k(1,1) - y_rangeLim], [-0.25 0.25] );
+    for m = 1:n_features
+        line(  [map(1,m) map(1,m)], [-1 0], 'Color', 'k' );
+    end
+    
+    [max_weight i_max_weight] = max(particle_weight(:,1));
 end
-h_p_k_particles = plot(p_k_particles, -0.5, 'r.');
-h_birth = plot(0, 0, 'm-');
-h_obs = plot(0, 0, 'b-');
-h_updated = plot(0, 0, 'r-');
-h_obs_lim_max = line( [p_k(1,1) + y_rangeLim  p_k(1,1) + y_rangeLim], [-0.25 0.25] );
-h_obs_lim_min = line( [p_k(1,1) - y_rangeLim  p_k(1,1) - y_rangeLim], [-0.25 0.25] );
-for m = 1:n_features
-    line(  [map(1,m) map(1,m)], [-1 0], 'Color', 'k' );
-end
-[max_weight i_max_weight] = max(particle_weight(:,1));
 
 k_sim_start = k_first_measurement + 1;
 k_sim_end = k_max;
 for k = k_sim_start:k_sim_end;
     
-    fprintf('\nTimestep k = %d\n', k);
+    if mod(k,50) == 0
+        fprintf('Timestep k = %d\n', k);
+    end
     if idx_current_obs_start > length(y(1,:))
         idx_current_obs_start = idx_current_obs_start - 1;
         idx_current_obs_end = idx_current_obs_start;
@@ -209,17 +213,19 @@ for k = k_sim_start:k_sim_end;
 
         end
         
-        x_plot = x_gt_min : 0.05 : x_gt_max;
-        y_plot = zeros( 1, length(x_plot) );
-        for m = 1:M_size(i_max_weight)
-            u = M{i_max_weight,1}(1,m);
-            cov = M{i_max_weight,2}(1,m);
-            w = M{i_max_weight,3}(m);
-            y_plot = y_plot + w*pdf('normal', x_plot, u, sqrt(cov));
+        if(visualize)
+            x_plot = x_gt_min : 0.05 : x_gt_max;
+            y_plot = zeros( 1, length(x_plot) );
+            for m = 1:M_size(i_max_weight)
+                u = M{i_max_weight,1}(1,m);
+                cov = M{i_max_weight,2}(1,m);
+                w = M{i_max_weight,3}(m);
+                y_plot = y_plot + w*pdf('normal', x_plot, u, sqrt(cov));
+            end
+            delete(h_birth);
+            h_birth = plot(x_plot, y_plot, 'm-');
+            pause(0.005);
         end
-        delete(h_birth);
-        h_birth = plot(x_plot, y_plot, 'm-');
-        pause(0.005);
     
     end
     
@@ -272,29 +278,33 @@ for k = k_sim_start:k_sim_end;
     
     time_propogation(k) = toc(t_propogation);
     
-    delete(h_p_k);
-    delete(h_p_k_gt);
-    delete(h_obs_lim_max);
-    delete(h_obs_lim_min);
-    delete(h_p_k_particles);
-    h_p_k = plot(p_k__i(1,k,i_max_weight), 0, 'ro', 'MarkerSize', 5);
-    h_p_k_gt = plot(p_k_groundtruth(1,k), -0.5, 'ko', 'MarkerSize', 10);
-    p_k_particles = zeros(n_particles, 1);
-    for i = 1:n_particles
-        p_k_particles(i) = p_k__i(1, k, i); 
+    if(visualize)
+        delete(h_p_k);
+        delete(h_p_k_gt);
+        delete(h_obs_lim_max);
+        delete(h_obs_lim_min);
+        delete(h_p_k_particles);
+        h_p_k = plot(p_k__i(1,k,i_max_weight), 0, 'ro', 'MarkerSize', 5);
+        h_p_k_gt = plot(p_k_groundtruth(1,k), -0.5, 'ko', 'MarkerSize', 10);
+        p_k_particles = zeros(n_particles, 1);
+        for i = 1:n_particles
+            p_k_particles(i) = p_k__i(1, k, i); 
+        end
+        h_p_k_particles = plot(p_k_particles, -0.5, 'r.');
+        h_obs_lim_max = line( [p_k__i(1,k,i_max_weight) + y_rangeLim  p_k__i(1,k,i_max_weight) + y_rangeLim], [-0.25 0.25] );
+        h_obs_lim_min = line( [p_k__i(1,k,i_max_weight) - y_rangeLim  p_k__i(1,k,i_max_weight) - y_rangeLim], [-0.25 0.25] );
+        x_gt_min = min(floor(p_k_groundtruth(1,k) )-5, x_gt_min);
+        x_gt_max = max(ceil(p_k_groundtruth(1,k) )+5, x_gt_max);
+
+        pause(0.005);
     end
-    h_p_k_particles = plot(p_k_particles, -0.5, 'r.');
-    h_obs_lim_max = line( [p_k__i(1,k,i_max_weight) + y_rangeLim  p_k__i(1,k,i_max_weight) + y_rangeLim], [-0.25 0.25] );
-    h_obs_lim_min = line( [p_k__i(1,k,i_max_weight) - y_rangeLim  p_k__i(1,k,i_max_weight) - y_rangeLim], [-0.25 0.25] );
-    x_gt_min = min(floor(p_k_groundtruth(1,k) )-5, x_gt_min);
-    x_gt_max = max(ceil(p_k_groundtruth(1,k) )+5, x_gt_max);
     
-    pause(0.005);
-    
-    if y(1, idx_current_obs_start) ~= k
-        if(h_obs) ~= 0
-            delete(h_obs);
-            h_obs = 0;
+    if(visualize)
+        if y(1, idx_current_obs_start) ~= k
+            if(h_obs) ~= 0
+                delete(h_obs);
+                h_obs = 0;
+            end
         end
     end
     
@@ -457,30 +467,31 @@ for k = k_sim_start:k_sim_end;
         time_update(k) = toc(t_update);
         %fprintf('Particle %d :: updated map size : %d Gaussians\n', i, M_size(i));
         
-        
-        x_plot = min(floor(p_k__i(1,k,i_max_weight) - y_rangeLim*1.5), x_gt_min) : 0.05 : max(ceil(p_k__i(1,k,i_max_weight) + y_rangeLim*1.5), x_gt_max);
-        y_plot = zeros( 1, length(x_plot) );
-        for n = idx_current_obs_start : idx_current_obs_end
-            u = p_k__i(1,k,i_max_weight) + y(2, n);
-            cov = R;
-            y_plot = y_plot + pdf('normal', x_plot, u, sqrt(cov));
+        if(visualize)
+            x_plot = min(floor(p_k__i(1,k,i_max_weight) - y_rangeLim*1.5), x_gt_min) : 0.05 : max(ceil(p_k__i(1,k,i_max_weight) + y_rangeLim*1.5), x_gt_max);
+            y_plot = zeros( 1, length(x_plot) );
+            for n = idx_current_obs_start : idx_current_obs_end
+                u = p_k__i(1,k,i_max_weight) + y(2, n);
+                cov = R;
+                y_plot = y_plot + pdf('normal', x_plot, u, sqrt(cov));
+            end
+            if h_obs ~= 0
+                delete(h_obs);
+            end 
+            h_obs = plot(x_plot, y_plot, 'b-');
+
+            x_plot = x_gt_min : 0.05 : x_gt_max;
+            y_plot = zeros( 1, length(x_plot) );
+            for m = 1:M_size(i_max_weight)
+                u = M{i_max_weight,1}(1,m);
+                cov = M{i_max_weight,2}(1,m);
+                w = M{i_max_weight,3}(m);
+                y_plot = y_plot + w*pdf('normal', x_plot, u, sqrt(cov));
+            end
+            delete(h_updated);
+            h_updated = plot(x_plot, y_plot, 'r-');
+            pause(0.005);
         end
-        if h_obs ~= 0
-            delete(h_obs);
-        end 
-        h_obs = plot(x_plot, y_plot, 'b-');
-        
-        x_plot = x_gt_min : 0.05 : x_gt_max;
-        y_plot = zeros( 1, length(x_plot) );
-        for m = 1:M_size(i_max_weight)
-            u = M{i_max_weight,1}(1,m);
-            cov = M{i_max_weight,2}(1,m);
-            w = M{i_max_weight,3}(m);
-            y_plot = y_plot + w*pdf('normal', x_plot, u, sqrt(cov));
-        end
-        delete(h_updated);
-        h_updated = plot(x_plot, y_plot, 'r-');
-        pause(0.005);
 
         
         %% Determine particle weight
