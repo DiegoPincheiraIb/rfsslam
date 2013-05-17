@@ -932,7 +932,7 @@ for k = k_sim_start:k_sim_end;
     p_k_weighted(k) = p_k_weighted(k) / sum(particle_weight(:,k));
     p_k_max_weight(k) = p_k__i(1, k, highest_weight_particle_idx); 
 
-    % Map errors
+    % Map Cardinality error
 
     for i = 1:n_particles
         nFeaturesEstimate(i,k) = sum(M{i,3}(1:M_size(i)));
@@ -946,36 +946,65 @@ for k = k_sim_start:k_sim_end;
         end
     end
     nFeaturesObserved(k) = sum(featuresObserved);
-
-
+    
+    % Map Wasserstein-distance error using highest-weight particle
+    
+    map_errors = zeros(n_particles, 2);
+    map_estimate_error_all_particles(k) = 0;
     c2 = cutoff ^ 2;
-    dist_error_all_particles2 = 0;
-    dist_error_highest_weight_particle2 = 0;
-    for i = 1:n_particles    
-        dist_error2_all_features_for_particle_i = 0;
+    for i = 1:n_particles
+        features_estimated = 0;
+        dist_error2 = 0;
         for j = 1:M_size(i) % estimated map
             e = M{i,1}(:,j) - map(:,1);
+            w = round(M{i,3}(j));
+            features_estimated = features_estimated + w;
             min_dist2 = e'*e;
             for m = 2:n_features % find closest groundtruth feature
                 e = M{i,1}(:,j) - map(:,m); 
                 dist2 = e'*e;
                 min_dist2 = min(min_dist2, dist2);
             end
-            min_dist2 = min(min_dist2, c2);
-            gaussian_weight = M{i,3}(j);
-            min_dist2 = min_dist2 * gaussian_weight^2;
-            dist_error2_all_features_for_particle_i = dist_error2_all_features_for_particle_i + min_dist2;
+            min_dist2 = min(min_dist2, c2) * w;
+            dist_error2 = dist_error2 + min_dist2;
         end
-        dist_error_all_particles2 = dist_error_all_particles2 + particle_weight(i,k)^2 * dist_error2_all_features_for_particle_i;
-        if i == highest_weight_particle_idx
-            dist_error_highest_weight_particle2 = dist_error2_all_features_for_particle_i;
-        end
+        dim_error2 = c2 * abs(nFeaturesObserved(k) - features_estimated);
+        map_errors(i,1) = sqrt( (dist_error2 + dim_error2) / nFeaturesObserved(k) );
+        map_errors(i,2) = particle_weight(i,k);
+        map_estimate_error_all_particles(k) = map_estimate_error_all_particles(k) + map_errors(i,1) * map_errors(i,2);
     end
-    dist_error_all_particles2 = dist_error_all_particles2 /  sum(particle_weight(:,k))^2;
-    dim_error_all_particles = c2 * abs(nFeaturesObserved(k) - nFeaturesEstimateAllParticles(k));
-    dim_error_highest_weight_particle = c2 * abs(nFeaturesObserved(k) - nFeaturesEstimateMaxWeightParticle(k));
-    map_estimate_error_all_particles(k) = sqrt( (dist_error_all_particles2 + dim_error_all_particles) / nFeaturesObserved(k) );
-    map_estimate_error_highest_weight_particle(k) = sqrt( (dist_error_highest_weight_particle2 + dim_error_highest_weight_particle) / nFeaturesObserved(k) );
+    map_estimate_error_all_particles(k) = map_estimate_error_all_particles(k) / sum(map_errors(:,2));
+    [highest_particle_weight, i] = max(particle_weight(:,k-1));
+    map_estimate_error_highest_weight_particle(k) = map_errors(i,1);
+    
+%     c2 = cutoff ^ 2;
+%     dist_error_all_particles2 = 0;
+%     dist_error_highest_weight_particle2 = 0;
+%     for i = 1:n_particles    
+%         dist_error2_all_features_for_particle_i = 0;
+%         for j = 1:M_size(i) % estimated map
+%             e = M{i,1}(:,j) - map(:,1);
+%             min_dist2 = e'*e;
+%             for m = 2:n_features % find closest groundtruth feature
+%                 e = M{i,1}(:,j) - map(:,m); 
+%                 dist2 = e'*e;
+%                 min_dist2 = min(min_dist2, dist2);
+%             end
+%             min_dist2 = min(min_dist2, c2);
+%             gaussian_weight = M{i,3}(j);
+%             min_dist2 = min_dist2 * gaussian_weight^2;
+%             dist_error2_all_features_for_particle_i = dist_error2_all_features_for_particle_i + min_dist2;
+%         end
+%         dist_error_all_particles2 = dist_error_all_particles2 + particle_weight(i,k)^2 * dist_error2_all_features_for_particle_i;
+%         if i == highest_weight_particle_idx
+%             dist_error_highest_weight_particle2 = dist_error2_all_features_for_particle_i;
+%         end
+%     end
+%     dist_error_all_particles2 = dist_error_all_particles2 /  sum(particle_weight(:,k))^2;
+%     dim_error_all_particles = c2 * abs(nFeaturesObserved(k) - nFeaturesEstimateAllParticles(k));
+%     dim_error_highest_weight_particle = c2 * abs(nFeaturesObserved(k) - nFeaturesEstimateMaxWeightParticle(k));
+%     map_estimate_error_all_particles(k) = sqrt( (dist_error_all_particles2 + dim_error_all_particles) / nFeaturesObserved(k) );
+%     map_estimate_error_highest_weight_particle(k) = sqrt( (dist_error_highest_weight_particle2 + dim_error_highest_weight_particle) / nFeaturesObserved(k) );
 
     %% Update parameters for next timestep
     idx_prev_obs_start = idx_current_obs_start;

@@ -95,7 +95,7 @@ ylabel('Map Error [m]');
 %title('Map Estimate Error');
 plot(k_sim_start:k_sim_end, map_estimate_error_all_particles(k_sim_start:k_sim_end), 'r-', 'LineWidth', 1);
 %plot(k_sim_start:k_sim_end, map_estimate_error_highest_weight_particle(k_sim_start:k_sim_end), 'm-', 'LineWidth', 2);
-ylim([0 1])
+ylim([0 5])
 export_fig(sprintf('results/map_error_p%d_ws%d.pdf', n_particles, particle_weighting_feautre_set_max_size ));
 
 
