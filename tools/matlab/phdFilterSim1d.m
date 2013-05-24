@@ -682,7 +682,7 @@ for k = k_sim_start:k_sim_end;
         for i = 1:n_particles;
 
             d_threshold = merging_mahalanoblis_distance_threshold ; % Mahalanobis distance threshold for Gaussian merging
-            w_threshold = (1 - P_detection_static) / 2;  % (1 - P_detection); % Weight threshold for pruning, must be higher than prob of missed detection!
+            w_threshold = feature_pruning_weight_threshold;
 
             % Pre-allocate storage for merged Gaussians
             % This will become the new map set at the end of current timestep
