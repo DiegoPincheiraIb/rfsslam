@@ -26,6 +26,7 @@ data_generation_seed = 18; %8-8, 68-8, 18-10, 18-np=10-k=3000
 %% Estimator Settings
 n_particles = 25;
 n_particles_max = 100;
+n_particles_max_spawn = 5; % for MH-FastSLAM, max number of particles that can be spawned from a single particle
 map_size_limit = 1000; % number of Gaussians in each particle's map
 noise_motion_inflation_factor = 1; 
 noise_obs_inflation_factor = 2 ; % inflate noise for Kalman filter
