@@ -1,8 +1,5 @@
 % MH-FastSLAM Filter 
 % Keith Leung 2013
-
-
-phdFilterSimSetup1d;
 n_particles_original = n_particles;
 
 % Vehicle trajectory for each particle
@@ -234,8 +231,8 @@ for k = k_sim_start:k_sim_end;
             idx_features_in_fov(n_features_in_fov + 1 : end) = [];
             n_measurements = idx_current_obs_end - idx_current_obs_start + 1; 
             measurementLikelihoods = zeros(n_measurements, n_features_in_fov);
-            updated_map_pos = cell(n_measurements, n_features_in_fov);
-            updated_map_cov = cell(n_measurements, n_features_in_fov);
+            updated_map_pos = cell(n_measurements, M_size(i));
+            updated_map_cov = cell(n_measurements, M_size(i));
 
             for m = 1:n_features_in_fov
                 
@@ -267,9 +264,9 @@ for k = k_sim_start:k_sim_end;
                         P_m_k = (P_m_k + P_m_k')/2;            
                         %P_m_vec_k = reshape([P_m_k, 0, 0, 0, 0, 0, 0, 0, 0], 9, 1);
                         
-                        updated_map_pos{n, m} = u_k;
-                        updated_map_cov{n, m} = eye(3);
-                        updated_map_cov{n, m}(1,1) = P_m_k;
+                        updated_map_pos{n, m_idx} = u_k;
+                        updated_map_cov{n, m_idx} = eye(3);
+                        updated_map_cov{n, m_idx}(1,1) = P_m_k;
                         
                     end
                     
@@ -310,17 +307,42 @@ for k = k_sim_start:k_sim_end;
                         n_associated_measurement = n_associated_measurement + 1;
                         idx_associated_measurement(n_associated_measurement) = n;
                         measurementLikelihoods_pruned( n_associated_measurement, : ) = measurementLikelihoods(n, :);  
+                        
+                        % Only make nearest neighbour association possible
+                        [max_likelihood_for_n max_likelihood_idx] = max( measurementLikelihoods_pruned( n_associated_measurement, : ) );
+                        for m = 1:length(measurementLikelihoods_pruned( n_associated_measurement, : ))
+                            if  measurementLikelihoods_pruned( n_associated_measurement, m ) / max_likelihood_for_n < 0.75
+                                measurementLikelihoods_pruned( n_associated_measurement, m ) = 0;  
+                            end
+                        end
+                        
                     end
                 end
                 measurementLikelihoods_pruned(n_associated_measurement + 1 : end, : ) = [];
                 
-                % possible associations for each measurement / feature
-                n_likely_features = sum(measurementLikelihoods_pruned > 0, 2);
-                n_likely_measurements = sum(measurementLikelihoods_pruned > 0, 1);
+                n_associated_feature = n_features_in_fov;
+                idx_associated_feature = idx_features_in_fov;
+                for m = n_features_in_fov : - 1 : 1
+                    if sum(measurementLikelihoods_pruned(:,m)) == 0
+                        n_associated_feature = n_associated_feature - 1;
+                        idx_associated_feature(m) = [];
+                        measurementLikelihoods_pruned(:,m) = [];
+                        
+                        if features_in_fov_buffer_zone(idx_features_in_fov(m)) ~= 1
+                            M{i,3}(idx_features_in_fov(m)) =  M{i,3}(idx_features_in_fov(m)) + log_odds_existence_given_no_measurement;
+                            
+                        end
+
+                    end
+                end
+                
+            end
+            
+            if n_features_in_fov > 0
                 
                 % initiate data association sequence for checking
-                if n_features_in_fov >= n_associated_measurement 
-                    sequence = 1:n_features_in_fov;
+                if n_associated_feature >= n_associated_measurement 
+                    sequence = 1:n_associated_feature;
                 else
                     sequence = 1:n_associated_measurement;                
                 end
@@ -338,7 +360,7 @@ for k = k_sim_start:k_sim_end;
                 n_data_association_sequences = 0;
                 top_association_sequences = cell(n_particles_max_spawn, 1);
                 top_association_likelihoods = zeros(n_particles_max_spawn, 1);
-                if n_features_in_fov >= n_associated_measurement
+                if n_associated_feature >= n_associated_measurement && n_associated_feature ~= 0
                     while n_data_association_sequences == 0
                         while( ~isempty(sequence) )
                             [sequence, likelihood, sequence_n] = multiFeatureLikelihoodFastSLAM(measurementLikelihoods_pruned, sequence);
@@ -358,7 +380,7 @@ for k = k_sim_start:k_sim_end;
                             sequence = 1:length(measurementLikelihoods_pruned(1,:));
                         end
                     end
-                else
+                elseif n_associated_measurement ~= 0;
                     while n_data_association_sequences == 0
                         while( ~isempty(sequence) )
                             [sequence, likelihood, sequence_n] = multiFeatureLikelihoodFastSLAM(measurementLikelihoods_pruned, sequence);
@@ -374,7 +396,7 @@ for k = k_sim_start:k_sim_end;
                             sequence = sequence_n;       
                         end
                         if  n_data_association_sequences == 0
-                            measurementLikelihoods_pruned = [measurementLikelihoods_pruned; ones(1,n_features_in_fov)];
+                            measurementLikelihoods_pruned = [measurementLikelihoods_pruned; ones(1,n_associated_feature)];
                             sequence = 1:length(measurementLikelihoods_pruned(:,1));
                         end
                     end
@@ -382,7 +404,7 @@ for k = k_sim_start:k_sim_end;
                 n_data_association_sequences = min(n_data_association_sequences, n_particles_max_spawn);
                 
                 % Go through top data association sequences
-                if n_features_in_fov >= n_associated_measurement
+                if n_associated_feature >= n_associated_measurement && n_associated_feature ~= 0
                     for seq = 1:n_data_association_sequences
                         jointMeasurementLikelihood = top_association_likelihoods(seq);
                         sequence = top_association_sequences{seq};
@@ -399,15 +421,16 @@ for k = k_sim_start:k_sim_end;
                             C_vec_k__i(:, :, particle_idx) = template_particle_i_rot;
                         end
                         particle_weight(particle_idx,k) = jointMeasurementLikelihood * template_particle_i_w;
-                        feature_updated = zeros(n_features_in_fov, 1);
+                        feature_updated = zeros(n_associated_feature, 1);
                         for n = 1:n_associated_measurement
                             m = sequence(n);
-                            if m <= n_features_in_fov
+                            if m <= n_associated_feature
                                 % update existing landmark
-                                M{particle_idx,1}(:,idx_features_in_fov(m)) = updated_map_pos{idx_associated_measurement(n), m};
-                                M{particle_idx,2}(:,idx_features_in_fov(m)) = reshape(updated_map_cov{idx_associated_measurement(n), m}, 9, 1);
-                                M{particle_idx,3}(idx_features_in_fov(m)) = M{particle_idx,3}(idx_features_in_fov(m)) + log_odds_existence_given_measurement; 
-                                M{particle_idx,3}(idx_features_in_fov(m)) = min( M{particle_idx,3}(idx_features_in_fov(m)), log_odds_existence_limit);
+                                
+                                M{particle_idx,1}(:,idx_associated_feature(m)) = updated_map_pos{idx_associated_measurement(n), idx_associated_feature(m)};
+                                M{particle_idx,2}(:,idx_associated_feature(m)) = reshape(updated_map_cov{idx_associated_measurement(n), idx_associated_feature(m)}, 9, 1);
+                                M{particle_idx,3}(idx_associated_feature(m)) = M{particle_idx,3}(idx_associated_feature(m)) + log_odds_existence_given_measurement; 
+                                M{particle_idx,3}(idx_associated_feature(m)) = min( M{particle_idx,3}(idx_associated_feature(m)), log_odds_existence_limit);
                                 feature_updated(m) = 1;
                             else
                                 % create new landmark
@@ -421,21 +444,21 @@ for k = k_sim_start:k_sim_end;
                                 M{particle_idx,3}(M_size(particle_idx)) = log_odds_existence_given_measurement;
                             end
                         end
-                        for m = 1:n_features_in_fov
-                            if feature_updated(m) == 0 && features_in_fov_buffer_zone(idx_features_in_fov(m)) ~= 1;
-                                 M{particle_idx,3}(idx_features_in_fov(m)) =  M{particle_idx,3}(idx_features_in_fov(m)) + log_odds_existence_given_no_measurement;
+                        for m = 1:n_associated_feature
+                            if feature_updated(m) == 0 && features_in_fov_buffer_zone(idx_associated_feature(m)) ~= 1;
+                                 M{particle_idx,3}(idx_associated_feature(m)) =  M{particle_idx,3}(idx_associated_feature(m)) + log_odds_existence_given_no_measurement;
                             end
                         end
-                        for m = n_features_in_fov : -1 : 1
-                            if M{particle_idx,3}(idx_features_in_fov(m)) < log_odds_existence_pruning_threshold;
-                                M{particle_idx,1}(:, idx_features_in_fov(m)) = [];
-                                M{particle_idx,2}(:, idx_features_in_fov(m)) = [];
-                                M{particle_idx,3}(idx_features_in_fov(m)) = []; 
+                        for m = M_size(particle_idx) : -1 : 1
+                            if M{particle_idx,3}(m) < log_odds_existence_pruning_threshold;
+                                M{particle_idx,1}(:, m) = [];
+                                M{particle_idx,2}(:, m) = [];
+                                M{particle_idx,3}(m) = []; 
                                 M_size(particle_idx) = M_size(particle_idx) - 1;
                             end
                         end
                     end
-                else
+                elseif n_associated_measurement ~= 0
                     for seq = 1:n_data_association_sequences
                         jointMeasurementLikelihood = top_association_likelihoods(seq);
                         sequence = top_association_sequences{seq};
@@ -452,56 +475,60 @@ for k = k_sim_start:k_sim_end;
                             C_vec_k__i(:, :, particle_idx) = template_particle_i_rot;
                         end
                         particle_weight(particle_idx,k) = jointMeasurementLikelihood * template_particle_i_w;
-                        feature_updated = zeros(n_features_in_fov, 1);
+                        feature_updated = zeros(n_associated_feature, 1);
                         used_measurement = zeros(n_associated_measurement, 1);
-                        for m = 1:n_features_in_fov
+                        for m = 1:n_associated_feature
                             n = sequence(m); 
                             if n <= n_associated_measurement
                                 used_measurement(n) = 1;
                                 % update existing landmark
-                                M{particle_idx,1}(:,idx_features_in_fov(m)) = updated_map_pos{idx_associated_measurement(n), m};
-                                M{particle_idx,2}(:,idx_features_in_fov(m)) = reshape(updated_map_cov{idx_associated_measurement(n), m}, 9, 1);
-                                M{particle_idx,3}(idx_features_in_fov(m)) = M{particle_idx,3}(idx_features_in_fov(m)) + log_odds_existence_given_measurement;
-                                M{particle_idx,3}(idx_features_in_fov(m)) = min( M{particle_idx,3}(idx_features_in_fov(m)), log_odds_existence_limit);
+                                M{particle_idx,1}(:,idx_associated_feature(m)) = updated_map_pos{idx_associated_measurement(n), idx_associated_feature(m)};
+                                M{particle_idx,2}(:,idx_associated_feature(m)) = reshape(updated_map_cov{idx_associated_measurement(n), idx_associated_feature(m)}, 9, 1);
+                                M{particle_idx,3}(idx_associated_feature(m)) = M{particle_idx,3}(idx_associated_feature(m)) + log_odds_existence_given_measurement;
+                                M{particle_idx,3}(idx_associated_feature(m)) = min( M{particle_idx,3}(idx_associated_feature(m)), log_odds_existence_limit);
                                 feature_updated(m) = 1;
                             else
                                 % no measurement was associated with m
                                 feature_updated(m) = 0;
                             end
-                            for n = 1:n_associated_measurement
-                                if used_measurement(n) == 0
-                                    % create new landmark
-                                    z_idx = idx_current_obs_start + n - 1;
-                                    p_m_k_act = y(2:4, z_idx); 
-                                    p_m = p_k + p_m_k_act;
-                                    P_m = C_k + R;
-                                    M_size(particle_idx) = M_size(particle_idx) + 1;
-                                    M{particle_idx,1}(:, M_size(particle_idx)) = p_m;
-                                    M{particle_idx,2}(:, M_size(particle_idx)) = reshape( P_m, 9, 1 );
-                                    M{particle_idx,3}(M_size(particle_idx)) = log_odds_existence_given_measurement;
-                                end
+                        end
+                        for n = 1:n_associated_measurement
+                            if used_measurement(n) == 0
+                                % create new landmark
+                                z_idx = idx_current_obs_start + n - 1;
+                                p_m_k_act = y(2:4, z_idx); 
+                                p_m = p_k + p_m_k_act;
+                                P_m = C_k + R;
+                                M_size(particle_idx) = M_size(particle_idx) + 1;
+                                M{particle_idx,1}(:, M_size(particle_idx)) = p_m;
+                                M{particle_idx,2}(:, M_size(particle_idx)) = reshape( P_m, 9, 1 );
+                                M{particle_idx,3}(M_size(particle_idx)) = log_odds_existence_given_measurement;
                             end
                         end
-                        for m = 1:n_features_in_fov
-                            if feature_updated(m) == 0 && features_in_fov_buffer_zone(idx_features_in_fov(m)) ~= 1
-                                 M{particle_idx,3}(idx_features_in_fov(m)) =  M{particle_idx,3}(idx_features_in_fov(m)) + log_odds_existence_given_no_measurement; 
+                        for m = 1:n_associated_feature
+                            if feature_updated(m) == 0 && features_in_fov_buffer_zone(idx_associated_feature(m)) ~= 1
+                                 M{particle_idx,3}(idx_associated_feature(m)) =  M{particle_idx,3}(idx_associated_feature(m)) + log_odds_existence_given_no_measurement; 
                             end
                         end
-                        for m = n_features_in_fov : -1 : 1
-                            if M{particle_idx,3}(idx_features_in_fov(m)) < log_odds_existence_pruning_threshold
-                                M{particle_idx,1}(:, idx_features_in_fov(m)) = [];
-                                M{particle_idx,2}(:, idx_features_in_fov(m)) = [];
-                                M{particle_idx,3}(idx_features_in_fov(m)) = []; 
+                        for m = M_size(particle_idx) : -1 : 1
+                            if M{particle_idx,3}(m) < log_odds_existence_pruning_threshold;
+                                M{particle_idx,1}(:, m) = [];
+                                M{particle_idx,2}(:, m) = [];
+                                M{particle_idx,3}(m) = []; 
                                 M_size(particle_idx) = M_size(particle_idx) - 1;
                             end
-                        end 
+                        end
                     end
                 end      
                 
                 % rescale weights of new particles
-                particle_weight(i,k) = particle_weight(i,k) / n_data_association_sequences;
-                for j = 0:n_data_association_sequences - 2
-                    particle_weight(n_particles - j,k) = particle_weight(n_particles - j,k) / n_data_association_sequences;
+                if n_associated_feature ~= 0 && n_associated_measurement ~= 0
+                    particle_weight(i,k) = particle_weight(i,k) / n_data_association_sequences;
+                    for j = 0:n_data_association_sequences - 2
+                        particle_weight(n_particles - j,k) = particle_weight(n_particles - j,k) / n_data_association_sequences;
+                    end
+                else
+                    particle_weight(i,k) = 0.000000001;
                 end
                 
             end

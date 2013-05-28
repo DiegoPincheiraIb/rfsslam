@@ -649,10 +649,16 @@ for k = k_sim_start:k_sim_end;
                 measurement_likelihood_factor(i,k) = P_detection_static^weighting_map_set_size * multiFeatureLikelihood(likelihoodTable, likelihoodThreshold, clutter_intensity, N_c) * clutter_intensity ^ n_clutter_measurements;
                 n_missed_detection = 0;
                 while(measurement_likelihood_factor(i,k) == 0)
-                    likelihoodTable = [likelihoodTable ones(n_measurements,1)];
-                    n_clutter_measurements = n_clutter_measurements + 1;
-                    n_missed_detection = n_missed_detection + 1;
-                    measurement_likelihood_factor(i,k) = P_detection_static^(weighting_map_set_size - n_missed_detection) * (1 - P_detection_static)^n_missed_detection * multiFeatureLikelihood(likelihoodTable, likelihoodThreshold, clutter_intensity, N_c)  * clutter_intensity ^ n_clutter_measurements;
+                    if n_measurements <= weighting_map_set_size
+                        likelihoodTable = [likelihoodTable ones(n_measurements,1)];
+                        n_clutter_measurements = n_clutter_measurements + 1;
+                        n_missed_detection = n_missed_detection + 1;
+                        measurement_likelihood_factor(i,k) = P_detection_static^(weighting_map_set_size - n_missed_detection) * (1 - P_detection_static)^n_missed_detection * multiFeatureLikelihood(likelihoodTable, likelihoodThreshold, clutter_intensity, N_c)  * clutter_intensity ^ n_clutter_measurements;
+                    else
+                        likelihoodTable = [likelihoodTable; ones(1, weighting_map_set_size)];
+                        n_missed_detection = n_missed_detection + 1;
+                        measurement_likelihood_factor(i,k) = P_detection_static^(weighting_map_set_size - n_missed_detection) * (1 - P_detection_static)^n_missed_detection * multiFeatureLikelihood(likelihoodTable, likelihoodThreshold, clutter_intensity, N_c)  * clutter_intensity ^ n_clutter_measurements;
+                    end
                 end
             end
             

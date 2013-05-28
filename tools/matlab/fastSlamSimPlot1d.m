@@ -49,7 +49,7 @@ hold on
 xlabel('x [m]');
 ylabel('Map Intensity');
 %title('Feature Hypothesis Density');
-total_particle_weight = sum(particle_weight(:,k_max));
+total_particle_weight = sum(particle_weight(1:n_particles,k_max));
 x_min = floor( min(p_k__i(1,:)) ) - 5;
 x_max = ceil( max(p_k__i(1,:)) ) + 5;
 x = x_min : 0.025 : x_max;
@@ -58,7 +58,8 @@ for i = 1:n_particles
     for m = 1:M_size(i)
         u = M{i,1}(1,m);
         cov = M{i,2}(1,m);
-        w = M{i,3}(m);
+        log_w = M{i,3}(m);
+        w = 1 - 1/(1 + exp(log_w));
         y = y + w*pdf('normal', x, u, sqrt(cov))*particle_weight(i,k_max)/total_particle_weight;
         %plot(u, w, 'k.', 'markersize', 5);
     end
