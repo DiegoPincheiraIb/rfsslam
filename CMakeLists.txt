@@ -24,6 +24,7 @@ INCLUDE_DIRECTORIES(${Eigen_INCLUDE_DIRS})
 
 ADD_LIBRARY(RBPHDFilter src/RBPHDFilter.cpp)
 ADD_LIBRARY(BinaryTree src/BinaryTree.cpp)
+ADD_LIBRARY(Pose src/Pose.cpp)
 
-#ADD_EXECUTABLE(ellipse_test test/ellipseTest.cpp)
-#TARGET_LINK_LIBRARIES(ellipse_test ellipse)
+ADD_EXECUTABLE(test test/test.cpp)
+TARGET_LINK_LIBRARIES(test Pose)
