@@ -8,22 +8,22 @@
 #include "Pose.hpp"
 
 /** 
- * \class ProcessInput
+ * \class Measurement
  * \brief An abstract class for the inputs to a process model
  * \tparam InputValType Object type representing process inputs
  * \tparam InputUncertaintyType Object type representing input uncertainties
  * \author Keith Leung
  */
 template<class InputValType, class InputUncertaintyType>
-class ProcessInput
+class Measurement
 {
 public:
 
   /** Default constructor */
-  ProcessInput(){ t_ = 0; };
+  Measurement(){ t_ = 0; };
 
   /** Default destructor */
-  ~ProcessInput(){};
+  ~Measurement(){};
 
   /** 
    * Function for setting process input values
@@ -124,7 +124,7 @@ public:
  * \brief A class for 2d odometry measurements for a 2d motion model
  * \author Keith Leung
  */
-class Odometry2d : public ProcessInput< Eigen::Vector3d, Eigen::Matrix3d >
+class Odometry2d : public Measurement< Eigen::Vector3d, Eigen::Matrix3d >
 {
 public:
   
