@@ -16,7 +16,7 @@ simulator_seed = 18;
 
 noise_motion = [0.1, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15]; 
 noise_obs = [0.1, 1e-10, 1e-10];
-P_detection_static = 0.95;
+P_detection_static = 0.85;
 P_false_alarm_static = 0.01;
 P_feature_existence_prior = 0.5;
 N_c = 2.75; % number of expected clutter measurements per timestep
@@ -25,8 +25,8 @@ data_generation_seed = 18; %8-8, 68-8, 18-10, 18-np=10-k=3000
 
 %% Estimator Settings
 
-%filter_type = 'rb-phd';
-filter_type = 'fastSLAM';
+filter_type = 'rb-phd';
+%filter_type = 'fastSLAM';
 
 n_particles = 25;
 n_particles_max = 100;
@@ -40,7 +40,7 @@ effective_particle_threshold = n_particles / 4;
 
 sensor_limit_upper_buffer = 0.20;
 sensor_limit_lower_buffer = 0.20;
-particle_weighting_feautre_set_max_size = 1; % Set to 9 for multi-feature weighting strategy
+particle_weighting_feautre_set_max_size = 8; % Set to 9 for multi-feature weighting strategy
 particle_weighting_random_map = 0;
 birth_Gaussian_likelihood_threshold = 2;
 merging_mahalanoblis_distance_threshold = 0.1;

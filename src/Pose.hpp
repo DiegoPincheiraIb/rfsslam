@@ -1,73 +1,66 @@
-// Pose class for defining vehicle state
+// Pose classes for defining vehicle state
 // Keith Leung 2013
 
 #ifndef POSE_HPP
 #define POSE_HPP
 
 #include <Eigen/Core>
+#include "State.hpp"
 
-/**
- * \class Pose
- * \brief An abstract base class for defining the vehicle pose state
- * \author Keith Leung
- */
-class Pose
-{
-
-public:
-
-  /** Default constructor */
-  Pose();
-
-  /** Default destructor */
-  ~Pose();
-
-  /** Abstract function for setting the pose state */
-  virtual void setPose();
-  
-  /** Abstract function for getting the pose state */
-  virtual void getPose();
-
-private:
-
-};
+/********** Example implementation of a 2d vehicle pose state **********/
 
 /**
  * \class Pose2d
- * \brief 2d vehicle pose for (x,y) coordinate and rotation
+ * \brief 2d vehicle Pose for (x,y) coordinate and rotation
  * \author Keith Leung
  */
-class Pose2d : public Pose
+class Pose2d : public State<Eigen::Vector3d>
 {
 
 public:
 
   typedef Eigen::Vector3d vec;
 
-  /** Default constructor */
+  /** 
+   * Default constructor, implementation of which can be empty
+   */
   Pose2d();
 
-  /** Constructor */
+  /** 
+   * Constructor - defined only for our convenience and non-essential
+   */
   Pose2d(vec x);
 
   /** Default destructor */
   ~Pose2d();
 
-  /** 
-   * Function for setting pose state 
-   * \param pose the pose to set
-   */
-  void setPose(vec pose);
+};
+
+
+/********** Example implementation of a 1d vehicle pose state **********/
+
+/**
+ * \class Pose1d
+ * \brief 1d vehicle Pose
+ * \author Keith Leung
+ */
+class Pose1d : public State<double>
+{
+
+public:
 
   /** 
-   * Function for getting pose state 
-   * \param pose variable passed in by reference to be overwritten
+   * Default constructor, implementation of which can be empty 
    */
-  void getPose(vec& pose);
+  Pose1d();
 
-private:
+  /** 
+   * Constructor - defined only for our convenience and non-essential
+   */
+  Pose1d(double x);
 
-  vec x_;
+  /** Default destructor */
+  ~Pose1d();
 
 };
 

@@ -1,17 +1,29 @@
 #include "Pose.hpp"
 
+/********** Implementation of example 2d vehicle pose state **********/
+
 Pose2d::Pose2d(){
-  x_ << 0, 0, 0;
+  vec x;
+  x << 0, 0, 0;
+  set(x);
 }
 
 Pose2d::Pose2d(vec x){
-  setPose(x);
+  set(x);
 }
 
-void Pose2d::setPose(vec x){
-  x_ = x;
+Pose2d::~Pose2d(){}
+
+
+/********** Implementation of example 1d vehicle pose state **********/
+
+Pose1d::Pose1d(){
+  set(0);
 }
 
-void Pose2d::getPose(vec& x){
-  x = x_;
+Pose1d::Pose1d(double x){
+  set(x);
 }
+
+Pose1d::~Pose1d(){}
+
