@@ -32,7 +32,7 @@ public:
    * Function for getting the pose state 
    * \param x state [overwritten]
    */
-  void get( StateType &x){x = x_;}
+  void get( StateType &x ){x = x_;}
 
 protected:
 

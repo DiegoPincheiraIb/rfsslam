@@ -6,7 +6,8 @@
 int main(int argc, char* argv[]){
 
   Pose2d pose;
-  Pose2d::vec x, y;
+  Pose2d::vec x;
+  Pose2d::vec y;
   x << 1,2,3;
   pose.set(x);
   pose.get(y); 
