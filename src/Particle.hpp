@@ -6,8 +6,8 @@
 
 /** 
  *  \class Particle
- *  \brief A class for a particle in the rao-blackwellized particle filter
- *  \tparam PoseType container for vehicle state
+ *  \brief A class for a particle for the particle filter
+ *  \tparam PoseType container for the state
  *  \author Keith Leung
  */
 template< class PoseType >
@@ -22,8 +22,9 @@ public:
   /* Constructor 
    * \param id particle id
    * \param x_k_i particle pose
+   * \param w particle weight
    */
-  Particle( unsigned int id, PoseType &x_k_i );
+  Particle( unsigned int id, PoseType &x_k_i, double w = 0 );
 
   /** Destructor */
   ~Particle();
@@ -71,12 +72,14 @@ protected:
 template< class PoseType >
 Particle<PoseType>::Particle(){
   id_ = 0;
+  w = 0;
 }
 
 template< class PoseType >
-Particle<PoseType>::Particle( unsigned int id, PoseType &x_k_i ){
+Particle<PoseType>::Particle( unsigned int id, PoseType &x_k_i, double w = 0 ){
   id_ = id;
   x_k_i_ = x_k_i;
+  w_ = 0;
 }
 
 template< class PoseType >

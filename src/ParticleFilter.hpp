@@ -52,9 +52,10 @@ public:
    */
   void propagate( SystemInputType &input, double const dt = 0);
 
-  /** \todo function for particle weighting */
+  /** \todo function for particle weighting - requires measurement model to be completed first */
 
   /** \todo function for resampling of particles */
+  
 
 protected:
 
@@ -66,7 +67,7 @@ protected:
 private:
 };
 
-// Implementation
+////////// Implementation //////////
 
 template< class StateType, class SystemInputType >
 ParticleFilter<StateType, SystemInputType>::ParticleFilter(int n, 
@@ -76,8 +77,9 @@ ParticleFilter<StateType, SystemInputType>::ParticleFilter(int n,
   // initiate particles
   nParticles_ = n;
   particleSet_.resize(nParticles_);
+  double newParticleWeight = 1;
   for( int i = 0 ; i < nParticles_ ; i++ ){
-    particleSet_[i] = new Particle<StateType>(n, initState);
+    particleSet_[i] = new Particle<StateType>(n, initState, newParticleWeight);
   }
   
   // set prcoess model

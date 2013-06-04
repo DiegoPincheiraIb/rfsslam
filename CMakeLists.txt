@@ -22,11 +22,14 @@ INCLUDE_DIRECTORIES(src)
 INCLUDE_DIRECTORIES(${Eigen_INCLUDE_DIRS})
 #LINK_DIRECTORIES()
 
-ADD_LIBRARY(RBPHDFilter src/RBPHDFilter.cpp)
-ADD_LIBRARY(BinaryTree src/BinaryTree.cpp)
 ADD_LIBRARY(Pose src/Pose.cpp)
-ADD_LIBRARY(Landmark src/Landmark.cpp)
 ADD_LIBRARY(ProcessModel src/ProcessModel.cpp)
 
+ADD_LIBRARY(Particle src/Particle.hpp)
+SET_TARGET_PROPERTIES(Particle PROPERTIES LINKER_LANGUAGE CXX)
+
+ADD_LIBRARY(ParticleFilter src/ParticleFilter.hpp)
+SET_TARGET_PROPERTIES(ParticleFilter PROPERTIES LINKER_LANGUAGE CXX)
+
 ADD_EXECUTABLE(test src/test.cpp)
-TARGET_LINK_LIBRARIES(test Pose Landmark)
+TARGET_LINK_LIBRARIES(test Pose Particle ProcessModel)

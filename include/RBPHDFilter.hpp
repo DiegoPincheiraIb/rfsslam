@@ -3,10 +3,7 @@
 
 #include <Eigen/Core>
 #include <vector>
-
-#include "Particle.hpp"
-
-typedef Particle* pParticle;
+#include "ParticleFilter.hpp"
 
 /**
  *  \class RBPHDFilter
@@ -19,9 +16,12 @@ typedef Particle* pParticle;
  *  \version 0.1
  */
 
-class RBPHDFilter
+// template< class PoseType, class SystemInputType >
+class RBPHDFilter //: public ParticleFilter<PoseType, SystemInputType>
 {
 public:
+
+  // typedef Particle<PoseType>* pParticle;
 
   /** Default consturctor */
   RBPHDFilter();
@@ -29,20 +29,6 @@ public:
   /** Destructor */
   ~RBPHDFilter();
 
-  /** 
-   *  Initialize the filter
-   *  \param nParticles The number of particles
-   */
-  void init(int nParticles);
-
 private:
-
-  int _nParticles; /**< number of particles in the filter */
-  std::vector<pParticle> _particles; /**< vector of particle pointers */
-
-  /** 
-   *  Propagate particles using the motion model
-   */
-  void particles_propagate();
 
 };
