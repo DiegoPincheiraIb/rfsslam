@@ -72,14 +72,14 @@ protected:
 template< class PoseType >
 Particle<PoseType>::Particle(){
   id_ = 0;
-  w = 0;
+  w_ = 0;
 }
 
 template< class PoseType >
-Particle<PoseType>::Particle( unsigned int id, PoseType &x_k_i, double w = 0 ){
+Particle<PoseType>::Particle( unsigned int id, PoseType &x_k_i, double w ){
   id_ = id;
   x_k_i_ = x_k_i;
-  w_ = 0;
+  w_ = w;
 }
 
 template< class PoseType >
