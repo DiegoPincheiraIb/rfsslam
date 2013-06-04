@@ -27,11 +27,11 @@ OdometryMotionModel2d::OdometryMotionModel2d(){}
 OdometryMotionModel2d::~OdometryMotionModel2d(){}
 
 void OdometryMotionModel2d::step(  Pose2d &s_k, 
-				   Pose2d const &s_km, 
-				   Odometry2d const &input_k, 
-				   double const dT ){
+				   Pose2d &s_km, 
+				   Odometry2d &input_k, 
+				   const double dT ){
   
-  /* State at k-1 
+  /* State at k-1 */
   s_km.get(x_km_i_);
   p_km_i_ = x_km_i_.head(2);
   theta_km_ = x_km_i_(2);
@@ -39,7 +39,7 @@ void OdometryMotionModel2d::step(  Pose2d &s_k,
   double st = sin(theta_km_);
   C_km_i_ << ct, st, -st, ct;
 
-  /* Odometry 
+  /* Odometry */
   double t;
   input_k.get(u_k_km_, t);
   dp_k_km_ = u_k_km_.head(2);
