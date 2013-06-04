@@ -28,11 +28,37 @@ public:
 
 
 
-class Landmark1D : public Landmark<double, double>
+class Landmark1d : public Landmark<double, double>
 {
 public: 
-  Landmark1D();
-  ~Landmark1D();
+  Landmark1d();
+  ~Landmark1d();
+};
+
+/********** Example implementation of a 2d Landmark **********/
+
+/**
+* \class Landmark2d
+* \brief 2d Landmark with no signature
+* \author Felipe Inostroza
+*/
+class Landmark2d : public Landmark<Eigen::Vector3d, Eigen::Matrix3d>
+{
+public:
+  /** Default constructor */
+  Landmark2d();
+
+
+  /** 
+   * Constructor - defined only for our convenience and non-essential
+   */
+
+  Landmark2d(Eigen::Vector3d,Eigen::Matrix3d);
+
+  /** Default destructor */
+  ~Landmark2d();
+
+  
 };
 
 #endif
