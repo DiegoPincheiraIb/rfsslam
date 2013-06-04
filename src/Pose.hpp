@@ -28,8 +28,17 @@ public:
 
   /** 
    * Constructor - defined only for our convenience and non-essential
+   * \param x - pose
    */
   Pose2d(vec x);
+
+  /**
+   * Constructor - defined only for our convenience and non-essential
+   * \param x - \f[ x \f]
+   * \param y - \f[ y \f]
+   * \param theta - \f[ \theta \f]
+   */
+  Pose2d( double x, double y, double theta ); 
 
   /** Default destructor */
   ~Pose2d();

@@ -111,7 +111,7 @@ public:
    * \param dT size of time-step
    */
   virtual void step( StateType &s_k, StateType &s_km, 
-		     InputType &input_k, double const dT ) = 0;
+		     InputType &input_k, double const dT = 0 ) = 0;
 
 };
 

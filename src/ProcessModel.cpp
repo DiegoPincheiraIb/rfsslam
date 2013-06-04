@@ -48,15 +48,15 @@ void OdometryMotionModel2d::step(  Pose2d &s_k,
   st = sin(dtheta_k_km_);
   C_k_km_ << ct, st, -st, ct;
 
-  /* Step forward 
+  /* Step forward */
   p_k_i_ = p_km_i_ + C_km_i_.transpose() * dp_k_km_;
   C_k_i_ = C_k_km_ * C_km_i_;
 
-  /* Write state at k 
+  /* Write state at k */
   theta_k_ = acos( C_k_i_(0, 0) );
   x_k_i_.head(2) = p_k_i_;
   x_k_i_(2) = theta_k_;
-  s_k.set(x_k_i_);*/
+  s_k.set(x_k_i_);
   
 }
 

@@ -1,23 +1,19 @@
-#include "Pose.hpp"
-#include "Landmark.hpp"
+#include "ParticleFilter.hpp"
 #include <iostream>
 
 
 int main(int argc, char* argv[]){
 
-  Pose2d pose;
-  Pose2d::vec x;
-  Pose2d::vec y;
-  x << 1,2,3;
-  pose.set(x);
-  pose.get(y); 
-  std::cout << y << std::endl;
-  
+  Measurement<int, int> m;
 
-  /*Landmark2d l;
-  Landmark2d::vec lx;
-  l.getState(lx);
-  std::cout << "Landmark" << lx << std::endl;
-  */
+  Particle<Pose2d> p;
+
+  int nParticles = 10;
+  Pose2d x_0(2, 1, 0);
+  OdometryMotionModel2d motionModel;
+
+  // ParticleFilter<Pose2d, Odometry2d> pf;
+  ParticleFilter<Pose2d, Odometry2d> pf(nParticles, x_0, &motionModel); 
+
   return 0;
 }

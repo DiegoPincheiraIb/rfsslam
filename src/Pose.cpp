@@ -12,6 +12,12 @@ Pose2d::Pose2d(vec x){
   set(x);
 }
 
+Pose2d::Pose2d( double x, double y, double theta ){
+  vec state;
+  state << x, y, theta;
+  set(state);
+}
+
 Pose2d::~Pose2d(){}
 
 
