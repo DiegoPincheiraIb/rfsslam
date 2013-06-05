@@ -17,6 +17,8 @@
  * \tparam StateType container for the state that the filter updates
  * \tparam SystemInputType container for process model input 
  * \author Keith Leung
+ *
+ * \todo Test this class
  */
 template< class StateType, class SystemInputType>
 class ParticleFilter
@@ -148,7 +150,7 @@ template< class StateType, class SystemInputType >
 void ParticleFilter<StateType, SystemInputType>::resample( unsigned int n ){
 
   if( n == 0 )
-    n = nParticles_;
+    n = nParticles_; // number of particles to sample
 
   // normalize particle weights so they sum to 1
   normalizeWeights();
@@ -178,8 +180,48 @@ void ParticleFilter<StateType, SystemInputType>::resample( unsigned int n ){
     sample_point += sample_interval;
   }
 
-  // Replaced unsampled particles with sampled particles
-  
+  // Do the actual data copying
+  unsigned int idx_prev = 0;
+  unsigned int next_unsampled_idx = 0;
+  for( int i = 0; i < n; i++ ){
+    
+    bool firstTime = true;
+    idx = sampled_idx[i]; // particle[idx] was sampled
+    if( i > 0){
+      if( idx == idx_prev ){
+	firstTime = false;
+      }
+    }
+    idx_prev = idx;
+
+    while( flag_particle_sampled[next_unsampled_idx] == 1)
+      next_unsampled_idx++;
+
+    // cases:
+    // 1. idx < n AND idx appears for first time -> do nothing
+    // 2. idx < n AND it is not the first time that idx appears -> make copy
+    // 3. idx > n AND idx appears for first time -> make copy
+    // 4. idx > n AND it is not first time that idx appears -> make copy
+
+    if( idx < n && firstTime){ // case 1
+      particleSet_[idx]->setParentId( particleSet_[idx]->getId() );
+    }else{ // case 2, 3, 4
+      particleSet_[next_unsampled_idx]->setParentId( particleSet_[idx]->getId() );
+      particleSet_[i]->copyStateTo( particleSet_[next_unsampled_idx] );
+    }
+      
+  }
+
+  // Delete all particles with idx >= n
+  for( int i = n; i < nParticles_; i++ ){
+    delete particleSet_[i];
+  }
+  nParticles_ = n;
+
+  // Reset weight of all particles
+  for( int i = 0; i < n; i++ ){
+    particleSet_[i]->setWeight(1);
+  }
   
 }
 

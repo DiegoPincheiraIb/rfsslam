@@ -59,9 +59,39 @@ public:
    */
   double getWeight();
 
+  /**
+   * Get the particle id
+   * \return particle id
+   */
+  unsigned int getId();
+
+  /**
+   * Get the particle id of the particle which spawned 
+   * the current one after resampling
+   * \return parent particle id
+   */
+  unsigned int getParentId();
+
+  /** 
+   * Set the particle id
+   */
+  void setId( unsigned int id );
+
+  /**
+   * Set the id of this particle's parent from resampling
+   */
+  void setParentId( unsigned int id );
+
+  /** 
+   * Copy the state from this particle to another particle
+   * /param p particle to which data is copied to
+   */
+  void copyStateTo( Particle<PoseType>* p);
+
 protected:
 
   unsigned int id_; /**< particle id number */
+  unsigned int idParent_; /** id of particle which this one is spawned from */
   PoseType x_k_i_; /**< robot pose at timestep k **/
   double w_; /**< Particle weight */
 
@@ -72,12 +102,14 @@ protected:
 template< class PoseType >
 Particle<PoseType>::Particle(){
   id_ = 0;
+  idParent_ = id_;
   w_ = 0;
 }
 
 template< class PoseType >
 Particle<PoseType>::Particle( unsigned int id, PoseType &x_k_i, double w ){
   id_ = id;
+  idParent_ = id_;
   x_k_i_ = x_k_i;
   w_ = w;
 }
@@ -86,13 +118,13 @@ template< class PoseType >
 Particle<PoseType>::~Particle(){}
 
 template< class PoseType >
-void Particle<PoseType>::setPose( PoseType &x_k_i ){
-  x_k_i = x_k_i_;
+void Particle<PoseType>::setPose( PoseType &x_k_i ){ 
+  x_k_i_ = x_k_i;
 }
 
 template< class PoseType >
 void Particle<PoseType>::getPose( PoseType &x_k_i ){
-  x_k_i_ = x_k_i;
+  x_k_i = x_k_i_;
 }
 
 template< class PoseType >
@@ -101,14 +133,38 @@ const PoseType* Particle<PoseType>::getPose(){
 }
 
 template< class PoseType >
-void Particle<PoseType>::setWeight( double w ){
+void Particle<PoseType>::setWeight( double w ){ 
   w_ = w;
 }
 
 template< class PoseType >
-double Particle<PoseType>::getWeight(){
-  return w_;
+double Particle<PoseType>::getWeight(){ 
+  return w_; 
 }
 
+template< class PoseType >
+unsigned int Particle<PoseType>::getId(){ 
+  return id_; 
+}
+
+template< class PoseType >
+unsigned int Particle<PoseType>::getParentId(){ 
+  return idParent_; 
+} 
+
+template< class PoseType >
+void Particle<PoseType>::setId( unsigned int id ){
+  id_ = id;
+}
+
+template< class PoseType >
+void Particle<PoseType>::setParentId( unsigned int id ){
+  idParent_ = id;
+}
+
+template< class PoseType >
+void Particle<PoseType>::copyStateTo(Particle<PoseType>* p){
+  p->x_k_i_ = x_k_i_;
+}
 
 #endif
