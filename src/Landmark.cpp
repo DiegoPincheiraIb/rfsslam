@@ -4,16 +4,12 @@
 
 
 
-
 /********** Implementation of example 1d vehicle pose state **********/
-Landmark1d::Landmark1d(){}
+Landmark1d::Landmark1d(){
+set(0,0);
+}
 
 Landmark1d::~Landmark1d(){}
-
-
-
-
-
 
 
 
@@ -21,20 +17,20 @@ Landmark1d::~Landmark1d(){}
 
 
 Landmark2d::Landmark2d(){
-Eigen::Vector3d x;
-x<<0,0,0;
-Eigen::Matrix3d Sx;
-Sx << 1,0,0,
-     0,1,0,
-     0,0,1;
+Eigen::Vector2d x;
+x<<0,0;
+Eigen::Matrix2d Sx;
+Sx << 1,0,
+     0,1;
 set(x,Sx);
 
 }
 
 Landmark2d::~Landmark2d(){}
 
-Landmark2d::Landmark2d(Eigen::Vector3d x,Eigen::Matrix3d Sx){
-set(x,Sx);
-}
+
+
+
+
 
 
