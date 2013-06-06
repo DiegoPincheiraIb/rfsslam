@@ -24,6 +24,12 @@ INCLUDE_DIRECTORIES(${Eigen_INCLUDE_DIRS})
 
 ADD_LIBRARY(Pose src/Pose.cpp)
 ADD_LIBRARY(ProcessModel src/ProcessModel.cpp)
+ADD_LIBRARY(Landmark src/Landmark.cpp)
+ADD_LIBRARY(Measurement src/Measurement.cpp)
+ADD_LIBRARY(MeasurementModel src/MeasurementModel.cpp)
+
+
+
 
 ADD_LIBRARY(Particle src/Particle.hpp)
 SET_TARGET_PROPERTIES(Particle PROPERTIES LINKER_LANGUAGE CXX)
@@ -34,4 +40,4 @@ SET_TARGET_PROPERTIES(ParticleFilter PROPERTIES LINKER_LANGUAGE CXX)
 ADD_LIBRARY(BinaryTree src/BinaryTree.cpp)
 
 ADD_EXECUTABLE(test src/test.cpp)
-TARGET_LINK_LIBRARIES(test Pose Particle ProcessModel)
+TARGET_LINK_LIBRARIES(test Pose Particle ProcessModel Landmark Measurement MeasurementModel)

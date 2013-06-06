@@ -20,18 +20,40 @@ public:
   /** Default constructor */
   Landmark(){};
 
+  /** 
+   * Constructor - defined only for our convenience and non-essential
+   */
+  Landmark(StateType x, UncertaintyType Sx);
+
   /** Default destructor */
   ~Landmark(){};
 
 };
+template<class StateType, class UncertaintyType> 
+Landmark<StateType, UncertaintyType>::Landmark(StateType x,UncertaintyType Sx){
+set(x,Sx);
+}
 
 
+
+/********** Example implementation of a 1d Landmark **********/
+
+/**
+* \class Landmark1d
+* \brief 1d Landmark with no signature
+* \author Felipe Inostroza
+*/
 
 
 class Landmark1d : public Landmark<double, double>
 {
 public: 
+ /** Default constructor */
   Landmark1d();
+
+
+
+  /** Default destructor */
   ~Landmark1d();
 };
 
@@ -42,23 +64,21 @@ public:
 * \brief 2d Landmark with no signature
 * \author Felipe Inostroza
 */
-class Landmark2d : public Landmark<Eigen::Vector3d, Eigen::Matrix3d>
+class Landmark2d : public Landmark<Eigen::Vector2d, Eigen::Matrix2d>
 {
 public:
   /** Default constructor */
   Landmark2d();
-
-
-  /** 
-   * Constructor - defined only for our convenience and non-essential
-   */
-
-  Landmark2d(Eigen::Vector3d,Eigen::Matrix3d);
 
   /** Default destructor */
   ~Landmark2d();
 
   
 };
+
+
+
+
+
 
 #endif
