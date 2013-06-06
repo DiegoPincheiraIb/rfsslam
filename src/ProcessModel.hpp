@@ -5,83 +5,8 @@
 #define PROCESSMODEL_HPP
 
 #include <Eigen/Core>
+#include "Measurement.hpp"
 #include "Pose.hpp"
-
-/** 
- * \class Measurement
- * \brief An abstract class for the inputs to a process model
- * \tparam InputValType Object type representing process inputs
- * \tparam InputUncertaintyType Object type representing input uncertainties
- * \author Keith Leung
- */
-template<class InputValType, class InputUncertaintyType>
-class Measurement
-{
-public:
-
-  /** Default constructor */
-  Measurement(){ t_ = 0; };
-
-  /** Default destructor */
-  ~Measurement(){};
-
-  /** 
-   * Function for setting process input values
-   * \param u input
-   * \param Su input uncertainty
-   * \param t input time
-   */
-  void set(InputValType u, InputUncertaintyType Su, double t = -1)
-  {
-    u_ = u;
-    Su_ = Su;
-    if(t >= 0)
-      t_ = t;
-  }
-
-  /** 
-   * Function for setting process input values
-   * \param u input
-   * \param t input time
-   */
-  void set(InputValType u, double t = -1)
-  {
-    u_ = u;
-    if(t >= 0)
-      t_ = t;
-  }
-
-  /** 
-   * Function for getting process input values
-   * \param u input [overwritten]
-   * \param Su input uncertainty [overwritten]
-   * \param t time of input [overwritten]
-   */
-  void get(InputValType &u, InputUncertaintyType &Su, double &t){
-    u = u_;
-    Su = Su_;
-    t = t_;
-  }
-
-  /** 
-   * Function for getting process input values
-   * \param u input [overwritten]
-   * \param t time of input [overwritten]
-   */
-  void get(InputValType &u, double &t){
-    u = u_;
-    t = t_;
-  }
-
-
-private:
-
-  double t_; /**< time of the input */
-  InputValType u_;  /**< Input */
-  InputUncertaintyType Su_; /**< Input covariance */
-
-};
-
 
 /**
  * \class ProcessModel
@@ -117,39 +42,7 @@ public:
 
 };
 
-
-
-/********** Classes for an examples 2D motion model **********/
-
-/**
- * \class Odometry2d
- * \brief A class for 2d odometry measurements for a 2d motion model
- * \author Keith Leung
- */
-class Odometry2d : public Measurement< Eigen::Vector3d, Eigen::Matrix3d >
-{
-public:
-  
-  /** Default constructor */
-  Odometry2d();
-  
-  /** 
-   * Constructor, not necessary, but defined for convenience
-   * \param dx_k_km x-displacement from frame k-1
-   * \param dy_k_km y-displacement from frame k-1
-   * \param dtheta_k_km rotational displacement from frame k-1
-   * \param vardx_k_km variance in dx_k_km
-   * \param vardy_k_km variance in dy_k_km
-   * \param vardtheta_k_km variance in dtheta_k_km
-   * \param t time of odometry reading
-   */
-  Odometry2d(double dx_k_km, double dy_k_km, double dtheta_k_km,
-	     double vardx_k_km, double vardy_k_km, double vartheta_k_km,
-	     double t);
-
-  /** Destructor */
-  ~Odometry2d();
-};
+////////// Example 2d Odometry Motion Model //////////
 
 /**
  * \class OdometryMotionModel2d

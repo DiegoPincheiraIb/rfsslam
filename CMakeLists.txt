@@ -28,12 +28,11 @@ ADD_LIBRARY(Landmark src/Landmark.cpp)
 ADD_LIBRARY(Measurement src/Measurement.cpp)
 ADD_LIBRARY(MeasurementModel src/MeasurementModel.cpp)
 
-
-
-
+# Is there a point to making this into a library since it's a template?
 ADD_LIBRARY(Particle src/Particle.hpp)
 SET_TARGET_PROPERTIES(Particle PROPERTIES LINKER_LANGUAGE CXX)
 
+# Is there a point to making this into a library since it's a template?
 ADD_LIBRARY(ParticleFilter src/ParticleFilter.hpp)
 SET_TARGET_PROPERTIES(ParticleFilter PROPERTIES LINKER_LANGUAGE CXX)
 
