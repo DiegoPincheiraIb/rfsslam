@@ -31,5 +31,7 @@ SET_TARGET_PROPERTIES(Particle PROPERTIES LINKER_LANGUAGE CXX)
 ADD_LIBRARY(ParticleFilter src/ParticleFilter.hpp)
 SET_TARGET_PROPERTIES(ParticleFilter PROPERTIES LINKER_LANGUAGE CXX)
 
+ADD_LIBRARY(BinaryTree src/BinaryTree.cpp)
+
 ADD_EXECUTABLE(test src/test.cpp)
 TARGET_LINK_LIBRARIES(test Pose Particle ProcessModel)

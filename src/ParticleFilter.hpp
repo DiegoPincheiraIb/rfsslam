@@ -18,6 +18,8 @@
  * \tparam SystemInputType container for process model input 
  * \author Keith Leung
  *
+ * \todo Function for setting measurement model
+ * \todo Function for particle weighting based on measurement likelihood
  * \todo Test this class
  */
 template< class StateType, class SystemInputType>
@@ -48,8 +50,6 @@ public:
    */
   void setProcessModel( ProcessModel<StateType, SystemInputType>* modelPtr );
 
-  /** \todo function for setting measurement model */
-
   /** 
    * Propagate particles using the process model
    * \param input to the process model
@@ -57,9 +57,6 @@ public:
    */
   void propagate( SystemInputType &input, double const dt = 0);
 
-  /** \todo function for particle weighting - requires measurement model to be completed first */
-
-  /** \todo function for resampling of particles */
 
   /** 
    * Normalize particle weights so that they sum to 1

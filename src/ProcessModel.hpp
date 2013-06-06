@@ -89,6 +89,8 @@ private:
  * \tparam StateType Object type for state 
  * \tparam InputType Object type for process input information
  * \author Keith Leung
+ *
+ * \todo Add function for predicting covariance for step function
  */
 template<class StateType, class InputType>
 class ProcessModel
