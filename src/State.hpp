@@ -78,6 +78,14 @@ public:
     Sx = Sx_;
   }
 
+  /** 
+   * Abstract function for returning the Mahalanobis distance from this object's state
+   * \param x the state to which we measure the distance to
+   * \return mahalanobis distance
+   */
+  virtual double mahalanobisDist( StateType &x) = 0;
+  
+
 protected:
 
   UncertaintyType Sx_;

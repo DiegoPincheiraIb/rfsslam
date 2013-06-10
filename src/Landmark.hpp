@@ -5,6 +5,7 @@
 #define LANDMARK_HPP
 
 #include <Eigen/Core>
+#include <Eigen/LU>
 #include "State.hpp"
 
 /** 
@@ -28,10 +29,34 @@ public:
   /** Default destructor */
   ~Landmark(){};
 
+  /** 
+   * Increase the count for objects referencing this object 
+   * \return number of references 
+   */
+  unsigned int incNRef(){ nReferences_++; }
+
+  /**  
+   * Decrease the count for objects referencing this object
+   * \return number of references
+   * */
+  unsigned int decNRef(){ nReferences_--; }
+
+  /** 
+   * Abstract function for returning the Mahalanobis distance from this object's state
+   * \param x the state to which we measure the distance to
+   * \return mahalanobis distance
+   */
+  virtual double mahalanobisDist( StateType &x) = 0;
+
+protected:
+
+  unsigned int nReferences_; /**< Number of references to this landmark */ 
+
 };
+
 template<class StateType, class UncertaintyType> 
 Landmark<StateType, UncertaintyType>::Landmark(StateType x,UncertaintyType Sx){
-set(x,Sx);
+  set(x,Sx);
 }
 
 
@@ -44,17 +69,21 @@ set(x,Sx);
 * \author Felipe Inostroza
 */
 
-
 class Landmark1d : public Landmark<double, double>
 {
 public: 
  /** Default constructor */
   Landmark1d();
 
-
-
   /** Default destructor */
   ~Landmark1d();
+
+   /** 
+   *  Overwrite the Mahalanobis distance abstract (virtual) function
+   *  \param x point to which we measure to
+   *  \return the Mahalanobis distance
+   */
+   double mahalanobisDist(double &x);
 };
 
 /********** Example implementation of a 2d Landmark **********/
@@ -73,8 +102,16 @@ public:
   /** Default destructor */
   ~Landmark2d();
 
-  
+  /** 
+   *  Overwrite the Mahalanobis distance abstract (virtual) function
+   *  \param x point to which we measure to
+   *  \return the Mahalanobis distance
+   */
+  double mahalanobisDist(Eigen::Vector2d &x);
+
 };
+
+
 
 
 

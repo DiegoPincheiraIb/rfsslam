@@ -157,16 +157,21 @@ BinaryTreeNode* BinaryTree::deleteTree( BinaryTreeNode* startNode){
     if( node->children_[0] != NULL ){ // go down branch 0
       parent = node;
       node = node->children_[0];
-      parent->removeChildren(true, false);
     }else if(node->children_[1] != NULL ){ // go down branch 1
       parent = node;
       node = node->children_[1];
-      parent->removeChildren(false, true);
     }else{ // no children, delete node
       BinaryTreeNode* node_to_delete = node;
+      
+      // udpate the parent of node_to_delete
       node = node->parent_;
+      if( node->children_[0] == node_to_delete )
+	node->removeChildren(true, false);
+      else if( node->children_[1] == node_to_delete )
+	node->removeChildren(false, true); 
+      node->updateLeafCount();
       delete node_to_delete;
-
+      
       if( node_to_delete == startNode ){ // finished
 	return node; // returns the parent of the node that we just deleted
       }

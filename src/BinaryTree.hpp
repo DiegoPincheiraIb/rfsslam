@@ -52,8 +52,9 @@ public:
   void removeChildren(bool child0 = false, bool child1 = false);
 
   /**
-   *  Get the point to the parent node
+   *  Get the pointer to the parent node
    *  \return pointer to parent or NULL if parent does not exist
+   *  \todo there can be multiple parents to a node
    */
   BinaryTreeNode* getParent();
 
@@ -110,6 +111,10 @@ public:
    *  \return parent of the deleted node, NULL if entire tree was deleted
    */
   BinaryTreeNode* deleteTree( BinaryTreeNode* startNode = NULL);
+
+  /**
+   * Replace the node 
+   */
 
 private:
 

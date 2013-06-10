@@ -1,3 +1,4 @@
+#include "GaussianMixture.hpp"
 #include "ParticleFilter.hpp"
 #include "MeasurementModel.hpp"
 #include <iostream>
@@ -7,8 +8,8 @@ int main(int argc, char* argv[]){
   
   RangeBearingModel measurementModel;
   Eigen::Matrix2d cov;
-cov << 1,0,0,3;
-measurementModel.setCov(cov);
+  cov << 1,0,0,3;
+  measurementModel.setCov(cov);
   Measurement<int, int> m;
   
   Particle<Pose2d> p;
@@ -18,6 +19,8 @@ measurementModel.setCov(cov);
   OdometryMotionModel2d motionModel;
 
   ParticleFilter<Pose2d, Odometry2d> pf(nParticles, x_0, &motionModel); 
+
+  GaussianMixture<Landmark2d> map;
 
 
   return 0;
