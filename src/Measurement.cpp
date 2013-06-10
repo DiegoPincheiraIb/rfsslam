@@ -12,6 +12,16 @@ Measurement1d::Measurement1d(double z, double Sz,double t)
 }
 Measurement1d::~Measurement1d(){}
 
+double Measurement1d::mahalanobisDist(double  &z){
+
+  double e=z-this->x_;
+  if(this->SxInvP_==NULL){
+    this->SxInv_=1/this->Sx_;
+  }
+
+  return sqrt(e*this->SxInv_*e);
+}
+
 
 /********** Implementation of example 2d measurement **********/
 
@@ -19,6 +29,17 @@ Measurement2d::Measurement2d(){}
 
 Measurement2d::~Measurement2d(){}
 
+double Measurement2d::mahalanobisDist(Eigen::Vector2d  &z){
+
+  Eigen::Vector2d e=z-this->x_;
+  if(this->SxInvP_==NULL){
+    this->SxInv_=this->Sx_.inverse();
+  }
+
+ 
+  
+  return sqrt(e.transpose()*this->SxInv_*e);
+}
 
 
 

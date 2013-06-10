@@ -9,6 +9,14 @@
 RangeBearingModel::RangeBearingModel(){}
 
 
+RangeBearingModel::RangeBearingModel(Eigen::Matrix2d covZ){
+  setCov(covZ);
+}
+
+RangeBearingModel::RangeBearingModel(double Sr, double Sb){
+  setCov(Sr,Sb);
+}
+
 RangeBearingModel::~RangeBearingModel(){}
 
 void RangeBearingModel::getCov(Eigen::Matrix2d &covZ){  
@@ -24,7 +32,7 @@ void RangeBearingModel::setCov(double Sr,double Sb){
           0 ,Sb;
 }
 
-void RangeBearingModel::predict(Pose2d  pose, Landmark2d landmark, Measurement2d &prediction){
+void RangeBearingModel::predict(Pose2d  &pose, Landmark2d &landmark, Measurement2d &prediction){
 
   Eigen::Vector3d robotPose;
   Eigen::Vector2d mean, landmarkState;
@@ -50,7 +58,7 @@ void RangeBearingModel::predict(Pose2d  pose, Landmark2d landmark, Measurement2d
 
 }
 
-void RangeBearingModel::inversePredict(Pose2d pose, Landmark2d &landmark,Measurement2d measurement){
+void RangeBearingModel::inversePredict(Pose2d &pose, Landmark2d &landmark,Measurement2d &measurement){
 
   Eigen::Vector3d poseState;
   Eigen::Vector2d measurementState,mean;
@@ -71,8 +79,8 @@ void RangeBearingModel::inversePredict(Pose2d pose, Landmark2d &landmark,Measure
 }
 
 
-double RangeBearingModel::evaluateLikelihood(Measurement2d prediction,
-					     Measurement2d measurement){
+double RangeBearingModel::evaluateLikelihood(Measurement2d &prediction,
+					     Measurement2d &measurement){
 
   Eigen::Vector2d predictionMean, measurementMean, diff;
   Eigen::Matrix2d predictionCov, measurementCov;

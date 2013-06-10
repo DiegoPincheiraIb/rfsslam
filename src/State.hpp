@@ -83,12 +83,16 @@ public:
    * \param x the state to which we measure the distance to
    * \return mahalanobis distance
    */
-  virtual double mahalanobisDist( StateType &x) = 0;
+  virtual double mahalanobisDist( StateType &x){
+    return -1;
+  };
   
 
 protected:
 
   UncertaintyType Sx_;
+  UncertaintyType SxInv_;
+  UncertaintyType *SxInvP_=NULL;
 
 };
 

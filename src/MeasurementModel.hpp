@@ -36,7 +36,7 @@ public:
    * \param landmark landmark wich will be used for predicting the measurement
    * \param prediction predicted measurement [overwritten]
    */
-  virtual void predict( PoseType pose, LandmarkType landmark, 
+  virtual void predict( PoseType &pose, LandmarkType &landmark, 
 			MeasurementType &prediction)=0;
 
  /** 
@@ -47,8 +47,8 @@ public:
    * \param landmark predicted landmark location [overwritten]
    * \param measurement measurement
    */
-  virtual void inversePredict(PoseType pose, LandmarkType &landmark,
-			      MeasurementType measurement)=0;
+  virtual void inversePredict(PoseType &pose, LandmarkType &landmark,
+			      MeasurementType &measurement)=0;
 
  /** 
    * Abstract function evaluating the likelihood of a measurement 
@@ -57,8 +57,9 @@ public:
    * \param prediction Measurement prediction, can be calculated using the predict function 
    * \param measurement measurement
    */
-  virtual double evaluateLikelihood(MeasurementType prediction,
-				    MeasurementType measurement)=0;
+  virtual double evaluateLikelihood(MeasurementType &prediction,
+				    MeasurementType &measurement)=0;  
+
 
 };
 
@@ -81,6 +82,19 @@ public:
  /** Default constructor */
   RangeBearingModel();
 
+ /**
+  * Constructor that sets the uncertainty (covariance) of the measurement model
+  * \param covZ measurement covariance
+  */
+  RangeBearingModel(Eigen::Matrix2d covZ);
+
+ /**
+  * Constructor that sets the uncertainty (covariance) of the measurement model, 
+  * range and bearing are assumed to be uncorrelated
+  * \param Sr Range variance
+  * \param Sb Bearing variance
+  */
+  RangeBearingModel(double Sr, double Sb);
 
  /** Default destructor */
   ~RangeBearingModel();
@@ -92,7 +106,7 @@ public:
   void setCov(Eigen::Matrix2d covZ);
 
  /**
-  * Sets the uncertainty covariance of the measurement model, 
+  * Sets the uncertainty (covariance) of the measurement model, 
   * range and bearing are assumed to be uncorrelated
   * \param Sr Range variance
   * \param Sb Bearing variance
@@ -111,7 +125,7 @@ public:
    * \param landmark landmark wich will be used for predicting the measurement
    * \param prediction predicted measurement [overwritten]
    */
-  void predict(Pose2d pose, Landmark2d landmark, Measurement2d &prediction);
+  void predict(Pose2d &pose, Landmark2d &landmark, Measurement2d &prediction);
 
   /** 
    * Function for applying the inverse measurement model 
@@ -119,14 +133,16 @@ public:
    * \param landmark predicted landmark location [overwritten]
    * \param measurement measurement
    */
-  void inversePredict(Pose2d pose, Landmark2d &landmark, Measurement2d measurement);
+  void inversePredict(Pose2d &pose, Landmark2d &landmark, Measurement2d &measurement);
   
   /** 
-   * Function evaluating the likelihood of a measruement 
+   * Function for evaluating the likelihood of a measruement 
    * \param prediction Measurement prediction, can be calculated using the predict function 
    * \param measurement measurement
    */
-  double evaluateLikelihood(Measurement2d prediction, Measurement2d measurement);
+  double evaluateLikelihood(Measurement2d &prediction, Measurement2d &measurement);
+
+
 
 private:
 

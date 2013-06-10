@@ -4,7 +4,11 @@
 #ifndef MEASUREMENT_HPP
 #define MEASUREMENT_HPP
 
+
+#include <Eigen/LU>
 #include <Eigen/Core>
+#include <math.h>
+#include "State.hpp"
 
 /** 
  * \class Measurement
@@ -15,29 +19,27 @@
  *
  */
 template<class MeasurementValType, class MeasurementUncertaintyType>
-class Measurement
+class Measurement : public StateWithUncertainty<MeasurementValType,MeasurementUncertaintyType>
 {
 public:
 
   /** Default constructor 
-   *  \note Should t_ default to 0 or -1? Theoretically we can have a measurement at 0? 
+   *  
    */
-  Measurement(){ t_ = 0; }
+  Measurement(){ t_ = -1; }
 
   /** 
    * Constructor
-   * \todo add paramter list to comments
-   * \todo if t < 0, it first gets set to 0, and then back to original value. Why?
+   * \param z - measurement
+   * \param Sz - measurement uncertainty
+   * \param t - time at wich the measurement was taken, negative  times indicate absence of time information. 
    */
   Measurement(MeasurementValType z, MeasurementUncertaintyType Sz, double t=-1)
   {
-    if(t >= 0)
-      t_ = t;
-    else
-      t_ = 0;
+   
     t_=t;
-    z_=z;
-    Sz_=Sz;
+    this->x_=z;
+    this->Sx_=Sz;
   }
 
   /** Default destructor */
@@ -47,55 +49,62 @@ public:
    * Function for setting measurement values
    * \param z - measurement
    * \param Sz - measurement uncertainty
-   * \param t - time at wich the measurement was taken, negative or zero times indicate absence of time information.
+   * \param t - time at wich the measurement was taken, negative  times indicate absence of time information.
    */
   void set(MeasurementValType z, MeasurementUncertaintyType Sz, double t = -1)
   {
-    z_ = z;
-    Sz_ = Sz;
+    this->x_ = z;
+    this->Sx_ = Sz;
     t_ = t;
   }
 
   /** 
    * Function for setting measurement values
    * \param z - measurement
-   * \param t - time at wich the measurement was taken, negative or zero times indicate absence of time imformation.
+   * \param t - time at wich the measurement was taken, negative  times indicate absence of time imformation.
    */
-  void set(MeasurementValType u, double t = -1)
+  void set(MeasurementValType z, double t = -1)
   {
-    z_ = u;
+    this->x_ = z;
     t_ = t;
   }
 
   /** 
    * Function for getting measurement values
-   * \param z - measurement
-   * \param Sz - measurement uncertainty
+   * \param z - measurement [overwritten]
+   * \param Sz - measurement uncertainty [overwritten]
    * \param t - time at wich the measurement was taken, 
-   *            negative or zero times indicate absence of time imformation.
+   *            negative times indicate absence of time imformation. [overwritten]
    */
   void get(MeasurementValType &z, MeasurementUncertaintyType &Sz, double &t){
-    z = z_;
-    Sz = Sz_;
+    z = this->x_;
+    Sz = this->Sx_;
     t = t_;
   }
 
   /** 
-   * Function for getting process input values
-   * \param u input [overwritten]
-   * \param t time of input [overwritten]
+   * Function for getting the value of the measurement
+   * \param z measurement [overwritten]
+   * \param t timestamp of the measurement, negative times indicate absence of time imformation.[overwritten]
    */
-  void get(MeasurementValType &u, double &t){
-    u = z_;
+  void get(MeasurementValType &z, double &t){
+    z = this->x_;
     t = t_;
   }
 
+  /** 
+   * Abstract function for returning the Mahalanobis distance from this measurement
+   * \param z the measurement to which we measure the distance to
+   * \return mahalanobis distance
+   */
+  virtual double mahalanobisDist( MeasurementValType &z){
+    return -1;
+  };
 
-private:
 
-  double t_; /**< time of the input */
-  MeasurementValType z_;  /**< Input */
-  MeasurementUncertaintyType Sz_; /**< Input covariance */
+protected:
+
+  double t_; /**< Timestamp for the measurement, negative values indicate absence of time information.*/
 
 };
 
@@ -124,6 +133,12 @@ public:
   /** Default destructor */
   ~Measurement1d();
 
+  /** 
+   * Function for returning the Mahalanobis distance from this measurement
+   * \param z the measurement to which we measure the distance to
+   * \return mahalanobis distance
+   */
+  double mahalanobisDist( double &z);
 };
 
 
@@ -145,6 +160,12 @@ public:
   /** Default destructor */
   ~Measurement2d();
 
+  /** 
+   * Function for returning the Mahalanobis distance from this measurement
+   * \param z the measurement to which we measure the distance to
+   * \return mahalanobis distance
+   */
+  double mahalanobisDist(Eigen::Vector2d  &z);
 };
 
 
