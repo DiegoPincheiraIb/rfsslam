@@ -36,7 +36,7 @@ public:
 
 protected:
 
-  StateType x_;
+  StateType x_; /**< State */
 
 };
 
@@ -53,7 +53,9 @@ class StateWithUncertainty : public State<StateType>
 public:
 
   /** Default constructor */
-  StateWithUncertainty(){};
+  StateWithUncertainty(){
+    pSxInv_ = NULL;
+  };
 
   /** Default destructor */
   ~StateWithUncertainty(){};
@@ -90,9 +92,9 @@ public:
 
 protected:
 
-  UncertaintyType Sx_;
-  UncertaintyType SxInv_;
-  UncertaintyType *SxInvP_=NULL;
+  UncertaintyType Sx_; /**< Covariance */
+  UncertaintyType SxInv_; /**< Inverse covariance */
+  UncertaintyType *pSxInv_; /**< Pointer to inverse covariance */
 
 };
 
