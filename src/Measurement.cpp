@@ -1,6 +1,6 @@
 #include "Measurement.hpp"
 
-
+#define PI 3.14159265359
 
 /********** Implementation of example 1d measurement **********/
 
@@ -22,6 +22,16 @@ double Measurement1d::mahalanobisDist(double &z){
   return sqrt(e*this->SxInv_*e);
 }
 
+double Measurement1d::evaluateLikelihood(double &z){
+
+  double e = z-this->x_;
+  if( this->pSxInv_ == NULL ){
+    this->SxInv_= 1 / this->Sx_;
+  }
+  
+  return exp(-0.5*e*this->SxInv_*e)/(sqrt(2*PI*Sx_));
+
+}
 
 /********** Implementation of example 2d measurement **********/
 
@@ -39,6 +49,16 @@ double Measurement2d::mahalanobisDist(Eigen::Vector2d &z){
   return sqrt(e.transpose() * this->SxInv_ * e);
 }
 
+double Measurement2d::evaluateLikelihood(Eigen::Vector2d &z){
+  double mahalanobis_squared;
+  Eigen::Vector2d e = z-this->x_;
+  if(this->pSxInv_ == NULL){
+    this->SxInv_ = this->Sx_.inverse();
+  }
+  mahalanobis_squared = e.transpose() * this->SxInv_ * e;
+  return exp(-0.5*mahalanobis_squared)/(2*PI*sqrt(Sx_.determinant()));
+
+}
 
 
 

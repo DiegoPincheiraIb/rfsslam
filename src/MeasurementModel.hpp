@@ -50,15 +50,8 @@ public:
   virtual void inversePredict(PoseType &pose, LandmarkType &landmark,
 			      MeasurementType &measurement)=0;
 
- /** 
-   * Abstract function evaluating the likelihood of a measurement 
-   * 
-   * This must be implemented in a derived class
-   * \param prediction Measurement prediction, can be calculated using the predict function 
-   * \param measurement measurement
-   */
-  virtual double evaluateLikelihood(MeasurementType &prediction,
-				    MeasurementType &measurement)=0;  
+
+
 
 
 };
@@ -72,7 +65,7 @@ public:
  * (The noise is considered to be gaussian in the range and bearing space)
  * \author Felipe Inostroza
  *
- * \todo Should there be a constructor where we can set covZ?
+ * 
  */
                                                                
 class RangeBearingModel : MeasurementModel <Pose2d, Landmark2d, Measurement2d>{
@@ -135,12 +128,7 @@ public:
    */
   void inversePredict(Pose2d &pose, Landmark2d &landmark, Measurement2d &measurement);
   
-  /** 
-   * Function for evaluating the likelihood of a measruement 
-   * \param prediction Measurement prediction, can be calculated using the predict function 
-   * \param measurement measurement
-   */
-  double evaluateLikelihood(Measurement2d &prediction, Measurement2d &measurement);
+
 
 
 

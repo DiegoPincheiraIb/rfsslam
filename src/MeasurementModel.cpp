@@ -79,20 +79,7 @@ void RangeBearingModel::inversePredict(Pose2d &pose, Landmark2d &landmark,Measur
 }
 
 
-double RangeBearingModel::evaluateLikelihood(Measurement2d &prediction,
-					     Measurement2d &measurement){
 
-  Eigen::Vector2d predictionMean, measurementMean, diff;
-  Eigen::Matrix2d predictionCov, measurementCov;
-  double t1, t2, det, mahalanobis;
-
-  prediction.get(predictionMean, predictionCov, t1);
-  measurement.get(measurementMean, measurementCov,t2);
-  diff = measurementMean - predictionMean;
-  det = predictionCov.determinant();
-  mahalanobis = diff.transpose() * predictionCov.inverse() * diff;
-  return exp( -0.5 * mahalanobis ) / ( 2 * PI * sqrt(det) );
-}
 
 
 
