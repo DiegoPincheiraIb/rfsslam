@@ -102,6 +102,34 @@ public:
   };
 
 
+  /** 
+   * Function for returning the Mahalanobis distance from this measurement
+   * \param z the measurement to which we measure the distance to
+   * \return mahalanobis distance
+   */
+  double mahalanobisDist(Measurement &z){
+    return mahalanobisDist(z.x_);
+  };
+
+  /** 
+   * Abstract function for returning the likelihood of a measurement
+   * \param z the measurement whose likelihood will be evaluated
+   * \return likelihood
+   */
+  virtual double evaluateLikelihood(MeasurementValType &z){
+    return -1;
+  };
+
+  /** 
+   * Function for returning the likelihood of a measurement
+   * \param z the measurement whose likelihood will be evaluated
+   * \return likelihood
+   */
+  double evaluateLikelihood(Measurement &z){
+    return  evaluateLikelihood(z.x_);
+  };
+
+
 protected:
 
   double t_; /**< Timestamp for the measurement, negative values indicate absence of time information.*/
@@ -139,6 +167,13 @@ public:
    * \return mahalanobis distance
    */
   double mahalanobisDist( double &z);
+
+  /** 
+   * Function for returning the likelihood of a measurement
+   * \param z the measurement whose likelihood will be evaluated
+   * \return likelihood
+   */
+  double evaluateLikelihood(double &z);
 };
 
 
@@ -166,6 +201,13 @@ public:
    * \return mahalanobis distance
    */
   double mahalanobisDist(Eigen::Vector2d  &z);
+
+  /** 
+   * Function for returning the likelihood of a measurement
+   * \param z the measurement whose likelihood will be evaluated
+   * \return likelihood
+   */
+  double evaluateLikelihood(Eigen::Vector2d &z);
 };
 
 
