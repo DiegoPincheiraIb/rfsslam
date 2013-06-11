@@ -21,6 +21,9 @@ template<class PoseType, class LandmarkType, class MeasurementType>
 class MeasurementModel
 {
 public:
+
+  typedef LandmarkType tLandmark;
+  typedef MeasurementType tMeasurement;
   
   /** Default constructor */
   MeasurementModel(){};
@@ -68,7 +71,7 @@ public:
  * 
  */
                                                                
-class RangeBearingModel : MeasurementModel <Pose2d, Landmark2d, Measurement2d>{
+class RangeBearingModel : public MeasurementModel <Pose2d, Landmark2d, Measurement2d>{
 
 public:
 

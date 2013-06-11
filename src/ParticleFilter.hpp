@@ -9,6 +9,7 @@
 #include <limits> // for random number generation
 #include "Particle.hpp"
 #include "ProcessModel.hpp"
+#include "MeasurementModel.hpp"
 #include <vector>
 
 /** 
@@ -17,9 +18,6 @@
  * \tparam StateType container for the state that the filter updates
  * \tparam SystemInputType container for process model input 
  * \author Keith Leung
- *
- * \todo Function for setting measurement model
- * \todo Function for particle weighting based on measurement likelihood
  * \todo Test this class
  */
 template< class ProcessModel, class MeasurementModel>
@@ -29,6 +27,7 @@ public:
 
   typedef typename ProcessModel::tState StateType;
   typedef typename ProcessModel::tInput InputType;
+  typedef typename MeasurementModel::tMeasurement MeasureType;
   typedef Particle<StateType>* pParticle;
 
   /** Defailt constructor */
@@ -60,6 +59,13 @@ public:
    * \param model pointer to measurement model
    */
   void setMeasurementModel( MeasurementModel* modelPtr );
+
+  /** 
+   * Set the measurements for use in importance weight calculations
+   * \note The input vector gets cleared
+   * \param Z vector container of measurements
+   */
+  void setMeasurements(std::vector<MeasureType> &Z);
 
   /** 
    * Propagate particles using the process model
@@ -99,6 +105,8 @@ protected:
   MeasurementModel* pMeasurementModel_; /**< Measurement model pointer */
   
   double effNParticles_t_; /**< Effective particle count threshold for resampling */
+
+  std::vector<MeasureType> measurements_; /** Container for measurements to use for update of particle weight and map
 
   /** 
    * Normalize particle weights so that they sum to 1
@@ -150,6 +158,12 @@ void ParticleFilter<ProcessModel, MeasurementModel>::setProcessModel( ProcessMod
 template< class ProcessModel, class MeasurementModel>
 void ParticleFilter<ProcessModel, MeasurementModel>::setMeasurementModel( MeasurementModel* modelPtr ){
   pMeasurementModel_ = modelPtr;
+}
+
+template< class ProcessModel, class MeasurementModel>
+void ParticleFilter<ProcessModel, MeasurementModel>::setMeasurements(std::vector<MeasureType> &Z){
+  measurements_.swap(Z);
+  Z.clear();
 }
 
 
