@@ -22,13 +22,16 @@
  * \todo Function for particle weighting based on measurement likelihood
  * \todo Test this class
  */
-template< class StateType, class SystemInputType>
+template< class ProcessModel, class MeasurementModel>
 class ParticleFilter
 {
 public:
 
+  typedef typename ProcessModel::tState StateType;
+  typedef typename ProcessModel::tInput InputType;
   typedef Particle<StateType>* pParticle;
-  
+
+  /** Defailt constructor */
   ParticleFilter(){};
 
   /** 
@@ -36,10 +39,12 @@ public:
    * \param n number of particles
    * \param initState initial state of particles
    * \param processModelPtr pointer to process model
+   * \param measurementModelPtr pointer to measurement model
    */ 
   ParticleFilter(int n, 
 		 StateType &initState,
-		 ProcessModel<StateType, SystemInputType>* processModelPtr);
+		 ProcessModel* processModelPtr,
+		 MeasurementModel* measurementModelPtr);
 
   /** Default destructor */
   ~ParticleFilter();
@@ -48,27 +53,41 @@ public:
    * Set the process model to use for particle propagation
    * \param model pointer to process model
    */
-  void setProcessModel( ProcessModel<StateType, SystemInputType>* modelPtr );
+  void setProcessModel( ProcessModel* modelPtr );
+
+  /** 
+   * Set the measurement model to use for particle weighting
+   * \param model pointer to measurement model
+   */
+  void setMeasurementModel( MeasurementModel* modelPtr );
 
   /** 
    * Propagate particles using the process model
    * \param input to the process model
    * \double dT time-step of input (not used by all process models)
    */
-  void propagate( SystemInputType &input, double const dt = 0);
+  void propagate( InputType &input, double const dt = 0);
 
+  /**
+   * Calculate and update importance weights for all particles;
+   * Derived class needs to implement this method
+   */
+  virtual void importanceWeighting();
 
   /** 
-   * Normalize particle weights so that they sum to 1
+   * Set the effective particle count below which we resample
+   * \param t threshold
    */
-  void normalizeWeights();
+  void setEffectiveParticleCountThreshold(double t);
 
   /**
    * Particling resampling using a low variance sampling
+   * Sampling will notoccur if number of effective particles is above effNParticles_t_.
    * \param n number of particles in the resampled set.
    *        The default value of 0 will keep the same number of particles 
+   * \return true if resampling occured
    */
-  void resample( unsigned int n = 0);
+  bool resample( unsigned int n = 0 );
   
 
 protected:
@@ -76,17 +95,26 @@ protected:
   int nParticles_; /**< number of particles */
   std::vector< pParticle > particleSet_; /**< container for particle pointers */
 
-  ProcessModel<StateType, SystemInputType>* pProcessModel_;
+  ProcessModel* pProcessModel_; /**< Process model pointer */
+  MeasurementModel* pMeasurementModel_; /**< Measurement model pointer */
+  
+  double effNParticles_t_; /**< Effective particle count threshold for resampling */
 
-private:
+  /** 
+   * Normalize particle weights so that they sum to 1
+   */
+  void normalizeWeights();
+
 };
 
 ////////// Implementation //////////
 
-template< class StateType, class SystemInputType >
-ParticleFilter<StateType, SystemInputType>::ParticleFilter(int n, 
-					  StateType &initState,
-					  ProcessModel<StateType, SystemInputType>* processModelPtr){
+template< class ProcessModel, class MeasurementModel>
+ParticleFilter<ProcessModel, MeasurementModel>::
+ParticleFilter(int n, 
+	       StateType &initState,
+	       ProcessModel* processModelPtr,
+	       MeasurementModel* measurementModelPtr){
   
   // initiate particles
   nParticles_ = n;
@@ -96,8 +124,10 @@ ParticleFilter<StateType, SystemInputType>::ParticleFilter(int n,
     particleSet_[i] = new Particle<StateType>(n, initState, newParticleWeight);
   }
   
-  // set prcoess model
   setProcessModel( processModelPtr );
+  setMeasurementModel ( measurementModelPtr );
+
+  effNParticles_t_ = double(nParticles_)/4.0; // default is 1/4 of n
 
   // set random seed for particle resampling
   srand((unsigned int)time(NULL));
@@ -105,33 +135,43 @@ ParticleFilter<StateType, SystemInputType>::ParticleFilter(int n,
 }
 
 
-template< class StateType, class SystemInputType >
-ParticleFilter<StateType, SystemInputType>::~ParticleFilter(){
+template< class ProcessModel, class MeasurementModel>
+ParticleFilter<ProcessModel, MeasurementModel>::~ParticleFilter(){
    for( int i = 0 ; i < nParticles_ ; i++ ){
      delete particleSet_[i];
    }
 }
 
-template< class StateType, class SystemInputType >
-void ParticleFilter<StateType, SystemInputType>::setProcessModel( ProcessModel<StateType, SystemInputType>* modelPtr ){
+template< class ProcessModel, class MeasurementModel>
+void ParticleFilter<ProcessModel, MeasurementModel>::setProcessModel( ProcessModel* modelPtr ){
   pProcessModel_ = modelPtr;
 }
 
+template< class ProcessModel, class MeasurementModel>
+void ParticleFilter<ProcessModel, MeasurementModel>::setMeasurementModel( MeasurementModel* modelPtr ){
+  pMeasurementModel_ = modelPtr;
+}
 
-template< class StateType, class SystemInputType >
-void ParticleFilter<StateType, SystemInputType>::propagate( SystemInputType &input, 
-					   double const dt){
+
+template< class ProcessModel, class MeasurementModel>
+void ParticleFilter<ProcessModel, MeasurementModel>::propagate( InputType &input, 
+								double const dt){
    
   for( int i = 0 ; i < nParticles_ ; i++ ){
     StateType x_km, x_k;
     particleSet_[i]->getPose( x_km );
-      pProcessModel_->step( x_k, x_km, input, dt);
+    pProcessModel_->step( x_k, x_km, input, dt);
     particleSet_[i]->setPose( x_k );
   } 
 }
 
-template< class StateType, class SystemInputType >
-void ParticleFilter<StateType, SystemInputType>::normalizeWeights(){
+template< class ProcessModel, class MeasurementModel>
+void ParticleFilter<ProcessModel, MeasurementModel>::importanceWeighting(){
+  return;
+}
+
+template< class ProcessModel, class MeasurementModel>
+void ParticleFilter<ProcessModel, MeasurementModel>::normalizeWeights(){
   
   double sum = 0;
   for( int i = 0; i < nParticles_; i++ ){
@@ -143,8 +183,26 @@ void ParticleFilter<StateType, SystemInputType>::normalizeWeights(){
 
 }
 
-template< class StateType, class SystemInputType >
-void ParticleFilter<StateType, SystemInputType>::resample( unsigned int n ){
+template< class ProcessModel, class MeasurementModel>
+void ParticleFilter<ProcessModel, MeasurementModel>::
+setEffectiveParticleCountThreshold(double t){
+  effNParticles_t_ = t;
+}
+
+template< class ProcessModel, class MeasurementModel>
+bool ParticleFilter<ProcessModel, MeasurementModel>::resample( unsigned int n ){
+
+  // Check effective number of particles
+  double sum_of_weight_squared = 0;
+  normalizeWeights(); // sum of all particle weights is now 1
+  for( int i = 0; i < nParticles_; i++ ){
+    double w_i = particleSet_[i]->getWeight();
+    sum_of_weight_squared += w_i * w_i; // and divide by 1
+  }
+  double nEffParticles_ = 1.0 / sum_of_weight_squared;
+  if( nEffParticles_ > effNParticles_t_ ){
+    return false;
+  }
 
   if( n == 0 )
     n = nParticles_; // number of particles to sample
@@ -220,6 +278,8 @@ void ParticleFilter<StateType, SystemInputType>::resample( unsigned int n ){
     particleSet_[i]->setWeight(1);
   }
   
+  return true;
+
 }
 
 

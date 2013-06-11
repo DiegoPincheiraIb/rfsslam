@@ -22,6 +22,9 @@ class ProcessModel
 {
 public:
 
+  typedef StateType tState;
+  typedef InputType tInput;
+
   /** Default constructor */
   ProcessModel(){};
 

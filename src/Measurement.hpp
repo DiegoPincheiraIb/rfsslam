@@ -23,8 +23,8 @@ class Measurement : public StateWithUncertainty<MeasurementValType,MeasurementUn
 {
 public:
 
-  /** Default constructor 
-   *  
+  /** 
+   * Default constructor   
    */
   Measurement(){ t_ = -1; }
 
@@ -199,6 +199,8 @@ public:
    * Function for returning the Mahalanobis distance from this measurement
    * \param z the measurement to which we measure the distance to
    * \return mahalanobis distance
+   *
+   * \todo include option for enforcing measurement range limit
    */
   double mahalanobisDist(Eigen::Vector2d  &z);
 
