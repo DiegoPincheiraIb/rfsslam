@@ -10,6 +10,13 @@ FILE(MAKE_DIRECTORY "lib")
 
 FIND_PACKAGE(Eigen REQUIRED)
 
+# Change the following include directories depending on where gtest is installed
+# If using Ubuntu apt-get to install, after compiling (this has to be done manually), 
+# move libgtest_main.a and libgtest.a to /usr/lib
+enable_testing()
+find_package(GTest REQUIRED)
+include_directories(${GTEST_INCLUDE_DIRS})
+
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 MESSAGE("CMAKE_RUNTIME_OUTPUT_DIRECTORY = " ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
@@ -42,5 +49,10 @@ SET_TARGET_PROPERTIES(GaussianMixture PROPERTIES LINKER_LANGUAGE CXX)
 
 ADD_LIBRARY(BinaryTree src/BinaryTree.cpp)
 
-ADD_EXECUTABLE(test src/test.cpp)
-TARGET_LINK_LIBRARIES(test Pose Particle ProcessModel Landmark Measurement MeasurementModel GaussianMixture)
+ADD_EXECUTABLE(sandbox src/test.cpp)
+TARGET_LINK_LIBRARIES(sandbox Pose Particle ProcessModel Landmark Measurement MeasurementModel GaussianMixture)
+
+ADD_EXECUTABLE(unitTest test/test.cpp)
+#TARGET_LINK_LIBRARIES(unitTest gtest gtest_main)
+TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} pthread)
+ADD_TEST(unitTest unitTest)
