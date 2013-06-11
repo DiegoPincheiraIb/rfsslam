@@ -38,8 +38,14 @@ public:
   /**  
    * Decrease the count for objects referencing this object
    * \return number of references
-   * */
+   */
   unsigned int decNRef(){ nReferences_--; }
+
+  /**
+   * Get the count of objects referencing this object
+   * \return number of references
+   */
+  unsigned int getNRef(){ return nReferences_; }
 
   /** 
    * Abstract function for returning the Mahalanobis distance from this object's state

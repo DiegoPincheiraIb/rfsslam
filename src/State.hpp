@@ -16,6 +16,8 @@ class State
 
 public:
 
+  typedef StateType tState;
+
   /** Default constructor */
   State(){}
 
@@ -51,6 +53,8 @@ class StateWithUncertainty : public State<StateType>
 {
 
 public:
+
+  typedef UncertaintyType tUncertainty;
 
   /** Default constructor */
   StateWithUncertainty(){
