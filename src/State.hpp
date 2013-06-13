@@ -4,6 +4,10 @@
 #ifndef STATE_HPP
 #define STATE_HPP
 
+#include <math.h>
+
+#define PI acos(-1)
+
 /**
  * \class State
  * \brief An abstract base class for defining a state
@@ -19,7 +23,10 @@ public:
   typedef StateType tState;
 
   /** Default constructor */
-  State(){}
+  State(unsigned int nDim = 0)
+    : nDim_(nDim){
+    /** \todo Assert error here that nDim <= 0 */
+  }
 
   /** Default destructor */
   ~State(){}
@@ -36,9 +43,16 @@ public:
    */
   void get( StateType &x ){x = x_;}
 
+  /** 
+   * Get the number of dimensions
+   * \return number of dimensions
+   */ 
+  unsigned int getNDim(){ return nDim_; }
+
 protected:
 
   StateType x_; /**< State */
+  unsigned int nDim_; /**< Number of dimensions */
 
 };
 
@@ -57,7 +71,7 @@ public:
   typedef UncertaintyType tUncertainty;
 
   /** Default constructor */
-  StateWithUncertainty(){
+  StateWithUncertainty(unsigned int nDim = 0) : State<StateType>( nDim ){
     pSxInv_ = NULL;
   };
 
@@ -72,6 +86,9 @@ public:
   void set( StateType x, UncertaintyType Sx){
     this->x_ = x;
     Sx_ = Sx;
+    SxInv_ = Sx_.inverse();
+    pSxInv_ = &SxInv_;
+    Sx_det_ = Sx.determinant();
   }
   
   /** 
@@ -90,9 +107,15 @@ public:
    * \param x the state to which we measure the distance to
    * \return mahalanobis distance squared
    */
-  virtual double mahalanobisDist2( StateType &x){
-    return -1;
-  };
+  double mahalanobisDist2( StateType &x){
+    
+    StateType e = this->x_ - x;
+    if(pSxInv_ == NULL){
+      SxInv_ = Sx_.inverse();
+      pSxInv_ = &SxInv_;
+    }
+    return (e.transpose() * SxInv_ * e);
+  }
 
   /**
    * Function for returning the Mahalanobis distance from this object's state
@@ -112,8 +135,31 @@ public:
    * \param x object containing the state to which we measure the distance to
    * \return mahalanobis distance
    */
-  double mahalanobisDist( StateWithUncertainty<StateType, UncertaintyType>  &x ){    
-    return mahalanobisDist( x.x_ );
+  double mahalanobisDist( State<StateType> &x ){   
+    StateType s;
+    x.get(s);
+    return mahalanobisDist( s );
+  }
+
+  /** 
+   * Evaluate the Gaussian likelihood of a state
+   * \param x the state at which the likelihood will be evaluated
+   * \return likelihood
+   */
+  double evalGaussianLikelihood( StateType x ){
+    double md2 = mahalanobisDist2( x );
+    return ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, this->nDim_) * Sx_det_ )  );
+  }
+
+  /** 
+   * Evaluate the Gaussian likelihood of a state
+   * \param x the state at which the likelihood will be evaluated
+   * \return likelihood
+   */
+  double evalGaussianLikelihood( State<StateType> x ){ 
+    StateType s;
+    x.get(s);
+    return evalGaussianLikelihood( s );
   }
   
 
@@ -122,6 +168,7 @@ protected:
   UncertaintyType Sx_; /**< Covariance */
   UncertaintyType SxInv_; /**< Inverse covariance */
   UncertaintyType *pSxInv_; /**< Pointer to inverse covariance */
+  double Sx_det_; /** Determinant of Sx_ */
 
 };
 

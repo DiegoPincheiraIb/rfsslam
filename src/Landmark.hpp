@@ -18,13 +18,23 @@ class Landmark : public StateWithUncertainty<StateType, UncertaintyType>
 {
 public:
 
-  /** Default constructor */
-  Landmark(){ nReferences_ = 0; }
+  /** Constructor
+   *  \param nDim number of dimensions in landmark state
+   */
+  Landmark(unsigned int nDim = 0) 
+    : StateWithUncertainty<StateType, UncertaintyType>(nDim){ 
+    nReferences_ = 0; 
+  }
 
   /** 
    * Constructor - defined only for our convenience and non-essential
+   *  \param nDim number of dimensions in landmark state
    */
-  Landmark(StateType x, UncertaintyType Sx);
+  Landmark(unsigned int nDim, StateType x, UncertaintyType Sx)
+    : StateWithUncertainty<StateType, UncertaintyType>(nDim){
+    set(x, Sx);
+    nReferences_ = 0;
+  }
 
   /** Default destructor */
   ~Landmark(){};
@@ -47,26 +57,12 @@ public:
    */
   unsigned int getNRef(){ return nReferences_; }
 
-  /** 
-   * Abstract function for calculating the squared Mahalanobis distance from 
-   * this object's state
-   * \param x the state to which we measure the distance to
-   * \return mahalanobis distance
-   */
-  virtual double mahalanobisDist2( StateType &x) = 0;
 
 protected:
 
   unsigned int nReferences_; /**< Number of references to this landmark */ 
 
 };
-
-template<class StateType, class UncertaintyType> 
-Landmark<StateType, UncertaintyType>::Landmark(StateType x,UncertaintyType Sx){
-  set(x, Sx);
-  nReferences_ = 0;
-}
-
 
 
 /********** Example implementation of a 1d Landmark **********/
@@ -77,21 +73,17 @@ Landmark<StateType, UncertaintyType>::Landmark(StateType x,UncertaintyType Sx){
 * \author Felipe Inostroza
 */
 
-class Landmark1d : public Landmark<double, double>
+class Landmark1d 
+  : public Landmark< Eigen::Matrix<double, 1, 1>,
+		     Eigen::Matrix<double, 1, 1> >
 {
 public: 
- /** Default constructor */
+  /** Default constructor */
   Landmark1d();
 
   /** Default destructor */
   ~Landmark1d();
 
-   /** 
-   *  Overwrite the Mahalanobis distance abstract (virtual) function
-   *  \param x point to which we measure to
-   *  \return the Mahalanobis distance
-   */
-   double mahalanobisDist2(double &x);
 };
 
 /********** Example implementation of a 2d Landmark **********/
@@ -105,17 +97,10 @@ class Landmark2d : public Landmark<Eigen::Vector2d, Eigen::Matrix2d>
 {
 public:
   /** Default constructor */
-  Landmark2d();
+  Landmark2d(); 
 
   /** Default destructor */
   ~Landmark2d();
-
-  /** 
-   *  Overwrite the Mahalanobis distance abstract (virtual) function
-   *  \param x point to which we measure to
-   *  \return the Mahalanobis distance
-   */
-  double mahalanobisDist2(Eigen::Vector2d &x);
 
 };
 

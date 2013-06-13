@@ -63,8 +63,6 @@ TEST_F(MeasurementModelTest, rangeBearingModelConstructorTest){
 
 TEST_F(MeasurementModelTest, rangeBearingModelPredictTest){
 
-  const double PI = acos(-1);
-
   RangeBearingModel model(1, 1);
   RangeBearingModel::tPose x;
   Eigen::Vector3d xPose;
@@ -89,8 +87,6 @@ TEST_F(MeasurementModelTest, rangeBearingModelPredictTest){
 
 TEST_F(MeasurementModelTest, rangeBearingModelInvPredictTest){
 
-  const double PI = acos(-1);
-
   RangeBearingModel model(1, 1);
   RangeBearingModel::tPose x;
   Eigen::Vector3d xPose;
@@ -110,7 +106,7 @@ TEST_F(MeasurementModelTest, rangeBearingModelInvPredictTest){
   model.inversePredict(x, z, m);
   m.get(mPos, mCov);
   EXPECT_DOUBLE_EQ(-1, mPos(0));
-  EXPECT_DOUBLE_EQ(-1, mPos(1)); // numberical error
+  EXPECT_DOUBLE_EQ(-1, mPos(1)); 
 
   // Is there a good way of checking mCov?
 

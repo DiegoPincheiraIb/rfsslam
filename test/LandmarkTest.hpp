@@ -52,8 +52,8 @@ TEST_F(LandmarkTest, constructorTestLandmark1d){
 
   Landmark1d::tState x_in, x_out;
   Landmark1d::tUncertainty Sx_in, Sx_out;
-  x_in = 0;
-  Sx_in = 0;
+  x_in << 0;
+  Sx_in << 0;
   Landmark1d m;
   m.State::get(x_out);
   EXPECT_EQ(x_in, x_out);
@@ -146,22 +146,25 @@ TEST_F(LandmarkTest, mahalanobisDistanceTest1d){
   Landmark1d m;
   // \todo Look up how to do expect error (from inverting zero matrix)
 
-  x_in = 1;
-  Sx_in = 2;
+  EXPECT_EQ(1, m.getNDim());
+
+  x_in << 1;
+  Sx_in << 2;
   
-  x = x_in;
+  x << x_in;
   m.set(x_in, Sx_in);
   EXPECT_EQ(0, m.mahalanobisDist(x) ); 
 
-  x = 0;
+  x << 0;
   EXPECT_EQ(sqrt(0.5), m.mahalanobisDist(x) ); 
 
-  x = 3;
+  x << 3;
   EXPECT_EQ(sqrt(2), m.mahalanobisDist(x) ); 
 
-  x = 4.4;
-  Sx_in = 0.75;
+  x << 4.4;
+  Sx_in << 0.75;
   m.set(x_in, Sx_in);
-  EXPECT_DOUBLE_EQ( sqrt((x - x_in) / Sx_in * (x - x_in)),  m.mahalanobisDist(x)); 
+  double d2 = (x - x_in).transpose() * Sx_in.inverse() * (x - x_in);
+  EXPECT_EQ( sqrt(d2), m.mahalanobisDist(x)); 
 }
 

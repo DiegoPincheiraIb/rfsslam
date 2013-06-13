@@ -29,7 +29,8 @@
  * in the constructor and when set() is called
  */
 template<class MeasurementValType, class MeasurementUncertaintyType>
-class Measurement : public StateWithUncertainty<MeasurementValType,MeasurementUncertaintyType>
+class Measurement 
+  : public StateWithUncertainty<MeasurementValType, MeasurementUncertaintyType>
 {
 public:
 
@@ -38,20 +39,25 @@ public:
 
   /** 
    * Default constructor   
+   * \param nDim number of dimensions in measurement vector
    */
-  Measurement(){ t_ = -1; }
+  Measurement(unsigned int nDim = 0) 
+    : StateWithUncertainty<MeasurementValType, MeasurementUncertaintyType>(nDim) { 
+    t_ = -1; 
+  }
 
   /** 
    * Constructor
+   * \param nDim number of dimensions in measurement vector
    * \param z - measurement
    * \param Sz - measurement uncertainty
    * \param t - time at wich the measurement was taken, negative  times indicate absence of time information. 
    */
-  Measurement(MeasurementValType z, MeasurementUncertaintyType Sz, double t=-1)
+  Measurement(unsigned int nDim, MeasurementValType z, 
+	      MeasurementUncertaintyType Sz, double t=-1)
+    : StateWithUncertainty<MeasurementValType, MeasurementUncertaintyType>( nDim )
   {
-    t_ = t;
-    this->x_ = z;
-    this->Sx_ = Sz;
+    set(z, Sz, t);
   }
 
   /** Default destructor */
@@ -65,8 +71,7 @@ public:
    */
   void set(MeasurementValType z, MeasurementUncertaintyType Sz, double t = -1)
   {
-    this->x_ = z;
-    this->Sx_ = Sz;
+    StateWithUncertainty< MeasurementValType, MeasurementUncertaintyType >::set(z, Sz);
     t_ = t;
   }
 
@@ -77,7 +82,7 @@ public:
    */
   void set(MeasurementValType z, double t = -1)
   {
-    this->x_ = z;
+    State< MeasurementValType >::set(z);
     t_ = t;
   }
 
@@ -88,9 +93,9 @@ public:
    * \param t - time at wich the measurement was taken, 
    *            negative times indicate absence of time imformation. [overwritten]
    */
-  void get(MeasurementValType &z, MeasurementUncertaintyType &Sz, double &t){
-    z = this->x_;
-    Sz = this->Sx_;
+  void get(MeasurementValType &z, MeasurementUncertaintyType &Sz, double &t)
+  {
+    StateWithUncertainty< MeasurementValType, MeasurementUncertaintyType >::get(z, Sz);
     t = t_;
   }
 
@@ -99,57 +104,11 @@ public:
    * \param z measurement [overwritten]
    * \param t timestamp of the measurement, negative times indicate absence of time imformation.[overwritten]
    */
-  void get(MeasurementValType &z, double &t){
-    z = this->x_;
+  void get(MeasurementValType &z, double &t)
+  {
+    State< MeasurementValType >::get(z);
     t = t_;
   }
-
-  /** 
-   * Abstract function for returning the Mahalanobis distance from this measurement
-   * \param z the measurement to which we measure the distance to
-   * \return mahalanobis distance
-   */
-  //virtual double mahalanobisDist2( MeasurementValType &z){
-  //  return -1;
-  //};
-
-
-  /** 
-   * Function for returning the Mahalanobis distance from this measurement
-   * \param z the measurement to which we measure the distance to
-   * \return mahalanobis distance
-   */
-  //double mahalanobisDist(Measurement &z){
-  // return mahalanobisDist(z.x_);
-  //};
-  
-  /** 
-   * Function for returning the Mahalanobis distance from this measurement
-   * \param z the measurement to which we measure the distance to
-   * \return mahalanobis distance
-   */
-  //double mahalanobisDist( MeasurementValType &z){
-  //  return mahalanobisDist(z);
-  //};
-
-  /** 
-   * Abstract function for returning the likelihood of a measurement
-   * \param z the measurement whose likelihood will be evaluated
-   * \return likelihood
-   */
-  virtual double evaluateLikelihood(MeasurementValType &z){
-    return -1;
-  };
-
-  /** 
-   * Function for returning the likelihood of a measurement
-   * \param z the measurement whose likelihood will be evaluated
-   * \return likelihood
-   */
-  double evaluateLikelihood(Measurement<MeasurementValType, MeasurementUncertaintyType> &z){
-    return  evaluateLikelihood(z.x_);
-  };
-
 
 protected:
 
@@ -165,7 +124,9 @@ protected:
  * \brief 1d Measurement
  * \author Felipe Inostroza
  */
-class Measurement1d : public Measurement <double,double>
+class Measurement1d 
+  : public Measurement < Eigen::Matrix<double, 1, 1>,
+			 Eigen::Matrix<double, 1, 1> >
 {
 public:
 
@@ -177,24 +138,13 @@ public:
   /** 
    * Constructor - defined only for our convenience and non-essential
    */
-  Measurement1d(double x, double Sx, double t=-1);
+  Measurement1d( Eigen::Matrix<double, 1, 1> z, 
+		 Eigen::Matrix<double, 1, 1> Sz, 
+		 double t=-1);
 
   /** Default destructor */
   ~Measurement1d();
 
-  /** 
-   * Function for returning the Mahalanobis distance from this measurement
-   * \param z the measurement to which we measure the distance to
-   * \return mahalanobis distance
-   */
-  double mahalanobisDist2( double &z);
-
-  /** 
-   * Function for returning the likelihood of a measurement
-   * \param z the measurement whose likelihood will be evaluated
-   * \return likelihood
-   */
-  double evaluateLikelihood(double &z);
 };
 
 
@@ -216,21 +166,6 @@ public:
   /** Default destructor */
   ~Measurement2d();
 
-  /** 
-   * Function for returning the Mahalanobis distance from this measurement
-   * \param z the measurement to which we measure the distance to
-   * \return mahalanobis distance
-   *
-   * \todo include option for enforcing measurement range limit
-   */
-  double mahalanobisDist2(Eigen::Vector2d  &z);
-
-  /** 
-   * Function for returning the likelihood of a measurement
-   * \param z the measurement whose likelihood will be evaluated
-   * \return likelihood
-   */
-  double evaluateLikelihood(Eigen::Vector2d &z);
 };
 
 

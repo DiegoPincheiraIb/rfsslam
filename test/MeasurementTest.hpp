@@ -68,7 +68,7 @@ TEST_F(MeasurementTest, testConstructorOdometry2d){
   EXPECT_EQ(u_in, u_out);
   EXPECT_EQ(t_in, t_out);
 
-  EXPECT_EQ( -1, u2.mahalanobisDist( u1 ) );
+  EXPECT_EQ( 0, u2.mahalanobisDist( u1 ) );
 }
 
 // Test Measurement2d Class
@@ -95,22 +95,25 @@ TEST_F(MeasurementTest, testMeasurement2d){
   EXPECT_EQ(0, y.mahalanobisDist( y ) );
   z << 0.1, 9.5;
   EXPECT_LT(0, y.mahalanobisDist( z ) );
-  //EXPECT_LT(0, y.mahalanobisDist( y ) );
-  EXPECT_LT(0, y.evaluateLikelihood( z ) );
-  //EXPECT_LT(0, y.evaluateLikelihood( y ) );
+  EXPECT_EQ(0, y.mahalanobisDist( y ) );
+  EXPECT_LT(0, y.evalGaussianLikelihood( z ) );
+  EXPECT_LT(0, y.evalGaussianLikelihood( y ) );
 }
 
 // Test Measurement1d Class
 TEST_F(MeasurementTest, testMeasurement1d){
 
-  double z, z_out, z_out2;
-  double Sz, Sz_out;
-  double t = 0.345;
-  double t_out, t_out2;
-  z = 0.6;
-  Sz = 0.9;
+  typedef Eigen::Matrix<double, 1, 1> v1d;
+
+  v1d z, z_out, z_out2;
+  v1d Sz, Sz_out;
+  double t, t_out, t_out2;
+  z << 0.6;
+  Sz << 0.9;
+  t = 0.345;
   
   Measurement1d y;
+  EXPECT_EQ(1, y.getNDim());
   y.set(z, Sz, t);
   y.get(z_out, Sz_out, t_out);
   EXPECT_EQ(z, z_out);
@@ -122,9 +125,9 @@ TEST_F(MeasurementTest, testMeasurement1d){
 
   EXPECT_EQ(0, y.mahalanobisDist( z ) );
   EXPECT_EQ(0, y.mahalanobisDist( y ) );
-  z = 9.5;
+  z << 9.5;
   EXPECT_LT(0, y.mahalanobisDist( z ) );
-  //EXPECT_LT(0, y.mahalanobisDist( y ) );
-  EXPECT_LT(0, y.evaluateLikelihood( z ) );
-  //EXPECT_LT(0, y.evaluateLikelihood( y ) );
+  EXPECT_EQ(0, y.mahalanobisDist( y ) );
+  EXPECT_LT(0, y.evalGaussianLikelihood( z ) );
+  EXPECT_LT(0, y.evalGaussianLikelihood( y ) );
 }

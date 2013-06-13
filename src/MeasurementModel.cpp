@@ -2,8 +2,6 @@
 #include <math.h>
 #include "MeasurementModel.hpp"
 
-#define PI 3.14159265359
-
 /********** Implementation of example 2d measurement Model (Range and Bearing) **********/
 
 RangeBearingModel::RangeBearingModel(){}
@@ -39,7 +37,6 @@ void RangeBearingModel::predict(Pose2d  &pose, Landmark2d &landmark, Measurement
   Eigen::Matrix2d H, landmarkUncertainty;
   double range, bearing;
 
-
   pose.get(robotPose);
   landmark.get(landmarkState,landmarkUncertainty);
 
@@ -54,7 +51,7 @@ void RangeBearingModel::predict(Pose2d  &pose, Landmark2d &landmark, Measurement
   H << -(landmarkState(1)-robotPose(1))/(pow(mean(0),2)), (landmarkState(0)-robotPose(0))/pow(mean(0),2),
        (landmarkState(0)-robotPose(0))/mean(0)          , (landmarkState(1)-robotPose(1))/mean(0) ;
   
-  prediction.set(mean, H*landmarkUncertainty*H.transpose() + covZ_);
+  prediction.set(mean, H * landmarkUncertainty * H.transpose() + covZ_);
 
 }
 
