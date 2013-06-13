@@ -85,13 +85,36 @@ public:
   }
 
   /** 
-   * Abstract function for returning the Mahalanobis distance from this object's state
+   * Abstract function for returning the sqaured Mahalanobis distance 
+   * from this object's state
+   * \param x the state to which we measure the distance to
+   * \return mahalanobis distance squared
+   */
+  virtual double mahalanobisDist2( StateType &x){
+    return -1;
+  };
+
+  /**
+   * Function for returning the Mahalanobis distance from this object's state
    * \param x the state to which we measure the distance to
    * \return mahalanobis distance
    */
-  virtual double mahalanobisDist( StateType &x){
-    return -1;
-  };
+  double mahalanobisDist( StateType &x){
+    double md2 = mahalanobisDist2( x );
+    if( md2 >= 0)
+      return sqrt( md2 );
+    else
+      return -1;
+  }
+
+  /**
+   * Function for returning the Mahalanobis distance from this object's state
+   * \param x object containing the state to which we measure the distance to
+   * \return mahalanobis distance
+   */
+  double mahalanobisDist( StateWithUncertainty<StateType, UncertaintyType>  &x ){    
+    return mahalanobisDist( x.x_ );
+  }
   
 
 protected:

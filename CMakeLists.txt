@@ -15,7 +15,7 @@ FIND_PACKAGE(Eigen REQUIRED)
 # move libgtest_main.a and libgtest.a to /usr/lib
 enable_testing()
 find_package(GTest REQUIRED)
-include_directories(${GTEST_INCLUDE_DIRS})
+
 
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 MESSAGE("CMAKE_RUNTIME_OUTPUT_DIRECTORY = " ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
@@ -26,7 +26,9 @@ MESSAGE("CMAKE_ARCHIVE_OUTPUT_DIRECTORY = " ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 #ADD_SUBDIRECTORY()
 INCLUDE_DIRECTORIES(include)
 INCLUDE_DIRECTORIES(src)
+INCLUDE_DIRECTORIES(test)
 INCLUDE_DIRECTORIES(${Eigen_INCLUDE_DIRS})
+INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
 #LINK_DIRECTORIES()
 
 ADD_LIBRARY(Pose src/Pose.cpp)
@@ -47,12 +49,9 @@ SET_TARGET_PROPERTIES(ParticleFilter PROPERTIES LINKER_LANGUAGE CXX)
 ADD_LIBRARY(GaussianMixture src/GaussianMixture.hpp)
 SET_TARGET_PROPERTIES(GaussianMixture PROPERTIES LINKER_LANGUAGE CXX)
 
-ADD_LIBRARY(BinaryTree src/BinaryTree.cpp)
-
 ADD_EXECUTABLE(sandbox src/test.cpp)
 TARGET_LINK_LIBRARIES(sandbox Pose Particle ProcessModel Landmark Measurement MeasurementModel GaussianMixture)
 
 ADD_EXECUTABLE(unitTest test/test.cpp)
-#TARGET_LINK_LIBRARIES(unitTest gtest gtest_main)
-TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} pthread)
-ADD_TEST(unitTest unitTest)
+TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} pthread Landmark Pose Measurement MeasurementModel)
+ADD_TEST(unitTest bin/unitTest)

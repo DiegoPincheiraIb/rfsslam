@@ -22,6 +22,7 @@ class MeasurementModel
 {
 public:
 
+  typedef PoseType tPose;
   typedef LandmarkType tLandmark;
   typedef MeasurementType tMeasurement;
   
@@ -33,8 +34,7 @@ public:
 
   /** 
    * Abstract function for predicting measurements using pose and landmark estimates
-   * 
-   * This must be implemented in a derived class
+   * \note This must be implemented in a derived class
    * \param pose robot pose 
    * \param landmark landmark wich will be used for predicting the measurement
    * \param prediction predicted measurement [overwritten]
@@ -43,20 +43,16 @@ public:
 			MeasurementType &prediction)=0;
 
  /** 
-   * Abstract function for predicting pose from a measurement and landmark pose 
-   * 
-   * This must be implemented in a derived class
+   * Abstract function for predicting landmark position from a robot pose and
+   * its measurements
+   * \note This must be implemented in a derived class
    * \param pose robot pose 
-   * \param landmark predicted landmark location [overwritten]
    * \param measurement measurement
+   * \param landmark predicted landmark location [overwritten]
    */
-  virtual void inversePredict(PoseType &pose, LandmarkType &landmark,
-			      MeasurementType &measurement)=0;
-
-
-
-
-
+  virtual void inversePredict( PoseType &pose,
+			       MeasurementType &measurement, 
+			       LandmarkType &landmark ) = 0;
 };
 
 
@@ -64,11 +60,9 @@ public:
 
 /** 
  * \class RangeBearingModel
- * \brief Range and bearing measurement model for 2d point landmarks
- * (The noise is considered to be gaussian in the range and bearing space)
- * \author Felipe Inostroza
- *
- * 
+ * \brief Range and bearing measurement model for 2d point landmarks.
+ * The noise is considered to be Gaussian in the range and bearing space
+ * \author Felipe Inostroza 
  */
                                                                
 class RangeBearingModel : public MeasurementModel <Pose2d, Landmark2d, Measurement2d>{
@@ -116,7 +110,7 @@ public:
   void getCov(Eigen::Matrix2d &covZ);
 
   /** 
-   * Function for predicting measurements using both pose and landmark estimates
+   * Predict a measurement from a pose and a landmark estimate
    * \param pose robot pose 
    * \param landmark landmark wich will be used for predicting the measurement
    * \param prediction predicted measurement [overwritten]
@@ -124,17 +118,13 @@ public:
   void predict(Pose2d &pose, Landmark2d &landmark, Measurement2d &prediction);
 
   /** 
-   * Function for applying the inverse measurement model 
+   * Inverse measurement model 
    * \param pose robot pose 
    * \param landmark predicted landmark location [overwritten]
    * \param measurement measurement
    */
-  void inversePredict(Pose2d &pose, Landmark2d &landmark, Measurement2d &measurement);
+  void inversePredict(Pose2d &pose, Measurement2d &measurement, Landmark2d &landmark);
   
-
-
-
-
 private:
 
   Eigen::Matrix2d covZ_;

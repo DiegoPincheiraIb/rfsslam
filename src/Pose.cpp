@@ -3,17 +3,17 @@
 /********** Implementation of example 2d vehicle pose state **********/
 
 Pose2d::Pose2d(){
-  vec x;
+  StateType x;
   x << 0, 0, 0;
   set(x);
 }
 
-Pose2d::Pose2d(vec x){
+Pose2d::Pose2d(StateType x){
   set(x);
 }
 
 Pose2d::Pose2d( double x, double y, double theta ){
-  vec state;
+  StateType state;
   state << x, y, theta;
   set(state);
 }

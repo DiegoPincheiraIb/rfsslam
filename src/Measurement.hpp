@@ -17,11 +17,24 @@
  * \tparam MeasurementUncertaintyType Object type representing measurement uncertainties
  * \author Keith Leung, Felipe Inostroza
  *
+ * \todo make measurement dimension a variable required in constructor so that 
+ * a generic likelihood calculation function can be used
+ *
+ * \todo look into moving evaluateLikelihood into base class StateWithUncertainty
+ *
+ * \todo if we assume users will always use Eigen, mahalanobisDist2 can also move into
+ * base class StateWithUncertainty
+ *
+ * \todo if we assume users will always use Eigen, store the inverse uncertainty 
+ * in the constructor and when set() is called
  */
 template<class MeasurementValType, class MeasurementUncertaintyType>
 class Measurement : public StateWithUncertainty<MeasurementValType,MeasurementUncertaintyType>
 {
 public:
+
+  typedef MeasurementValType MeasureType;
+  typedef MeasurementUncertaintyType MeasureUncertaintyType; 
 
   /** 
    * Default constructor   
@@ -36,10 +49,9 @@ public:
    */
   Measurement(MeasurementValType z, MeasurementUncertaintyType Sz, double t=-1)
   {
-   
-    t_=t;
-    this->x_=z;
-    this->Sx_=Sz;
+    t_ = t;
+    this->x_ = z;
+    this->Sx_ = Sz;
   }
 
   /** Default destructor */
@@ -97,9 +109,9 @@ public:
    * \param z the measurement to which we measure the distance to
    * \return mahalanobis distance
    */
-  virtual double mahalanobisDist( MeasurementValType &z){
-    return -1;
-  };
+  //virtual double mahalanobisDist2( MeasurementValType &z){
+  //  return -1;
+  //};
 
 
   /** 
@@ -107,9 +119,18 @@ public:
    * \param z the measurement to which we measure the distance to
    * \return mahalanobis distance
    */
-  double mahalanobisDist(Measurement &z){
-    return mahalanobisDist(z.x_);
-  };
+  //double mahalanobisDist(Measurement &z){
+  // return mahalanobisDist(z.x_);
+  //};
+  
+  /** 
+   * Function for returning the Mahalanobis distance from this measurement
+   * \param z the measurement to which we measure the distance to
+   * \return mahalanobis distance
+   */
+  //double mahalanobisDist( MeasurementValType &z){
+  //  return mahalanobisDist(z);
+  //};
 
   /** 
    * Abstract function for returning the likelihood of a measurement
@@ -125,7 +146,7 @@ public:
    * \param z the measurement whose likelihood will be evaluated
    * \return likelihood
    */
-  double evaluateLikelihood(Measurement &z){
+  double evaluateLikelihood(Measurement<MeasurementValType, MeasurementUncertaintyType> &z){
     return  evaluateLikelihood(z.x_);
   };
 
@@ -166,7 +187,7 @@ public:
    * \param z the measurement to which we measure the distance to
    * \return mahalanobis distance
    */
-  double mahalanobisDist( double &z);
+  double mahalanobisDist2( double &z);
 
   /** 
    * Function for returning the likelihood of a measurement
@@ -202,7 +223,7 @@ public:
    *
    * \todo include option for enforcing measurement range limit
    */
-  double mahalanobisDist(Eigen::Vector2d  &z);
+  double mahalanobisDist2(Eigen::Vector2d  &z);
 
   /** 
    * Function for returning the likelihood of a measurement

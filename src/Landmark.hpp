@@ -19,7 +19,7 @@ class Landmark : public StateWithUncertainty<StateType, UncertaintyType>
 public:
 
   /** Default constructor */
-  Landmark(){};
+  Landmark(){ nReferences_ = 0; }
 
   /** 
    * Constructor - defined only for our convenience and non-essential
@@ -33,13 +33,13 @@ public:
    * Increase the count for objects referencing this object 
    * \return number of references 
    */
-  unsigned int incNRef(){ nReferences_++; }
+  unsigned int incNRef(){ nReferences_++; return getNRef(); }
 
   /**  
    * Decrease the count for objects referencing this object
    * \return number of references
    */
-  unsigned int decNRef(){ nReferences_--; }
+  unsigned int decNRef(){ nReferences_--; return getNRef(); }
 
   /**
    * Get the count of objects referencing this object
@@ -48,11 +48,12 @@ public:
   unsigned int getNRef(){ return nReferences_; }
 
   /** 
-   * Abstract function for returning the Mahalanobis distance from this object's state
+   * Abstract function for calculating the squared Mahalanobis distance from 
+   * this object's state
    * \param x the state to which we measure the distance to
    * \return mahalanobis distance
    */
-  virtual double mahalanobisDist( StateType &x) = 0;
+  virtual double mahalanobisDist2( StateType &x) = 0;
 
 protected:
 
@@ -62,7 +63,8 @@ protected:
 
 template<class StateType, class UncertaintyType> 
 Landmark<StateType, UncertaintyType>::Landmark(StateType x,UncertaintyType Sx){
-  set(x,Sx);
+  set(x, Sx);
+  nReferences_ = 0;
 }
 
 
@@ -89,7 +91,7 @@ public:
    *  \param x point to which we measure to
    *  \return the Mahalanobis distance
    */
-   double mahalanobisDist(double &x);
+   double mahalanobisDist2(double &x);
 };
 
 /********** Example implementation of a 2d Landmark **********/
@@ -113,7 +115,7 @@ public:
    *  \param x point to which we measure to
    *  \return the Mahalanobis distance
    */
-  double mahalanobisDist(Eigen::Vector2d &x);
+  double mahalanobisDist2(Eigen::Vector2d &x);
 
 };
 

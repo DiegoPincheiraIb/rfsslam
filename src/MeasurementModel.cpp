@@ -58,23 +58,22 @@ void RangeBearingModel::predict(Pose2d  &pose, Landmark2d &landmark, Measurement
 
 }
 
-void RangeBearingModel::inversePredict(Pose2d &pose, Landmark2d &landmark,Measurement2d &measurement){
-
+void RangeBearingModel::inversePredict(Pose2d &pose, Measurement2d &measurement, 
+				       Landmark2d &landmark){
   Eigen::Vector3d poseState;
-  Eigen::Vector2d measurementState,mean;
-  Eigen::Matrix2d measurementUncertainty,covariance,Hinv;
+  Eigen::Vector2d measurementState, mean;
+  Eigen::Matrix2d measurementUncertainty, covariance, Hinv;
   double t;
 
   pose.get(poseState);
-  measurement.get(measurementState,measurementUncertainty,t);
-  mean << poseState(0)+measurementState(0)*cos(poseState(2)+measurementState(1)),
-          poseState(1)+measurementState(0)*sin(poseState(2)+measurementState(1));
+  measurement.get(measurementState, measurementUncertainty, t);
+  mean << poseState(0) + measurementState(0) *cos( poseState(2) + measurementState(1) ),
+          poseState(1) + measurementState(0) *sin( poseState(2) + measurementState(1) );
 
   Hinv << cos(poseState(2)+measurementState(1)) , -measurementState(0)*sin(poseState(2)+measurementState(1)) ,
           sin(poseState(2)+measurementState(1)) , measurementState(0)*cos(poseState(2)+measurementState(1));
 
-
-  landmark.set(mean,Hinv*measurementUncertainty*Hinv.transpose());
+  landmark.set( mean, Hinv * measurementUncertainty *Hinv.transpose() );
 
 }
 

@@ -19,7 +19,7 @@ class Pose2d : public State<Eigen::Vector3d>
 
 public:
 
-  typedef Eigen::Vector3d vec;
+  typedef Eigen::Vector3d StateType;
 
   /** 
    * Default constructor, implementation of which can be empty
@@ -30,13 +30,13 @@ public:
    * Constructor - defined only for our convenience and non-essential
    * \param x - pose
    */
-  Pose2d(vec x);
+  Pose2d(StateType x);
 
   /**
    * Constructor - defined only for our convenience and non-essential
-   * \param x - \f[ x \f]
-   * \param y - \f[ y \f]
-   * \param theta - \f[ \theta \f]
+   * \param x x-position
+   * \param y y-position
+   * \param theta rotation
    */
   Pose2d( double x, double y, double theta ); 
 
