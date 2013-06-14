@@ -4,15 +4,18 @@
 #ifndef STATE_HPP
 #define STATE_HPP
 
+#include <iostream>
 #include <math.h>
 
-#define PI acos(-1)
+double const PI = acos(-1);
 
 /**
  * \class State
  * \brief An abstract base class for defining a state
- * \tparam State container
+ * \tparam StateType an Eigen vector;
  * \author Keith Leung
+ *
+ * \todo consider reading nDim_ using the size() function in Eigen
  */
 template<class StateType>
 class State
@@ -23,9 +26,23 @@ public:
   typedef StateType tState;
 
   /** Default constructor */
-  State(unsigned int nDim = 0)
-    : nDim_(nDim){
-    /** \todo Assert error here that nDim <= 0 */
+  State(){
+    nDim_ = x_.size();
+    if( nDim_ == 0 ){
+      std::cerr << "Error: Dimension must be greater than 0\n";
+      exit(-1);
+    }
+    x_ = StateType::Zero();
+  }
+
+  /** Constructor */
+  State( StateType x ){ 
+    nDim_ = x_.size();
+    if( nDim_ == 0 ){
+      std::cerr << "Error: Dimension must be greater than 0\n";
+      exit(-1);
+    }
+    set(x); 
   }
 
   /** Default destructor */
@@ -59,7 +76,8 @@ protected:
 /**
  * \class StateWithUncertainty
  * \brief An abstract base class for defining the vehicle pose state
- * \tparam State container for the state
+ * \tparam StateType An Eigen vector
+ * \tparam UncertaintyType An Eigen matrix
  * \author Keith Leung
  */
 template<class StateType, class UncertaintyType>
@@ -71,9 +89,18 @@ public:
   typedef UncertaintyType tUncertainty;
 
   /** Default constructor */
-  StateWithUncertainty(unsigned int nDim = 0) : State<StateType>( nDim ){
-    pSxInv_ = NULL;
-  };
+  StateWithUncertainty(){
+    if( Sx_.rows() != Sx_.cols() ){
+      std::cerr << "Error: UncertaintyType must be a square matrix \n";
+      exit(-1);
+    }
+    if( Sx_.rows() != this->x_.size() ){
+      std::cerr << "Error: StateType and UncertaintyType dimension mismatch \n";
+      exit(-1);
+    }
+
+    Sx_ = UncertaintyType::Zero();
+  }
 
   /** Default destructor */
   ~StateWithUncertainty(){};
@@ -84,10 +111,9 @@ public:
    * \param Sx uncertainty to be set
    */
   void set( StateType x, UncertaintyType Sx){
-    this->x_ = x;
+    State<StateType>::set(x);
     Sx_ = Sx;
     SxInv_ = Sx_.inverse();
-    pSxInv_ = &SxInv_;
     Sx_det_ = Sx.determinant();
   }
   
@@ -97,7 +123,7 @@ public:
    * \param Sx uncertainty [overwritten]
    */
   void get( StateType &x, UncertaintyType &Sx){
-    x = this->x_;
+    State<StateType>::get(x);
     Sx = Sx_;
   }
 
@@ -110,10 +136,6 @@ public:
   double mahalanobisDist2( StateType &x){
     
     StateType e = this->x_ - x;
-    if(pSxInv_ == NULL){
-      SxInv_ = Sx_.inverse();
-      pSxInv_ = &SxInv_;
-    }
     return (e.transpose() * SxInv_ * e);
   }
 
@@ -163,11 +185,10 @@ public:
   }
   
 
-protected:
+private:
 
   UncertaintyType Sx_; /**< Covariance */
   UncertaintyType SxInv_; /**< Inverse covariance */
-  UncertaintyType *pSxInv_; /**< Pointer to inverse covariance */
   double Sx_det_; /** Determinant of Sx_ */
 
 };

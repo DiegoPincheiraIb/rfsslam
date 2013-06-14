@@ -12,21 +12,10 @@
 
 /** 
  * \class Measurement
- * \brief An abstract class for measurements
+ * \brief An abstract class for measurements.
  * \tparam MeasurementValType Object type representing measurements
  * \tparam MeasurementUncertaintyType Object type representing measurement uncertainties
  * \author Keith Leung, Felipe Inostroza
- *
- * \todo make measurement dimension a variable required in constructor so that 
- * a generic likelihood calculation function can be used
- *
- * \todo look into moving evaluateLikelihood into base class StateWithUncertainty
- *
- * \todo if we assume users will always use Eigen, mahalanobisDist2 can also move into
- * base class StateWithUncertainty
- *
- * \todo if we assume users will always use Eigen, store the inverse uncertainty 
- * in the constructor and when set() is called
  */
 template<class MeasurementValType, class MeasurementUncertaintyType>
 class Measurement 
@@ -41,8 +30,7 @@ public:
    * Default constructor   
    * \param nDim number of dimensions in measurement vector
    */
-  Measurement(unsigned int nDim = 0) 
-    : StateWithUncertainty<MeasurementValType, MeasurementUncertaintyType>(nDim) { 
+  Measurement(){ 
     t_ = -1; 
   }
 
@@ -54,9 +42,7 @@ public:
    * \param t - time at wich the measurement was taken, negative  times indicate absence of time information. 
    */
   Measurement(unsigned int nDim, MeasurementValType z, 
-	      MeasurementUncertaintyType Sz, double t=-1)
-    : StateWithUncertainty<MeasurementValType, MeasurementUncertaintyType>( nDim )
-  {
+	      MeasurementUncertaintyType Sz, double t=-1){
     set(z, Sz, t);
   }
 
@@ -117,56 +103,16 @@ protected:
 };
 
 
-/********** Example implementation of a 1d measurement **********/
+/********** Define a 1d measurement **********/
 
-/**
- * \class Measurement1d
- * \brief 1d Measurement
- * \author Felipe Inostroza
- */
-class Measurement1d 
-  : public Measurement < Eigen::Matrix<double, 1, 1>,
-			 Eigen::Matrix<double, 1, 1> >
-{
-public:
+/** Definition for 1d measurement */
+typedef Measurement < Eigen::Matrix<double, 1, 1>,
+		      Eigen::Matrix<double, 1, 1> > Measurement1d;
 
-  /** 
-   * Default constructor, implementation of which can be empty 
-   */
-  Measurement1d();
+/********** Define a 2d measurement **********/
 
-  /** 
-   * Constructor - defined only for our convenience and non-essential
-   */
-  Measurement1d( Eigen::Matrix<double, 1, 1> z, 
-		 Eigen::Matrix<double, 1, 1> Sz, 
-		 double t=-1);
-
-  /** Default destructor */
-  ~Measurement1d();
-
-};
-
-
-/********** Example implementation of a 2d measurement **********/
-
-/**
- * \class Measurement2d
- * \brief 2d Measurement
- * \author Felipe Inostroza
- */
-class Measurement2d : public Measurement <Eigen::Vector2d, Eigen::Matrix2d>
-{
-public:
-  /** 
-   * Default constructor, implementation of which can be empty 
-   */
-  Measurement2d();
-
-  /** Default destructor */
-  ~Measurement2d();
-
-};
+/** Definition for 2d measurement */
+typedef Measurement <Eigen::Vector2d, Eigen::Matrix2d> Measurement2d;
 
 
 /********** Examples implementation of 2d odometry measurement **********/
@@ -175,6 +121,7 @@ public:
  * \class Odometry2d
  * \brief A class for 2d odometry measurements for a 2d motion model
  * \author Keith Leung
+ * \note This class is derived from measurement so that we can make a customized constructor.
  */
 class Odometry2d : public Measurement< Eigen::Vector3d, Eigen::Matrix3d >
 {

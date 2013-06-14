@@ -18,11 +18,8 @@ class Landmark : public StateWithUncertainty<StateType, UncertaintyType>
 {
 public:
 
-  /** Constructor
-   *  \param nDim number of dimensions in landmark state
-   */
-  Landmark(unsigned int nDim = 0) 
-    : StateWithUncertainty<StateType, UncertaintyType>(nDim){ 
+  /** Default constructor */
+  Landmark(){ 
     nReferences_ = 0; 
   }
 
@@ -30,8 +27,7 @@ public:
    * Constructor - defined only for our convenience and non-essential
    *  \param nDim number of dimensions in landmark state
    */
-  Landmark(unsigned int nDim, StateType x, UncertaintyType Sx)
-    : StateWithUncertainty<StateType, UncertaintyType>(nDim){
+  Landmark(unsigned int nDim, StateType x, UncertaintyType Sx){
     set(x, Sx);
     nReferences_ = 0;
   }
@@ -64,51 +60,9 @@ protected:
 
 };
 
+typedef Landmark< Eigen::Matrix<double, 1, 1>, Eigen::Matrix<double, 1, 1> >
+Landmark1d;
 
-/********** Example implementation of a 1d Landmark **********/
-
-/**
-* \class Landmark1d
-* \brief 1d Landmark with no signature
-* \author Felipe Inostroza
-*/
-
-class Landmark1d 
-  : public Landmark< Eigen::Matrix<double, 1, 1>,
-		     Eigen::Matrix<double, 1, 1> >
-{
-public: 
-  /** Default constructor */
-  Landmark1d();
-
-  /** Default destructor */
-  ~Landmark1d();
-
-};
-
-/********** Example implementation of a 2d Landmark **********/
-
-/**
-* \class Landmark2d
-* \brief 2d Landmark with no signature
-* \author Felipe Inostroza
-*/
-class Landmark2d : public Landmark<Eigen::Vector2d, Eigen::Matrix2d>
-{
-public:
-  /** Default constructor */
-  Landmark2d(); 
-
-  /** Default destructor */
-  ~Landmark2d();
-
-};
-
-
-
-
-
-
-
+typedef Landmark<Eigen::Vector2d, Eigen::Matrix2d> Landmark2d;
 
 #endif

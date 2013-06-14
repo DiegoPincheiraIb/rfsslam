@@ -11,7 +11,7 @@ int main(int argc, char* argv[]){
   Eigen::Matrix2d cov;
   cov << 1,0,0,3;
   measurementModel.setCov(cov);
-  Measurement<int, int> m;
+
   
   Particle<Pose2d> p;
 
