@@ -13,19 +13,19 @@
 /** 
  * \class Measurement
  * \brief An abstract class for measurements.
- * \tparam MeasurementValType Eigen vector representing a measurement
- * \tparam MeasurementUncertaintyType Eigen matrix representing 
+ * \tparam VecType Eigen vector representing a measurement
+ * \tparam MatType Eigen matrix representing 
  *  measurement uncertainties
  * \author Keith Leung, Felipe Inostroza
  */
-template<class MeasurementValType, class MeasurementUncertaintyType>
+template<class VecType, class MatType>
 class Measurement 
-  : public StateWithUncertainty<MeasurementValType, MeasurementUncertaintyType>
+  : public StateWithUncertainty<VecType, MatType>
 {
 public:
 
-  typedef MeasurementValType MeasureType;
-  typedef MeasurementUncertaintyType MeasureUncertaintyType; 
+  typedef VecType MeasureType;
+  typedef MatType MeasureUncertaintyType; 
 
   /** 
    * Default constructor   
@@ -42,8 +42,8 @@ public:
    * \param Sz - measurement uncertainty
    * \param t - time at wich the measurement was taken, negative  times indicate absence of time information. 
    */
-  Measurement(MeasurementValType &z, 
-	      MeasurementUncertaintyType &Sz, double t=-1){
+  Measurement(VecType &z, 
+	      MatType &Sz, double t=-1){
     set(z, Sz, t);
   }
 
@@ -53,9 +53,9 @@ public:
    * \param z - measurement
    * \param t - time at wich the measurement was taken, negative  times indicate absence of time information. 
    */
-  Measurement(MeasurementValType &z, 
+  Measurement(VecType &z, 
 	      double t=-1){
-    set(z, (MeasurementUncertaintyType() << MeasurementUncertaintyType::Zero()).finished() , t);
+    set(z, (MatType() << MatType::Zero()).finished() , t);
   }
 
   /** Default destructor */
@@ -67,12 +67,12 @@ public:
    * \param Sz - measurement uncertainty
    * \param t - time at wich the measurement was taken, negative  times indicate absence of time information.
    */
-  void set(MeasurementValType &z, 
-	   MeasurementUncertaintyType &Sz, 
+  void set(VecType &z, 
+	   MatType &Sz, 
 	   double t = -1)
   {
-    StateWithUncertainty< MeasurementValType, 
-			  MeasurementUncertaintyType >::set(z, Sz);
+    StateWithUncertainty< VecType, 
+			  MatType >::set(z, Sz);
     t_ = t;
   }
 
@@ -81,9 +81,9 @@ public:
    * \param z - measurement
    * \param t - time at wich the measurement was taken, negative  times indicate absence of time imformation.
    */
-  void set(MeasurementValType &z, double t = -1)
+  void set(VecType &z, double t = -1)
   {
-    State< MeasurementValType >::set(z);
+    State< VecType >::set(z);
     t_ = t;
   }
 
@@ -94,9 +94,9 @@ public:
    * \param t - time at wich the measurement was taken, 
    *            negative times indicate absence of time imformation. [overwritten]
    */
-  void get(MeasurementValType &z, MeasurementUncertaintyType &Sz, double &t)
+  void get(VecType &z, MatType &Sz, double &t)
   {
-    StateWithUncertainty< MeasurementValType, MeasurementUncertaintyType >::get(z, Sz);
+    StateWithUncertainty< VecType, MatType >::get(z, Sz);
     t = t_;
   }
 
@@ -105,9 +105,9 @@ public:
    * \param z measurement [overwritten]
    * \param t timestamp of the measurement, negative times indicate absence of time imformation.[overwritten]
    */
-  void get(MeasurementValType &z, double &t)
+  void get(VecType &z, double &t)
   {
-    State< MeasurementValType >::get(z);
+    State< VecType >::get(z);
     t = t_;
   }
 

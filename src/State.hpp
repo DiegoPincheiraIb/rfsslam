@@ -14,8 +14,6 @@ double const PI = acos(-1);
  * \brief An abstract base class for defining a state
  * \tparam VecType an Eigen vector;
  * \author Keith Leung
- *
- * \todo consider reading nDim_ using the size() function in Eigen
  */
 template<class VecType>
 class State

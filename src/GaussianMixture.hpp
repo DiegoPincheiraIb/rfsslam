@@ -14,9 +14,6 @@
  * It is designed to work in a Rao-Blackwellized particle filter
  *
  * \author Keith Leung
- *
- * \todo Function for checking Gaussians that are close for merging
- * \todo Function for merging Gaussians
  */
 
 template< class Landmark >

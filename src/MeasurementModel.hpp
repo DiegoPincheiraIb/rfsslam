@@ -12,10 +12,7 @@
 /** 
  * \class MeasurementModel
  * \brief An abstract class for defining the measurement model
- * \author Felipe Inostroza
- *
- * \todo Examine all functions and look at which arguments can be passed in by reference
- *       to avoid copying of objects into member functions
+ * \author Felipe Inostroza, Keith Leung
  */
 template<class PoseType, class LandmarkType, class MeasurementType>
 class MeasurementModel

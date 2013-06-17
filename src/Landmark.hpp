@@ -13,8 +13,8 @@
  * \brief An abstract class for defining landmark state
  * \author Keith Leung
  */
-template<class StateType, class UncertaintyType>
-class Landmark : public StateWithUncertainty<StateType, UncertaintyType>
+template<class VecType, class MatType>
+class Landmark : public StateWithUncertainty<VecType, MatType>
 {
 public:
 
@@ -27,7 +27,7 @@ public:
    * Constructor - defined only for our convenience and non-essential
    *  \param nDim number of dimensions in landmark state
    */
-  Landmark(unsigned int nDim, StateType x, UncertaintyType Sx){
+  Landmark(unsigned int nDim, VecType x, MatType Sx){
     set(x, Sx);
     nReferences_ = 0;
   }
