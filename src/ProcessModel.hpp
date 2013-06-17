@@ -11,19 +11,19 @@
 /**
  * \class ProcessModel
  * \brief An abstract class for defining vehicle motion models
- * \tparam StateType Object type for state 
- * \tparam InputType Object type for process input information
+ * \tparam PoseType Pose derived type for state 
+ * \tparam InputType Measurement derived for process input
  * \author Keith Leung
  *
  * \todo Add function for predicting covariance for step function
  */
-template<class StateType, class InputType>
+template<class PoseType, class InputType>
 class ProcessModel
 {
 public:
 
-  typedef StateType tState;
-  typedef InputType tInput;
+  typedef PoseType State;
+  typedef InputType Input;
 
   /** Default constructor */
   ProcessModel(){};
@@ -40,7 +40,7 @@ public:
    * \param input_k input to process model
    * \param dT size of time-step
    */
-  virtual void step( StateType &s_k, StateType &s_km, 
+  virtual void step( PoseType &s_k, PoseType &s_km, 
 		     InputType &input_k, double const dT = 0 ) = 0;
 
 };
@@ -76,8 +76,8 @@ public:
 
 private:
 
-  Pose2d::StateType x_k_i_;       /**< \f[ \begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_{k} \f]*/
-  Pose2d::StateType x_km_i_;      /**< \f[ \begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_{k-1} \f]*/
+  Pose2d::Vec x_k_i_;       /**< \f[ \begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_{k} \f]*/
+  Pose2d::Vec x_km_i_;      /**< \f[ \begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_{k-1} \f]*/
   Eigen::Vector2d p_k_i_;   /**< \f[ \begin{bmatrix} x \\ y \end{bmatrix}_{k} \f]*/
   Eigen::Vector2d p_km_i_;  /**< \f[ \begin{bmatrix} x \\ y \end{bmatrix}_{k-1} \f]*/
   double theta_k_;          /**< \f[ \theta_k \f\] */

@@ -12,18 +12,18 @@ double const PI = acos(-1);
 /**
  * \class State
  * \brief An abstract base class for defining a state
- * \tparam StateType an Eigen vector;
+ * \tparam VecType an Eigen vector;
  * \author Keith Leung
  *
  * \todo consider reading nDim_ using the size() function in Eigen
  */
-template<class StateType>
+template<class VecType>
 class State
 {
 
 public:
 
-  typedef StateType tState;
+  typedef VecType Vec;
 
   /** Default constructor */
   State(){
@@ -32,11 +32,11 @@ public:
       std::cerr << "Error: Dimension must be greater than 0\n";
       exit(-1);
     }
-    x_ = StateType::Zero();
+    x_ = Vec::Zero();
   }
 
   /** Constructor */
-  State( StateType x ){ 
+  State( Vec &x ){ 
     nDim_ = x_.size();
     if( nDim_ == 0 ){
       std::cerr << "Error: Dimension must be greater than 0\n";
@@ -52,13 +52,13 @@ public:
    * Function for setting the pose state
    * \param x state to be set
    */
-  void set( StateType x ){x_ = x;}
+  void set( Vec &x ){x_ = x;}
   
   /** 
    * Function for getting the pose state 
    * \param x state [overwritten]
    */
-  void get( StateType &x ){x = x_;}
+  void get( Vec &x ){x = x_;}
 
   /** 
    * Get the number of dimensions
@@ -68,7 +68,7 @@ public:
 
 protected:
 
-  StateType x_; /**< State */
+  Vec x_; /**< State */
   unsigned int nDim_; /**< Number of dimensions */
 
 };
@@ -76,30 +76,30 @@ protected:
 /**
  * \class StateWithUncertainty
  * \brief An abstract base class for defining the vehicle pose state
- * \tparam StateType An Eigen vector
- * \tparam UncertaintyType An Eigen matrix
+ * \tparam VecType An Eigen vector
+ * \tparam MatType An Eigen matrix
  * \author Keith Leung
  */
-template<class StateType, class UncertaintyType>
-class StateWithUncertainty : public State<StateType>
+template<class VecType, class MatType>
+class StateWithUncertainty : public State<VecType>
 {
 
 public:
 
-  typedef UncertaintyType tUncertainty;
+  typedef MatType Mat;
 
   /** Default constructor */
   StateWithUncertainty(){
     if( Sx_.rows() != Sx_.cols() ){
-      std::cerr << "Error: UncertaintyType must be a square matrix \n";
+      std::cerr << "Error: MatType must be a square matrix \n";
       exit(-1);
     }
     if( Sx_.rows() != this->x_.size() ){
-      std::cerr << "Error: StateType and UncertaintyType dimension mismatch \n";
+      std::cerr << "Error: VecType and MatType dimension mismatch \n";
       exit(-1);
     }
 
-    Sx_ = UncertaintyType::Zero();
+    Sx_ = MatType::Zero();
   }
 
   /** Default destructor */
@@ -110,8 +110,8 @@ public:
    * \param x state to be set
    * \param Sx uncertainty to be set
    */
-  void set( StateType x, UncertaintyType Sx){
-    State<StateType>::set(x);
+  void set( VecType &x, MatType &Sx){
+    State<VecType>::set(x);
     Sx_ = Sx;
     SxInv_ = Sx_.inverse();
     Sx_det_ = Sx.determinant();
@@ -122,8 +122,8 @@ public:
    * \param x state [overwritten]
    * \param Sx uncertainty [overwritten]
    */
-  void get( StateType &x, UncertaintyType &Sx){
-    State<StateType>::get(x);
+  void get( VecType &x, MatType &Sx){
+    State<VecType>::get(x);
     Sx = Sx_;
   }
 
@@ -133,9 +133,9 @@ public:
    * \param x the state to which we measure the distance to
    * \return mahalanobis distance squared
    */
-  double mahalanobisDist2( StateType &x){
+  double mahalanobisDist2( VecType &x){
     
-    StateType e = this->x_ - x;
+    VecType e = this->x_ - x;
     return (e.transpose() * SxInv_ * e);
   }
 
@@ -144,7 +144,7 @@ public:
    * \param x the state to which we measure the distance to
    * \return mahalanobis distance
    */
-  double mahalanobisDist( StateType &x){
+  double mahalanobisDist( VecType &x){
     double md2 = mahalanobisDist2( x );
     if( md2 >= 0)
       return sqrt( md2 );
@@ -157,8 +157,8 @@ public:
    * \param x object containing the state to which we measure the distance to
    * \return mahalanobis distance
    */
-  double mahalanobisDist( State<StateType> &x ){   
-    StateType s;
+  double mahalanobisDist( State<VecType> &x ){   
+    VecType s;
     x.get(s);
     return mahalanobisDist( s );
   }
@@ -168,7 +168,7 @@ public:
    * \param x the state at which the likelihood will be evaluated
    * \return likelihood
    */
-  double evalGaussianLikelihood( StateType x ){
+  double evalGaussianLikelihood( VecType &x ){
     double md2 = mahalanobisDist2( x );
     return ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, this->nDim_) * Sx_det_ )  );
   }
@@ -178,8 +178,8 @@ public:
    * \param x the state at which the likelihood will be evaluated
    * \return likelihood
    */
-  double evalGaussianLikelihood( State<StateType> x ){ 
-    StateType s;
+  double evalGaussianLikelihood( State<VecType> &x ){ 
+    VecType s;
     x.get(s);
     return evalGaussianLikelihood( s );
   }
@@ -187,8 +187,8 @@ public:
 
 private:
 
-  UncertaintyType Sx_; /**< Covariance */
-  UncertaintyType SxInv_; /**< Inverse covariance */
+  MatType Sx_; /**< Covariance */
+  MatType SxInv_; /**< Inverse covariance */
   double Sx_det_; /** Determinant of Sx_ */
 
 };

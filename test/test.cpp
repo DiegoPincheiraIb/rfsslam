@@ -6,7 +6,9 @@
 #include "LandmarkTest.hpp"
 #include "MeasurementTest.hpp"
 #include "MeasurementModelTest.hpp"
+#include "ParticleFilterTest.hpp"
 #include "PoseTest.hpp"
+#include "ProcessModelTest.hpp"
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

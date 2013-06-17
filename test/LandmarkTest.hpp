@@ -35,8 +35,8 @@ protected:
 // Constructor test for Landmark2d
 TEST_F(LandmarkTest, constructorTestLandmark2d){
 
-  Landmark2d::tState x_in, x_out;
-  Landmark2d::tUncertainty Sx_in, Sx_out;
+  Landmark2d::Vec x_in, x_out;
+  Landmark2d::Mat Sx_in, Sx_out;
   x_in << 0, 0;
   Sx_in << 0, 0, 0, 0;
   Landmark2d m;
@@ -50,8 +50,8 @@ TEST_F(LandmarkTest, constructorTestLandmark2d){
 // Constructor test for Landmark1d
 TEST_F(LandmarkTest, constructorTestLandmark1d){
 
-  Landmark1d::tState x_in, x_out;
-  Landmark1d::tUncertainty Sx_in, Sx_out;
+  Landmark1d::Vec x_in, x_out;
+  Landmark1d::Mat Sx_in, Sx_out;
   x_in << 0;
   Sx_in << 0;
   Landmark1d m;
@@ -65,8 +65,8 @@ TEST_F(LandmarkTest, constructorTestLandmark1d){
 // Information setting / getting test using Landmark2d
 TEST_F(LandmarkTest, dataSetGetTest){
 
-  Landmark2d::tState x_in, x_out;
-  Landmark2d::tUncertainty Sx_in, Sx_out;
+  Landmark2d::Vec x_in, x_out;
+  Landmark2d::Mat Sx_in, Sx_out;
 
   x_in << 0, 0;
   Sx_in << 0, 0, 0, 0;
@@ -111,8 +111,8 @@ TEST_F(LandmarkTest, referenceCountTest){
 // Mahalanobis distance calculation test for Landmark2d
 TEST_F(LandmarkTest, mahalanobisDistanceTest2d){
 
-  Landmark2d::tState x_in, x;
-  Landmark2d::tUncertainty Sx_in;
+  Landmark2d::Vec x_in, x;
+  Landmark2d::Mat Sx_in;
   
   Landmark2d m;
   // \todo Look up how to do expect error 
@@ -140,8 +140,8 @@ TEST_F(LandmarkTest, mahalanobisDistanceTest2d){
 // Mahalanobis distance calculation test for Landmark1d
 TEST_F(LandmarkTest, mahalanobisDistanceTest1d){
   
-  Landmark1d::tState x_in, x;
-  Landmark1d::tUncertainty Sx_in;
+  Landmark1d::Vec x_in, x;
+  Landmark1d::Mat Sx_in;
   
   Landmark1d m;
   // \todo Look up how to do expect error (from inverting zero matrix)

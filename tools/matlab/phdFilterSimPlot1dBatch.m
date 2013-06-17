@@ -21,11 +21,11 @@ figure;
 set(gcf, 'Color', 'w');
 set(gcf, 'Position', [220 40 560 420]);
 xlabel('Time [s]');
-ylabel('x-position error error [m]');
+ylabel('x-position absolute error [m]');
 hold on
 grid on
 error = p_k_dr(1, k_sim_start:k_sim_end) - p_k_groundtruth(1, k_sim_start:k_sim_end);
-plot(k_sim_start:k_sim_end, error, 'g-', 'LineWidth', 1);
+plot(k_sim_start:k_sim_end, abs(error), 'g-', 'LineWidth', 1);
 h_estimateError = gca;
 h_estimateErrorFig = gcf;
 
@@ -206,7 +206,7 @@ figure;
 set(gcf, 'Color', 'w');
 set(gcf, 'Position', [1350 650 560 320])
 xlabel('x-position [m]');
-ylabel('Map Intensity');
+ylabel('Sum of Gaussians');
 grid on
 hold on
 total_particle_weight = sum(particle_weight(1:n_particles,k_max));

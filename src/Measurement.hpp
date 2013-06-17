@@ -13,8 +13,9 @@
 /** 
  * \class Measurement
  * \brief An abstract class for measurements.
- * \tparam MeasurementValType Object type representing measurements
- * \tparam MeasurementUncertaintyType Object type representing measurement uncertainties
+ * \tparam MeasurementValType Eigen vector representing a measurement
+ * \tparam MeasurementUncertaintyType Eigen matrix representing 
+ *  measurement uncertainties
  * \author Keith Leung, Felipe Inostroza
  */
 template<class MeasurementValType, class MeasurementUncertaintyType>
@@ -41,9 +42,20 @@ public:
    * \param Sz - measurement uncertainty
    * \param t - time at wich the measurement was taken, negative  times indicate absence of time information. 
    */
-  Measurement(unsigned int nDim, MeasurementValType z, 
-	      MeasurementUncertaintyType Sz, double t=-1){
+  Measurement(MeasurementValType &z, 
+	      MeasurementUncertaintyType &Sz, double t=-1){
     set(z, Sz, t);
+  }
+
+  /** 
+   * Constructor
+   * \param nDim number of dimensions in measurement vector
+   * \param z - measurement
+   * \param t - time at wich the measurement was taken, negative  times indicate absence of time information. 
+   */
+  Measurement(MeasurementValType &z, 
+	      double t=-1){
+    set(z, (MeasurementUncertaintyType() << MeasurementUncertaintyType::Zero()).finished() , t);
   }
 
   /** Default destructor */
@@ -55,9 +67,12 @@ public:
    * \param Sz - measurement uncertainty
    * \param t - time at wich the measurement was taken, negative  times indicate absence of time information.
    */
-  void set(MeasurementValType z, MeasurementUncertaintyType Sz, double t = -1)
+  void set(MeasurementValType &z, 
+	   MeasurementUncertaintyType &Sz, 
+	   double t = -1)
   {
-    StateWithUncertainty< MeasurementValType, MeasurementUncertaintyType >::set(z, Sz);
+    StateWithUncertainty< MeasurementValType, 
+			  MeasurementUncertaintyType >::set(z, Sz);
     t_ = t;
   }
 
@@ -66,7 +81,7 @@ public:
    * \param z - measurement
    * \param t - time at wich the measurement was taken, negative  times indicate absence of time imformation.
    */
-  void set(MeasurementValType z, double t = -1)
+  void set(MeasurementValType &z, double t = -1)
   {
     State< MeasurementValType >::set(z);
     t_ = t;

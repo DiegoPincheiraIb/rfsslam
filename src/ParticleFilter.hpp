@@ -15,23 +15,23 @@
 /** 
  * \class ParticleFilter
  * \brief A class containing functions for implementing the particle filter
- * \tparam StateType container for the state that the filter updates
- * \tparam SystemInputType container for process model input 
+ * \tparam ProcessModel class for the process model
+ * \tparam MeasurementModel class for the measurement model
  * \author Keith Leung
- * \todo Test this class
  */
 template< class ProcessModel, class MeasurementModel>
 class ParticleFilter
 {
 public:
 
-  typedef typename ProcessModel::tState StateType;
-  typedef typename ProcessModel::tInput InputType;
-  typedef typename MeasurementModel::tMeasurement MeasureType;
-  typedef Particle<StateType>* pParticle;
+  typedef typename ProcessModel::State State;
+  typedef typename ProcessModel::Input Input;
+  typedef typename MeasurementModel::tMeasurement Measure;
+  typedef Particle<State>* pParticle;
+  typedef std::vector<pParticle> ParticleSet;
 
   /** Defailt constructor */
-  ParticleFilter(){};
+  ParticleFilter();
 
   /** 
    * Constructor 
@@ -41,7 +41,7 @@ public:
    * \param measurementModelPtr pointer to measurement model
    */ 
   ParticleFilter(int n, 
-		 StateType &initState,
+		 State &initState,
 		 ProcessModel* processModelPtr,
 		 MeasurementModel* measurementModelPtr);
 
@@ -55,24 +55,36 @@ public:
   void setProcessModel( ProcessModel* modelPtr );
 
   /** 
+   * Get the process model pointer
+   * \return pointer to process model
+   */
+  ProcessModel* getProcessModel();
+
+  /** 
    * Set the measurement model to use for particle weighting
    * \param model pointer to measurement model
    */
   void setMeasurementModel( MeasurementModel* modelPtr );
 
   /** 
+   * Get the measurement model pointer
+   * \return pointer to measurement model
+   */
+  MeasurementModel* getMeasurementModel();
+
+  /** 
    * Set the measurements for use in importance weight calculations
    * \note The input vector gets cleared
    * \param Z vector container of measurements
    */
-  void setMeasurements(std::vector<MeasureType> &Z);
+  void setMeasurements(std::vector<Measure> &Z);
 
   /** 
    * Propagate particles using the process model
    * \param input to the process model
    * \double dT time-step of input (not used by all process models)
    */
-  void propagate( InputType &input, double const dt = 0);
+  void propagate( Input &input, double const dt = 0);
 
   /**
    * Calculate and update importance weights for all particles;
@@ -81,10 +93,28 @@ public:
   virtual void importanceWeighting();
 
   /** 
+   * Get the number of particles
+   * \return count
+   */
+  double getParticleCount();
+
+  /** 
+   * Get the pointer to the particle container
+   * \retrun a pointer
+   */
+  ParticleSet* getParticleSet(){return &particleSet_;}
+
+  /** 
    * Set the effective particle count below which we resample
    * \param t threshold
    */
   void setEffectiveParticleCountThreshold(double t);
+
+  /**
+   * Get the effective particle count threshold
+   * \return threshold
+   */ 
+  double getEffectiveParticleCountThreshold();
 
   /**
    * Particling resampling using a low variance sampling
@@ -99,14 +129,14 @@ public:
 protected:
 
   int nParticles_; /**< number of particles */
-  std::vector< pParticle > particleSet_; /**< container for particle pointers */
+  ParticleSet particleSet_; /**< container for particle pointers */
 
   ProcessModel* pProcessModel_; /**< Process model pointer */
   MeasurementModel* pMeasurementModel_; /**< Measurement model pointer */
   
   double effNParticles_t_; /**< Effective particle count threshold for resampling */
 
-  std::vector<MeasureType> measurements_; /** Container for measurements to use for update of particle weight and map
+  std::vector<Measure> measurements_; /** Container for measurements to use for update of particle weight and map
 
   /** 
    * Normalize particle weights so that they sum to 1
@@ -119,8 +149,17 @@ protected:
 
 template< class ProcessModel, class MeasurementModel>
 ParticleFilter<ProcessModel, MeasurementModel>::
+ParticleFilter(){
+  nParticles_ = 0;
+  setProcessModel( NULL );
+  setMeasurementModel( NULL );
+}
+
+
+template< class ProcessModel, class MeasurementModel>
+ParticleFilter<ProcessModel, MeasurementModel>::
 ParticleFilter(int n, 
-	       StateType &initState,
+	       State &initState,
 	       ProcessModel* processModelPtr,
 	       MeasurementModel* measurementModelPtr){
   
@@ -129,7 +168,7 @@ ParticleFilter(int n,
   particleSet_.resize(nParticles_);
   double newParticleWeight = 1;
   for( int i = 0 ; i < nParticles_ ; i++ ){
-    particleSet_[i] = new Particle<StateType>(n, initState, newParticleWeight);
+    particleSet_[i] = new Particle<State>(n, initState, newParticleWeight);
   }
   
   setProcessModel( processModelPtr );
@@ -156,23 +195,35 @@ void ParticleFilter<ProcessModel, MeasurementModel>::setProcessModel( ProcessMod
 }
 
 template< class ProcessModel, class MeasurementModel>
+ProcessModel* ParticleFilter<ProcessModel, MeasurementModel>::
+getProcessModel(){
+  return pProcessModel_; 
+}
+
+template< class ProcessModel, class MeasurementModel>
 void ParticleFilter<ProcessModel, MeasurementModel>::setMeasurementModel( MeasurementModel* modelPtr ){
   pMeasurementModel_ = modelPtr;
 }
 
+
 template< class ProcessModel, class MeasurementModel>
-void ParticleFilter<ProcessModel, MeasurementModel>::setMeasurements(std::vector<MeasureType> &Z){
+MeasurementModel* ParticleFilter<ProcessModel, MeasurementModel>::
+getMeasurementModel(){
+  return pMeasurementModel_; 
+}
+
+template< class ProcessModel, class MeasurementModel>
+void ParticleFilter<ProcessModel, MeasurementModel>::setMeasurements(std::vector<Measure> &Z){
   measurements_.swap(Z);
   Z.clear();
 }
 
-
 template< class ProcessModel, class MeasurementModel>
-void ParticleFilter<ProcessModel, MeasurementModel>::propagate( InputType &input, 
+void ParticleFilter<ProcessModel, MeasurementModel>::propagate( Input &input, 
 								double const dt){
    
   for( int i = 0 ; i < nParticles_ ; i++ ){
-    StateType x_km, x_k;
+    State x_km, x_k;
     particleSet_[i]->getPose( x_km );
     pProcessModel_->step( x_k, x_km, input, dt);
     particleSet_[i]->setPose( x_k );
@@ -197,10 +248,22 @@ void ParticleFilter<ProcessModel, MeasurementModel>::normalizeWeights(){
 
 }
 
+
+template< class ProcessModel, class MeasurementModel>
+double ParticleFilter<ProcessModel, MeasurementModel>::getParticleCount(){
+  return nParticles_;
+}
+
 template< class ProcessModel, class MeasurementModel>
 void ParticleFilter<ProcessModel, MeasurementModel>::
 setEffectiveParticleCountThreshold(double t){
   effNParticles_t_ = t;
+}
+
+template< class ProcessModel, class MeasurementModel>
+double ParticleFilter<ProcessModel, MeasurementModel>::
+getEffectiveParticleCountThreshold(){
+  return effNParticles_t_;
 }
 
 template< class ProcessModel, class MeasurementModel>

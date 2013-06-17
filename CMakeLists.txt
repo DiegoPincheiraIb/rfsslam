@@ -31,10 +31,7 @@ INCLUDE_DIRECTORIES(${Eigen_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
 #LINK_DIRECTORIES()
 
-ADD_LIBRARY(Pose src/Pose.cpp)
 ADD_LIBRARY(ProcessModel src/ProcessModel.cpp)
-ADD_LIBRARY(Landmark src/Landmark.cpp)
-ADD_LIBRARY(Measurement src/Measurement.cpp)
 ADD_LIBRARY(MeasurementModel src/MeasurementModel.cpp)
 
 # Is there a point to making this into a library since it's a template?
@@ -49,9 +46,9 @@ SET_TARGET_PROPERTIES(ParticleFilter PROPERTIES LINKER_LANGUAGE CXX)
 ADD_LIBRARY(GaussianMixture src/GaussianMixture.hpp)
 SET_TARGET_PROPERTIES(GaussianMixture PROPERTIES LINKER_LANGUAGE CXX)
 
-ADD_EXECUTABLE(sandbox src/test.cpp)
-TARGET_LINK_LIBRARIES(sandbox Pose Particle ProcessModel Landmark Measurement MeasurementModel GaussianMixture)
+ADD_EXECUTABLE(sandbox src/test.cpp src/Measurement.cpp src/Pose.cpp)
+TARGET_LINK_LIBRARIES(sandbox Particle ProcessModel MeasurementModel GaussianMixture)
 
-ADD_EXECUTABLE(unitTest test/test.cpp)
-TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} pthread Landmark Pose Measurement MeasurementModel)
+ADD_EXECUTABLE(unitTest test/test.cpp src/Measurement.cpp src/Pose.cpp)
+TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} pthread MeasurementModel ProcessModel)
 ADD_TEST(unitTest bin/unitTest)

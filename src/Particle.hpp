@@ -7,7 +7,7 @@
 /** 
  *  \class Particle
  *  \brief A class for a particle for the particle filter
- *  \tparam PoseType container for the state
+ *  \tparam PoseType PoseWithUncertainty derived class
  *  \author Keith Leung
  */
 template< class PoseType >
@@ -15,6 +15,8 @@ class Particle
 {
 
 public:
+
+  typedef PoseType tPose;
 
   /** Default constructor */
   Particle();
@@ -84,7 +86,7 @@ public:
 
   /** 
    * Copy the state from this particle to another particle
-   * /param p particle to which data is copied to
+   * \param p particle to which data is copied to
    */
   void copyStateTo( Particle<PoseType>* p);
 
@@ -103,6 +105,7 @@ template< class PoseType >
 Particle<PoseType>::Particle(){
   id_ = 0;
   idParent_ = id_;
+  x_k_i_ = PoseType();
   w_ = 0;
 }
 

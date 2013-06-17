@@ -34,7 +34,7 @@ void RangeBearingModel::predict(Pose2d  &pose, Landmark2d &landmark, Measurement
 
   Eigen::Vector3d robotPose;
   Eigen::Vector2d mean, landmarkState;
-  Eigen::Matrix2d H, landmarkUncertainty;
+  Eigen::Matrix2d H, landmarkUncertainty, cov;
   double range, bearing;
 
   pose.get(robotPose);
@@ -51,7 +51,8 @@ void RangeBearingModel::predict(Pose2d  &pose, Landmark2d &landmark, Measurement
   H << -(landmarkState(1)-robotPose(1))/(pow(mean(0),2)), (landmarkState(0)-robotPose(0))/pow(mean(0),2),
        (landmarkState(0)-robotPose(0))/mean(0)          , (landmarkState(1)-robotPose(1))/mean(0) ;
   
-  prediction.set(mean, H * landmarkUncertainty * H.transpose() + covZ_);
+  cov = H * landmarkUncertainty * H.transpose() + covZ_;
+  prediction.set(mean, cov);
 
 }
 
@@ -70,7 +71,8 @@ void RangeBearingModel::inversePredict(Pose2d &pose, Measurement2d &measurement,
   Hinv << cos(poseState(2)+measurementState(1)) , -measurementState(0)*sin(poseState(2)+measurementState(1)) ,
           sin(poseState(2)+measurementState(1)) , measurementState(0)*cos(poseState(2)+measurementState(1));
 
-  landmark.set( mean, Hinv * measurementUncertainty *Hinv.transpose() );
+  covariance = Hinv * measurementUncertainty *Hinv.transpose();
+  landmark.set( mean, covariance );
 
 }
 

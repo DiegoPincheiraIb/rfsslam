@@ -38,6 +38,5 @@ void OdometryMotionModel2d::step(  Pose2d &s_k,
   x_k_i_.head(2) = p_k_i_;
   x_k_i_(2) = theta_k_;
   s_k.set(x_k_i_);
-  
 }
 
