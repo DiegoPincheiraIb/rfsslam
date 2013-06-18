@@ -89,3 +89,58 @@ TEST_F(ProcessModelTest, OdometryMotionModel2dTest){
   EXPECT_NEAR(0, (x_out - x_expect).norm(), 1e-15) << "2d odometry model with rotation input failed";
 
 }
+
+TEST_F(ProcessModelTest, sampleTest){
+
+  Pose2d::Mat ProcessNoise;
+  ProcessNoise << 3, 2, 1, 2, 4, -1, 1, -1, 5;
+
+  model = OdometryMotionModel2d( ProcessNoise );
+  
+  u << 1, 2, 0;
+  Su << 0, 0, 0, 0, 0, 0, 0, 0, 0;
+  odo.set(u, Su, 0.3456);
+
+  x_in << 0, 0, 0;
+  p_in.set(x_in);
+
+  int nSamples = 200000;
+  std::vector < Pose2d::Vec > v;
+  for(int i = 0; i < nSamples; i++){
+    model.sample(p_out, p_in, odo);  
+    p_out.get(x_out);
+    v.push_back(x_out);
+  }
+
+  Pose2d::Vec sum;
+  for(int i = 0; i < nSamples; i++){
+    sum = sum + v[i];
+  }  
+
+  Pose2d::Vec mean = sum / nSamples;
+  
+  for( int i = 0; i < mean.size(); i++){
+    double e = mean(i) - (x_in(i) + u(i));
+    EXPECT_NEAR(0.0, e, 1e-2);
+  }
+
+  Pose2d::Vec e;
+
+  Pose2d::Mat sum2;
+  sum2 = Pose2d::Mat::Zero();
+  for(int i = 0; i < nSamples; i++){
+    e = v[i] - mean;
+    sum2 = sum2 + e * e.transpose();
+  }  
+  Pose2d::Mat cov = sum2 / nSamples;  
+
+  for( int i = 0; i < mean.size(); i++){
+    for( int j = 0; j < mean.size(); j++){
+      double e = cov(i,j) - ProcessNoise(i,j);
+      EXPECT_NEAR(0.0, e, 1e-2) << "Failure may be due to randomness\nExpected:" 
+				<< ProcessNoise(i,j)
+				<< "\nGot:" << cov(i,j) << "\n\n";
+    }
+  }
+
+}

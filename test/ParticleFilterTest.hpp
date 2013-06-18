@@ -116,8 +116,8 @@ TEST_F(ParticleFilterTest, ParticleFilterDefaultConstructorTest){
 // Test PF constructor
 TEST_F(ParticleFilterTest, ParticleFilterConstructorTest){
   unsigned int n = 100;
-  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::State initState;
-  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::State::Vec x0;
+  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::TPose initState;
+  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::TPose::Vec x0;
   x0 << 1, 2, 3;
   initState.set(x0);
   ParticleFilter<OdometryMotionModel2d, RangeBearingModel> 
@@ -127,8 +127,8 @@ TEST_F(ParticleFilterTest, ParticleFilterConstructorTest){
   EXPECT_EQ(&measurementModel, pf.getMeasurementModel() );
   EXPECT_EQ(n, pf.getParticleSet()->size() );
   ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::ParticleSet* pps = pf.getParticleSet();
-  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::State s;
-  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::State::Vec x;
+  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::TPose s;
+  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::TPose::Vec x;
   for(int i = 0; i < pps->size(); i++){
     (*pps)[i]->getPose(s);
     s.get(x);
@@ -143,8 +143,8 @@ TEST_F(ParticleFilterTest, ParticleFilterConstructorTest){
 // getParticleSet()
 TEST_F(ParticleFilterTest, ParticleFilterSetGetTest){
   unsigned int n = 100;
-  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::State initState;
-  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::State::Vec x0;
+  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::TPose initState;
+  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::TPose::Vec x0;
   x0 << 1, 2, 3;
   initState.set(x0);
   typedef ParticleFilter<OdometryMotionModel2d, RangeBearingModel> PF_TYPE;

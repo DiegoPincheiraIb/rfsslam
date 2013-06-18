@@ -4,7 +4,11 @@
 #ifndef PROCESSMODEL_HPP
 #define PROCESSMODEL_HPP
 
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/normal_distribution.hpp>
+#include <boost/random/variate_generator.hpp>
 #include <Eigen/Core>
+#include <Eigen/Cholesky>
 #include "Measurement.hpp"
 #include "Pose.hpp"
 
@@ -22,11 +26,21 @@ class ProcessModel
 {
 public:
 
-  typedef PoseType State;
-  typedef InputType Input;
+  typedef PoseType TPose;
+  typedef InputType TInput;
 
   /** Default constructor */
-  ProcessModel(){};
+  ProcessModel() : nd_(0, 1), gen_(rng_, nd_) {}
+
+  /** Constructor 
+   * \param S additive zero mean while Gaussian noise for this model 
+   */
+  ProcessModel(typename PoseType::Mat &S) : S_zmgn_(S), nd_(0, 1), gen_(rng_, nd_) {
+    if( S_zmgn_ != PoseType::Mat::Zero() ){
+      Eigen::LLT<typename PoseType::Mat> cholesky( S );
+      L_ = cholesky.matrixL();
+    }
+  }
 
   /** Default destructor */
   ~ProcessModel(){};
@@ -42,6 +56,59 @@ public:
    */
   virtual void step( PoseType &s_k, PoseType &s_km, 
 		     InputType &input_k, double const dT = 0 ) = 0;
+
+  /**
+   * Sample the zero mean white Gaussian process noise
+   * to predict the pose at k from k-1
+   * \note For other noise models, such as noise on the input which
+   * requires more complex noise propagation methods, override this 
+   * function in a derived class
+   * \param s_k pose at current time-step k [overwritten]
+   * \param s_km pose at previous time-step k-1
+   * \param input_k input to process model
+   * \param dT size of time-step
+   */
+  virtual void sample( PoseType &s_k, PoseType &s_km, 
+		       InputType &input_k, double const dT = 0 ){
+    
+    step( s_k, s_km, input_k, dT );
+
+    if( S_zmgn_ != PoseType::Mat::Zero() ){
+    
+      boost::mt19937 rng;
+      boost::normal_distribution<double> nd(0, 1);
+      boost::variate_generator< boost::mt19937, boost::normal_distribution<double> > gen(rng, nd);
+      int n = S_zmgn_.cols();
+      typename PoseType::Vec randomVecUniform, randomVecGaussian, x_k;
+      for(int i = 0; i < n; i++){
+	randomVecUniform(i) = randn();
+      }
+      randomVecGaussian = L_ * randomVecUniform;
+
+      s_k.get(x_k);
+      x_k = x_k + randomVecGaussian;
+      s_k.set(x_k);
+    }
+  }
+
+protected:
+  
+  /** Covariance matrix for zero mean white Gaussian noise */
+  typename PoseType::Mat S_zmgn_;
+
+  /** Lower triangular part of Cholesky decomposition on S_zmgn */
+  typename PoseType::Mat L_;
+
+  /** Generate a random number from a normal distribution */
+  double randn(){
+    return gen_();
+  }
+
+private:
+
+  boost::mt19937 rng_;
+  boost::normal_distribution<double> nd_;
+  boost::variate_generator< boost::mt19937, boost::normal_distribution<double> > gen_;
 
 };
 
@@ -59,6 +126,11 @@ public:
 
   /** Default constructor */
   OdometryMotionModel2d();
+
+  /** Constructor with process noise input 
+   * \param S additive zero-mean white Gaussian noise covariance matrix
+   */
+  OdometryMotionModel2d( Pose2d::Mat S );
 
   /** Default destructor */
   ~OdometryMotionModel2d();

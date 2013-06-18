@@ -18,16 +18,17 @@
  * \tparam ProcessModel class for the process model
  * \tparam MeasurementModel class for the measurement model
  * \author Keith Leung
+ * \todo need to test propagate and resampling functions
  */
 template< class ProcessModel, class MeasurementModel>
 class ParticleFilter
 {
 public:
 
-  typedef typename ProcessModel::State State;
-  typedef typename ProcessModel::Input Input;
+  typedef typename ProcessModel::TPose TPose;
+  typedef typename ProcessModel::TInput TInput;
   typedef typename MeasurementModel::tMeasurement Measure;
-  typedef Particle<State>* pParticle;
+  typedef Particle<TPose>* pParticle;
   typedef std::vector<pParticle> ParticleSet;
 
   /** Defailt constructor */
@@ -41,7 +42,7 @@ public:
    * \param measurementModelPtr pointer to measurement model
    */ 
   ParticleFilter(int n, 
-		 State &initState,
+		 TPose &initState,
 		 ProcessModel* processModelPtr,
 		 MeasurementModel* measurementModelPtr);
 
@@ -84,7 +85,7 @@ public:
    * \param input to the process model
    * \double dT time-step of input (not used by all process models)
    */
-  void propagate( Input &input, double const dt = 0);
+  void propagate( TInput &input, double const dt = 0);
 
   /**
    * Calculate and update importance weights for all particles;
@@ -159,7 +160,7 @@ ParticleFilter(){
 template< class ProcessModel, class MeasurementModel>
 ParticleFilter<ProcessModel, MeasurementModel>::
 ParticleFilter(int n, 
-	       State &initState,
+	       TPose &initState,
 	       ProcessModel* processModelPtr,
 	       MeasurementModel* measurementModelPtr){
   
@@ -168,7 +169,7 @@ ParticleFilter(int n,
   particleSet_.resize(nParticles_);
   double newParticleWeight = 1;
   for( int i = 0 ; i < nParticles_ ; i++ ){
-    particleSet_[i] = new Particle<State>(n, initState, newParticleWeight);
+    particleSet_[i] = new Particle<TPose>(n, initState, newParticleWeight);
   }
   
   setProcessModel( processModelPtr );
@@ -219,13 +220,13 @@ void ParticleFilter<ProcessModel, MeasurementModel>::setMeasurements(std::vector
 }
 
 template< class ProcessModel, class MeasurementModel>
-void ParticleFilter<ProcessModel, MeasurementModel>::propagate( Input &input, 
+void ParticleFilter<ProcessModel, MeasurementModel>::propagate( TInput &input, 
 								double const dt){
    
   for( int i = 0 ; i < nParticles_ ; i++ ){
-    State x_km, x_k;
+    TPose x_km, x_k;
     particleSet_[i]->getPose( x_km );
-    pProcessModel_->step( x_k, x_km, input, dt);
+    pProcessModel_->sample( x_k, x_km, input, dt);
     particleSet_[i]->setPose( x_k );
   } 
 }

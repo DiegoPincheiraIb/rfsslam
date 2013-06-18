@@ -5,6 +5,8 @@
 
 OdometryMotionModel2d::OdometryMotionModel2d(){}
 
+OdometryMotionModel2d::OdometryMotionModel2d( Pose2d::Mat S ) : ProcessModel(S) {}
+
 OdometryMotionModel2d::~OdometryMotionModel2d(){}
 
 void OdometryMotionModel2d::step(  Pose2d &s_k, 

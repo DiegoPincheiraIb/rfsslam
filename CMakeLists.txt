@@ -8,6 +8,11 @@ PROJECT(RB_PHD_FILTER)
 FILE(MAKE_DIRECTORY "bin")
 FILE(MAKE_DIRECTORY "lib")
 
+FIND_PACKAGE(Boost COMPONENTS math_c99 REQUIRED)
+set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_MULTITHREADED ON) 
+set(Boost_USE_STATIC_RUNTIME ON)
+
 FIND_PACKAGE(Eigen REQUIRED)
 
 # Change the following include directories depending on where gtest is installed
@@ -27,6 +32,7 @@ MESSAGE("CMAKE_ARCHIVE_OUTPUT_DIRECTORY = " ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 INCLUDE_DIRECTORIES(include)
 INCLUDE_DIRECTORIES(src)
 INCLUDE_DIRECTORIES(test)
+INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${Eigen_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
 #LINK_DIRECTORIES()
@@ -47,8 +53,8 @@ ADD_LIBRARY(GaussianMixture src/GaussianMixture.hpp)
 SET_TARGET_PROPERTIES(GaussianMixture PROPERTIES LINKER_LANGUAGE CXX)
 
 ADD_EXECUTABLE(sandbox src/test.cpp src/Measurement.cpp src/Pose.cpp)
-TARGET_LINK_LIBRARIES(sandbox Particle ProcessModel MeasurementModel GaussianMixture)
+TARGET_LINK_LIBRARIES(sandbox ${Boost_LIBRARIES} Particle ProcessModel MeasurementModel GaussianMixture)
 
 ADD_EXECUTABLE(unitTest test/test.cpp src/Measurement.cpp src/Pose.cpp)
-TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} pthread MeasurementModel ProcessModel)
+TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread MeasurementModel ProcessModel)
 ADD_TEST(unitTest bin/unitTest)

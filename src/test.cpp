@@ -17,7 +17,18 @@ int main(int argc, char* argv[]){
 
   int nParticles = 10;
   Pose2d x_0(2, 1, 0);
-  OdometryMotionModel2d motionModel;
+  Pose2d x_1;
+  Odometry2d::Vec u;
+  u << 0, 0, 0;
+  Odometry2d odo;
+  odo.set(u);
+
+  Pose2d::Mat ProcessNoise;
+   
+  ProcessNoise << 3, 2, 1, 2, 4, -1, 1, -1, 5;
+
+  OdometryMotionModel2d motionModel(ProcessNoise);
+  motionModel.sample(x_1, x_0, odo);
 
   ParticleFilter<OdometryMotionModel2d, RangeBearingModel> pf(nParticles, x_0, &motionModel, &measurementModel); 
 
