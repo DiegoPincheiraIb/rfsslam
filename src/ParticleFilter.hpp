@@ -18,7 +18,6 @@
  * \tparam ProcessModel class for the process model
  * \tparam MeasurementModel class for the measurement model
  * \author Keith Leung
- * \todo need to test propagate and resampling functions
  */
 template< class ProcessModel, class MeasurementModel>
 class ParticleFilter
@@ -169,7 +168,7 @@ ParticleFilter(int n,
   particleSet_.resize(nParticles_);
   double newParticleWeight = 1;
   for( int i = 0 ; i < nParticles_ ; i++ ){
-    particleSet_[i] = new Particle<TPose>(n, initState, newParticleWeight);
+    particleSet_[i] = new Particle<TPose>(i, initState, newParticleWeight);
   }
   
   setProcessModel( processModelPtr );
@@ -289,7 +288,7 @@ bool ParticleFilter<ProcessModel, MeasurementModel>::resample( unsigned int n ){
   normalizeWeights();
   
   // Sampler settings
-  double randomNum_0_to_1 = ((double) rand() / (RAND_MAX + 1));
+  double randomNum_0_to_1 = ((double) rand() / (double(RAND_MAX) + 1));
   unsigned int idx = 0;
   const double sample_interval = 1.0 / double(n); 
   const double sampler_offset = sample_interval * randomNum_0_to_1;
@@ -302,6 +301,8 @@ bool ParticleFilter<ProcessModel, MeasurementModel>::resample( unsigned int n ){
   
   // Sample
   for( int i = 0; i < n; i++ ){
+
+
     while( sample_point > cumulative_weight ){
       // particle[idx] not sampled
       idx++;
@@ -319,16 +320,12 @@ bool ParticleFilter<ProcessModel, MeasurementModel>::resample( unsigned int n ){
   for( int i = 0; i < n; i++ ){
     
     bool firstTime = true;
-    idx = sampled_idx[i]; // particle[idx] was sampled
-    if( i > 0){
-      if( idx == idx_prev ){
-	firstTime = false;
-      }
+    idx = sampled_idx[i]; // particle[idx] was sampled 
+    
+    if(i > 0 && idx == idx_prev ){
+      firstTime = false;
     }
     idx_prev = idx;
-
-    while( flag_particle_sampled[next_unsampled_idx] == 1)
-      next_unsampled_idx++;
 
     // cases:
     // 1. idx < n AND idx appears for first time -> do nothing
@@ -339,10 +336,17 @@ bool ParticleFilter<ProcessModel, MeasurementModel>::resample( unsigned int n ){
     if( idx < n && firstTime){ // case 1
       particleSet_[idx]->setParentId( particleSet_[idx]->getId() );
     }else{ // case 2, 3, 4
+
+      if( next_unsampled_idx < nParticles_ ){
+	while( flag_particle_sampled[next_unsampled_idx] == 1)
+	  next_unsampled_idx++;
+      }
+
       particleSet_[next_unsampled_idx]->setParentId( particleSet_[idx]->getId() );
-      particleSet_[i]->copyStateTo( particleSet_[next_unsampled_idx] );
-    }
-      
+      particleSet_[idx]->copyStateTo( particleSet_[next_unsampled_idx] );
+
+      next_unsampled_idx++;
+    }      
   }
 
   // Delete all particles with idx >= n

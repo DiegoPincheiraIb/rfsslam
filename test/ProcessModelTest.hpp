@@ -113,18 +113,15 @@ TEST_F(ProcessModelTest, sampleTest){
   }
 
   Pose2d::Vec sum;
+  sum = Pose2d::Vec::Zero();
   for(int i = 0; i < nSamples; i++){
     sum = sum + v[i];
   }  
 
   Pose2d::Vec mean = sum / nSamples;
-  
-  for( int i = 0; i < mean.size(); i++){
-    double e = mean(i) - (x_in(i) + u(i));
-    EXPECT_NEAR(0.0, e, 1e-2);
-  }
+  Pose2d::Vec e = mean - (x_in + u);
+  EXPECT_NEAR(0.0, e.norm(), 1e-2) << "Got:\n" << mean << "\nExpected:\n" << (x_in + u) << "\n";
 
-  Pose2d::Vec e;
 
   Pose2d::Mat sum2;
   sum2 = Pose2d::Mat::Zero();

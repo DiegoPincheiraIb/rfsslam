@@ -182,8 +182,141 @@ TEST_F(ParticleFilterTest, ParticleFilterSetGetTest){
 
 TEST_F(ParticleFilterTest, ParticleFilterPropagateTest){
 
+  typedef ParticleFilter<OdometryMotionModel2d, RangeBearingModel> PF_TYPE;
+
+  PF_TYPE::TPose::Mat ProcessNoise;
+  ProcessNoise << 3, 2, 1, 2, 4, -1, 1, -1, 5;
+  motionModel = OdometryMotionModel2d( ProcessNoise );
+
+  unsigned int n = 200000;
+  PF_TYPE::TPose initState;
+  PF_TYPE::TPose::Vec x0;
+  x0 << 0, 0, 0; // no rotation for this test
+  initState.set(x0);
+  PF_TYPE pf(n, initState, &motionModel, &measurementModel);
+
+  PF_TYPE::ParticleSet* pps = pf.getParticleSet();
+  PF_TYPE::TPose s;
+  PF_TYPE::TPose::Vec x;
+  for(int i = 0; i < pps->size(); i++){
+    (*pps)[i]->getPose(s);
+    s.get(x);
+    EXPECT_EQ(x0, x);
+  }
+  
+  Odometry2d::Vec u;
+  Odometry2d::Mat Su;
+  Odometry2d odo;
+  u << 1, 2, 0; // no rotation for this test
+  Su = Odometry2d::Mat::Identity();
+  odo.set(u, Su, 0.1);
+
+  pf.propagate( odo );
+  
+  std::vector < PF_TYPE::TPose::Vec > v;
+  for(int i = 0; i < pps->size(); i++){
+    (*pps)[i]->getPose(s);
+    s.get(x);
+    v.push_back(x);    
+  }
+
+  PF_TYPE::TPose::Vec sum;
+  sum = PF_TYPE::TPose::Vec::Zero();
+  for(int i = 0; i < n; i++){
+    sum = sum + v[i];
+  }  
+  PF_TYPE::TPose::Vec mean = sum / n;
+
+  PF_TYPE::TPose::Vec e;
+  e = mean - (x0 + u);
+
+  for( int i = 0; i < mean.size(); i++){
+    EXPECT_NEAR(0.0, e(i), 1e-2);
+  }
+  
+  PF_TYPE::TPose::Mat sum2;
+  sum2 = Pose2d::Mat::Zero();
+  for(int i = 0; i < n; i++){
+    e = v[i] - mean;
+    sum2 = sum2 + e * e.transpose();
+  }  
+  PF_TYPE::TPose::Mat cov = sum2 / n;  
+
+  for( int i = 0; i < mean.size(); i++){
+    for( int j = 0; j < mean.size(); j++){
+      double e = cov(i,j) - ProcessNoise(i,j);
+      EXPECT_NEAR(0.0, e, 1e-2) << "Failure may be due to randomness\nExpected:" 
+				<< ProcessNoise(i,j)
+				<< "\nGot:" << cov(i,j) << "\n\n";
+    }
+  }
+
 }
 
-TEST_F(ParticleFilterTest, ParticleFilterSampleTest){
+TEST_F(ParticleFilterTest, ParticleFilterResampleTest){
+
+  typedef ParticleFilter<OdometryMotionModel2d, RangeBearingModel> PF_TYPE;
+
+  unsigned int n = 10;
+  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::TPose initState;
+  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::TPose::Vec x0;
+  x0 << 1, 2, 3;
+  initState.set(x0);
+  PF_TYPE pf(n, initState, &motionModel, &measurementModel);
+  
+  PF_TYPE::ParticleSet* pps = pf.getParticleSet();
+  PF_TYPE::TPose s;
+  PF_TYPE::TPose::Vec x;
+  for(int i = 0; i < pps->size(); i++){
+    (*pps)[i]->setWeight(1);
+  }
+
+  // All particles have equal weight, Effective_n_of_particles = n / 4 by default
+  // We should not resample
+  EXPECT_FALSE( pf.resample() );
+
+  // Expect to get n / 2 = 5 samples of particle 5
+  pf.setEffectiveParticleCountThreshold( n ); // force resample
+  for(int i = 0; i < pps->size(); i++){
+    (*pps)[i]->setWeight(1);
+  }
+  (*pps)[1]->setWeight(2);
+  (*pps)[5]->setWeight(10);
+  pf.resample();
+  int count = 0;
+  for(int i = 0; i < pps->size(); i++){
+    //std::cout << (*pps)[i]->getParentId() << std::endl;
+    if ((*pps)[i]->getParentId() == 5){
+      count++;
+    }
+  }
+  EXPECT_EQ(5, count);
+
+  // Expect to get 4 samples of particle 2 and 4 of particle 6
+  pf.setEffectiveParticleCountThreshold( n ); // force resample
+  for(int i = 0; i < pps->size(); i++){
+    (*pps)[i]->setWeight(1);
+  }
+  (*pps)[2]->setWeight(20);
+  (*pps)[6]->setWeight(20);
+  (*pps)[7]->setWeight(2);
+  pf.resample();
+  count = 0;
+  for(int i = 0; i < pps->size(); i++){
+    //std::cout << (*pps)[i]->getParentId() << std::endl;
+    if ((*pps)[i]->getParentId() == 2){
+      count++;
+    }
+  }
+  EXPECT_EQ(4, count);
+
+  count = 0;
+  for(int i = 0; i < pps->size(); i++){
+    //std::cout << (*pps)[i]->getParentId() << std::endl;
+    if ((*pps)[i]->getParentId() == 6){
+      count++;
+    }
+  }
+  EXPECT_EQ(4, count);
 
 }

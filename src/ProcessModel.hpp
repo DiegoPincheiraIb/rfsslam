@@ -18,8 +18,6 @@
  * \tparam PoseType Pose derived type for state 
  * \tparam InputType Measurement derived for process input
  * \author Keith Leung
- *
- * \todo Add function for predicting covariance for step function
  */
 template<class PoseType, class InputType>
 class ProcessModel
