@@ -56,32 +56,59 @@ public:
 		     InputType &input_k, double const dT = 0 ) = 0;
 
   /**
-   * Sample the zero mean white Gaussian process noise
-   * to predict the pose at k from k-1
-   * \note For other noise models, such as noise on the input which
-   * requires more complex noise propagation methods, override this 
-   * function in a derived class
+   * Sample the process noise to predict the pose at k from k-1
+   * \note This function can be overwritten in derived classes for implementing
+   * other user-defined sampling methods.
+   * \warning This function does not check that the noise covariance matrices
+   * are valid (i.e., semi-positive definite)
    * \param s_k pose at current time-step k [overwritten]
    * \param s_km pose at previous time-step k-1
    * \param input_k input to process model
    * \param dT size of time-step
+   * \param useAdditiveWhiteGaussianNoise if true, the output includes 
+   * the zero-mean additive white Gaussian noise specified in the constructor
+   * \param useInputWhiteGaussianNoise if true, the output includes
+   * the noise specified in the input, and assumes that it is zero-mean white
+   * Gaussian noise.
    */
   virtual void sample( PoseType &s_k, PoseType &s_km, 
-		       InputType &input_k, double const dT = 0 ){
+		       InputType &input_k, double const dT = 0,
+		       bool useAdditiveWhiteGaussianNoise = true,
+		       bool useInputWhiteGaussianNoise = false ){
     
-    step( s_k, s_km, input_k, dT );
+    if(useInputWhiteGaussianNoise){
 
-    if( S_zmgn_ != PoseType::Mat::Zero() ){
+      InputType in = input_k;
+      typename InputType::Vec u;
+      typename InputType::Mat Su, Su_L;
+      double t;
+      in.get( u, Su, t );
+      Eigen::LLT<typename InputType::Mat> cholesky( Su );
+      Su_L = cholesky.matrixL();
     
-      boost::mt19937 rng;
-      boost::normal_distribution<double> nd(0, 1);
-      boost::variate_generator< boost::mt19937, boost::normal_distribution<double> > gen(rng, nd);
-      int n = S_zmgn_.cols();
-      typename PoseType::Vec randomVecUniform, randomVecGaussian, x_k;
+      int n = Su_L.cols();
+      typename InputType::Vec randomVecNormal, randomVecGaussian;
       for(int i = 0; i < n; i++){
-	randomVecUniform(i) = randn();
+	randomVecNormal(i) = randn();
       }
-      randomVecGaussian = L_ * randomVecUniform;
+      randomVecGaussian = L_ * randomVecNormal;
+      u = u + randomVecGaussian;
+      step( s_k, s_km, in, dT );
+
+    }else{
+    
+      step( s_k, s_km, input_k, dT );
+
+    }
+    
+    if( useAdditiveWhiteGaussianNoise && S_zmgn_ != PoseType::Mat::Zero() ){
+    
+      int n = S_zmgn_.cols();
+      typename PoseType::Vec randomVecNormal, randomVecGaussian, x_k;
+      for(int i = 0; i < n; i++){
+	randomVecNormal(i) = randn();
+      }
+      randomVecGaussian = L_ * randomVecNormal;
 
       s_k.get(x_k);
       x_k = x_k + randomVecGaussian;

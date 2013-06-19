@@ -51,12 +51,24 @@ public:
    * \param x state to be set
    */
   void set( Vec &x ){x_ = x;}
+
+  /** 
+   * Function for setting the pose state, exact same as set
+   * \param x state to be set
+   */
+  void setState( Vec &x ){x_ = x;}
   
   /** 
    * Function for getting the pose state 
    * \param x state [overwritten]
    */
   void get( Vec &x ){x = x_;}
+
+  /** 
+   * Function for getting the pose state, exact same as get 
+   * \param x state [overwritten]
+   */
+  void getState( Vec &x ){x = x_;}
 
   /** 
    * Get the number of dimensions
@@ -110,9 +122,7 @@ public:
    */
   void set( VecType &x, MatType &Sx){
     State<VecType>::set(x);
-    Sx_ = Sx;
-    SxInv_ = Sx_.inverse();
-    Sx_det_ = Sx.determinant();
+    setCov(Sx);
   }
   
   /** 
@@ -122,6 +132,24 @@ public:
    */
   void get( VecType &x, MatType &Sx){
     State<VecType>::get(x);
+    getCov(Sx);
+  }
+
+  /** 
+   * Function for setting the pose uncertainty
+   * \param Sx uncertainty to be set
+   */
+  void setCov( MatType &Sx){
+    Sx_ = Sx;
+    SxInv_ = Sx_.inverse();
+    Sx_det_ = Sx.determinant();
+  }
+  
+  /** 
+   * Function for getting the pose uncertianty
+   * \param Sx uncertainty [overwritten]
+   */
+  void getCov( MatType &Sx){
     Sx = Sx_;
   }
 

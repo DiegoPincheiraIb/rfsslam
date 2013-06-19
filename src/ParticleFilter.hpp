@@ -302,7 +302,6 @@ bool ParticleFilter<ProcessModel, MeasurementModel>::resample( unsigned int n ){
   // Sample
   for( int i = 0; i < n; i++ ){
 
-
     while( sample_point > cumulative_weight ){
       // particle[idx] not sampled
       idx++;

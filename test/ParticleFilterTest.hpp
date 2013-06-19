@@ -297,14 +297,13 @@ TEST_F(ParticleFilterTest, ParticleFilterResampleTest){
   for(int i = 0; i < pps->size(); i++){
     (*pps)[i]->setWeight(1);
   }
-  (*pps)[2]->setWeight(20);
+  (*pps)[0]->setWeight(20);
   (*pps)[6]->setWeight(20);
-  (*pps)[7]->setWeight(2);
+  (*pps)[7]->setWeight(3);
   pf.resample();
   count = 0;
   for(int i = 0; i < pps->size(); i++){
-    //std::cout << (*pps)[i]->getParentId() << std::endl;
-    if ((*pps)[i]->getParentId() == 2){
+    if ((*pps)[i]->getParentId() == 0){
       count++;
     }
   }
@@ -312,7 +311,6 @@ TEST_F(ParticleFilterTest, ParticleFilterResampleTest){
 
   count = 0;
   for(int i = 0; i < pps->size(); i++){
-    //std::cout << (*pps)[i]->getParentId() << std::endl;
     if ((*pps)[i]->getParentId() == 6){
       count++;
     }
