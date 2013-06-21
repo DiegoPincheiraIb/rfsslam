@@ -5,6 +5,10 @@ SET(CMAKE_BUILD_TYPE Debug)
 #CMAKE_BUILD_TYPE(CMAKE_CXX_FLAGS_RELEASE)
 PROJECT(RB_PHD_FILTER)
 
+# Disable of edit the following line according to your processor's support for SSE
+# For X86-64 architecture, SSE2 is generally enabled by default
+SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-msse4.2")
+
 FILE(MAKE_DIRECTORY "bin")
 FILE(MAKE_DIRECTORY "lib")
 
