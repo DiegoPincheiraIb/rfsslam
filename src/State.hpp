@@ -50,25 +50,25 @@ public:
 
   /** 
    * Function for setting the pose state
-   * \param x state to be set
+   * \param[in] x state to be set
    */
   void set( Vec &x ){x_ = x;}
 
   /** 
    * Function for setting the pose state, exact same as set
-   * \param x state to be set
+   * \param[in] x state to be set
    */
   void setState( Vec &x ){x_ = x;}
   
   /** 
    * Function for getting the pose state 
-   * \param x state [overwritten]
+   * \param[out] x state (overwritten)
    */
   void get( Vec &x ){x = x_;}
 
   /** 
    * Function for getting the pose state, exact same as get 
-   * \param x state [overwritten]
+   * \param[out] x state (overwritten)
    */
   void getState( Vec &x ){x = x_;}
 
@@ -121,8 +121,8 @@ public:
 
   /** 
    * Function for setting the pose state with uncertainty
-   * \param x state to be set
-   * \param Sx uncertainty to be set
+   * \param[in] x state to be set
+   * \param[in] Sx uncertainty to be set
    */
   void set( VecType &x, MatType &Sx){
     State<VecType>::set(x);
@@ -131,8 +131,8 @@ public:
   
   /** 
    * Function for getting the pose state with uncertianty
-   * \param x state [overwritten]
-   * \param Sx uncertainty [overwritten]
+   * \param x[out] state (overwritten)
+   * \param Sx[out] uncertainty (overwritten)
    */
   void get( VecType &x, MatType &Sx){
     State<VecType>::get(x);
@@ -141,7 +141,7 @@ public:
 
   /** 
    * Function for setting the pose uncertainty
-   * \param Sx uncertainty to be set
+   * \param[in] Sx uncertainty to be set
    */
   void setCov( MatType &Sx){
     Sx_ = Sx;
@@ -151,7 +151,7 @@ public:
   
   /** 
    * Function for getting the pose uncertianty
-   * \param Sx uncertainty [overwritten]
+   * \param[out] Sx uncertainty (overwritten)
    */
   void getCov( MatType &Sx){
     Sx = Sx_;
@@ -160,7 +160,7 @@ public:
   /** 
    * Abstract function for returning the sqaured Mahalanobis distance 
    * from this object's state
-   * \param x the state to which we measure the distance to
+   * \param[in] x the state to which we measure the distance to
    * \return mahalanobis distance squared
    */
   double mahalanobisDist2( VecType &x){
@@ -171,7 +171,7 @@ public:
 
   /**
    * Function for returning the Mahalanobis distance from this object's state
-   * \param x the state to which we measure the distance to
+   * \param[in] x the state to which we measure the distance to
    * \return mahalanobis distance
    */
   double mahalanobisDist( VecType &x){
@@ -184,7 +184,7 @@ public:
 
   /**
    * Function for returning the Mahalanobis distance from this object's state
-   * \param x object containing the state to which we measure the distance to
+   * \param[in] x object containing the state to which we measure the distance to
    * \return mahalanobis distance
    */
   double mahalanobisDist( State<VecType> &x ){   
@@ -195,7 +195,7 @@ public:
 
   /** 
    * Evaluate the Gaussian likelihood of a state
-   * \param x the state at which the likelihood will be evaluated
+   * \param[in] x the state at which the likelihood will be evaluated
    * \return likelihood
    */
   double evalGaussianLikelihood( VecType &x ){
@@ -205,7 +205,7 @@ public:
 
   /** 
    * Evaluate the Gaussian likelihood of a state
-   * \param x the state at which the likelihood will be evaluated
+   * \param[in] x the state at which the likelihood will be evaluated
    * \return likelihood
    */
   double evalGaussianLikelihood( State<VecType> &x ){ 
