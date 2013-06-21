@@ -5,6 +5,7 @@
 #include <iostream>
 #include "Landmark.hpp"
 #include <vector>
+// #include <Eigen/StdVector>
 
 /** 
  * \class GaussianMixture
@@ -221,6 +222,10 @@ unsigned int GaussianMixture<Landmark>::addGaussian( unsigned int idx, pLandmark
     p->set(x, S);
   }
 
+  if (gList_[idx].landmark != NULL){
+    removeGaussian( idx );
+  }
+
   gList_[idx].landmark = p;
   gList_[idx].landmark->incNRef();
   gList_[idx].weight = w;
@@ -228,7 +233,7 @@ unsigned int GaussianMixture<Landmark>::addGaussian( unsigned int idx, pLandmark
   return n_;
 }
 
-template< class Landmark >
+template< class Landmark > 
 unsigned int GaussianMixture<Landmark>::removeGaussian( unsigned int idx ){
   try{
     if(gList_[idx].landmark != NULL){
