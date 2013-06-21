@@ -66,6 +66,8 @@ class RangeBearingModel : public MeasurementModel <Pose2d, Landmark2d, Measureme
 
 public:
 
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
  /** Default constructor */
   RangeBearingModel();
 

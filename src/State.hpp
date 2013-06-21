@@ -23,6 +23,8 @@ public:
 
   typedef VecType Vec;
 
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
   /** Default constructor */
   State(){
     nDim_ = x_.size();
@@ -97,6 +99,8 @@ class StateWithUncertainty : public State<VecType>
 public:
 
   typedef MatType Mat;
+
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
   /** Default constructor */
   StateWithUncertainty(){
