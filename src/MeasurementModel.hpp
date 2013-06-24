@@ -20,8 +20,8 @@ class MeasurementModel
 public:
 
   typedef PoseType tPose;
-  typedef LandmarkType tLandmark;
-  typedef MeasurementType tMeasurement;
+  typedef LandmarkType TLandmark;
+  typedef MeasurementType TMeasurement;
   
   /** Default constructor */
   MeasurementModel(){};

@@ -26,7 +26,7 @@ public:
 
   typedef typename ProcessModel::TPose TPose;
   typedef typename ProcessModel::TInput TInput;
-  typedef typename MeasurementModel::tMeasurement Measure;
+  typedef typename MeasurementModel::TMeasurement TMeasure;
   typedef Particle<TPose>* pParticle;
   typedef std::vector<pParticle> ParticleSet;
 
@@ -77,7 +77,7 @@ public:
    * \note The input vector gets cleared
    * \param Z vector container of measurements
    */
-  void setMeasurements(std::vector<Measure> &Z);
+  void setMeasurements(std::vector<TMeasure> &Z);
 
   /** 
    * Propagate particles using the process model
@@ -136,7 +136,7 @@ protected:
   
   double effNParticles_t_; /**< Effective particle count threshold for resampling */
 
-  std::vector<Measure> measurements_; /** Container for measurements to use for update of particle weight and map
+  std::vector<TMeasure> measurements_; /** Container for measurements to use for update of particle weight and map
 
   /** 
    * Normalize particle weights so that they sum to 1
@@ -213,7 +213,7 @@ getMeasurementModel(){
 }
 
 template< class ProcessModel, class MeasurementModel>
-void ParticleFilter<ProcessModel, MeasurementModel>::setMeasurements(std::vector<Measure> &Z){
+void ParticleFilter<ProcessModel, MeasurementModel>::setMeasurements(std::vector<TMeasure> &Z){
   measurements_.swap(Z);
   Z.clear();
 }

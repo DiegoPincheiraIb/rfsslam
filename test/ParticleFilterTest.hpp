@@ -162,9 +162,9 @@ TEST_F(ParticleFilterTest, ParticleFilterSetGetTest){
   pf.setEffectiveParticleCountThreshold(1.234);
   EXPECT_EQ(1.234, pf.getEffectiveParticleCountThreshold() );
 
-  std::vector<PF_TYPE::Measure> z1, z2;
-  PF_TYPE::Measure m1( (PF_TYPE::Measure::Vec() << 1, 0.1).finished() );
-  PF_TYPE::Measure m2( (PF_TYPE::Measure::Vec() << 2, 0.2).finished() );
+  std::vector<PF_TYPE::TMeasure> z1, z2;
+  PF_TYPE::TMeasure m1( (PF_TYPE::TMeasure::Vec() << 1, 0.1).finished() );
+  PF_TYPE::TMeasure m2( (PF_TYPE::TMeasure::Vec() << 2, 0.2).finished() );
   z1.push_back(m1);
   z1.push_back(m1);
   z1.push_back(m1);
