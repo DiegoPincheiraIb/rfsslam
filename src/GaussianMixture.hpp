@@ -26,8 +26,9 @@ public:
   typedef Landmark* pLandmark;
 
   struct Gaussian{
-    pLandmark landmark;
-    double weight;
+    pLandmark landmark; /**< pointer to landmark */
+    double weight; /**< weight of Gaussian */
+    double weight_prev; /**< previous weight of Gaussian (used by RB-PHD-Filter) */
   };
   
   /** Default constructor */
@@ -39,15 +40,15 @@ public:
   /** 
    * Copy data from this Gaussian mixture to another.
    * Reference counts to all landmarks will be incremented by 1
-   * \param other the other Gaussian mixture to which data is copied to
+   * \param[in/out] other the other Gaussian mixture to which data is copied to
    */
   void copyTo( GaussianMixture *other);
 
   /** 
    * Add Gaussian 
-   * \param p pointer to Landmark to add
-   * \param w weight of the new Gaussian
-   * \param allocateMem if true, assumes memory for Landmark has been allocated
+   * \param[in] p pointer to Landmark to add
+   * \param[in] w weight of the new Gaussian
+   * \param[in] allocateMem if true, assumes memory for Landmark has been allocated
    * and will not go out of scope or get deleted by anything method outside this object.
    * If false, memory is allocated for a new Landmark and data from p is copied over.
    * \return number of Gaussians in the mixture
@@ -56,7 +57,7 @@ public:
 
   /** 
    * Remove a Gaussian and updates the number of Gaussians in the mixture 
-   * \param idx index number of Gaussian \ Landmark
+   * \param[in] idx index number of Gaussian \ Landmark
    * \return number of Gaussians in the mixture
    */
   unsigned int removeGaussian( unsigned int idx );
@@ -69,42 +70,58 @@ public:
 
   /**
    * Set the weight of a Gaussian indicated by the given index
-   * \param idx index
-   * \param w weight 
+   * \param[in] idx index
+   * \param[in] w weight 
    */ 
   void setWeight( unsigned int idx, double w );
 
   /**
    * Get the weight of a Gaussian indicated by the given index
-   * \param idx index
+   * \param[in] idx index
    * \return weight 
    */ 
   double getWeight( unsigned int idx );
   
   /**
    * Get the state and weight of a Gaussian
-   * \param idx index
-   * \param p overwritten by pointer to landmark
-   * \param w overwritten by the weight 
+   * \param[in] idx index
+   * \param[out] p overwritten by pointer to landmark
+   */
+  void getGaussian( unsigned int idx, pLandmark &p);
+
+  /**
+   * Get the state and weight of a Gaussian
+   * \param[in] idx index
+   * \param[out] p overwritten by pointer to landmark
+   * \param[out] w overwritten by the weight 
    */
   void getGaussian( unsigned int idx, pLandmark &p, double &w);
+
+  /**
+   * Get the state and weight of a Gaussian
+   * \param[in] idx index
+   * \param[out] p overwritten by pointer to landmark
+   * \param[out] w overwritten by the weight 
+   * \param[out] w_prev overwritten by the previous weight
+   */
+  void getGaussian( unsigned int idx, pLandmark &p, double &w, double &w_prev);
 
   /**
    * Update an Gaussian in the mixture. 
    * If there is only 1 reference to the Landmark, it will be updated in place
    * If there are multiple references to the landmark, a new landmark will be
    * created, and the reference count to the original landmark will decrease by 1
-   * \param idx index of Gaussian / landmark to update
-   * \param lm Landmark object with the updated data
-   * \param w weight of the updated Gaussian. No change if negative.
+   * \param[in] idx index of Gaussian / landmark to update
+   * \param[in] lm Landmark object with the updated data
+   * \param[in] w weight of the updated Gaussian. No change if negative.
    * \return true if idx is valid and Gaussian is updated
    */
   bool updateGaussian( unsigned int idx, Landmark &lm, double w = -1);
 
   /**
    * Merge Gaussians that are within a certain Mahalanobis distance of each other
-   * \param t Distance threshold
-   * \param f_inflation Merged Gaussian inflation factor
+   * \param[in] t Distance threshold
+   * \param[in] f_inflation Merged Gaussian inflation factor
    * \return number of merging operations
    */
   unsigned int merge(const double t = 0.1, const double f_inflation = 1.0);
@@ -113,10 +130,10 @@ public:
    * Merge two Guassians if the second is within a Mahalanobis distance of the first. 
    * If merging occurs The resulting Gaussian will overwrite the first Gaussian.
    * The second one will be removed from the Gaussian mixture.
-   * \param idx1 index of the first Gaussian
-   * \param idx2 index of the second Gaussian
-   * \param t distance threshold
-   * \param f_inflation Merged Gaussian inflation factor
+   * \param[in] idx1 index of the first Gaussian
+   * \param[in] idx2 index of the second Gaussian
+   * \param[in] t distance threshold
+   * \param[in] f_inflation Merged Gaussian inflation factor
    * \return true if merging is successful
    */
   bool merge(unsigned int idx1, unsigned int idx2, 
@@ -126,20 +143,21 @@ public:
    * Prune the Gaussian mixture to remove Gaussians with weights that are
    * less than a threshold. 
    * \note Gaussians may have difference indices after using this function
-   * \param t weight threshold
+   * \param[in] t weight threshold
    * \return number of Gaussians removed
    */
   unsigned int prune( const double t );
-
-protected:
-
-  int n_; /**< number of Gaussians / Landmarks */
-  std::vector<Gaussian> gList_; /**< container for Gaussians */ 
 
   /**					       
    * Sort the Gaussian mixture container from highest to lowest Gaussian weight 
    */
   void sortByWeight();
+
+protected:
+
+  int n_; /**< number of Gaussians / Landmarks */
+  std::vector<Gaussian> gList_; /**< container for Gaussians */ 
+  bool isSorted_; /**< flag to prevent unecessary sorting */
   
   /**
    * Comparison function for sorting Gaussian container
@@ -148,10 +166,10 @@ protected:
 
    /** 
    * Add Gaussian and overwrite an existing spot in the Gaussian container
-   * \param idx element in gList_ to overwrite
-   * \param p pointer to Landmark to add
-   * \param w weight of the new Gaussian
-   * \param allocateMem if true, assumes memory for Landmark has been allocated
+   * \param[in] idx element in gList_ to overwrite
+   * \param[in] p pointer to Landmark to add
+   * \param[in] w weight of the new Gaussian
+   * \param[in] allocateMem if true, assumes memory for Landmark has been allocated
    * and will not go out of scope or get deleted by anything method outside this object.
    * If false, memory is allocated for a new Landmark and data from p is copied over.
    * \return number of Gaussians in the mixture
@@ -166,6 +184,7 @@ protected:
 template< class Landmark >
 GaussianMixture<Landmark>::GaussianMixture(){
   n_ = 0;
+  isSorted_ = false;
 }
 
 template< class Landmark >
@@ -184,12 +203,13 @@ void GaussianMixture<Landmark>::copyTo( GaussianMixture *other){
   for(int i = 0; i < gList_.size(); i++){
     gList_.landmark->incNRef();
   }
+  other->isSorted_ = isSorted_;
 }
 
 template< class Landmark >
 unsigned int GaussianMixture<Landmark>::addGaussian( pLandmark p, double w, 
 						     bool allocateMem){
-  
+  isSorted_ = false;
   Gaussian g;
 
   if(allocateMem){
@@ -203,6 +223,7 @@ unsigned int GaussianMixture<Landmark>::addGaussian( pLandmark p, double w,
   g.landmark = p;
   g.landmark->incNRef();
   g.weight = w;
+  g.weight_prev = 0;
   gList_.push_back(g);
   n_++;
   return n_;
@@ -211,7 +232,7 @@ unsigned int GaussianMixture<Landmark>::addGaussian( pLandmark p, double w,
 template< class Landmark >
 unsigned int GaussianMixture<Landmark>::addGaussian( unsigned int idx, pLandmark p, double w, 
 						     bool allocateMem){
-  
+  isSorted_ = false;
   Gaussian g;
 
   if(allocateMem){
@@ -229,12 +250,15 @@ unsigned int GaussianMixture<Landmark>::addGaussian( unsigned int idx, pLandmark
   gList_[idx].landmark = p;
   gList_[idx].landmark->incNRef();
   gList_[idx].weight = w;
+  gList_[idx].weight_prev = 0;
   n_++;
   return n_;
 }
 
 template< class Landmark > 
 unsigned int GaussianMixture<Landmark>::removeGaussian( unsigned int idx ){
+
+  isSorted_ = false;
   try{
     if(gList_[idx].landmark != NULL){
       unsigned int nRef = gList_[idx].landmark->decNRef();
@@ -243,6 +267,7 @@ unsigned int GaussianMixture<Landmark>::removeGaussian( unsigned int idx ){
       }
       gList_[idx].landmark = NULL;
       gList_[idx].weight = 0;
+      gList_[idx].weight_prev = 0;
       n_--;
     }
     return n_;
@@ -259,7 +284,9 @@ unsigned int GaussianMixture<Landmark>::getGaussianCount(){
 
 template< class Landmark >
 void GaussianMixture<Landmark>::setWeight( unsigned int idx, double w ){
+  isSorted_ = false;
   try{
+    gList_[idx].weight_prev = gList_[idx].weight;
     gList_[idx].weight = w;
   }catch(...){
     std::cout << "Unable to set Gaussian weight\n";
@@ -276,6 +303,16 @@ double GaussianMixture<Landmark>::getWeight( unsigned int idx){
 }
 
 template< class Landmark >
+void GaussianMixture<Landmark>::getGaussian( unsigned int idx, pLandmark &p){
+ 
+  try{
+    p = gList_[idx].landmark;
+  }catch(...){
+    std::cout << "Unable to get Gaussian\n";
+  }
+}
+
+template< class Landmark >
 void GaussianMixture<Landmark>::getGaussian( unsigned int idx, pLandmark &p, double &w){
  
   try{
@@ -287,7 +324,21 @@ void GaussianMixture<Landmark>::getGaussian( unsigned int idx, pLandmark &p, dou
 }
 
 template< class Landmark >
+void GaussianMixture<Landmark>::getGaussian( unsigned int idx, pLandmark &p, double &w, double &w_prev){
+ 
+  try{
+    p = gList_[idx].landmark;
+    w = gList_[idx].weight;
+    w_prev = gList_[idx].weight_prev;
+  }catch(...){
+    std::cout << "Unable to get Gaussian\n";
+  }
+}
+
+template< class Landmark >
 bool GaussianMixture<Landmark>::updateGaussian( unsigned int idx, Landmark &lm, double w){
+  
+  isSorted_ = false;
 
   if( idx > gList_.size() ) 
     return false;
@@ -304,12 +355,15 @@ bool GaussianMixture<Landmark>::updateGaussian( unsigned int idx, Landmark &lm, 
 
   if (gList_[idx].landmark->getNRef() == 1){ // update in place
     gList_[idx].landmark->set(x, S);
+    gList_[idx].weight_prev = gList_[idx].weight;
     gList_[idx].weight = w;
   }else{
+    double w_prev = gList_[idx].weight;
     removeGaussian( idx );
     Landmark* l = new Landmark;
     l->set(x, S);
     addGaussian( idx, l, w);
+    gList_[idx].weight_prev = w_prev;
   }
 
   return true;
@@ -319,6 +373,7 @@ bool GaussianMixture<Landmark>::updateGaussian( unsigned int idx, Landmark &lm, 
 template< class Landmark >
 unsigned int GaussianMixture<Landmark>::merge(const double t, 
 					      const double f_inflation){
+  isSorted_ = false;
   unsigned int nMerged = 0;
 
   for(unsigned int i = 0; i < gList_.size(); i++){
@@ -335,6 +390,7 @@ unsigned int GaussianMixture<Landmark>::merge(const double t,
 template< class Landmark >
 bool GaussianMixture<Landmark>::merge(unsigned int idx1, unsigned int idx2,
 				      const double t, const double f_inflation){
+  isSorted_ = false;
 
   if (gList_[idx1].landmark == NULL ||
       gList_[idx2].landmark == NULL ){
@@ -375,9 +431,7 @@ bool GaussianMixture<Landmark>::merge(unsigned int idx1, unsigned int idx2,
 
   gList_[idx1].landmark->set(x_m, S_m);
   gList_[idx1].weight = w_m;
-
-  gList_[idx1].landmark->set(x_m, S_m);
-  gList_[idx1].weight = w_m;
+  gList_[idx1].weight_prev = 0;
 
   removeGaussian( idx2 ); // this also takes care of updating Gaussian count
 
@@ -387,6 +441,8 @@ bool GaussianMixture<Landmark>::merge(unsigned int idx1, unsigned int idx2,
 
 template< class Landmark >
 unsigned int GaussianMixture<Landmark>::prune( const double t ){
+
+  isSorted_ = false;
   
   unsigned int nPruned = 0;
   if( gList_.size() < 1 ){
@@ -429,7 +485,10 @@ unsigned int GaussianMixture<Landmark>::prune( const double t ){
 
 template< class Landmark >
 void GaussianMixture<Landmark>::sortByWeight(){
-  std::sort( gList_.begin(), gList_.end(), weightCompare );
+  if( !isSorted_ ){
+    std::sort( gList_.begin(), gList_.end(), weightCompare );
+    isSorted_ = true;
+  }
 }
 
 template< class Landmark >

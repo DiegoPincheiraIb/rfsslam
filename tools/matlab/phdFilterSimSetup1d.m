@@ -40,7 +40,7 @@ effective_particle_threshold = n_particles / 4;
 
 sensor_limit_upper_buffer = 0.20;
 sensor_limit_lower_buffer = 0.20;
-particle_weighting_feautre_set_max_size = 1; % Set to 9 for multi-feature weighting strategy
+particle_weighting_feautre_set_max_size = 8; % Set to 9 for multi-feature weighting strategy
 particle_weighting_random_map = 0;
 birth_Gaussian_likelihood_threshold = 2;
 merging_mahalanoblis_distance_threshold = 0.1;
