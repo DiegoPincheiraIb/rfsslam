@@ -50,6 +50,46 @@ public:
   virtual void inversePredict( PoseType &pose,
 			       MeasurementType &measurement, 
 			       LandmarkType &landmark ) = 0;
+
+  /**
+   * Abstract function of determining a landmark's probability of detection
+   * \note If this is not reimplemented in a derived class, it will always
+   * return a probability of detection of 1
+   * \brief In addition to specifying a single probability of detection as the
+   * return value, we can also specify whether a landmark is close to the sensing limit,
+   * where there can be mismatch between the probability of detection returned by this
+   * function, and the actual probability of detection in real life. This flag is read 
+   * by the RB-PHD-Filter and is important in its implementation to prevent landmarks
+   * near the sensing limit from dissapearing due to the probability of detection mismatch.
+   * \param[in] pose robot pose
+   * \param[in] landmark landmark position
+   * \param[out] isClostToSensingLimit true if landmark is close to the sensing limit,
+   * where there can be a mismatch between the returned value and the actual probability
+   * of detection in reality.
+   * \return probability of detection
+   */
+  virtual double probabilityOfDetection( PoseType &pose,
+					 LandmarkType &landmark,
+					 bool &isCloseToSensingLimit){
+    isCloseToSensingLimit = false;
+    return 1;
+  }
+
+
+  /**
+   * Abstract function for Determining the clutter intensity in the measurement space
+   * \note This may be reimplemented in a derived class
+   * \brief This default function assumes uniform clutter 
+   * \param[in] z measurement point at which clutter intensity will be determined
+   * \param[in] nZ the cardinality of Z, of which z is a member.
+   * \return clutter intensity
+   */
+  virtual double clutterIntensity( MeasurementType &z,
+				   int nZ ){
+    return 0.01;
+  }
+  
+
 };
 
 
@@ -67,6 +107,13 @@ class RangeBearingModel : public MeasurementModel <Pose2d, Landmark2d, Measureme
 public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
+  struct Config{
+    double probabilityOfDetection_;
+    double probabilityOfFalseAlarm_;
+    double rangeLim_; /**< sensing range limit, beyond which Pd = 0 */
+    double rangeLimBuffer_; /**< A buffer for Pd ambiguity */
+  }config;
 
  /** Default constructor */
   RangeBearingModel();
@@ -123,10 +170,34 @@ public:
    * \param measurement measurement
    */
   void inversePredict(Pose2d &pose, Measurement2d &measurement, Landmark2d &landmark);
+
+  /** 
+   * Determine the probability of detection
+   * \note This is where we can indirectly specify sensing limits and other sensor characteristics
+   * \param[in] pose robot pose
+   * \param[in] landmark landmark position
+   * \param[out] Pd_upper
+   * \param[out] Pd_lower
+   * \return probability of detection
+   */
+  double probabilityOfDetection( Pose2d &pose,
+				 Landmark2d &landmark,
+				 bool &isCloseToSensingLimit);
+
+  /**
+   * Determine the clutter intensity in measurement space
+   * \note uniform clutter intensity is assumed
+   * \param[in] z measurement point at which clutter intensity will be determined
+   * \param[in] nZ the cardinality of Z, of which z is a member.
+   * \return clutter intensity
+   */
+  double clutterIntensity( Measurement2d &z,
+			   int nZ );
   
 private:
 
   Eigen::Matrix2d covZ_;
+  double sensingArea_;
 
 };
 

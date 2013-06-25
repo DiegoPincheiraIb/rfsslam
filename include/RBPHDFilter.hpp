@@ -156,12 +156,13 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::updateMap(){
     const unsigned int nM = maps_[i]->getGaussianCount();
     const unsigned int nZ = this->measurements_.size();
     double Pd[nM];
+    int landmarkCloseToSensingLimit[nM];
 
-    // nM x nZ table of measurement likelihood, given a map prior
-    double** likelihoodTable = new double* [ nM ];
-    TLandmark** newLandmarkPointer = new TGaussian* [ nM ];
+    // nM x nZ table for Gaussian weighting
+    double** weightingTable = new double* [ nM ];
+    TGaussian** newLandmarkPointer = new TGaussian* [ nM ];
     for( int n = 0; n < nM; n++ ){
-      likelihoodTable[n] = new double [ nZ ];
+      weightingTable[n] = new double [ nZ ];
       newLandmarkPointer[n] = new TGaussian [ nZ ];
     }
 
@@ -170,35 +171,86 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::updateMap(){
     }
 
     //----------  2. Kalman Filter map update ----------
+
+    const TPose pose = this->particleSet_[i]->getPose();
+
     for(int m = 0; m < nM; m++){
 
-      Pd[m] = 0; // \todo in measurement model
-      double Pfa = 0; // \todo in measurement model
-      double c = 0; // \todo clutter model
+      TLandmark* lm = maps_[i]->landmark;
+      bool isCloseToSensingLimit;
+      Pd[m] = this->pMeasurementModel_->probabilityOfDetection( pose, *lm, isCloseToSensingLimit); 
+      landmarkCloseToSensingLimit[m] = ( isCloseToSensingLimit ) ? 1 : 0;
+      double w_km = maps_[i]->getWeight(m);
+      double Pd_times_w_km = Pd[m] * w_km;
 
       for(int z = 0; z < nZ; z++){
 
 	newLandmarkPointer[m][z] = NULL;
-	likelihoodTable[m][z] = 0;
+	weightingTable[m][z] = 0;
 
-	// Run Kalman Filter
-	// Create new landmark for likely updates but do not add to map_[i] yet
-	TGaussian* lmPtr = new TLandmark;
-	// compare to config.newGaussianCreateLikelihoodThreshold
-	// lmPtr->landmark = todo;
+	// RUN KF, create new landmark for likely updates but do not add to map_[i] yet
+	// because we cannot determine actual weight until the entire weighting table is
+	// filled in
+
+	double innovationLikelihood = 0;
+	// \todo innovationLikelihood = ???
+	if ( innovationLikelihood < config.newGaussianCreateLikelihoodThreshold ){
+	  innovationLikelihood = 0;
+	}
+	TGaussian* lmPtr = new TGaussian;
 	newLandmarkPointer[m][z] = lmPtr;
-	likelihoodTable[m][z] = 0; // \todo update likelihood table
+	weightingTable[m][z] = Pd_times_w_km * innovationLikelihood;
 
       }
 
     }
 
-    //----------  3. Identity unused measurements for adding birth Gaussians later ----------
+    for(int z = 0; z < nZ; z++){
+      double clutter = this->pMeasurementModel_->clutterIntensity( this->measurements_[z], nZ );
+      double sum = clutter;
+      for(int m = 0; m < nM; m++){
+	sum += weightingTable[m][z];
+      }
+      for(int m = 0; m < nM; m++){
+	weightingTable[m][z] /= sum;
+      }
+    }
+
+
+    // ---------- 3. Add new Gaussians to map  ----------
+
+    for(int m = 0; m < nM; m++){
+      for(int z = 0; z < nZ; z++){
+	maps_[i]->addGaussian( newLandmarkPointer[m][z], weightingTable[m][z]);  
+      }
+    }
+
+    //----------  4. Determine weights for existing Gaussians (missed detection) ----------
+    for(int m = 0; m < nM; m++){
+      
+      double w_km = maps_[i]->getWeight(m);
+      double w_k = (1 - Pd[m]) * w_km;
+
+      if (landmarkCloseToSensingLimit[m] == 1){
+	double weight_sum_m = 0;
+	for(int z = 0; z < nZ; z++){
+	  weight_sum_m += weightingTable[m][z];
+	}
+	double delta_w = Pd[m] * w_km - weight_sum_m;
+	if( delta_w > 0 ){
+	  w_k += delta_w;
+	}
+      }
+
+      maps_[i]->setWeight(m, w_k);
+    }
+
+    //----------  5. Identity unused measurements for adding birth Gaussians later ----------
     unused_measurements_[i].clear();
     for(int z = 0; z < nZ; z++){
       bool unused = true;
       for(int m = 0; m < nM; m++){
-	if (likelihoodTable[m][z] != 0){
+	if (weightingTable[m][z] != 0){
 	  unused = false;
 	  break;
 	}
@@ -207,41 +259,21 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::updateMap(){
 	unused_measurements_[i].push_back( z );
     }
 
-    // ---------- 4. Add new Gaussians to map and determine weights based on the likelihood table ----------
-    for(int m = 0; m < nM; m++){
-      for(int z = 0; z < nZ; z++){
-	double weight_m_z = 0; // \todo calculate weight for new Gaussian
-	maps_[i]->addGaussian( newLandmarkPointer[m][z], weight_m_z);  
-      }
-    }
-
-    //----------  5. Determine weights for existing Gaussians (missed detection) ----------
-    for(int m = 0; m < nM; m++){
-      double w_km = maps_[i]->getWeight(m);
-      double w_k = (1 - Pd[m]) * w_km;
-      maps_[i]->setWeight(m, w_k);
-    }
-
     //----------  6. Cleanup - Free memory ----------
     for( int n = 0; n < nM; n++ ){
-      delete[] likelihoodTable[n];
+      delete[] weightingTable[n];
       delete[] newLandmarkPointer[n];
     }
-    delete[] likelihoodTable;
+    delete[] weightingTable;
     delete[] newLandmarkPointer;
 
   }
 
-  // \todo implement measurement ambiguity zone
-  
-  // \todo multithread this
 }
 
 
 template< class ProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::importanceWeighting(){
-
-  // \todo implement all three weighting strategies
 
   for(int i = 0; i < this->nParticles_; i++){
 
@@ -285,13 +317,15 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::importanceWeig
       intensityProd_afterUpdate *= intensity_at_evalPt_afterUpdate;
     }
 
-    // \todo 4. calculate measurement likelihood at eval points
+    // 4. calculate measurement likelihood at eval points
     double measurementLikelihood = 1;
     for(int p = 0; p < nEvalPoints; p++){
 
       TLandmark* lm_evalPt;
       double w_temp;
       maps_[i]->getGaussian(p, lm_evalPt, w_temp);
+
+      // \todo call rfsMeasurementLikelihood(...)
 
     }
 
