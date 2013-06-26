@@ -126,7 +126,7 @@ TEST_F(ParticleFilterTest, ParticleFilterConstructorTest){
   EXPECT_EQ(&motionModel, pf.getProcessModel() );
   EXPECT_EQ(&measurementModel, pf.getMeasurementModel() );
   EXPECT_EQ(n, pf.getParticleSet()->size() );
-  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::ParticleSet* pps = pf.getParticleSet();
+  ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::TParticleSet* pps = pf.getParticleSet();
   ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::TPose s;
   ParticleFilter<OdometryMotionModel2d, RangeBearingModel>::TPose::Vec x;
   for(int i = 0; i < pps->size(); i++){
@@ -195,7 +195,7 @@ TEST_F(ParticleFilterTest, ParticleFilterPropagateTest){
   initState.set(x0);
   PF_TYPE pf(n, initState, &motionModel, &measurementModel);
 
-  PF_TYPE::ParticleSet* pps = pf.getParticleSet();
+  PF_TYPE::TParticleSet* pps = pf.getParticleSet();
   PF_TYPE::TPose s;
   PF_TYPE::TPose::Vec x;
   for(int i = 0; i < pps->size(); i++){
@@ -264,7 +264,7 @@ TEST_F(ParticleFilterTest, ParticleFilterResampleTest){
   initState.set(x0);
   PF_TYPE pf(n, initState, &motionModel, &measurementModel);
   
-  PF_TYPE::ParticleSet* pps = pf.getParticleSet();
+  PF_TYPE::TParticleSet* pps = pf.getParticleSet();
   PF_TYPE::TPose s;
   PF_TYPE::TPose::Vec x;
   for(int i = 0; i < pps->size(); i++){

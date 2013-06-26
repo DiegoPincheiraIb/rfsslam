@@ -24,9 +24,6 @@ class Measurement
 {
 public:
 
-  typedef VecType MeasureType;
-  typedef MatType MeasureUncertaintyType; 
-
   /** 
    * Default constructor   
    * \param nDim number of dimensions in measurement vector

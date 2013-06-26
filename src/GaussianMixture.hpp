@@ -22,7 +22,7 @@ class GaussianMixture
 {
 public:
 
-  typedef Landmark tLandmark;
+  typedef Landmark TLandmark;
   typedef Landmark* pLandmark;
 
   struct Gaussian{

@@ -28,7 +28,7 @@ public:
   typedef typename ProcessModel::TInput TInput;
   typedef typename MeasurementModel::TMeasurement TMeasure;
   typedef Particle<TPose>* pParticle;
-  typedef std::vector<pParticle> ParticleSet;
+  typedef std::vector<pParticle> TParticleSet;
 
   /** Defailt constructor */
   ParticleFilter();
@@ -102,7 +102,7 @@ public:
    * Get the pointer to the particle container
    * \retrun a pointer
    */
-  ParticleSet* getParticleSet(){return &particleSet_;}
+  TParticleSet* getParticleSet(){return &particleSet_;}
 
   /** 
    * Set the effective particle count below which we resample
@@ -129,7 +129,7 @@ public:
 protected:
 
   int nParticles_; /**< number of particles */
-  ParticleSet particleSet_; /**< container for particle pointers */
+  TParticleSet particleSet_; /**< container for particle pointers */
 
   ProcessModel* pProcessModel_; /**< Process model pointer */
   MeasurementModel* pMeasurementModel_; /**< Measurement model pointer */

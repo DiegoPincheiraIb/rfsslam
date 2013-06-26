@@ -34,9 +34,9 @@ protected:
   Pose2d::Vec x_out;
   Pose2d::Vec x_expect;
   Odometry2d odo;
-  Odometry2d::MeasureType u;
-  Odometry2d::MeasureType u2;
-  Odometry2d::MeasureUncertaintyType Su;
+  Odometry2d::Vec u;
+  Odometry2d::Vec u2;
+  Odometry2d::Mat Su;
   double t;
 };
 

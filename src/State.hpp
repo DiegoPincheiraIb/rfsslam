@@ -131,8 +131,8 @@ public:
   
   /** 
    * Function for getting the pose state with uncertianty
-   * \param x[out] state (overwritten)
-   * \param Sx[out] uncertainty (overwritten)
+   * \param[out] x state (overwritten)
+   * \param[out] Sx uncertainty (overwritten)
    */
   void get( VecType &x, MatType &Sx){
     State<VecType>::get(x);

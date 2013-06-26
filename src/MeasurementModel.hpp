@@ -19,7 +19,7 @@ class MeasurementModel
 {
 public:
 
-  typedef PoseType tPose;
+  typedef PoseType TPose;
   typedef LandmarkType TLandmark;
   typedef MeasurementType TMeasurement;
   
