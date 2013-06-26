@@ -78,17 +78,26 @@ public:
 
   /**
    * Abstract function for Determining the clutter intensity in the measurement space
-   * \note This may be reimplemented in a derived class
-   * \brief This default function assumes uniform clutter 
+   * \note This should be reimplemented in a derived class
    * \param[in] z measurement point at which clutter intensity will be determined
    * \param[in] nZ the cardinality of Z, of which z is a member.
    * \return clutter intensity
    */
   virtual double clutterIntensity( MeasurementType &z,
 				   int nZ ){
-    return 0.01;
+    return 0;
   }
-  
+
+  /**
+   * Abstract function for Determining the clutter intensity integral
+   * \note This should be reimplemented in a derived class
+   * \param[in] z measurement point at which clutter intensity will be determined
+   * \param[in] nZ the cardinality of Z, of which z is a member.
+   * \return clutter intensity integral
+   */
+  double clutterIntensityIntegral( int nZ ){
+    return 0;
+  }  
 
 };
 
@@ -108,9 +117,10 @@ public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
+  /** \brief Configuration for the 2d RangeBearingModel */
   struct Config{
     double probabilityOfDetection_;
-    double probabilityOfFalseAlarm_;
+    double probabilityOfFalseAlarm_; /**<  interpret as p( NULL | measurement exists) */
     double rangeLim_; /**< sensing range limit, beyond which Pd = 0 */
     double rangeLimBuffer_; /**< A buffer for Pd ambiguity */
   }config;
@@ -193,6 +203,16 @@ public:
    */
   double clutterIntensity( Measurement2d &z,
 			   int nZ );
+
+  /**
+   * Determine the clutter intensity integral in measurement space
+   * \brief This is calculated based on the probablity of false alarm,
+   * defined as p( NULL | measurement exists)
+   * \param[in] nZ the cardinality of Z
+   * \return clutter intensity
+   */
+  double clutterIntensityIntegral( int nZ );
+
   
 private:
 

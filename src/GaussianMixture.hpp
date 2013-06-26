@@ -25,6 +25,7 @@ public:
   typedef Landmark TLandmark;
   typedef Landmark* pLandmark;
 
+  /** \brief A data structure representing a weighted Gaussian distribution in GaussianMixture */ 
   struct Gaussian{
     pLandmark landmark; /**< pointer to landmark */
     double weight; /**< weight of Gaussian */
@@ -81,6 +82,13 @@ public:
    * \return weight 
    */ 
   double getWeight( unsigned int idx );
+
+  /**
+   * Get the state and weight of a Gaussian
+   * \param[in] idx index
+   * \return pointer to landmark
+   */
+  pLandmark getGaussian( unsigned int idx );
   
   /**
    * Get the state and weight of a Gaussian
@@ -300,6 +308,17 @@ double GaussianMixture<Landmark>::getWeight( unsigned int idx){
   }catch(...){
     std::cout << "Unable to get Gaussian weight\n";
   }
+}
+
+template< class Landmark >
+typename GaussianMixture<Landmark>::pLandmark GaussianMixture<Landmark>::getGaussian( unsigned int idx ){
+  pLandmark p;
+  try{
+    p = gList_[idx].landmark;
+  }catch(...){
+    std::cout << "Unable to get Gaussian\n";
+  }
+  return p;
 }
 
 template< class Landmark >

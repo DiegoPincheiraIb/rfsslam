@@ -35,7 +35,9 @@ public:
   typedef typename MeasurementModel::tMeasurement TMeasure;
   typedef typename GaussianMixture<TLandmark>::Gaussian TGaussian;
 
-  /** Configurations for running the RB-PHD-Filter */
+  /** 
+   * \brief Configurations for running the RB-PHD-Filter 
+   */
   struct Config{
     
     /**  new birth Gaussians are set with this weight */
@@ -118,10 +120,11 @@ private:
    * Random Finite Set measurement likelihood evaluation
    * \brief The current measurements in measurements_ are used to determine the
    * RFS measurement likelihood given a set of landmarks 
-   * \param[in] evalPt a vector of evaluation points (landmarks)
+   * \param[in] particleIdx particle for which the likelihood is calcuated
+   * \param[in] maxNumOfEvalPoints the maximum number of map evaluation points to use
    * \return measurement likelihood
    */
-  double rfsMeasurementLikelihood( std::vector<TLandmark*> evalPt);
+  double rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints );
 
 };
 
@@ -141,6 +144,7 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::update( std::v
   this->setMeasurements( Z );
   updateMap();
   importanceWeighting();
+  // \todo merge and prune
   this->resample();
   // \todo need to reassign maps as well according to resampling
   addBirthGaussians();
@@ -318,14 +322,16 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::importanceWeig
     }
 
     // 4. calculate measurement likelihood at eval points
+    
     double measurementLikelihood = 1;
+    std::vector<TLandmark> a;
     for(int p = 0; p < nEvalPoints; p++){
 
       TLandmark* lm_evalPt;
       double w_temp;
       maps_[i]->getGaussian(p, lm_evalPt, w_temp);
 
-      // \todo call rfsMeasurementLikelihood(...)
+      rfsMeasurementLikelihood( config.nImportanceWeightingEvalPoints_ );
 
     }
 
@@ -365,13 +371,119 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::addBirthGaussi
 
 }
 
-// \todo
+
+
 template< class ProcessModel, class MeasurementModel, class KalmanFilter >
 double RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::
-rfsMeasurementLikelihood( std::vector<TLandmark*> evalPt){
+rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
+
+  // eval points are first nEvalPoints elements of maps_[i]; 
+
+  const int i = particleIdx;
+  const int nM = maxNumOfEvalPoints;
+  const int nZ = this->measurements_->size();
+  int nClutter = 0;
+
+  // Allocate memory for likelihood table
+  std::vector< double* > likelihoodTab(nM);
+  for( int m = 0; m < nM; m++ ){
+    likelihoodTab[m] = new double [nZ];
+  }
+
+  // Fill in likelihood table
+  TPose x;
+  this->particleSet_[i]->getPose( x );
+
+  for( int m = 0; m < nM; m++ ){
+
+    TLandmark evalPt; 
+    maps_[i]->getGaussian( m, evalPt );
+    bool temp;
+    double Pd = this->pMeasurementModel_->probabilityOfDetection( x, evalPt, temp);
+
+     for( int z = 0; z < nZ; z++ ){
+
+       TMeasure expected_z;
+       this->pMeasurementModel_->predict( x, evalPt, expected_z);
+       TMeasure actual_z = this->measurements_[z];
+
+       double likelihood = actual_z.evalGaussianLikelihood( expected_z );
+       
+       if( 1 ){ // \todo check against threshold
+	 likelihoodTab[m][z] = likelihood * Pd;
+       }else{
+	 likelihoodTab[m][z] = 0;
+       }
+
+     }
+  }
+
+  // Check measurements with 0 likelihood to all eval points
+  // if so, that measurement is considered clutter
+  for( int z = 0; z < nZ; z++ ){
+    double z_sum = 0;
+    for( int m = 0; m < nM; m++ ){
+      z_sum += likelihoodTab[m][z];
+    }
+    if( z_sum = 0 ){
+      nClutter++;
+      TMeasure actual_z = this->measurements_[z];
+      double c = this->measurementModel_->clutterIntensity(actual_z, nZ);
+      for( int m = 0; m < nM; m++ ){
+	likelihoodTab[m][z] = c;
+      }
+    }
+  }
+
+  // If the number of measurements is greater than the number of
+  // eval points, then some measurements must be clutter.
+  // We will add extra rows for these clutter measurements in 
+  // likelihoodTab
+  int nC = nZ - nM;
+  if (nC < 0){
+    nC = 0;
+  }else{
+    nClutter += nC;
+  }
+  for( int c = 0; c < nC; c++ ){
+    likelihoodTab.push_back(new double [nZ]);
+    int m = likelihoodTab.size() - 1;
+    for( int z = 0; z < nZ; z++ ){
+      TMeasure actual_z = this->measurements_[z];
+      likelihoodTab[m][z] = this->measurementModel_->clutterIntensity(actual_z, nZ);
+    }
+  }
+
+  // Go through all permutations of eval point - measurement
+  // to calculate the likelihood
+  double likelihood = 0;
+  while (likelihood == 0){
+
+    // likelihood = ?
 
 
-  return 0;
+    if( likelihood == 0 ){
+      // Add another row to of clutter to likelihoodTab
+      likelihoodTab.push_back(new double [nZ]);
+      int m = likelihoodTab.size() - 1;
+      for( int z = 0; z < nZ; z++ ){
+	TMeasure actual_z = this->measurements_[z];
+	likelihoodTab[m][z] = this->measurementModel_->clutterIntensity(actual_z, nZ);
+      }
+    }
+
+  }
+
+  // Deallocate likelihood table
+  for( int m = 0; m < nM + nC; m++ ){
+    delete[] likelihoodTab[m];
+  }
+
+  if (nClutter > 0){
+    likelihood /= this->measurementModel_->clutterIntensityIntegral( nZ );
+  }
+
+  return likelihood;
 }
 
 #endif

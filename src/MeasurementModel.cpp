@@ -128,11 +128,15 @@ double RangeBearingModel::probabilityOfDetection( Pose2d &pose,
 double RangeBearingModel::clutterIntensity( Measurement2d &z,
 					    int nZ){
 
-  double expected_n_clutter_measurements = config.probabilityOfFalseAlarm_ * nZ;
+  double expected_n_clutter_measurements = clutterIntensityIntegral( nZ );
   double c = expected_n_clutter_measurements / sensingArea_;
   return c;
 }
 
 
+double RangeBearingModel::clutterIntensityIntegral( int nZ ){
+  
+  return ( config.probabilityOfFalseAlarm_ * nZ );
+}
 
 
