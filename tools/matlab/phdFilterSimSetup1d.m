@@ -19,7 +19,7 @@ noise_obs = [0.1, 1e-10, 1e-10];
 P_detection_static = 0.85;
 P_false_alarm_static = 0.01;
 P_feature_existence_prior = 0.5;
-N_c = 2.75; % number of expected clutter measurements per timestep
+N_c = 1.0; % number of expected clutter measurements per timestep
 clutter_intensity = N_c / (y_rangeLim * 2); % clutter intensity
 data_generation_seed = 18; %8-8, 68-8, 18-10, 18-np=10-k=3000
 

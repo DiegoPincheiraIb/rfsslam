@@ -4,15 +4,34 @@
 
 /********** Implementation of example 2d measurement Model (Range and Bearing) **********/
 
-RangeBearingModel::RangeBearingModel(){}
+RangeBearingModel::RangeBearingModel(){
+  config.probabilityOfDetection_ = 0.95;
+  config.probabilityOfFalseAlarm_ = 0.01;
+  config.rangeLim_ = 5;
+  config.rangeLimBuffer_ = 0.25;
+
+  sensingArea_ = 2 * PI * config.rangeLim_;
+}
 
 
 RangeBearingModel::RangeBearingModel(Eigen::Matrix2d covZ){
   setCov(covZ);
+  config.probabilityOfDetection_ = 0.95;
+  config.probabilityOfFalseAlarm_ = 0.01;
+  config.rangeLim_ = 5;
+  config.rangeLimBuffer_ = 0.25;
+
+  sensingArea_ = 2 * PI * config.rangeLim_;
 }
 
 RangeBearingModel::RangeBearingModel(double Sr, double Sb){
   setCov(Sr,Sb);
+  config.probabilityOfDetection_ = 0.95;
+  config.probabilityOfFalseAlarm_ = 0.01;
+  config.rangeLim_ = 5;
+  config.rangeLimBuffer_ = 0.25;
+
+  sensingArea_ = 2 * PI * config.rangeLim_;
 }
 
 RangeBearingModel::~RangeBearingModel(){}
@@ -40,8 +59,9 @@ void RangeBearingModel::predict(Pose2d  &pose, Landmark2d &landmark, Measurement
   pose.get(robotPose);
   landmark.get(landmarkState,landmarkUncertainty);
 
-  range = sqrt(pow(landmarkState(0)-robotPose(0),2)+pow(landmarkState(1)-robotPose(1),2));
-  bearing = atan2(landmarkState(1)-robotPose(1),landmarkState(0)-robotPose(0))-robotPose(2);
+  range = sqrt(  pow(landmarkState(0) - robotPose(0), 2)
+		+pow(landmarkState(1) - robotPose(1), 2) );
+  bearing = atan2( landmarkState(1) - robotPose(1) , landmarkState(0) - robotPose(0) ) - robotPose(2);
 
   while(bearing>PI) bearing-=2*PI;
   while(bearing<-PI) bearing+=2*PI;
@@ -76,8 +96,47 @@ void RangeBearingModel::inversePredict(Pose2d &pose, Measurement2d &measurement,
 
 }
 
+double RangeBearingModel::probabilityOfDetection( Pose2d &pose,
+						  Landmark2d &landmark,
+						  bool &isCloseToSensingLimit ){
+
+  Pose2d::Vec robotPose;
+  Landmark2d::Vec landmarkState;
+  double range, Pd;
+  
+  isCloseToSensingLimit = false;
+
+  pose.get(robotPose);
+  landmark.State::get(landmarkState);
+
+  range = sqrt(  pow(landmarkState(0) - robotPose(0), 2)
+		+pow(landmarkState(1) - robotPose(1), 2) );
+
+  if( range <= config.rangeLim_){
+    Pd = config.probabilityOfDetection_;
+    if( range >= (config.rangeLim_ - config.rangeLimBuffer_ ) )
+      isCloseToSensingLimit = true;
+  }else{
+    Pd = 0;
+    if( range <= (config.rangeLim_ + config.rangeLimBuffer_ ) )
+      isCloseToSensingLimit = true;
+  } 
+
+  return Pd;
+}
+
+double RangeBearingModel::clutterIntensity( Measurement2d &z,
+					    int nZ){
+
+  double expected_n_clutter_measurements = clutterIntensityIntegral( nZ );
+  double c = expected_n_clutter_measurements / sensingArea_;
+  return c;
+}
 
 
-
+double RangeBearingModel::clutterIntensityIntegral( int nZ ){
+  
+  return ( config.probabilityOfFalseAlarm_ * nZ );
+}
 
 

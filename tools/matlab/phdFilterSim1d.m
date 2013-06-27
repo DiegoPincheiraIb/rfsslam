@@ -563,16 +563,12 @@ for k = k_sim_start:k_sim_end;
 
             % 2. Map intensity Ratio
 
-            if weighting_map_set_size > 0
-                v_before_update(i, k) = 0;
-                v_after_update(i, k) = 0;
-            else
-                v_before_update(i, k) = 1;
-                v_after_update(i, k) = 1;
-            end
+            v_before_update(i, k) = 1;
+            v_after_update(i, k) = 1;
 
             for j = 1:weighting_map_set_size
 
+                v_sum_evalPt_before_update = 0;
                 for m = 1:M_size_before_update(i)
                     u = M{i,1}(:,m);
                     S = M{i,2}(1,m);
@@ -580,9 +576,11 @@ for k = k_sim_start:k_sim_end;
                     w = weights_before_update{i}(m); 
                     d = map_eval_pos(:, j) - u;
                     md = d' * S_inv * d;
-                    v_before_update(i, k) = v_before_update(i, k) + w * (2*pi)^(-0.5) * det(S)^(-0.5) * exp(-0.5 * md);
+                    v_sum_evalPt_before_update = v_sum_evalPt_before_update + w * (2*pi)^(-0.5) * det(S)^(-0.5) * exp(-0.5 * md);
                 end
+                v_before_update(i, k) = v_before_update(i, k) * v_sum_evalPt_before_update;
 
+                v_sum_evalPt_after_update = 0;
                 for m = 1:M_size(i)
                     u = M{i,1}(:,m);
                     S = M{i,2}(1,m);
@@ -590,8 +588,9 @@ for k = k_sim_start:k_sim_end;
                     w = M{i,3}(m); 
                     d = map_eval_pos(:, j) - u;
                     md = d' * S_inv * d;
-                    v_after_update(i, k)  = v_after_update(i, k)  + w * (2*pi)^(-0.5) * det(S)^(-0.5) * exp(-0.5 * md);
+                    v_sum_evalPt_after_update = v_sum_evalPt_after_update + w * (2*pi)^(-0.5) * det(S)^(-0.5) * exp(-0.5 * md);
                 end  
+                v_after_update(i,k) = v_after_update(i,k) * v_sum_evalPt_after_update;
 
             end
 

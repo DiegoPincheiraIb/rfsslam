@@ -25,9 +25,8 @@ public:
 
   /** 
    * Constructor - defined only for our convenience and non-essential
-   *  \param nDim number of dimensions in landmark state
    */
-  Landmark(unsigned int nDim, VecType x, MatType Sx){
+  Landmark(VecType x, MatType Sx){
     set(x, Sx);
     nReferences_ = 0;
   }

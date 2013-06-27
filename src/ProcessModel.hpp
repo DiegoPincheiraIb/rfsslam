@@ -15,7 +15,7 @@
 /**
  * \class ProcessModel
  * \brief An abstract class for defining vehicle motion models
- * \tparam PoseType Pose derived type for state 
+ * \tparam PoseType PoseWithUncertainty derived type for state 
  * \tparam InputType Measurement derived for process input
  * \author Keith Leung
  */
@@ -23,6 +23,8 @@ template<class PoseType, class InputType>
 class ProcessModel
 {
 public:
+
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
   typedef PoseType TPose;
   typedef InputType TInput;

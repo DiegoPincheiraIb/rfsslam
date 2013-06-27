@@ -64,12 +64,12 @@ TEST_F(MeasurementModelTest, rangeBearingModelConstructorTest){
 TEST_F(MeasurementModelTest, rangeBearingModelPredictTest){
 
   RangeBearingModel model(1, 1);
-  RangeBearingModel::tPose x;
+  RangeBearingModel::TPose x;
   Eigen::Vector3d xPose;
-  RangeBearingModel::tLandmark m;
+  RangeBearingModel::TLandmark m;
   Eigen::Vector2d mPos;
   Eigen::Matrix2d mCov;
-  RangeBearingModel::tMeasurement z;
+  RangeBearingModel::TMeasurement z;
   Eigen::Vector2d zVec;
   Eigen::Matrix2d zCov;
   Eigen::Matrix2d jacobian;
@@ -89,12 +89,12 @@ TEST_F(MeasurementModelTest, rangeBearingModelPredictTest){
 TEST_F(MeasurementModelTest, rangeBearingModelInvPredictTest){
 
   RangeBearingModel model(1, 1);
-  RangeBearingModel::tPose x;
+  RangeBearingModel::TPose x;
   Eigen::Vector3d xPose;
-  RangeBearingModel::tLandmark m;
+  RangeBearingModel::TLandmark m;
   Eigen::Vector2d mPos;
   Eigen::Matrix2d mCov;
-  RangeBearingModel::tMeasurement z;
+  RangeBearingModel::TMeasurement z;
   Eigen::Vector2d zVec;
   Eigen::Matrix2d zCov;
   double t;
