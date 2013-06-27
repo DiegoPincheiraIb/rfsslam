@@ -35,9 +35,11 @@ public:
    * \param pose robot pose 
    * \param landmark landmark wich will be used for predicting the measurement
    * \param prediction predicted measurement [overwritten]
+   * \param jacobian Jacobian of the measurement model at the point where the prediction is made [overwritten]
    */
   virtual void predict( PoseType &pose, LandmarkType &landmark, 
-			MeasurementType &prediction)=0;
+			MeasurementType &prediction , Eigen::Matrix<double , MeasurementType::Vec::RowsAtCompileTime ,
+		  LandmarkType::Vec::RowsAtCompileTime > &jacobian ) = 0;
 
  /** 
    * Abstract function for predicting landmark position from a robot pose and
@@ -111,8 +113,9 @@ public:
    * \param pose robot pose 
    * \param landmark landmark wich will be used for predicting the measurement
    * \param prediction predicted measurement [overwritten]
+   * \param jacobian  jacobian of the measurement model evaluated at the prediction
    */
-  void predict(Pose2d &pose, Landmark2d &landmark, Measurement2d &prediction);
+  void predict(Pose2d &pose, Landmark2d &landmark, Measurement2d &prediction, Eigen::Matrix2d &jacobian);
 
   /** 
    * Inverse measurement model 

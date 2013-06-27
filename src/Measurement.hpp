@@ -24,8 +24,7 @@ class Measurement
 {
 public:
 
-  typedef VecType MeasureType;
-  typedef MatType MeasureUncertaintyType; 
+
 
   /** 
    * Default constructor   

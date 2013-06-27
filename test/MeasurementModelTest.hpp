@@ -72,6 +72,7 @@ TEST_F(MeasurementModelTest, rangeBearingModelPredictTest){
   RangeBearingModel::tMeasurement z;
   Eigen::Vector2d zVec;
   Eigen::Matrix2d zCov;
+  Eigen::Matrix2d jacobian;
   double t;
   
   xPose << 0, 0, 0;
@@ -79,7 +80,7 @@ TEST_F(MeasurementModelTest, rangeBearingModelPredictTest){
   mPos << -1, -1;
   mCov << 1, 0, 0, 1;
   m.set(mPos, mCov);
-  model.predict( x, m, z);
+  model.predict( x, m, z , jacobian);
   z.get(zVec, zCov, t);
   EXPECT_EQ( sqrt(2), zVec(0) );
   EXPECT_EQ( -0.75 * PI , zVec(1) );

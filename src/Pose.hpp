@@ -17,6 +17,8 @@ template <class VecType>
 class Pose : public State< VecType >
 {
 public:
+
+  typedef VecType PoseType;
   
   /** Default constructor */
   Pose() : t_(-1) {}
