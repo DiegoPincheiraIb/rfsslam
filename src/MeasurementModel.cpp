@@ -49,7 +49,7 @@ void RangeBearingModel::setCov(double Sr,double Sb){
           0 ,Sb;
 }
 
-void RangeBearingModel::predict(Pose2d  &pose, Landmark2d &landmark, Measurement2d &prediction){
+void RangeBearingModel::predict(Pose2d  &pose, Landmark2d &landmark, Measurement2d &prediction, Eigen::Matrix2d &jacobian){
 
   Eigen::Vector3d robotPose;
   Eigen::Vector2d mean, landmarkState;
