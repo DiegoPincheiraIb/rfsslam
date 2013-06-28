@@ -68,11 +68,13 @@ void RangeBearingModel::predict(Pose2d  &pose, Landmark2d &landmark, Measurement
 
   mean << range, bearing ;
 
-  H << -(landmarkState(1)-robotPose(1))/(pow(mean(0),2)), (landmarkState(0)-robotPose(0))/pow(mean(0),2),
-       (landmarkState(0)-robotPose(0))/mean(0)          , (landmarkState(1)-robotPose(1))/mean(0) ;
+  H <<  (landmarkState(0)-robotPose(0))/mean(0)          , (landmarkState(1)-robotPose(1))/mean(0) ,
+        -(landmarkState(1)-robotPose(1))/(pow(mean(0),2)), (landmarkState(0)-robotPose(0))/pow(mean(0),2) ;
   
-  cov = H * landmarkUncertainty * H.transpose() + covZ_;
+  cov = H * landmarkUncertainty * H.transpose() ;
   prediction.set(mean, cov);
+  
+  jacobian=H;
 
 }
 
