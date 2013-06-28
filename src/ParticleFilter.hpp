@@ -24,7 +24,7 @@ class ParticleFilter
 {
 public:
 
-  typedef typename ProcessModel::TPose TPose;
+  typedef typename ProcessModel::TState TPose;
   typedef typename ProcessModel::TInput TInput;
   typedef typename MeasurementModel::TMeasurement TMeasure;
   typedef Particle<TPose>* pParticle;

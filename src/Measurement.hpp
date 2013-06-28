@@ -31,7 +31,9 @@ public:
    * \param nDim number of dimensions in measurement vector
    */
   Measurement(){ 
-    t_ = -1; 
+    
+    set( (VecType() << VecType::Zero()).finished() , (MatType() << MatType::Zero()).finished() , -1);
+    
   }
 
   /** 

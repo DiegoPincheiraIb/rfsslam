@@ -27,7 +27,7 @@ public:
    * Constructor - defined only for our convenience and non-essential
    */
   Landmark(VecType x, MatType Sx){
-    set(x, Sx);
+    this->set(x, Sx);
     nReferences_ = 0;
   }
 

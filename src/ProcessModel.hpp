@@ -15,18 +15,18 @@
 /**
  * \class ProcessModel
  * \brief An abstract class for defining vehicle motion models
- * \tparam PoseType PoseWithUncertainty derived type for state 
+ * \tparam StateType StateWithUncertainty derived type for state 
  * \tparam InputType Measurement derived for process input
  * \author Keith Leung
  */
-template<class PoseType, class InputType>
+template<class StateType, class InputType = Measurement1d >
 class ProcessModel
 {
 public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-  typedef PoseType TPose;
+  typedef StateType TState;
   typedef InputType TInput;
 
   /** Default constructor */
@@ -35,9 +35,9 @@ public:
   /** Constructor 
    * \param S additive zero mean while Gaussian noise for this model 
    */
-  ProcessModel(typename PoseType::Mat &S) : S_zmgn_(S), nd_(0, 1), gen_(rng_, nd_) {
-    if( S_zmgn_ != PoseType::Mat::Zero() ){
-      Eigen::LLT<typename PoseType::Mat> cholesky( S );
+  ProcessModel(typename StateType::Mat &S) : S_zmgn_(S), nd_(0, 1), gen_(rng_, nd_) {
+    if( S_zmgn_ != StateType::Mat::Zero() ){
+      Eigen::LLT<typename StateType::Mat> cholesky( S );
       L_ = cholesky.matrixL();
     }
   }
@@ -49,21 +49,38 @@ public:
    * Abstract function for determining pose at time-step k from pose at 
    * time-step k-1
    * This must be implemented in a derived class
-   * \param s_k pose at current time-step k [overwritten]
+   * \param s_k pose at current time-step k. This can be the same object as s_km (to update in place). [overwritten]
    * \param s_km pose at previous time-step k-1
    * \param input_k input to process model
    * \param dT size of time-step
    */
-  virtual void step( PoseType &s_k, PoseType &s_km, 
-		     InputType &input_k, double const dT = 0 ) = 0;
+  virtual void step( StateType &s_k, StateType &s_km, 
+		     InputType &input_k , double const dT = 0 ) = 0;
+		     
+		     
+  /** 
+   * Overload of step to give the default value  for the input. 
+   *
+   * \param s_k State at current time-step k. This can be the same object as s_km (to update in place). [overwritten]
+   * \param s_km State at previous time-step k-1
+   * \param dT size of time-step
+   */
+		     
+	void step( StateType &s_k, StateType &s_km , double const dT = 0){
+	  InputType in;
+	  step(s_k , s_km , in , dT);
+	}
+		     
+
+		     
 
   /**
    * Sample the process noise to predict the pose at k from k-1
    * \note This function can be overwritten in derived classes for implementing
-   * other user-defined sampling methods.
+   * other user-defined sampling methods. 
    * \warning This function does not check that the noise covariance matrices
    * are valid (i.e., semi-positive definite)
-   * \param s_k pose at current time-step k [overwritten]
+   * \param s_k pose at current time-step k. This can be the same object as s_km (to update in place). [overwritten]
    * \param s_km pose at previous time-step k-1
    * \param input_k input to process model
    * \param dT size of time-step
@@ -73,7 +90,7 @@ public:
    * the noise specified in the input, and assumes that it is zero-mean white
    * Gaussian noise.
    */
-  virtual void sample( PoseType &s_k, PoseType &s_km, 
+  virtual void sample( StateType &s_k, StateType &s_km, 
 		       InputType &input_k, double const dT = 0,
 		       bool useAdditiveWhiteGaussianNoise = true,
 		       bool useInputWhiteGaussianNoise = false ){
@@ -103,10 +120,10 @@ public:
 
     }
     
-    if( useAdditiveWhiteGaussianNoise && S_zmgn_ != PoseType::Mat::Zero() ){
+    if( useAdditiveWhiteGaussianNoise && S_zmgn_ != StateType::Mat::Zero() ){
     
       int n = S_zmgn_.cols();
-      typename PoseType::Vec randomVecNormal, randomVecGaussian, x_k;
+      typename StateType::Vec randomVecNormal, randomVecGaussian, x_k;
       for(int i = 0; i < n; i++){
 	randomVecNormal(i) = randn();
       }
@@ -121,10 +138,10 @@ public:
 protected:
   
   /** Covariance matrix for zero mean white Gaussian noise */
-  typename PoseType::Mat S_zmgn_;
+  typename StateType::Mat S_zmgn_;
 
   /** Lower triangular part of Cholesky decomposition on S_zmgn */
-  typename PoseType::Mat L_;
+  typename StateType::Mat L_;
 
   /** Generate a random number from a normal distribution */
   double randn(){
@@ -191,6 +208,8 @@ private:
   Eigen::Matrix2d C_k_km_;  /**< rotation matrix from odometry input */
   
 };
+
+
 
 
 #endif

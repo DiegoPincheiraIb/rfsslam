@@ -10,6 +10,7 @@
 #include "MeasurementModelTest.hpp"
 #include "GaussianMixtureTest.hpp"
 #include "ParticleFilterTest.hpp"
+#include "KalmanFilterTest.hpp"
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
