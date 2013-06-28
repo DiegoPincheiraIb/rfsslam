@@ -20,7 +20,6 @@
  *  \version 0.1
  *
  *  \todo function for map update (but requires completion of Kalman Filter class)
- *  \todo function for importance weighting
  *  
  */
 
@@ -43,16 +42,31 @@ public:
     /**  new birth Gaussians are set with this weight */
     double birthGaussianWeight_;   
 
+    /**  new Gaussians are only created during map update if the innovation likelihood 
+	 is greater than this threshold */
+    double newGaussianCreateLikelihoodThreshold_; 
+
     /**  number of map states to use for evaluating particle weight
 	 0 => empty-set strategy,
 	 1 => single-feature strategy,
 	 >1 => multi-feature strategy
     */
-    int nImportanceWeightingEvalPoints_;
+    int importanceWeightingEvalPointCount_;
 
-    /**  new Gaussians are only created during map update if the innovation likelihood 
-	 is greater than this threshold */
-    double newGaussianCreateLikelihoodThreshold_; 
+    /** The threshold used to determine if a possible meaurement-landmark
+     *  pairing is significant to worth considering 
+     */
+    double importanceWeightingMeasurementLikelihoodThreshold_;
+
+    /** Gaussian merging Mahalanobis distance threshold */
+    double gaussianMergingThreshold_;
+
+    /** Gaussian merging covariance inflation factor */
+    double gaussianMergingCovarianceInflationFactor_;
+
+    /** Gaussian pruning weight threshold */
+    double gaussianPruningThreshold_;
+
 
   } config;
 
@@ -74,8 +88,13 @@ public:
     }
 
     config.birthGaussianWeight_ = 0.25; 
-    config.nImportanceWeightingEvalPoints_ = 8;
-    config.newGaussianCreateLikelihoodThreshold_ = 0.2; 
+    config.gaussianMergingThreshold_ = 0.1;
+    config.gaussianMergingCovarianceInflationFactor_ = 1.5;
+    config.gaussianPruningThreshold_ = 0.2;
+    config.importanceWeightingEvalPointCount_ = 8;
+    config.importanceWeightingMeasurementLikelihoodThreshold_ = 0.1;
+    config.newGaussianCreateLikelihoodThreshold_ = 0.2;
+    
   }
 
   /** Destructor */
@@ -126,6 +145,17 @@ private:
    */
   double rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints );
 
+  /**
+   * Calculate the sum of all permutations of measurement likelihood from a likelihood
+   * table generated from within rfsMeasurementLikelihood
+   * \param[in] likelihoodTab likelihood table generated within rfsMeasurementLikelihood
+   * \param[in] nM number of rows in likelihoodTab (representing the number of evaluation points)
+   * \param[in] nZ number of columns in likelihoodTab (representing the number of measurements)
+   * \return sum of all permutations from the given likelihood table
+   */
+  double rfsMeasurementLikelihoodPermutations( std::vector< double* > &likelihoodTab, 
+					       const int nM, const int nZ);
+
 };
 
 ////////// Implementation //////////
@@ -144,9 +174,72 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::update( std::v
   this->setMeasurements( Z );
   updateMap();
   importanceWeighting();
-  // \todo merge and prune
-  this->resample();
-  // \todo need to reassign maps as well according to resampling
+
+  // Merge and prune
+  for( int i = 0; i < maps_.size(); i++){
+    maps_[i]->merge( config.gaussianMergingThreshold_, 
+		     config.gaussianMergingCovarianceInflationFactor_ );
+    maps_[i]->prune( config.gaussianPruningThreshold_ );
+  }
+
+  bool resampleOccured = false;
+  resampleOccured = this->resample();
+
+  // reassign maps as well according to resampling of particles
+  if( resampleOccured){
+
+    std::vector< GaussianMixture<TLandmark>* > maps_temp( maps_.size(), NULL );
+    std::vector< int > useCount ( maps_.size(), 0);
+
+    // Note which GMs get used and how many times
+    for(int i = 0; i < this->nParticles_; i++){
+      int j = this->particleSet_[i]->getParentId();
+      useCount[j]++;
+      if( maps_temp[i] == NULL ){
+	maps_temp[i] = maps_[i];
+      }
+    }
+
+    // Get rid of the GMs that die along with particles
+    for(int j = 0; j < this->nParticles_; j++){
+      if( useCount[j] == 0 ){
+	delete maps_[j];
+	maps_[j] = NULL;
+      }
+    }
+    
+    // Copy GMs
+    for(int i = 0; i < this->nParticles_; i++){
+      int j = this->particleSet_[i]->getParentId();
+
+      if( i != j){
+	
+	if( useCount[j] == 1){
+
+	  // GM_j is only required by particle i, and it could not have
+	  // been overwritten by the GM of another particle, so copy pointer directly
+	  maps_[i] = maps_[j];
+	  maps_[j] = NULL;
+
+	}else{
+
+	  // GM_j is used by more than 1 particle i, need to allocate memory
+	  maps_[i] = new GaussianMixture<TLandmark>;
+
+	  if( maps_temp[j] == NULL ){
+	    maps_[j]->copyTo( maps_[i] );
+	  }else{
+	    maps_temp[j]->copyTo( maps_[i] );
+	  }
+
+	}
+
+      }
+    }
+
+  }
+
+  // Add birth Gaussians
   addBirthGaussians();
 
 }
@@ -282,7 +375,7 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::importanceWeig
   for(int i = 0; i < this->nParticles_; i++){
 
     // 1. select evaluation points from highest-weighted Gaussians after update
-    const int nEvalPoints = config.nImportanceWeightingEvalPoints_;
+    const int nEvalPoints = config.importanceWeightingEvalPointCount_;
     maps_[i]->sortByWeight();
     const unsigned int nM = maps_[i]->getGaussianCount();
 
@@ -331,7 +424,7 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::importanceWeig
       double w_temp;
       maps_[i]->getGaussian(p, lm_evalPt, w_temp);
 
-      rfsMeasurementLikelihood( config.nImportanceWeightingEvalPoints_ );
+      rfsMeasurementLikelihood( config.importanceWeightingEvalPointCount_ );
 
     }
 
@@ -409,7 +502,7 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
 
        double likelihood = actual_z.evalGaussianLikelihood( expected_z );
        
-       if( 1 ){ // \todo check against threshold
+       if( likelihood >= config.importanceWeightingMeasurementLikelihoodThreshold_ ){
 	 likelihoodTab[m][z] = likelihood * Pd;
        }else{
 	 likelihoodTab[m][z] = 0;
@@ -454,15 +547,15 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
     }
   }
 
-  // Go through all permutations of eval point - measurement
+  // Go through all permutations of eval point - measurement pairs
   // to calculate the likelihood
   double likelihood = 0;
   while (likelihood == 0){
 
-    // likelihood = ?
-
+    likelihood = rfsMeasurementLikelihoodPermutations( likelihoodTab, nM, nZ);
 
     if( likelihood == 0 ){
+
       // Add another row to of clutter to likelihoodTab
       likelihoodTab.push_back(new double [nZ]);
       int m = likelihoodTab.size() - 1;
@@ -470,6 +563,7 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
 	TMeasure actual_z = this->measurements_[z];
 	likelihoodTab[m][z] = this->measurementModel_->clutterIntensity(actual_z, nZ);
       }
+
     }
 
   }
@@ -484,6 +578,96 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
   }
 
   return likelihood;
+}
+
+
+template< class ProcessModel, class MeasurementModel, class KalmanFilter >
+double RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::
+rfsMeasurementLikelihoodPermutations( std::vector< double* > &likelihoodTab, 
+				      const int nM,
+				      const int nZ){
+  // Note that nM is always >= nZ
+  // We will find all eval point permutations of (0, 1, 2, ... , nM - 1)
+  // and use the first nZ of each permutation to calculate the likelihood
+
+  // A function required for sorting
+  struct sort{
+    bool descend(int i, int j){ return (i > j); }
+  };
+  
+  double allPermutationLikelihood = 0;
+  bool lastPermutationSequence = false;
+  std::vector<int> currentPermutation(nM);
+  for(int m = 0; m < nM; m++){
+    currentPermutation[m] = m;
+  }
+
+  while( !lastPermutationSequence ){
+
+    // find the likelihood of the current permutation
+    double currentPermutationLikelihood  = 1;
+    for(int z = 0; z < nZ; z++){
+      int m = currentPermutation[z];
+      currentPermutationLikelihood *= likelihoodTab[m][z];
+      
+      // Fast-forward permutation if we know that following sequences will also
+      // have 0 likelihood
+      if( currentPermutationLikelihood == 0 && z != nZ - 1){
+	std::sort(currentPermutation.begin() + z, currentPermutation.end(), sort::descend);
+	break;
+      }
+
+    }
+    allPermutationLikelihood += currentPermutationLikelihood;
+
+    // Fast-forward if nM > nZ
+    if( nM > nZ ){
+      std::sort(currentPermutation.begin() + nZ, currentPermutation.end(), sort::descend);
+    }
+
+    // Generate the next permutation sequence
+    for(int m = nM - 2; m >= -1; m--){
+
+      if( m == -1){
+	lastPermutationSequence = true;
+	break;
+      }
+      
+      if(currentPermutation[m] < currentPermutation[ m-1 ]){
+
+	for(int i = nM - 1; i >= 0; i--){
+	  if( currentPermutation[i] > currentPermutation[m] ){
+	    int temp = currentPermutation[i];
+	    currentPermutation[i] = currentPermutation[m];
+	    currentPermutation[m] = temp;
+	    break;
+	  }
+	}
+
+	// reverse order after currentPermutation[m]
+	int nElementsToSwap = nM - m - 1;
+	int elementsToSwapMidPt = nElementsToSwap / 2;
+	int idx1 = m + 1;
+	int idx2 = nM - 1;
+	for(int i = 1; i <= elementsToSwapMidPt; i++){
+	  int temp = currentPermutation[idx1];
+	  currentPermutation[idx1] = currentPermutation[idx2];
+	  currentPermutation[idx2] = temp;
+	  idx1++;
+	  idx2--;
+	}
+
+	break;
+      }
+
+    }
+
+    // now we should have the next permutation sequence
+
+  }
+
+  return allPermutationLikelihood;
+
 }
 
 #endif
