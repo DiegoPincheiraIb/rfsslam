@@ -19,7 +19,7 @@
  * \tparam InputType Measurement derived for process input
  * \author Keith Leung
  */
-template<class StateType, class InputType = Measurement1d >
+template<class StateType, class InputType>
 class ProcessModel
 {
 public:
@@ -55,24 +55,7 @@ public:
    * \param dT size of time-step
    */
   virtual void step( StateType &s_k, StateType &s_km, 
-		     InputType &input_k , double const dT = 0 ) = 0;
-		     
-		     
-  /** 
-   * Overload of step to give the default value  for the input. 
-   *
-   * \param s_k State at current time-step k. This can be the same object as s_km (to update in place). [overwritten]
-   * \param s_km State at previous time-step k-1
-   * \param dT size of time-step
-   */
-		     
-	void step( StateType &s_k, StateType &s_km , double const dT = 0){
-	  InputType in;
-	  step(s_k , s_km , in , dT);
-	}
-		     
-
-		     
+		     InputType &input_k , double const dT = 0 ) = 0;		     
 
   /**
    * Sample the process noise to predict the pose at k from k-1
@@ -110,7 +93,7 @@ public:
       for(int i = 0; i < n; i++){
 	randomVecNormal(i) = randn();
       }
-      randomVecGaussian = L_ * randomVecNormal;
+      randomVecGaussian = Su_L * randomVecNormal;
       u = u + randomVecGaussian;
       step( s_k, s_km, in, dT );
 
@@ -129,9 +112,9 @@ public:
       }
       randomVecGaussian = L_ * randomVecNormal;
 
-      s_k.get(x_k);
+      s_k.State<typename StateType::Vec>::get(x_k);
       x_k = x_k + randomVecGaussian;
-      s_k.set(x_k);
+      s_k.State<typename StateType::Vec>::set(x_k);
     }
   }
 
@@ -155,6 +138,68 @@ private:
   boost::variate_generator< boost::mt19937, boost::normal_distribution<double> > gen_;
 
 };
+
+/**
+ * \class StaticProcessModel
+ * \brief A template process model class with not inputs
+ * \author Keith Leung
+ */
+template< class StateType >
+class StaticProcessModel : public ProcessModel< StateType, NullInput>
+{
+
+public:
+
+  StaticProcessModel(){
+    inputNoiseDefined = false;
+  }
+
+  StaticProcessModel(typename StateType::Mat &S): 
+    ProcessModel< StateType, NullInput>(S){
+    inputNoiseDefined = true;
+  }
+
+  ~StaticProcessModel(){}
+
+  /** 
+   * Determine the pose at time-step k from pose at time-step k-1
+   * \param[out] s_k pose at current time-step k
+   * \param[in] s_km pose at previous time-step k-1
+   * \param[in] input_k input to process model
+   * \param[in] dT size of time-step
+   */
+  void step( StateType &s_k, StateType &s_km, 
+	     NullInput &input_k , double const dT = 1 ){
+    
+    if( inputNoiseDefined ){
+      typename StateType::Vec x;
+      typename StateType::Mat S;
+      s_km.get(x, S);
+      S += (this->S_zmgn_ * dT * dT);
+      s_k.set(x, S);
+    }else{
+      s_k = s_km;
+    }
+
+  }
+  
+  /** 
+   * Step function to allow for no inputs to the process model
+   * \param[out] s_k State at current time-step k.
+   * \param[in] s_km State at previous time-step k-1
+   * \param[in] dT size of time-step
+   */		     
+  void staticStep( StateType &s_k, StateType &s_km, double const dT = 1){
+    NullInput input;
+    step(s_k , s_km , input , dT);
+  }
+		     
+private:
+
+  bool inputNoiseDefined;
+
+};
+
 
 ////////// Example 2d Odometry Motion Model //////////
 
@@ -208,8 +253,5 @@ private:
   Eigen::Matrix2d C_k_km_;  /**< rotation matrix from odometry input */
   
 };
-
-
-
 
 #endif

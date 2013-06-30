@@ -59,50 +59,31 @@ TEST_F(KalmanFilterTest, TestKalmanFilter2d_example){
     l_Sx << 1 , 0 , 0 , 1;
   
   
-    Landmark2d  landmark(l_x , l_Sx);
+    Landmark2d landmark(l_x , l_Sx);
+    Landmark2d updatedLandmark;
   
     Measurement2d meas(z , Sz);
   
+    StaticProcessModel<Landmark2d> processModel;
+
     RangeBearingModel measModel( 0.1 , 0.01 );
-  
     measModel.config.probabilityOfDetection_ = 0.7;
     measModel.config.probabilityOfFalseAlarm_ = 0.3;
     measModel.config.rangeLim_=10;
     measModel.config.rangeLimBuffer_=1;
   
-  
-  
-    RangeBearingKalmanFilter filter;
-  
-    filter.setMeasurementModel(&measModel);
-  
-    Landmark2d updatedLandmark;
-  
-  
-    filter.predict(updatedLandmark , landmark);
-  
+    RangeBearingKalmanFilter filter(&processModel, &measModel);
     
+    filter.predict(landmark, updatedLandmark);
   
-  
-  
-
-  
-  
-    filter.correct(robot_pose , updatedLandmark , updatedLandmark , meas);
-  
-  
- 
-  
+    filter.correct(robot_pose, meas, updatedLandmark, updatedLandmark);
   
     expected_x << 0.0 , 3.09090909090909;
     expected_Sx << 0.0825688073394495 ,	0 ,
                  0 ,	0.0909090909090909 ;
 
-  
     updatedLandmark.get(l2_x , l2_Sx);
-  
-  
-  
+    
     EXPECT_DOUBLE_EQ(l2_x(0), expected_x(0));
     EXPECT_DOUBLE_EQ(l2_x(1), expected_x(1));
     EXPECT_DOUBLE_EQ(l2_Sx(0,0), expected_Sx(0,0));

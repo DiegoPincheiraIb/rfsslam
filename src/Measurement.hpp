@@ -4,7 +4,6 @@
 #ifndef MEASUREMENT_HPP
 #define MEASUREMENT_HPP
 
-
 #include <Eigen/LU>
 #include <Eigen/Core>
 #include <math.h>
@@ -24,16 +23,12 @@ class Measurement
 {
 public:
 
-
-
   /** 
    * Default constructor   
-   * \param nDim number of dimensions in measurement vector
    */
   Measurement(){ 
-    
-    set( (VecType() << VecType::Zero()).finished() , (MatType() << MatType::Zero()).finished() , -1);
-    
+    set( (VecType() << VecType::Zero()).finished(), 
+	 (MatType() << MatType::Zero()).finished() , -1);
   }
 
   /** 
@@ -118,6 +113,9 @@ protected:
 
 };
 
+/********** Define NULL measurement **********/
+typedef Measurement < Eigen::Matrix<double, 1, 1>,
+		      Eigen::Matrix<double, 1, 1> > NullInput;
 
 /********** Define a 1d measurement **********/
 
