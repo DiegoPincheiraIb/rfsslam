@@ -284,9 +284,6 @@ bool ParticleFilter<ProcessModel, MeasurementModel>::resample( unsigned int n ){
   if( n == 0 )
     n = nParticles_; // number of particles to sample
 
-  // normalize particle weights so they sum to 1
-  normalizeWeights();
-  
   // Sampler settings
   double randomNum_0_to_1 = ((double) rand() / (double(RAND_MAX) + 1));
   unsigned int idx = 0;
