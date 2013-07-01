@@ -6,7 +6,6 @@
 
 #include "MeasurementModel.hpp"
 #include "ProcessModel.hpp"
-#include <Eigen/Core>
 
 /** 
  * \class KalmanFilter
@@ -61,9 +60,14 @@ public:
    * \param[in] measurement The measurement to use for updating the landmark state
    * \param[in]  landmark_current The current landmark state
    * \param[out] landmark_updated The updated landmark state
+   * \param[out] zLikelihood if supplied, this stores the measurement likelihood 
+   * (required by RBPHDFilter)
+   * \warning this function is not thread-safe (if multiple threads using the same
+   * instantiation of this class calls this function)
    */
   virtual void correct(TPose &pose, TMeasurement &measurement, 
-		       TLandmark &landmark_current, TLandmark &landmark_updated);
+		       TLandmark &landmark_current, TLandmark &landmark_updated,
+		       double* zLikelihood = NULL);
   
    /**
    * This funtion uses the ProcessModel to propagate the feature through time
@@ -141,7 +145,8 @@ setProcessModel(ProcessModelType *pProcessModel){
 template <class ProcessModelType, class MeasurementModelType> 
 void KalmanFilter<ProcessModelType, MeasurementModelType>::
 correct(TPose &pose, TMeasurement &measurement, 
-	TLandmark &landmark_current, TLandmark &landmark_updated){
+	TLandmark &landmark_current, TLandmark &landmark_updated,
+	double* zLikelihood){
 
   Eigen::Matrix < double , TPose::Vec::RowsAtCompileTime, 1> x;
   Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1> z_act;
@@ -196,6 +201,12 @@ correct(TPose &pose, TMeasurement &measurement,
   m_updated= m + K_ * innovation_;
   landmark_updated.set(m_updated, P_updated);
   
+  if(zLikelihood != NULL){
+    StateWithUncertainty<Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1>, Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> > z_innov;
+    z_innov.set( z_act, S_ );
+    *zLikelihood = z_innov.evalGaussianLikelihood(z_exp_);
+  }
+
 }
 
 
@@ -212,7 +223,6 @@ predict(TLandmark &landmark_current,
 	TLandmark &landmark_updated,
 	double dT){
 
-  //NullInput nullInput;
   pProcessModel_->staticStep(landmark_updated, landmark_current, dT);
 
 }

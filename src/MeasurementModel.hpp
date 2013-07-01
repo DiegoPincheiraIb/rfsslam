@@ -36,6 +36,7 @@ public:
    * \param landmark landmark wich will be used for predicting the measurement
    * \param prediction predicted measurement [overwritten]
    * \param jacobian Jacobian of the measurement model at the point where the prediction is made [overwritten]
+   * \todo there should be a overloaded version of this without the Jacobian
    */
   virtual void predict( PoseType &pose, LandmarkType &landmark, 
 			MeasurementType &prediction , Eigen::Matrix<double , MeasurementType::Vec::RowsAtCompileTime ,

@@ -76,12 +76,14 @@ public:
    * \param initState initial state of particles
    * \param processModelPtr pointer to the process model
    * \param measurementModelPtr pointer to the measurement model
+   * \param kalmanFilterPtr pointer to the Kalman filter  
    */
   RBPHDFilter(int n, 
 	      TPose &initState,
 	      ProcessModel* processModelPtr,
-	      MeasurementModel* measurementModelPtr)
-    : ParticleFilter<ProcessModel, MeasurementModel>(n, initState, processModelPtr, measurementModelPtr){
+	      MeasurementModel* measurementModelPtr,
+	      KalmanFilter* kalmanFilterPtr)
+    : ParticleFilter<ProcessModel, MeasurementModel>(n, initState, processModelPtr, measurementModelPtr), kfPtr_(kalmanFilterPtr){
     
     for(int i = 0; i < n; i++){
       maps_.push_back( new GaussianMixture<TLandmark>() );
@@ -110,6 +112,8 @@ public:
 
 
 private:
+
+  KalmanFilter *kfPtr_; /**< pointer to the Kalman filter */
 
   std::vector< GaussianMixture<TLandmark>* > maps_; /**< Particle dependent maps */
 
@@ -255,12 +259,12 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::updateMap(){
     double Pd[nM];
     int landmarkCloseToSensingLimit[nM];
 
-    // nM x nZ table for Gaussian weighting
+    // Mn x nZ table for Gaussian weighting
     double** weightingTable = new double* [ nM ];
-    TGaussian** newLandmarkPointer = new TGaussian* [ nM ];
+    TLandmark** newLandmarkPointer = new TLandmark* [ nM ];
     for( int n = 0; n < nM; n++ ){
       weightingTable[n] = new double [ nZ ];
-      newLandmarkPointer[n] = new TGaussian [ nZ ];
+      newLandmarkPointer[n] = new TLandmark [ nZ ];
     }
 
     for(int m = 0; m < nM; m++){
@@ -275,27 +279,31 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::updateMap(){
 
       TLandmark* lm = maps_[i]->landmark;
       bool isCloseToSensingLimit;
-      Pd[m] = this->pMeasurementModel_->probabilityOfDetection( pose, *lm, isCloseToSensingLimit); 
+      Pd[m] = this->pMeasurementModel_->probabilityOfDetection( pose, *lm, 
+								isCloseToSensingLimit); 
       landmarkCloseToSensingLimit[m] = ( isCloseToSensingLimit ) ? 1 : 0;
       double w_km = maps_[i]->getWeight(m);
       double Pd_times_w_km = Pd[m] * w_km;
 
       for(int z = 0; z < nZ; z++){
 
+	TLandmark* lmNew = new TLandmark;
 	newLandmarkPointer[m][z] = NULL;
 	weightingTable[m][z] = 0;
-
+	double innovationLikelihood = 0;
+	
 	// RUN KF, create new landmark for likely updates but do not add to map_[i] yet
 	// because we cannot determine actual weight until the entire weighting table is
 	// filled in
+	
+	kfPtr_->correct(pose, this->measurements_[z], *lm, *lmNew, 
+		       &innovationLikelihood);
 
-	double innovationLikelihood = 0;
-	// \todo innovationLikelihood = ???
 	if ( innovationLikelihood < config.newGaussianCreateLikelihoodThreshold ){
 	  innovationLikelihood = 0;
 	}
-	TGaussian* lmPtr = new TGaussian;
-	newLandmarkPointer[m][z] = lmPtr;
+	
+	newLandmarkPointer[m][z] = lmNew;
 	weightingTable[m][z] = Pd_times_w_km * innovationLikelihood;
 
       }
