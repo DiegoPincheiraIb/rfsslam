@@ -10,10 +10,12 @@
 
 /** 
  * \class KalmanFilter
- * \brief A class for using the Kalman Filter Equations
- * \tparam ProcessModelType process model 
- * \tparam MeasurementModelType measurement model
- * \author Felipe Inostroza
+ * \brief A Kalman Filter class for performing landmar estimate predictions and 
+ * updates. It is intented for use in RBPHDFilter.
+ * \tparam ProcessModelType process model derived from 
+ * ProcessModel or StaticProcessModel
+ * \tparam MeasurementModelType measurement model derived from MeasurementModel
+ * \author Felipe Inostroza, Keith Leung
  */
 template <class ProcessModelType, class MeasurementModelType>
 class KalmanFilter
@@ -57,18 +59,17 @@ public:
    * \note This function may be reimplemented in a derived class
    * \param[in] pose The sensor pose
    * \param[in] measurement The measurement to use for updating the landmark state
-   * \param[in]  cur_landmark The current landmark state
-   * \param[out] new_landmark The updated landmark state
+   * \param[in]  landmark_current The current landmark state
+   * \param[out] landmark_updated The updated landmark state
    */
   virtual void correct(TPose &pose, TMeasurement &measurement, 
-		       TLandmark &cur_landmark, TLandmark &new_landmark);
+		       TLandmark &landmark_current, TLandmark &landmark_updated);
   
    /**
-   * This funtion uses the ProcessModel to propagate the feature through time, 
-   * if no ProcessModel is set, nothing is done
-   * \param[in] prev_lanmark The landmark before the prediction
-   * \param[out] new_landmark The landmark after the prediction step  
-   *
+   * This funtion uses the ProcessModel to propagate the feature through time
+   * \param[in] lanmark_current The landmark before the prediction
+   * \param[out] landmark_updated The landmark after the prediction step
+   * \param[in] dT time step size, if required by motion model
    */
   void predict(TLandmark &landmark_current, TLandmark &landmark_updated,
 	       double dT = 1);
@@ -77,8 +78,8 @@ public:
    * Calculate the innovation. This may be reimplemented in a derived class
    * for special cases such as dealing with rotations. The result is stored in
    * innovation_
-   * \param z_exp Expected measurement 
-   * \param z_act Actual measurement
+   * \param[in] z_exp Expected measurement 
+   * \param[in] z_act Actual measurement
    */
   virtual void calculateInnovation(Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_exp, 
 				   Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_act);
@@ -86,8 +87,8 @@ public:
 
 protected:
 
-  MeasurementModelType *measM_;
-  ProcessModelType *procM_;
+  MeasurementModelType *pMeasurementModel_;
+  ProcessModelType *pProcessModel_;
   TMeasurement measurement_exp_;
 
   Eigen::Matrix < double , TLandmark::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime>  K_ ;
@@ -110,8 +111,8 @@ template <class ProcessModelType, class MeasurementModelType>
 KalmanFilter<ProcessModelType, MeasurementModelType>::
 KalmanFilter() 
 {
-  measM_ = NULL;
-  procM_ = NULL;
+  pMeasurementModel_ = NULL;
+  pProcessModel_ = NULL;
   I_.setIdentity();
 }
 
@@ -120,27 +121,27 @@ KalmanFilter<ProcessModelType, MeasurementModelType>::
 KalmanFilter(ProcessModelType *pProcessModel, 
 	     MeasurementModelType *pMeasurementModel)
 {
-  measM_= pMeasurementModel;
-  procM_= pProcessModel;
+  pMeasurementModel_= pMeasurementModel;
+  pProcessModel_= pProcessModel;
   I_.setIdentity();
 }
 
 template <class ProcessModelType, class MeasurementModelType> 
 void KalmanFilter<ProcessModelType, MeasurementModelType>::
 setMeasurementModel(MeasurementModelType *pMeasurementModel){
-  measM_ = pMeasurementModel;
+  pMeasurementModel_ = pMeasurementModel;
 }
 
 template <class ProcessModelType, class MeasurementModelType> 
 void KalmanFilter<ProcessModelType, MeasurementModelType>::
 setProcessModel(ProcessModelType *pProcessModel){
-  procM_ = pProcessModel;
+  pProcessModel_ = pProcessModel;
 }
 
 template <class ProcessModelType, class MeasurementModelType> 
 void KalmanFilter<ProcessModelType, MeasurementModelType>::
 correct(TPose &pose, TMeasurement &measurement, 
-	TLandmark &cur_landmark, TLandmark &new_landmark){
+	TLandmark &landmark_current, TLandmark &landmark_updated){
 
   Eigen::Matrix < double , TPose::Vec::RowsAtCompileTime, 1> x;
   Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1> z_act;
@@ -150,7 +151,7 @@ correct(TPose &pose, TMeasurement &measurement,
   
   double t;
   pose.get( x );
-  cur_landmark.get(m , P);
+  landmark_current.get(m , P);
   measurement.get(z_act , R , t);
   
   if(x == x_prev_ && m == m_prev_ && P == P_prev_ ){
@@ -178,7 +179,7 @@ correct(TPose &pose, TMeasurement &measurement,
     
     // Recalculate everything
     
-    measM_->predict( pose , cur_landmark , measurement_exp_ , H_ );
+    pMeasurementModel_->predict( pose , landmark_current , measurement_exp_ , H_ );
     measurement_exp_.get(z_exp_ , z_exp_cov_ , t);
     S_ = z_exp_cov_ + R;
     S_inv_ = S_.inverse();
@@ -193,7 +194,7 @@ correct(TPose &pose, TMeasurement &measurement,
   
   calculateInnovation(z_exp_, z_act);
   m_updated= m + K_ * innovation_;
-  new_landmark.set(m_updated, P_updated);
+  landmark_updated.set(m_updated, P_updated);
   
 }
 
@@ -212,7 +213,7 @@ predict(TLandmark &landmark_current,
 	double dT){
 
   //NullInput nullInput;
-  procM_->staticStep(landmark_updated, landmark_current, dT);
+  pProcessModel_->staticStep(landmark_updated, landmark_current, dT);
 
 }
 
