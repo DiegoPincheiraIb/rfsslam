@@ -177,7 +177,7 @@ ParticleFilter(int n,
   effNParticles_t_ = double(nParticles_)/4.0; // default is 1/4 of n
 
   // set random seed for particle resampling
-  srand((unsigned int)time(NULL));
+  srand48((unsigned int)time(NULL));
   
 }
 
@@ -285,7 +285,7 @@ bool ParticleFilter<ProcessModel, MeasurementModel>::resample( unsigned int n ){
     n = nParticles_; // number of particles to sample
 
   // Sampler settings
-  double randomNum_0_to_1 = ((double) rand() / (double(RAND_MAX) + 1));
+  double randomNum_0_to_1 = drand48();
   unsigned int idx = 0;
   const double sample_interval = 1.0 / double(n); 
   const double sampler_offset = sample_interval * randomNum_0_to_1;
