@@ -17,10 +17,7 @@
  *  filter. 
  *
  *  \author Keith Leung, Felipe Inostroza
- *  \version 0.1
- *
- *  \todo function for map update (but requires completion of Kalman Filter class)
- *  
+ *  \version 0.1 
  */
 
 template< class ProcessModel, class MeasurementModel, class KalmanFilter>

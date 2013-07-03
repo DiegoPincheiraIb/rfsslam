@@ -75,11 +75,20 @@ public:
   /** 
    * Function for setting measurement values
    * \param z - measurement
-   * \param t - time at wich the measurement was taken, negative  times indicate absence of time imformation.
+   * \param t - time at wich the measurement was taken, negative times indicate absence of time imformation.
    */
   void set(VecType &z, double t = -1)
   {
     State< VecType >::set(z);
+    t_ = t;
+  }
+
+  /** 
+   * Function for setting measurement time
+   * \param[in] t - time at wich the measurement was taken, negative times indicate absence of time imformation.
+   */
+  void set(double t)
+  {
     t_ = t;
   }
 
@@ -104,6 +113,15 @@ public:
   void get(VecType &z, double &t)
   {
     State< VecType >::get(z);
+    t = t_;
+  }
+
+  /** 
+   * Function for getting measurement time
+   * \param[out] t - time at wich the measurement was taken, negative times indicate absence of time imformation.
+   */
+  void get(double &t)
+  {
     t = t_;
   }
 

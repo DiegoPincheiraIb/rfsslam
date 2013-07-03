@@ -61,7 +61,9 @@ void RangeBearingModel::setCov(double Sr,double Sb){
   }
 }
 
-void RangeBearingModel::predict(Pose2d  &pose, Landmark2d &landmark, Measurement2d &prediction, Eigen::Matrix2d &jacobian){
+void RangeBearingModel::measure(Pose2d  &pose, Landmark2d &landmark, 
+				Measurement2d &measurement, 
+				Eigen::Matrix2d *jacobian){
 
   Eigen::Vector3d robotPose;
   Eigen::Vector2d mean, landmarkState;
@@ -84,13 +86,14 @@ void RangeBearingModel::predict(Pose2d  &pose, Landmark2d &landmark, Measurement
         -(landmarkState(1)-robotPose(1))/(pow(mean(0),2)), (landmarkState(0)-robotPose(0))/pow(mean(0),2) ;
   
   cov = H * landmarkUncertainty * H.transpose() ;
-  prediction.set(mean, cov);
+  measurement.set(mean, cov);
   
-  jacobian=H;
+  if(jacobian != NULL)
+    *jacobian = H;
 
 }
 
-void RangeBearingModel::inversePredict(Pose2d &pose, Measurement2d &measurement, 
+void RangeBearingModel::inverseMeasure(Pose2d &pose, Measurement2d &measurement, 
 				       Landmark2d &landmark){
   Eigen::Vector3d poseState;
   Eigen::Vector2d measurementState, mean;
@@ -155,13 +158,13 @@ double RangeBearingModel::clutterIntensityIntegral( int nZ ){
 
 
 void RangeBearingModel::sample( Pose2d &pose, Landmark2d &landmark, 
-			Measurement2d &prediction ){
+			Measurement2d &measurement ){
 	
 	Eigen::Vector2d pred_mean,gaussian_noise;
 	
-	this->MeasurementModel::predict( pose, landmark, prediction);
+	this->measure( pose, landmark, measurement);
 	  
-	prediction.State::get(pred_mean);
+	measurement.State<Eigen::Vector2d>::get(pred_mean);
 	
 	for(int i=0 ; i<2 ; i++){
 	  gaussian_noise(i)=randn();
@@ -169,7 +172,7 @@ void RangeBearingModel::sample( Pose2d &pose, Landmark2d &landmark,
 	
 	
 	pred_mean=pred_mean+L_*gaussian_noise;
-	prediction.State::set(pred_mean);
+	measurement.State<Eigen::Vector2d>::set(pred_mean);
 	
 }
 

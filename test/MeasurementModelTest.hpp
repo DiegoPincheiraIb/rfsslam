@@ -80,7 +80,7 @@ TEST_F(MeasurementModelTest, rangeBearingModelPredictTest){
   mPos << -1, -1;
   mCov << 1, 0, 0, 1;
   m.set(mPos, mCov);
-  model.predict( x, m, z , jacobian);
+  model.measure( x, m, z , &jacobian);
   z.get(zVec, zCov, t);
   EXPECT_EQ( sqrt(2), zVec(0) );
   EXPECT_EQ( -0.75 * PI , zVec(1) );
@@ -104,7 +104,7 @@ TEST_F(MeasurementModelTest, rangeBearingModelInvPredictTest){
   zVec << sqrt(2) , -0.75 * PI;
   zCov << 1, 0, 0, 1;
   z.set( zVec, zCov, 0.4565);
-  model.inversePredict(x, z, m);
+  model.inverseMeasure(x, z, m);
   m.get(mPos, mCov);
   EXPECT_DOUBLE_EQ(-1, mPos(0));
   EXPECT_DOUBLE_EQ(-1, mPos(1)); 
