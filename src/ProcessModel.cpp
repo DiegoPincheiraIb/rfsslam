@@ -36,9 +36,7 @@ void OdometryMotionModel2d::step(  Pose2d &s_k,
   C_k_i_ = C_k_km_ * C_km_i_;
 
   /* Write state at k */
-  theta_k_ = acos( C_k_i_(0, 0) );
-  if( asin( C_k_i_(0, 1) ) < 0)
-      theta_k_ *= -1;
+  theta_k_ = atan2( C_k_i_(0, 1), C_k_i_(0, 0) );
   x_k_i_.head(2) = p_k_i_;
   x_k_i_(2) = theta_k_;
   s_k.set(x_k_i_);

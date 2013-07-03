@@ -49,7 +49,9 @@ void RangeBearingModel::setCov(double Sr,double Sb){
           0 ,Sb;
 }
 
-void RangeBearingModel::predict(Pose2d  &pose, Landmark2d &landmark, Measurement2d &prediction, Eigen::Matrix2d &jacobian){
+void RangeBearingModel::measure(Pose2d  &pose, Landmark2d &landmark, 
+				Measurement2d &measurement, 
+				Eigen::Matrix2d *jacobian){
 
   Eigen::Vector3d robotPose;
   Eigen::Vector2d mean, landmarkState;
@@ -72,13 +74,14 @@ void RangeBearingModel::predict(Pose2d  &pose, Landmark2d &landmark, Measurement
         -(landmarkState(1)-robotPose(1))/(pow(mean(0),2)), (landmarkState(0)-robotPose(0))/pow(mean(0),2) ;
   
   cov = H * landmarkUncertainty * H.transpose() ;
-  prediction.set(mean, cov);
+  measurement.set(mean, cov);
   
-  jacobian=H;
+  if(jacobian != NULL)
+    *jacobian = H;
 
 }
 
-void RangeBearingModel::inversePredict(Pose2d &pose, Measurement2d &measurement, 
+void RangeBearingModel::inverseMeasure(Pose2d &pose, Measurement2d &measurement, 
 				       Landmark2d &landmark){
   Eigen::Vector3d poseState;
   Eigen::Vector2d measurementState, mean;

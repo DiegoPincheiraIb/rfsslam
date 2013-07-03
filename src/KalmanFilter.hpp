@@ -184,7 +184,7 @@ correct(TPose &pose, TMeasurement &measurement,
     
     // Recalculate everything
     
-    pMeasurementModel_->predict( pose , landmark_current , measurement_exp_ , H_ );
+    pMeasurementModel_->measure( pose , landmark_current , measurement_exp_ , &H_ );
     measurement_exp_.get(z_exp_ , z_exp_cov_ , t);
     S_ = z_exp_cov_ + R;
     S_inv_ = S_.inverse();

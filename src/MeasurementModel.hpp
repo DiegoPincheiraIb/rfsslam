@@ -30,27 +30,29 @@ public:
   ~MeasurementModel(){};
 
   /** 
-   * Abstract function for predicting measurements using pose and landmark estimates
+   * Abstract function for the getting a measurement
    * \note This must be implemented in a derived class
-   * \param pose robot pose 
-   * \param landmark landmark wich will be used for predicting the measurement
-   * \param prediction predicted measurement [overwritten]
-   * \param jacobian Jacobian of the measurement model at the point where the prediction is made [overwritten]
-   * \todo there should be a overloaded version of this without the Jacobian
+   * \param[in] pose robot pose from which the measurement is made
+   * \param[in] landmark The measured landmark
+   * \param[out] measurement The measurement
+   * \param[out] jacobian If not NULL, the pointed-to matrix will be overwritten 
+   * by the Jacobian of the measurement model at the point where the prediction is made
    */
-  virtual void predict( PoseType &pose, LandmarkType &landmark, 
-			MeasurementType &prediction , Eigen::Matrix<double , MeasurementType::Vec::RowsAtCompileTime ,
-		  LandmarkType::Vec::RowsAtCompileTime > &jacobian ) = 0;
+  virtual void measure( PoseType &pose, LandmarkType &landmark, 
+			MeasurementType &meaurement, 
+			Eigen::Matrix<double , 
+				      MeasurementType::Vec::RowsAtCompileTime ,
+				      LandmarkType::Vec::RowsAtCompileTime > 
+			*jacobian = NULL ) = 0;
 
  /** 
-   * Abstract function for predicting landmark position from a robot pose and
-   * its measurements
+   * Abstract function for the inverse measurement model
    * \note This must be implemented in a derived class
-   * \param pose robot pose 
-   * \param measurement measurement
-   * \param landmark predicted landmark location [overwritten]
+   * \param[in] pose robot pose 
+   * \param[in] measurement measurement
+   * \param[out] landmark position
    */
-  virtual void inversePredict( PoseType &pose,
+  virtual void inverseMeasure( PoseType &pose,
 			       MeasurementType &measurement, 
 			       LandmarkType &landmark ) = 0;
 
@@ -168,22 +170,25 @@ public:
    */
   void getCov(Eigen::Matrix2d &covZ);
 
-  /** 
-   * Predict a measurement from a pose and a landmark estimate
-   * \param pose robot pose 
-   * \param landmark landmark wich will be used for predicting the measurement
-   * \param prediction predicted measurement [overwritten]
-   * \param jacobian  jacobian of the measurement model evaluated at the prediction
-   */
-  void predict(Pose2d &pose, Landmark2d &landmark, Measurement2d &prediction, Eigen::Matrix2d &jacobian);
 
   /** 
-   * Inverse measurement model 
-   * \param pose robot pose 
-   * \param landmark predicted landmark location [overwritten]
-   * \param measurement measurement
+   * Get a measurement
+   * \param[in] pose robot pose from which the measurement is made
+   * \param[in] landmark The measured landmark
+   * \param[out] measurement The measurement
+   * \param[out] jacobian If not NULL, the pointed-to matrix will be overwritten 
+   * by the Jacobian of the measurement model at the point where the prediction is made
    */
-  void inversePredict(Pose2d &pose, Measurement2d &measurement, Landmark2d &landmark);
+  void measure( Pose2d &pose, Landmark2d &landmark, 
+		Measurement2d &measurement, Eigen::Matrix2d *jacobian);
+
+  /** 
+   * Inverse measurement
+   * \param[in] pose robot pose 
+   * \param[in] measurement measurement
+   * \param[out] landmark position
+   */
+  void inverseMeasure(Pose2d &pose, Measurement2d &measurement, Landmark2d &landmark);
 
   /** 
    * Determine the probability of detection

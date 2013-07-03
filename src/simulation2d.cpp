@@ -30,6 +30,7 @@ public:
     }
     kMax_ = cfg.lookup("timesteps");
     dT_ = cfg.lookup("sec_per_timestep");
+    
     nSegments_ = cfg.lookup("Trajectory.nSegments");
     max_dx_ = cfg.lookup("Trajectory.max_dx_per_sec");
     max_dy_ = cfg.lookup("Trajectory.max_dy_per_sec");
@@ -37,6 +38,14 @@ public:
     vardx_ = cfg.lookup("Trajectory.vardx");
     vardy_ = cfg.lookup("Trajectory.vardy");
     vardz_ = cfg.lookup("Trajectory.vardz");
+
+    nLandmarks_ = cfg.lookup("Landmarks.nLandmarks");
+
+    rangeLimit_ = cfg.lookup("Measurement.rangeLimit");
+    Pd_ = cfg.lookup("Measurement.probDetection");
+    Pfa_ = cfg.lookup("Measurement.probFalseAlarm");
+    varzr_ = cfg.lookup("Measurement.varzr");
+    varzb_ = cfg.lookup("Measurement.varzb");
     
     printf("kMax_ %d\n", kMax_);
     printf("dT_ %f\n", dT_);
@@ -47,6 +56,12 @@ public:
     printf("vardx_ %f\n", vardx_);
     printf("vardy_ %f\n", vardy_);
     printf("vardz_ %f\n", vardz_);
+    printf("nLandmarks_ %d\n", nLandmarks_);
+    printf("rangeLimit_ %f\n", rangeLimit_);
+    printf("Pd_ %f\n", Pd_);
+    printf("Pfa_ %f\n", Pfa_);
+    printf("varzr_ %f\n", varzr_);
+    printf("varzb_ %f\n", varzb_);
 
     return true;
   }
@@ -88,8 +103,9 @@ public:
       double t;
       groundtruth_pose_[k].get(x);
       groundtruth_displacement_[k].get(u, t);
-      printf("x[%d] = [%f %f %f]  u[%f] = [%f %f %f]\n", 
-	     k, x(0), x(1), x(2), t, u(0), u(1), u(2));
+      
+      //printf("x[%d] = [%f %f %f]  u[%f] = [%f %f %f]\n", 
+      //     k, x(0), x(1), x(2), t, u(0), u(1), u(2));
 
     }
 
@@ -97,13 +113,57 @@ public:
   
   void generateOdometry(){
 
+    // need sample function in measurement class
+
   }
 
   void generateLandmarks(){
 
+    RangeBearingModel measurementModel( varzr_, varzb_);
+
+    int nLandmarkCreated = 0;
+    for( int k = 1; k < kMax_; k++ ){
+
+      if( k >= kMax_ / nLandmarks_ * nLandmarkCreated){
+
+	double r = drand48() * rangeLimit_;
+	double b = drand48() * 2 * PI;
+
+      }
+
+    }
+
   }
 
   void generateMeasurements(){
+
+    // need sample function in measurement class
+
+    /*
+    RangeBearingModel;
+
+    if( S_zmgn_ != StateType::Mat::Zero() ){
+      Eigen::LLT<typename StateType::Mat> cholesky( S );
+      L_ = cholesky.matrixL();
+    }
+
+    InputType in = input_k;
+    typename InputType::Vec u;
+    typename InputType::Mat Su, Su_L;
+    double t;
+    in.get( u, Su, t );
+    Eigen::LLT<typename InputType::Mat> cholesky( Su );
+    Su_L = cholesky.matrixL();
+    
+    int n = Su_L.cols();
+    typename InputType::Vec randomVecNormal, randomVecGaussian;
+    for(int i = 0; i < n; i++){
+      randomVecNormal(i) = randn();
+    }
+    randomVecGaussian = Su_L * randomVecNormal;
+    u = u + randomVecGaussian;
+    step( s_k, s_km, in, dT );
+    */
 
   }
 
@@ -122,6 +182,16 @@ private:
   double vardz_;
   std::vector<OdometryMotionModel2d::TInput> groundtruth_displacement_;
   std::vector<OdometryMotionModel2d::TState> groundtruth_pose_;
+
+  // Landmarks 
+  int nLandmarks_;
+
+  // Range-Bearing Measurements
+  double rangeLimit_;
+  double Pd_;
+  double Pfa_;
+  double varzr_;
+  double varzb_;
 
 };
 
