@@ -129,6 +129,16 @@ public:
     StateWithUncertainty<VecType, MatType>::set(x, Sx);
   }
 
+  /** Get time */
+  void get( double &t){
+    t = t_;
+  }
+
+  /** Set time */
+  void set( double t){
+    t_ = t;
+  }
+
 protected:
 
   double t_; /**< time */

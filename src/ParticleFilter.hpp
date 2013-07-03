@@ -4,9 +4,7 @@
 #ifndef PARTICLE_FILTER_HPP
 #define PARTICLE_FILTER_HPP
 
-#include <cmath> // for random number generation
 #include <ctime> // for seeding random number generation
-#include <limits> // for random number generation
 #include "Particle.hpp"
 #include "ProcessModel.hpp"
 #include "MeasurementModel.hpp"

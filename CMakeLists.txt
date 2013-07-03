@@ -59,7 +59,6 @@ SET_TARGET_PROPERTIES(ParticleFilter PROPERTIES LINKER_LANGUAGE CXX)
 ADD_LIBRARY(KalmanFilter src/KalmanFilter.hpp)
 SET_TARGET_PROPERTIES(KalmanFilter PROPERTIES LINKER_LANGUAGE CXX)
 
-
 # Is there a point to making this into a library since it's a template?
 ADD_LIBRARY(GaussianMixture src/GaussianMixture.hpp)
 SET_TARGET_PROPERTIES(GaussianMixture PROPERTIES LINKER_LANGUAGE CXX)
@@ -70,3 +69,6 @@ TARGET_LINK_LIBRARIES(sandbox ${Boost_LIBRARIES} Particle KalmanFilter ProcessMo
 ADD_EXECUTABLE(unitTest test/test.cpp src/Measurement.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread MeasurementModel ProcessModel)
 ADD_TEST(unitTest bin/unitTest)
+
+ADD_EXECUTABLE(sim2d src/simulation2d.cpp src/Measurement.cpp src/Pose.cpp)
+TARGET_LINK_LIBRARIES(sim2d config++ ProcessModel MeasurementModel)
