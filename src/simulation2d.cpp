@@ -9,8 +9,19 @@ class Simulator2d{
 
 public:
 
-  Simulator2d(){}
-  ~Simulator2d(){}
+  Simulator2d(){
+    
+    pFilter_ = NULL;
+
+  }
+  
+  ~Simulator2d(){
+    
+    if(pFilter_ != NULL){
+      delete pFilter_;
+    }
+
+  }
 
   /** Read the simulator configuration file */
   bool readConfigFile(){
@@ -46,6 +57,8 @@ public:
     Pfa_ = cfg.lookup("Measurement.probFalseAlarm");
     varzr_ = cfg.lookup("Measurement.varzr");
     varzb_ = cfg.lookup("Measurement.varzb");
+
+    nParticles_ = cfg.lookup("Filter.nParticles");
     
     printf("kMax_ %d\n", kMax_);
     printf("dT_ %f\n", dT_);
@@ -120,14 +133,31 @@ public:
   void generateLandmarks(){
 
     RangeBearingModel measurementModel( varzr_, varzb_);
+    RangeBearingModel::TPose pose;
+    groundtruth_landmark_.resize(nLandmarks_);
 
-    int nLandmarkCreated = 0;
+    int nLandmarksCreated = 0;
     for( int k = 1; k < kMax_; k++ ){
 
-      if( k >= kMax_ / nLandmarks_ * nLandmarkCreated){
+      if( k >= kMax_ / nLandmarks_ * nLandmarksCreated){
 
+	RangeBearingModel::TPose pose;
+	RangeBearingModel::TMeasurement measurementToCreateLandmark;
+	RangeBearingModel::TMeasurement::Vec z;
 	double r = drand48() * rangeLimit_;
 	double b = drand48() * 2 * PI;
+	z << r, b;
+	measurementToCreateLandmark.set(z);
+	
+	measurementModel.inverseMeasure( groundtruth_pose_[k], 
+					 measurementToCreateLandmark, 
+					 groundtruth_landmark_[nLandmarksCreated]);
+	
+	/*printf("Landmark[%d] = [%f %f]\n", nLandmarksCreated,
+	       groundtruth_landmark_[nLandmarksCreated].State::get(0),
+	       groundtruth_landmark_[nLandmarksCreated].State::get(1));*/
+
+	nLandmarksCreated++;
 
       }
 
@@ -167,6 +197,19 @@ public:
 
   }
 
+  void setupRBPHDFilter(){
+    
+    pFilter_ = new RBPHDFilter<OdometryMotionModel2d,
+			       RangeBearingModel,
+			       RangeBearingKalmanFilter>( nParticles_ );
+
+    // configure motion model
+    OdometryMotionModel2d::TState::Mat Q;
+    Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
+    pFilter_->getProcessModel()->setNoise(Q);
+    
+  }
+
 private:
 
   int kMax_; /**< number of timesteps */
@@ -185,6 +228,7 @@ private:
 
   // Landmarks 
   int nLandmarks_;
+  std::vector<RangeBearingModel::TLandmark> groundtruth_landmark_;
 
   // Range-Bearing Measurements
   double rangeLimit_;
@@ -192,6 +236,13 @@ private:
   double Pfa_;
   double varzr_;
   double varzb_;
+
+  // Filters
+  RangeBearingKalmanFilter kf_;
+  RBPHDFilter<OdometryMotionModel2d, 
+	      RangeBearingModel,  
+	      RangeBearingKalmanFilter> *pFilter_; 
+  int nParticles_;
 
 };
 
@@ -205,6 +256,7 @@ int main(int argc, char* argv[]){
     return -1;
   }
   sim.generateTrajectory();
+  sim.generateLandmarks();
 
   return 0;
 

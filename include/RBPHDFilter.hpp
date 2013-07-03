@@ -7,6 +7,7 @@
 #include <Eigen/Core>
 #include "GaussianMixture.hpp"
 #include "ParticleFilter.hpp"
+#include "KalmanFilter.hpp"
 #include <vector>
 
 /**
@@ -25,10 +26,10 @@ class RBPHDFilter : public ParticleFilter<ProcessModel, MeasurementModel>
 {
 public:
 
-  typedef typename ProcessModel::TPose TPose;
+  typedef typename ProcessModel::TState TPose;
   typedef typename ProcessModel::TInput TInput;
-  typedef typename MeasurementModel::tLandmark TLandmark;
-  typedef typename MeasurementModel::tMeasurement TMeasure;
+  typedef typename MeasurementModel::TLandmark TLandmark;
+  typedef typename MeasurementModel::TMeasurement TMeasure;
   typedef typename GaussianMixture<TLandmark>::Gaussian TGaussian;
 
   /** 
@@ -71,16 +72,11 @@ public:
    * Constructor 
    * \param n number of particles
    * \param initState initial state of particles
-   * \param processModelPtr pointer to the process model
-   * \param measurementModelPtr pointer to the measurement model
-   * \param kalmanFilterPtr pointer to the Kalman filter  
    */
-  RBPHDFilter(int n, 
-	      TPose &initState,
-	      ProcessModel* processModelPtr,
-	      MeasurementModel* measurementModelPtr,
-	      KalmanFilter* kalmanFilterPtr)
-    : ParticleFilter<ProcessModel, MeasurementModel>(n, initState, processModelPtr, measurementModelPtr), kfPtr_(kalmanFilterPtr){
+  RBPHDFilter(int n)
+    : ParticleFilter<ProcessModel, MeasurementModel>(n){
+
+    kfPtr_ = new KalmanFilter;
     
     for(int i = 0; i < n; i++){
       maps_.push_back( new GaussianMixture<TLandmark>() );
@@ -167,6 +163,7 @@ RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::~RBPHDFilter(){
   for(int i = 0; i < maps_.size(); i++){
     delete maps_[i];
   }
+  delete kfPtr_;
 }
 
 template< class ProcessModel, class MeasurementModel, class KalmanFilter >
@@ -429,7 +426,7 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::importanceWeig
       double w_temp;
       maps_[i]->getGaussian(p, lm_evalPt, w_temp);
 
-      rfsMeasurementLikelihood( config.importanceWeightingEvalPointCount_ );
+      rfsMeasurementLikelihood( i, config.importanceWeightingEvalPointCount_ );
 
     }
 
@@ -479,7 +476,7 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
 
   const int i = particleIdx;
   const int nM = maxNumOfEvalPoints;
-  const int nZ = this->measurements_->size();
+  const int nZ = this->measurements_.size();
   int nClutter = 0;
 
   // Allocate memory for likelihood table
@@ -494,15 +491,15 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
 
   for( int m = 0; m < nM; m++ ){
 
-    TLandmark evalPt; 
+    TLandmark* evalPt; 
     maps_[i]->getGaussian( m, evalPt );
     bool temp;
-    double Pd = this->pMeasurementModel_->probabilityOfDetection( x, evalPt, temp);
+    double Pd = this->pMeasurementModel_->probabilityOfDetection( x, *evalPt, temp);
 
      for( int z = 0; z < nZ; z++ ){
 
        TMeasure expected_z;
-       this->pMeasurementModel_->predict( x, evalPt, expected_z);
+       this->pMeasurementModel_->measure( x, *evalPt, expected_z);
        TMeasure actual_z = this->measurements_[z];
 
        double likelihood = actual_z.evalGaussianLikelihood( expected_z );
@@ -526,7 +523,7 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
     if( z_sum = 0 ){
       nClutter++;
       TMeasure actual_z = this->measurements_[z];
-      double c = this->measurementModel_->clutterIntensity(actual_z, nZ);
+      double c = this->pMeasurementModel_->clutterIntensity(actual_z, nZ);
       for( int m = 0; m < nM; m++ ){
 	likelihoodTab[m][z] = c;
       }
@@ -548,7 +545,7 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
     int m = likelihoodTab.size() - 1;
     for( int z = 0; z < nZ; z++ ){
       TMeasure actual_z = this->measurements_[z];
-      likelihoodTab[m][z] = this->measurementModel_->clutterIntensity(actual_z, nZ);
+      likelihoodTab[m][z] = this->pMeasurementModel_->clutterIntensity(actual_z, nZ);
     }
   }
 
@@ -566,7 +563,7 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
       int m = likelihoodTab.size() - 1;
       for( int z = 0; z < nZ; z++ ){
 	TMeasure actual_z = this->measurements_[z];
-	likelihoodTab[m][z] = this->measurementModel_->clutterIntensity(actual_z, nZ);
+	likelihoodTab[m][z] = this->pMeasurementModel_->clutterIntensity(actual_z, nZ);
       }
 
     }
@@ -579,7 +576,7 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
   }
 
   if (nClutter > 0){
-    likelihood /= this->measurementModel_->clutterIntensityIntegral( nZ );
+    likelihood /= this->pMeasurementModel_->clutterIntensityIntegral( nZ );
   }
 
   return likelihood;
@@ -597,7 +594,7 @@ rfsMeasurementLikelihoodPermutations( std::vector< double* > &likelihoodTab,
 
   // A function required for sorting
   struct sort{
-    bool descend(int i, int j){ return (i > j); }
+    static bool descend(int i, int j){ return (i > j); }
   };
   
   double allPermutationLikelihood = 0;

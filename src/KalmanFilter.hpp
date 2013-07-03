@@ -26,6 +26,8 @@ public:
   typedef typename MeasurementModelType::TPose TPose;
   typedef typename MeasurementModelType::TLandmark TLandmark;
   typedef typename MeasurementModelType::TMeasurement TMeasurement;
+  typedef MeasurementModelType TMeasurementModel;
+  typedef ProcessModelType TProcessModel;
 
   /**
    * Default constructor

@@ -45,7 +45,7 @@ public:
 				      LandmarkType::Vec::RowsAtCompileTime > 
 			*jacobian = NULL ) = 0;
 
- /** 
+  /** 
    * Abstract function for the inverse measurement model
    * \note This must be implemented in a derived class
    * \param[in] pose robot pose 
@@ -180,7 +180,7 @@ public:
    * by the Jacobian of the measurement model at the point where the prediction is made
    */
   void measure( Pose2d &pose, Landmark2d &landmark, 
-		Measurement2d &measurement, Eigen::Matrix2d *jacobian);
+		Measurement2d &measurement, Eigen::Matrix2d *jacobian = NULL);
 
   /** 
    * Inverse measurement

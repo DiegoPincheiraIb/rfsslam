@@ -45,6 +45,15 @@ public:
   /** Default destructor */
   ~ProcessModel(){};
 
+  /** Set the additive zero mean Gaussian noise covariance matrix 
+   *  \param[in] S additive zero mean while Gaussian noise for this model
+   */
+  void setNoise(typename StateType::Mat &S){
+    S_zmgn_ = S;
+    Eigen::LLT<typename StateType::Mat> cholesky( S );
+    L_ = cholesky.matrixL();
+  }
+
   /** 
    * Abstract function for determining pose at time-step k from pose at 
    * time-step k-1

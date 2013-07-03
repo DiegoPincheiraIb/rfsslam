@@ -67,6 +67,13 @@ public:
   void get( Vec &x ){x = x_;}
 
   /** 
+   * Function for getting an element of the pose state
+   * \param[in] n element index
+   * \return state element n
+   */
+  double get( int n ){ return x_(n);}
+
+  /** 
    * Function for getting the pose state, exact same as get 
    * \param[out] x state (overwritten)
    */

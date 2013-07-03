@@ -30,7 +30,7 @@ int main(int argc, char* argv[]){
   OdometryMotionModel2d motionModel(ProcessNoise);
   motionModel.sample(x_1, x_0, odo);
 
-  ParticleFilter<OdometryMotionModel2d, RangeBearingModel> pf(nParticles, x_0, &motionModel, &measurementModel); 
+  //ParticleFilter<OdometryMotionModel2d, RangeBearingModel> pf(nParticles, x_0, &motionModel, &measurementModel); 
 
   GaussianMixture<Landmark2d> map;
 

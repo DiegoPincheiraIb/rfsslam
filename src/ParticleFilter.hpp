@@ -34,35 +34,18 @@ public:
   /** 
    * Constructor 
    * \param n number of particles
-   * \param initState initial state of particles
-   * \param processModelPtr pointer to process model
-   * \param measurementModelPtr pointer to measurement model
+   * \param initState if not NULL, all particles will take this initial state
    */ 
-  ParticleFilter(int n, 
-		 TPose &initState,
-		 ProcessModel* processModelPtr,
-		 MeasurementModel* measurementModelPtr);
+  ParticleFilter(int n, TPose* initState);
 
   /** Default destructor */
   ~ParticleFilter();
-
-  /** 
-   * Set the process model to use for particle propagation
-   * \param model pointer to process model
-   */
-  void setProcessModel( ProcessModel* modelPtr );
 
   /** 
    * Get the process model pointer
    * \return pointer to process model
    */
   ProcessModel* getProcessModel();
-
-  /** 
-   * Set the measurement model to use for particle weighting
-   * \param model pointer to measurement model
-   */
-  void setMeasurementModel( MeasurementModel* modelPtr );
 
   /** 
    * Get the measurement model pointer
@@ -149,33 +132,44 @@ template< class ProcessModel, class MeasurementModel>
 ParticleFilter<ProcessModel, MeasurementModel>::
 ParticleFilter(){
   nParticles_ = 0;
-  setProcessModel( NULL );
-  setMeasurementModel( NULL );
+  pProcessModel_ =  new ProcessModel;
+  pMeasurementModel_ =  new MeasurementModel;
 }
 
 
 template< class ProcessModel, class MeasurementModel>
 ParticleFilter<ProcessModel, MeasurementModel>::
-ParticleFilter(int n, 
-	       TPose &initState,
-	       ProcessModel* processModelPtr,
-	       MeasurementModel* measurementModelPtr){
+ParticleFilter(int n, TPose* initState = NULL){
   
   // initiate particles
   nParticles_ = n;
   particleSet_.resize(nParticles_);
+ 
+  bool noInitState = true; 
+  if(initState == NULL){
+    typename TPose::Vec x0;
+    x0 << 0, 0, 0;  
+    initState = new TPose(x0, 0);
+  }else{
+    noInitState = false;
+  }
+
   double newParticleWeight = 1;
   for( int i = 0 ; i < nParticles_ ; i++ ){
-    particleSet_[i] = new Particle<TPose>(i, initState, newParticleWeight);
+    particleSet_[i] = new Particle<TPose>(i, *initState, newParticleWeight);
   }
-  
-  setProcessModel( processModelPtr );
-  setMeasurementModel ( measurementModelPtr );
+
+  pProcessModel_ =  new ProcessModel;
+  pMeasurementModel_ =  new MeasurementModel;
 
   effNParticles_t_ = double(nParticles_)/4.0; // default is 1/4 of n
 
   // set random seed for particle resampling
   srand48((unsigned int)time(NULL));
+
+  if( noInitState ){
+    delete initState;
+  }
   
 }
 
@@ -185,11 +179,8 @@ ParticleFilter<ProcessModel, MeasurementModel>::~ParticleFilter(){
    for( int i = 0 ; i < nParticles_ ; i++ ){
      delete particleSet_[i];
    }
-}
-
-template< class ProcessModel, class MeasurementModel>
-void ParticleFilter<ProcessModel, MeasurementModel>::setProcessModel( ProcessModel* modelPtr ){
-  pProcessModel_ = modelPtr;
+   delete pProcessModel_;
+   delete pMeasurementModel_;
 }
 
 template< class ProcessModel, class MeasurementModel>
@@ -197,12 +188,6 @@ ProcessModel* ParticleFilter<ProcessModel, MeasurementModel>::
 getProcessModel(){
   return pProcessModel_; 
 }
-
-template< class ProcessModel, class MeasurementModel>
-void ParticleFilter<ProcessModel, MeasurementModel>::setMeasurementModel( MeasurementModel* modelPtr ){
-  pMeasurementModel_ = modelPtr;
-}
-
 
 template< class ProcessModel, class MeasurementModel>
 MeasurementModel* ParticleFilter<ProcessModel, MeasurementModel>::
