@@ -4,7 +4,11 @@
 #ifndef MEASUREMENTMODEL_HPP
 #define MEASUREMENTMODEL_HPP
 
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/normal_distribution.hpp>
+#include <boost/random/variate_generator.hpp>
 #include <Eigen/Core>
+#include <Eigen/Cholesky>
 #include "Measurement.hpp"
 #include "Landmark.hpp"
 #include "Pose.hpp"
@@ -30,7 +34,7 @@ public:
   ~MeasurementModel(){};
 
   /** 
-   * Abstract function for the getting a measurement
+   * Abstract function for predicting measurements using pose and landmark estimates
    * \note This must be implemented in a derived class
    * \param[in] pose robot pose from which the measurement is made
    * \param[in] landmark The measured landmark
@@ -100,9 +104,20 @@ public:
    * \param[in] nZ the cardinality of Z, of which z is a member.
    * \return clutter intensity integral
    */
-  double clutterIntensityIntegral( int nZ ){
+  virtual double clutterIntensityIntegral( int nZ ){
     return 0;
   }  
+  
+  
+  /**
+   * Abstract function for sampling from the measurement model.
+   * \note This function is there only to simulate measurements and it is not necesary to implement it in order to use the PHD Filter
+   * \param[in] pose robot pose 
+   * \param[in] landmark The measured landmark
+   * \param[out] measurement Sampled measurement
+   */
+  virtual void sample( PoseType &pose, LandmarkType &landmark, 
+			MeasurementType &measurement ){};
 
 };
 
@@ -222,10 +237,34 @@ public:
    */
   double clutterIntensityIntegral( int nZ );
 
-  
-private:
+  /**
+   * Function for sampling from the measurement model.
+   * 
+   * \param[in] pose robot pose 
+   * \param[in] landmark The measured landmark
+   * \param[out] measurement Sampled Measurement
+   */
+  void sample( Pose2d &pose, Landmark2d &landmark, 
+			Measurement2d &prediction );
 
+
+  
+protected:
+
+  /** Generate a random number from a normal distribution */
+  double randn(){
+    return gen_();
+  }
+
+  boost::mt19937 rng_;
+  boost::normal_distribution<double> nd_;
+  boost::variate_generator< boost::mt19937, boost::normal_distribution<double> > gen_;
+  
   Eigen::Matrix2d covZ_;
+  
+    /** Lower triangular part of Cholesky decomposition on covZ_ */
+  Eigen::Matrix2d L_;
+  
   double sensingArea_;
 
 };
