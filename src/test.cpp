@@ -10,7 +10,7 @@ int main(int argc, char* argv[]){
   RangeBearingModel measurementModel;
   Eigen::Matrix2d cov;
   cov << 1,0,0,3;
-  measurementModel.setCov(cov);
+  measurementModel.setNoise(cov);
 
   
   Particle<Pose2d> p;

@@ -2,9 +2,10 @@
 #include <math.h>
 #include "MeasurementModel.hpp"
 
-/********** Implementation of example 2d measurement Model (Range and Bearing) **********/
+/******** Implementation of example 2d measurement Model (Range and Bearing) **********/
 
-RangeBearingModel::RangeBearingModel() : nd_(0, 1), gen_(rng_, nd_) {
+RangeBearingModel::RangeBearingModel(){
+
   config.probabilityOfDetection_ = 0.95;
   config.probabilityOfFalseAlarm_ = 0.01;
   config.rangeLim_ = 5;
@@ -14,9 +15,9 @@ RangeBearingModel::RangeBearingModel() : nd_(0, 1), gen_(rng_, nd_) {
 }
 
 
-RangeBearingModel::RangeBearingModel(Eigen::Matrix2d covZ): nd_(0, 1) , gen_(rng_, nd_){
+RangeBearingModel::RangeBearingModel(Eigen::Matrix2d &covZ){
 
-  setCov(covZ);
+  setNoise(covZ);
   config.probabilityOfDetection_ = 0.95;
   config.probabilityOfFalseAlarm_ = 0.01;
   config.rangeLim_ = 5;
@@ -25,8 +26,11 @@ RangeBearingModel::RangeBearingModel(Eigen::Matrix2d covZ): nd_(0, 1) , gen_(rng
   sensingArea_ = 2 * PI * config.rangeLim_;
 }
 
-RangeBearingModel::RangeBearingModel(double Sr, double Sb): nd_(0, 1), gen_(rng_, nd_){
-  setCov(Sr,Sb);
+RangeBearingModel::RangeBearingModel(double Sr, double Sb){
+
+  Eigen::Matrix2d covZ;
+  covZ <<  Sr, 0, 0, Sb;
+  setNoise(covZ);
   config.probabilityOfDetection_ = 0.95;
   config.probabilityOfFalseAlarm_ = 0.01;
   config.rangeLim_ = 5;
@@ -36,30 +40,6 @@ RangeBearingModel::RangeBearingModel(double Sr, double Sb): nd_(0, 1), gen_(rng_
 }
 
 RangeBearingModel::~RangeBearingModel(){}
-
-void RangeBearingModel::getCov(Eigen::Matrix2d &covZ){  
-  covZ=covZ_;
-}
-
-void RangeBearingModel::setCov(Eigen::Matrix2d covZ){
-  covZ_=covZ;
-  
-  if( covZ_ != Eigen::Matrix2d::Zero() ){
-    Eigen::LLT<Eigen::Matrix2d> cholesky(covZ_);
-    L_ = cholesky.matrixL();
-  }
-  
-}
-
-void RangeBearingModel::setCov(double Sr,double Sb){
-  covZ_<< Sr,0,
-          0 ,Sb;
-          
-  if( covZ_ != Eigen::Matrix2d::Zero() ){
-    Eigen::LLT<Eigen::Matrix2d> cholesky(covZ_);
-    L_ = cholesky.matrixL();
-  }
-}
 
 void RangeBearingModel::measure(Pose2d  &pose, Landmark2d &landmark, 
 				Measurement2d &measurement, 
@@ -154,25 +134,5 @@ double RangeBearingModel::clutterIntensity( Measurement2d &z,
 double RangeBearingModel::clutterIntensityIntegral( int nZ ){
   
   return ( config.probabilityOfFalseAlarm_ * nZ );
-}
-
-
-void RangeBearingModel::sample( Pose2d &pose, Landmark2d &landmark, 
-			Measurement2d &measurement ){
-	
-	Eigen::Vector2d pred_mean,gaussian_noise;
-	
-	this->measure( pose, landmark, measurement);
-	  
-	measurement.State<Eigen::Vector2d>::get(pred_mean);
-	
-	for(int i=0 ; i<2 ; i++){
-	  gaussian_noise(i)=randn();
-	}
-	
-	
-	pred_mean=pred_mean+L_*gaussian_noise;
-	measurement.State<Eigen::Vector2d>::set(pred_mean);
-	
 }
 

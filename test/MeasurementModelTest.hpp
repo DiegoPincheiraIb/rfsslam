@@ -36,29 +36,25 @@ protected:
 // Test rangeBeringModel constructor, and set / get functions
 TEST_F(MeasurementModelTest, rangeBearingModelConstructorTest){
   
-  RangeBearingModel model;
-  Eigen::Matrix2d cov_in, cov_out1, cov_out2, cov_out3, cov_out4;
+  RangeBearingModel model1;
+  Eigen::Matrix2d cov_in, cov_out1, cov_out2, cov_out3;
   double Sr, Sb;
   
   Sr = 1.1;
   Sb = 0.1;
   cov_in << Sr, 0, 0, Sb;
-  
-  model.setCov(Sr, Sb);
-  model.getCov(cov_out1);
+
+  model1.setNoise(cov_in);
+  model1.getNoise(cov_out1);
   EXPECT_EQ( cov_in, cov_out1 );
-  
-  model.getCov(cov_in);
-  model.getCov(cov_out2);
-  EXPECT_EQ( cov_in, cov_out2 );
 
   RangeBearingModel model2(Sr, Sb);
-  model2.getCov(cov_out3);
-  EXPECT_EQ( cov_in, cov_out3 );
-
+  model2.getNoise(cov_out2);
+  EXPECT_EQ( cov_in, cov_out2 );
+ 
   RangeBearingModel model3( cov_in );
-  model3.getCov(cov_out4);
-  EXPECT_EQ( cov_in, cov_out4 );
+  model3.getNoise(cov_out3);
+  EXPECT_EQ( cov_in, cov_out3 );
 }
 
 TEST_F(MeasurementModelTest, rangeBearingModelPredictTest){

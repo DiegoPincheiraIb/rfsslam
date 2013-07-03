@@ -28,10 +28,29 @@ public:
   typedef MeasurementType TMeasurement;
   
   /** Default constructor */
-  MeasurementModel(){};
+  MeasurementModel() : nd_(0, 1), gen_(rng_, nd_) {}
 
   /** Default destructor */
-  ~MeasurementModel(){};
+  ~MeasurementModel(){}
+
+  /** Set the zero-mean-white-Gaussian noise covariance matrix for this model
+   *  \param[in] R covariance matrix
+   */
+  void setNoise( typename MeasurementType::Mat &R ){
+    R_ = R;
+    if( R_ != Eigen::Matrix2d::Zero() ){
+      Eigen::LLT<Eigen::Matrix2d> cholesky(R_);
+      L_ = cholesky.matrixL();
+    }
+  }
+
+  /** Get the zero-mean-white-Gaussian noise covariance matrix for this model
+   *  \param[out] R covariance matrix
+   */
+  void getNoise( typename MeasurementType::Mat &R ){
+    R = R_;
+  }
+  
 
   /** 
    * Abstract function for predicting measurements using pose and landmark estimates
@@ -48,6 +67,78 @@ public:
 				      MeasurementType::Vec::RowsAtCompileTime ,
 				      LandmarkType::Vec::RowsAtCompileTime > 
 			*jacobian = NULL ) = 0;
+  
+  /**
+   * Sample a measurement with noise
+   * \param[in] pose robot pose 
+   * \param[in] landmark The measured landmark
+   * \param[out] measurement Sampled measurement
+   * \param[in] useAdditiveWhiteGaussianNoise include the zero-mean white 
+   * Gaussian noise set for this model
+   * \param[in] usePoseWhiteGaussianNoise include the noise set for the pose 
+   * and interpret as zero-mean-white-Gaussian noise
+   * \param[in] useLandmarkWhiteGaussianNoise include the noise set for 
+   * landmark and interpret as zero-mean-white-Gaussian noise
+   */
+  void sample( PoseType &pose, LandmarkType &landmark, 
+	       MeasurementType &measurement,
+      	       bool useAdditiveWhiteGaussianNoise = true,		       
+	       bool usePoseWhiteGaussianNoise = false,
+	       bool useLandmarkWhiteGaussianNoise = false){
+	
+    typename PoseType::Vec z;
+    typename PoseType::Vec noise;
+    
+    if(usePoseWhiteGaussianNoise){
+
+      typename PoseType::Vec x;
+      typename PoseType::Mat Sx, Sx_L;
+      pose.get( x, Sx );
+      Eigen::LLT<typename PoseType::Mat> cholesky( Sx );
+      Sx_L = cholesky.matrixL();
+    
+      int n = Sx_L.cols();
+      typename PoseType::Vec randomVecNormal, randomVecGaussian;
+      for(int i = 0; i < n; i++){
+	randomVecNormal(i) = randn();
+      }
+      randomVecGaussian = Sx_L * randomVecNormal;
+      x = x + randomVecGaussian;
+      pose.set( x, Sx );
+    }
+
+    if(useLandmarkWhiteGaussianNoise){
+
+      typename LandmarkType::Vec m;
+      typename LandmarkType::Mat Sm, Sm_L;
+      landmark.get( m, Sm );
+      Eigen::LLT<typename LandmarkType::Mat> cholesky( Sm );
+      Sm_L = cholesky.matrixL();
+    
+      int n = Sm_L.cols();
+      typename LandmarkType::Vec randomVecNormal, randomVecGaussian;
+      for(int i = 0; i < n; i++){
+	randomVecNormal(i) = randn();
+      }
+      randomVecGaussian = Sm_L * randomVecNormal;
+      m = m + randomVecGaussian;
+      landmark.set( m, Sm );
+
+    }
+
+    this->measure( pose, landmark, measurement);
+    measurement.State<Eigen::Vector2d>::get(z);
+
+    if(useAdditiveWhiteGaussianNoise){
+      for(int i = 0; i < TPose::Vec::RowsAtCompileTime; i++){
+	noise(i) = randn();
+      }
+      z += L_ * noise;
+    }
+
+    measurement.State<Eigen::Vector2d>::set(z);
+    
+  };
 
   /** 
    * Abstract function for the inverse measurement model
@@ -107,17 +198,20 @@ public:
   virtual double clutterIntensityIntegral( int nZ ){
     return 0;
   }  
+
   
+  typename MeasurementType::Mat R_; /**< Additive zero-mean Gaussian noise covariance */
+  typename MeasurementType::Mat L_; /** Lower triangular part of Cholesky decomposition on R_ */
+
+private:
   
-  /**
-   * Abstract function for sampling from the measurement model.
-   * \note This function is there only to simulate measurements and it is not necesary to implement it in order to use the PHD Filter
-   * \param[in] pose robot pose 
-   * \param[in] landmark The measured landmark
-   * \param[out] measurement Sampled measurement
-   */
-  virtual void sample( PoseType &pose, LandmarkType &landmark, 
-			MeasurementType &measurement ){};
+  /** Generate a random number from a normal distribution */
+  double randn(){
+    return gen_();
+  }
+  boost::mt19937 rng_;
+  boost::normal_distribution<double> nd_;
+  boost::variate_generator< boost::mt19937, boost::normal_distribution<double> > gen_;
 
 };
 
@@ -152,7 +246,7 @@ public:
   * Constructor that sets the uncertainty (covariance) of the measurement model
   * \param covZ measurement covariance
   */
-  RangeBearingModel(Eigen::Matrix2d covZ);
+  RangeBearingModel(Eigen::Matrix2d &covZ);
 
  /**
   * Constructor that sets the uncertainty (covariance) of the measurement model, 
@@ -164,27 +258,6 @@ public:
 
  /** Default destructor */
   ~RangeBearingModel();
-
- /**
-  * Sets the uncertainty (covariance) of the measurement model
-  * \param covZ measurement covariance
-  */
-  void setCov(Eigen::Matrix2d covZ);
-
- /**
-  * Sets the uncertainty (covariance) of the measurement model, 
-  * range and bearing are assumed to be uncorrelated
-  * \param Sr Range variance
-  * \param Sb Bearing variance
-  */
-  void setCov(double Sr, double Sb);
-
-  /**
-   * Function to get the covariance of the measurement model
-   * \param covZ measurement covariance [overwritten]
-   */
-  void getCov(Eigen::Matrix2d &covZ);
-
 
   /** 
    * Get a measurement
@@ -237,33 +310,7 @@ public:
    */
   double clutterIntensityIntegral( int nZ );
 
-  /**
-   * Function for sampling from the measurement model.
-   * 
-   * \param[in] pose robot pose 
-   * \param[in] landmark The measured landmark
-   * \param[out] measurement Sampled Measurement
-   */
-  void sample( Pose2d &pose, Landmark2d &landmark, 
-			Measurement2d &prediction );
-
-
-  
 protected:
-
-  /** Generate a random number from a normal distribution */
-  double randn(){
-    return gen_();
-  }
-
-  boost::mt19937 rng_;
-  boost::normal_distribution<double> nd_;
-  boost::variate_generator< boost::mt19937, boost::normal_distribution<double> > gen_;
-  
-  Eigen::Matrix2d covZ_;
-  
-    /** Lower triangular part of Cholesky decomposition on covZ_ */
-  Eigen::Matrix2d L_;
   
   double sensingArea_;
 

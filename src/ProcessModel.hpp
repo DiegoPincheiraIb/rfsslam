@@ -104,6 +104,8 @@ public:
       }
       randomVecGaussian = Su_L * randomVecNormal;
       u = u + randomVecGaussian;
+      in.set( u, Su, t);
+
       step( s_k, s_km, in, dT );
 
     }else{
