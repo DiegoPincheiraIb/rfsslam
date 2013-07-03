@@ -4,7 +4,7 @@
 
 /********** Implementation of example 2d measurement Model (Range and Bearing) **********/
 
-RangeBearingModel::RangeBearingModel(){
+RangeBearingModel::RangeBearingModel() : nd_(0, 1), gen_(rng_, nd_) {
   config.probabilityOfDetection_ = 0.95;
   config.probabilityOfFalseAlarm_ = 0.01;
   config.rangeLim_ = 5;
@@ -14,7 +14,8 @@ RangeBearingModel::RangeBearingModel(){
 }
 
 
-RangeBearingModel::RangeBearingModel(Eigen::Matrix2d covZ){
+RangeBearingModel::RangeBearingModel(Eigen::Matrix2d covZ): nd_(0, 1) , gen_(rng_, nd_){
+
   setCov(covZ);
   config.probabilityOfDetection_ = 0.95;
   config.probabilityOfFalseAlarm_ = 0.01;
@@ -24,7 +25,7 @@ RangeBearingModel::RangeBearingModel(Eigen::Matrix2d covZ){
   sensingArea_ = 2 * PI * config.rangeLim_;
 }
 
-RangeBearingModel::RangeBearingModel(double Sr, double Sb){
+RangeBearingModel::RangeBearingModel(double Sr, double Sb): nd_(0, 1), gen_(rng_, nd_){
   setCov(Sr,Sb);
   config.probabilityOfDetection_ = 0.95;
   config.probabilityOfFalseAlarm_ = 0.01;
@@ -42,11 +43,22 @@ void RangeBearingModel::getCov(Eigen::Matrix2d &covZ){
 
 void RangeBearingModel::setCov(Eigen::Matrix2d covZ){
   covZ_=covZ;
+  
+  if( covZ_ != Eigen::Matrix2d::Zero() ){
+    Eigen::LLT<Eigen::Matrix2d> cholesky(covZ_);
+    L_ = cholesky.matrixL();
+  }
+  
 }
 
 void RangeBearingModel::setCov(double Sr,double Sb){
   covZ_<< Sr,0,
           0 ,Sb;
+          
+  if( covZ_ != Eigen::Matrix2d::Zero() ){
+    Eigen::LLT<Eigen::Matrix2d> cholesky(covZ_);
+    L_ = cholesky.matrixL();
+  }
 }
 
 void RangeBearingModel::predict(Pose2d  &pose, Landmark2d &landmark, Measurement2d &prediction, Eigen::Matrix2d &jacobian){
@@ -141,4 +153,23 @@ double RangeBearingModel::clutterIntensityIntegral( int nZ ){
   return ( config.probabilityOfFalseAlarm_ * nZ );
 }
 
+
+void RangeBearingModel::sample( Pose2d &pose, Landmark2d &landmark, 
+			Measurement2d &prediction ){
+	
+	Eigen::Vector2d pred_mean,gaussian_noise;
+	
+	this->MeasurementModel::predict( pose, landmark, prediction);
+	  
+	prediction.State::get(pred_mean);
+	
+	for(int i=0 ; i<2 ; i++){
+	  gaussian_noise(i)=randn();
+	}
+	
+	
+	pred_mean=pred_mean+L_*gaussian_noise;
+	prediction.State::set(pred_mean);
+	
+}
 

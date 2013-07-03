@@ -4,7 +4,11 @@
 #ifndef MEASUREMENTMODEL_HPP
 #define MEASUREMENTMODEL_HPP
 
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/normal_distribution.hpp>
+#include <boost/random/variate_generator.hpp>
 #include <Eigen/Core>
+#include <Eigen/Cholesky>
 #include "Measurement.hpp"
 #include "Landmark.hpp"
 #include "Pose.hpp"
@@ -36,11 +40,27 @@ public:
    * \param landmark landmark wich will be used for predicting the measurement
    * \param prediction predicted measurement [overwritten]
    * \param jacobian Jacobian of the measurement model at the point where the prediction is made [overwritten]
-   * \todo there should be a overloaded version of this without the Jacobian
    */
   virtual void predict( PoseType &pose, LandmarkType &landmark, 
 			MeasurementType &prediction , Eigen::Matrix<double , MeasurementType::Vec::RowsAtCompileTime ,
 		  LandmarkType::Vec::RowsAtCompileTime > &jacobian ) = 0;
+		  
+		  
+  /** 
+   * Overload for the function for predicting measurements using pose and landmark estimates that doesn't return the jacobian
+   * \param pose robot pose 
+   * \param landmark landmark wich will be used for predicting the measurement
+   * \param prediction predicted measurement [overwritten]
+   */
+  void predict( PoseType &pose, LandmarkType &landmark, 
+			MeasurementType &prediction ){
+		  
+		  
+		  Eigen::Matrix<double , MeasurementType::Vec::RowsAtCompileTime ,
+		  LandmarkType::Vec::RowsAtCompileTime > jacobian;
+		  
+		  predict( pose, landmark, prediction , jacobian );
+		  };
 
  /** 
    * Abstract function for predicting landmark position from a robot pose and
@@ -98,9 +118,20 @@ public:
    * \param[in] nZ the cardinality of Z, of which z is a member.
    * \return clutter intensity integral
    */
-  double clutterIntensityIntegral( int nZ ){
+  virtual double clutterIntensityIntegral( int nZ ){
     return 0;
   }  
+  
+  
+  /**
+   * Abstract function for sampling from the measurement model.
+   * \note This function is there only to simulate measurements and it is not necesary to implement it in order to use the PHD Filter
+   * \param[in] pose robot pose 
+   * \param[in] landmark landmark wich will be used for predicting the measurement
+   * \param[out] prediction predicted measurement [overwritten]
+   */
+  virtual void sample( PoseType &pose, LandmarkType &landmark, 
+			MeasurementType &prediction ){};
 
 };
 
@@ -217,10 +248,34 @@ public:
    */
   double clutterIntensityIntegral( int nZ );
 
-  
-private:
+  /**
+   * Function for sampling from the measurement model.
+   * 
+   * \param[in] pose robot pose 
+   * \param[in] landmark landmark wich will be used for predicting the measurement
+   * \param[out] prediction predicted measurement [overwritten]
+   */
+  void sample( Pose2d &pose, Landmark2d &landmark, 
+			Measurement2d &prediction );
 
+
+  
+protected:
+
+  /** Generate a random number from a normal distribution */
+  double randn(){
+    return gen_();
+  }
+
+  boost::mt19937 rng_;
+  boost::normal_distribution<double> nd_;
+  boost::variate_generator< boost::mt19937, boost::normal_distribution<double> > gen_;
+  
   Eigen::Matrix2d covZ_;
+  
+    /** Lower triangular part of Cholesky decomposition on covZ_ */
+  Eigen::Matrix2d L_;
+  
   double sensingArea_;
 
 };
