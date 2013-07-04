@@ -100,8 +100,9 @@ public:
     if( useAdditiveWhiteGaussianNoise && Q_ != StateType::Mat::Zero() ){
 
       typename StateType::Vec x_k;
-      s_k.get(x_k);
-      RandomVecMathTools<StateType>::sample(x_k, Q_, L_, s_k);
+      double t;
+      s_k.get(x_k, t);
+      RandomVecMathTools<StateType>::sample(x_k, Q_, L_, t, s_k);
 
     }
   }

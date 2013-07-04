@@ -305,44 +305,69 @@ private:
 
 };
 
-
+/**
+ * \class RandomVecMathTools
+ * \brief A collection of methods for use on a RandomVec derived class.
+ * All methods are static, therefore this class does not need to be
+ * instantiated.
+ * \tparam RandomVec derived class
+ */
 template< class RandomVecDerivedClass >
 class RandomVecMathTools
 {
 public:
 
+  /** 
+   * Sample the random vector
+   * \param[in] s The random vector with the mean and covariance
+   * \param[out] s_sample The sampled vector. The covariance and time
+   * of the s are copied.
+   */
   static void sample( RandomVecDerivedClass &s,
 		      RandomVecDerivedClass &s_sample ){
     
     typename RandomVecDerivedClass::Vec x, indep_noise, e;
     typename RandomVecDerivedClass::Mat Sx, Sx_L;
-    s.get(x, Sx);
-    
-    static boost::mt19937 rng_;
-    static boost::normal_distribution<double> nd_;
-    static boost::variate_generator< boost::mt19937, 
-				     boost::normal_distribution<double> > 
-      gen_(rng_, nd_);
+    double t;
+    s.get(x, Sx, t);
     
     s.getCovCholeskyDecompLower(Sx_L);
 
+    static boost::mt19937 rng_;
+    static boost::normal_distribution<double> nd_;
+    static boost::variate_generator< boost::mt19937, 
+				     boost::normal_distribution<double> > 
+      gen_(rng_, nd_);
+    
+
     int n = Sx_L.cols();
     for(int i = 0; i < n; i++){
       indep_noise(i) = gen_();
     }
     e = Sx_L * indep_noise;
     x += e;
-    s_sample.set( x, Sx );
+    s_sample.set( x, Sx, t );
 
   }
 
+  /** 
+   * Sample a random vector
+   * \param[in] x The mean of the random vector
+   * \param[in] Sx The covariance of the random vector
+   * \param[in] Sx_L The lower Cholesky decomposition of the covariance
+   * \param[in] t Time
+   * \param[out] s_sample The sampled vector. The covariance and time
+   * of the s are copied.
+   */
   static void sample( typename RandomVecDerivedClass::Vec &x,
 		      typename RandomVecDerivedClass::Mat &Sx,
 		      typename RandomVecDerivedClass::Mat &Sx_L,
+		      double &t,
 		      RandomVecDerivedClass &s_sample ){
     
     typename RandomVecDerivedClass::Vec indep_noise, e;
-    
+
+
     static boost::mt19937 rng_;
     static boost::normal_distribution<double> nd_;
     static boost::variate_generator< boost::mt19937, 
@@ -355,11 +380,11 @@ public:
     }
     e = Sx_L * indep_noise;
     x += e;
-    s_sample.set( x, Sx );
+    s_sample.set( x, Sx, t );
 
   }
 
-};
 
+};
 
 #endif

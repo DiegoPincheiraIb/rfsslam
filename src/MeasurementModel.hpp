@@ -113,8 +113,9 @@ public:
     if(useAdditiveWhiteGaussianNoise){
 
       typename MeasurementType::Vec z_k;
-      measurement.get(z_k);
-      RandomVecMathTools<MeasurementType>::sample(z_k, R_, L_, measurement);
+      double t;
+      measurement.get(z_k, t );
+      RandomVecMathTools<MeasurementType>::sample(z_k, R_, L_, t, measurement);
     }
     
     if(deallocatePose)
