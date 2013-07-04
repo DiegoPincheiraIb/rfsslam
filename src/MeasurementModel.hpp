@@ -86,8 +86,8 @@ public:
 	       bool usePoseWhiteGaussianNoise = false,
 	       bool useLandmarkWhiteGaussianNoise = false){
 	
-    typename PoseType::Vec z;
-    typename PoseType::Vec noise;
+    typename MeasurementType::Vec z;
+    typename MeasurementType::Vec noise;
     
     if(usePoseWhiteGaussianNoise){
 
@@ -130,7 +130,7 @@ public:
     measurement.State<Eigen::Vector2d>::get(z);
 
     if(useAdditiveWhiteGaussianNoise){
-      for(int i = 0; i < TPose::Vec::RowsAtCompileTime; i++){
+      for(int i = 0; i < MeasurementType::Vec::RowsAtCompileTime; i++){
 	noise(i) = randn();
       }
       z += L_ * noise;
@@ -199,9 +199,6 @@ public:
     return 0;
   }  
 
-  
-  typename MeasurementType::Mat R_; /**< Additive zero-mean Gaussian noise covariance */
-  typename MeasurementType::Mat L_; /** Lower triangular part of Cholesky decomposition on R_ */
 
 private:
   
@@ -212,6 +209,9 @@ private:
   boost::mt19937 rng_;
   boost::normal_distribution<double> nd_;
   boost::variate_generator< boost::mt19937, boost::normal_distribution<double> > gen_;
+
+  typename MeasurementType::Mat R_; /**< Additive zero-mean Gaussian noise covariance */
+  typename MeasurementType::Mat L_; /** Lower triangular part of Cholesky decomposition on R_ */
 
 };
 

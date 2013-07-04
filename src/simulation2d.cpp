@@ -166,35 +166,32 @@ public:
   }
 
   void generateMeasurements(){
-
-    // need sample function in measurement class
-
-    /*
-    RangeBearingModel;
-
-    if( S_zmgn_ != StateType::Mat::Zero() ){
-      Eigen::LLT<typename StateType::Mat> cholesky( S );
-      L_ = cholesky.matrixL();
-    }
-
-    InputType in = input_k;
-    typename InputType::Vec u;
-    typename InputType::Mat Su, Su_L;
-    double t;
-    in.get( u, Su, t );
-    Eigen::LLT<typename InputType::Mat> cholesky( Su );
-    Su_L = cholesky.matrixL();
     
-    int n = Su_L.cols();
-    typename InputType::Vec randomVecNormal, randomVecGaussian;
-    for(int i = 0; i < n; i++){
-      randomVecNormal(i) = randn();
-    }
-    randomVecGaussian = Su_L * randomVecNormal;
-    u = u + randomVecGaussian;
-    step( s_k, s_km, in, dT );
-    */
 
+    RangeBearingModel measurementModel( varzr_, varzb_);
+    RangeBearingModel::TMeasurement z_m_k;
+
+    for( int k = 1; k < kMax_; k++ ){
+      
+      groundtruth_pose_[k];
+      
+      for( int m = 0; m < groundtruth_landmark_.size(); m++){
+
+	measurementModel.sample( groundtruth_pose_[k],
+				 groundtruth_landmark_[m],
+				 z_m_k);
+
+	z_m_k.set(k);
+	measurements_.push_back( z_m_k );
+
+	printf("Measurement[%d] = [%f %f]\n", int(measurements_.size()),
+	       (measurements_.back()).State::get(0),
+	       (measurements_.back()).State::get(1));
+
+      }
+      
+   }
+    
   }
 
   void setupRBPHDFilter(){
@@ -225,6 +222,7 @@ private:
   double vardz_;
   std::vector<OdometryMotionModel2d::TInput> groundtruth_displacement_;
   std::vector<OdometryMotionModel2d::TState> groundtruth_pose_;
+  std::vector<RangeBearingModel::TMeasurement> measurements_;
 
   // Landmarks 
   int nLandmarks_;
@@ -257,6 +255,7 @@ int main(int argc, char* argv[]){
   }
   sim.generateTrajectory();
   sim.generateLandmarks();
+  sim.generateMeasurements();
 
   return 0;
 
