@@ -123,9 +123,9 @@ public:
       }
       randomVecGaussian = L_ * randomVecNormal;
 
-      s_k.State<typename StateType::Vec>::get(x_k);
+      s_k.get(x_k);
       x_k = x_k + randomVecGaussian;
-      s_k.State<typename StateType::Vec>::set(x_k);
+      s_k.set(x_k);
     }
   }
 

@@ -127,7 +127,7 @@ public:
     }
 
     this->measure( pose, landmark, measurement);
-    measurement.State<Eigen::Vector2d>::get(z);
+    measurement.get(z);
 
     if(useAdditiveWhiteGaussianNoise){
       for(int i = 0; i < MeasurementType::Vec::RowsAtCompileTime; i++){
@@ -136,7 +136,7 @@ public:
       z += L_ * noise;
     }
 
-    measurement.State<Eigen::Vector2d>::set(z);
+    measurement.set(z);
     
   };
 

@@ -40,7 +40,7 @@ TEST_F(LandmarkTest, constructorTestLandmark2d){
   x_in << 0, 0;
   Sx_in << 0, 0, 0, 0;
   Landmark2d m;
-  m.State::get(x_out);
+  m.get(x_out);
   EXPECT_EQ(x_in, x_out);
   m.get(x_out, Sx_out);
   EXPECT_EQ(x_in, x_out);
@@ -55,7 +55,7 @@ TEST_F(LandmarkTest, constructorTestLandmark1d){
   x_in << 0;
   Sx_in << 0;
   Landmark1d m;
-  m.State::get(x_out);
+  m.get(x_out);
   EXPECT_EQ(x_in, x_out);
   m.get(x_out, Sx_out);
   EXPECT_EQ(x_in, x_out);
@@ -71,7 +71,7 @@ TEST_F(LandmarkTest, dataSetGetTest){
   x_in << 0, 0;
   Sx_in << 0, 0, 0, 0;
   Landmark2d m;
-  m.State::get(x_out);
+  m.get(x_out);
   EXPECT_EQ(x_in, x_out);
   m.get(x_out, Sx_out);
   EXPECT_EQ(x_in, x_out);
@@ -79,8 +79,8 @@ TEST_F(LandmarkTest, dataSetGetTest){
 
   x_in << 2.1, 1.2;
   Sx_in << 2.2, -1.1, -1.1, 2.2;
-  m.State::set(x_in);
-  m.State::get(x_out);
+  m.set(x_in);
+  m.get(x_out);
   EXPECT_EQ(x_in, x_out);
 
   m.set(x_in, Sx_in);
@@ -144,8 +144,6 @@ TEST_F(LandmarkTest, mahalanobisDistanceTest1d){
   Landmark1d::Mat Sx_in;
   
   Landmark1d m;
-  // \todo Look up how to do expect error (from inverting zero matrix)
-
   EXPECT_EQ(1, m.getNDim());
 
   x_in << 1;

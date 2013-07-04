@@ -204,7 +204,7 @@ correct(TPose &pose, TMeasurement &measurement,
   landmark_updated.set(m_updated, P_updated);
   
   if(zLikelihood != NULL){
-    StateWithUncertainty<Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1>, Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> > z_innov;
+    RandomVec<Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1>, Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> > z_innov;
     z_innov.set( z_act, S_ );
     *zLikelihood = z_innov.evalGaussianLikelihood(z_exp_);
   }

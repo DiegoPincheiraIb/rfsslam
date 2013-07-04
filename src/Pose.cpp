@@ -4,11 +4,11 @@
 
 Pose2d::Pose2d(){}
 
-Pose2d::Pose2d(Vec &x, double t) : 
-  PoseWithUncertainty<Vec, Mat>(x, (Mat() << Mat::Zero()).finished() ,t) {}
+Pose2d::Pose2d(Vec &x, Mat &Sx, double t) :
+  RandomVec< Eigen::Vector3d, Eigen::Matrix3d >(x, Sx, t){}
 
-Pose2d::Pose2d(Vec &x, Mat &Sx, double t) : 
-  PoseWithUncertainty<Vec, Mat>(x, Sx, t) {}
+Pose2d::Pose2d(Vec &x, double t) : 
+  RandomVec< Eigen::Vector3d, Eigen::Matrix3d >(x, t){}
 
 Pose2d::Pose2d( double x, double y, double theta, 
 		double var_x, double var_y, double var_theta,

@@ -104,7 +104,7 @@ double RangeBearingModel::probabilityOfDetection( Pose2d &pose,
   isCloseToSensingLimit = false;
 
   pose.get(robotPose);
-  landmark.State::get(landmarkState);
+  landmark.get(landmarkState);
 
   range = sqrt(  pow(landmarkState(0) - robotPose(0), 2)
 		+pow(landmarkState(1) - robotPose(1), 2) );
