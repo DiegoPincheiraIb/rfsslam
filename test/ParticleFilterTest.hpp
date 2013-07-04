@@ -173,7 +173,7 @@ TEST_F(ParticleFilterTest, ParticleFilterPropagateTest){
   PF_TYPE::TPose::Mat ProcessNoise;
   ProcessNoise << 3, 2, 1, 2, 4, -1, 1, -1, 5;
 
-  unsigned int n = 200000;
+  unsigned int n = 500000;
   PF_TYPE::TPose initState;
   PF_TYPE::TPose::Vec x0;
   x0 << 0, 0, 0; // no rotation for this test

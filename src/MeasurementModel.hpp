@@ -88,57 +88,40 @@ public:
 	
     typename MeasurementType::Vec z;
     typename MeasurementType::Vec noise;
+
+    PoseType* pose_sample = &pose;
+    LandmarkType* landmark_sample = &landmark;
+    bool deallocatePose = false;
+    bool deallocateLandmark = false;
     
     if(usePoseWhiteGaussianNoise){
 
-      typename PoseType::Vec x;
-      typename PoseType::Mat Sx, Sx_L;
-      pose.get( x, Sx );
-      Eigen::LLT<typename PoseType::Mat> cholesky( Sx );
-      Sx_L = cholesky.matrixL();
-    
-      int n = Sx_L.cols();
-      typename PoseType::Vec randomVecNormal, randomVecGaussian;
-      for(int i = 0; i < n; i++){
-	randomVecNormal(i) = randn();
-      }
-      randomVecGaussian = Sx_L * randomVecNormal;
-      x = x + randomVecGaussian;
-      pose.set( x, Sx );
+      pose_sample = new PoseType;
+      deallocatePose = true;      
+      RandomVecMathTools<PoseType>::sample(pose, *pose_sample);
     }
 
     if(useLandmarkWhiteGaussianNoise){
 
-      typename LandmarkType::Vec m;
-      typename LandmarkType::Mat Sm, Sm_L;
-      landmark.get( m, Sm );
-      Eigen::LLT<typename LandmarkType::Mat> cholesky( Sm );
-      Sm_L = cholesky.matrixL();
-    
-      int n = Sm_L.cols();
-      typename LandmarkType::Vec randomVecNormal, randomVecGaussian;
-      for(int i = 0; i < n; i++){
-	randomVecNormal(i) = randn();
-      }
-      randomVecGaussian = Sm_L * randomVecNormal;
-      m = m + randomVecGaussian;
-      landmark.set( m, Sm );
-
+      landmark_sample = new LandmarkType;
+      deallocateLandmark = true;
+      RandomVecMathTools<LandmarkType>::sample(landmark, *landmark_sample);
     }
 
-    this->measure( pose, landmark, measurement);
-    measurement.get(z);
+    this->measure( *pose_sample, *landmark_sample, measurement);
 
     if(useAdditiveWhiteGaussianNoise){
-      for(int i = 0; i < MeasurementType::Vec::RowsAtCompileTime; i++){
-	noise(i) = randn();
-      }
-      z += L_ * noise;
-    }
 
-    measurement.set(z);
+      typename MeasurementType::Vec z_k;
+      measurement.get(z_k);
+      RandomVecMathTools<MeasurementType>::sample(z_k, R_, L_, measurement);
+    }
     
-  };
+    if(deallocatePose)
+      delete pose_sample;
+    if(deallocateLandmark)
+      delete landmark_sample;
+  }
 
   /** 
    * Abstract function for the inverse measurement model

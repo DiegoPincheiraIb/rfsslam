@@ -15,7 +15,7 @@
 /**
  * \class ProcessModel
  * \brief An abstract class for defining vehicle motion models
- * \tparam StateType StateWithUncertainty derived type for state 
+ * \tparam StateType RandomVector derived type for state 
  * \tparam InputType Measurement derived for process input
  * \author Keith Leung
  */
@@ -30,16 +30,13 @@ public:
   typedef InputType TInput;
 
   /** Default constructor */
-  ProcessModel() : nd_(0, 1), gen_(rng_, nd_) {}
+  ProcessModel(){}
 
   /** Constructor 
    * \param S additive zero mean while Gaussian noise for this model 
    */
-  ProcessModel(typename StateType::Mat &S) : S_zmgn_(S), nd_(0, 1), gen_(rng_, nd_) {
-    if( S_zmgn_ != StateType::Mat::Zero() ){
-      Eigen::LLT<typename StateType::Mat> cholesky( S );
-      L_ = cholesky.matrixL();
-    }
+  ProcessModel(typename StateType::Mat &S){
+    setNoise(S);
   }
 
   /** Default destructor */
@@ -49,7 +46,7 @@ public:
    *  \param[in] S additive zero mean while Gaussian noise for this model
    */
   void setNoise(typename StateType::Mat &S){
-    S_zmgn_ = S;
+    Q_ = S;
     Eigen::LLT<typename StateType::Mat> cholesky( S );
     L_ = cholesky.matrixL();
   }
@@ -89,22 +86,8 @@ public:
     
     if(useInputWhiteGaussianNoise){
 
-      InputType in = input_k;
-      typename InputType::Vec u;
-      typename InputType::Mat Su, Su_L;
-      double t;
-      in.get( u, Su, t );
-      Eigen::LLT<typename InputType::Mat> cholesky( Su );
-      Su_L = cholesky.matrixL();
-    
-      int n = Su_L.cols();
-      typename InputType::Vec randomVecNormal, randomVecGaussian;
-      for(int i = 0; i < n; i++){
-	randomVecNormal(i) = randn();
-      }
-      randomVecGaussian = Su_L * randomVecNormal;
-      u = u + randomVecGaussian;
-      in.set( u, Su, t);
+      InputType in;
+      RandomVecMathTools<InputType>::sample(input_k, in);
 
       step( s_k, s_km, in, dT );
 
@@ -114,39 +97,22 @@ public:
 
     }
     
-    if( useAdditiveWhiteGaussianNoise && S_zmgn_ != StateType::Mat::Zero() ){
-    
-      int n = S_zmgn_.cols();
-      typename StateType::Vec randomVecNormal, randomVecGaussian, x_k;
-      for(int i = 0; i < n; i++){
-	randomVecNormal(i) = randn();
-      }
-      randomVecGaussian = L_ * randomVecNormal;
+    if( useAdditiveWhiteGaussianNoise && Q_ != StateType::Mat::Zero() ){
 
+      typename StateType::Vec x_k;
       s_k.get(x_k);
-      x_k = x_k + randomVecGaussian;
-      s_k.set(x_k);
+      RandomVecMathTools<StateType>::sample(x_k, Q_, L_, s_k);
+
     }
   }
 
 protected:
   
   /** Covariance matrix for zero mean white Gaussian noise */
-  typename StateType::Mat S_zmgn_;
+  typename StateType::Mat Q_;
 
   /** Lower triangular part of Cholesky decomposition on S_zmgn */
   typename StateType::Mat L_;
-
-  /** Generate a random number from a normal distribution */
-  double randn(){
-    return gen_();
-  }
-
-private:
-
-  boost::mt19937 rng_;
-  boost::normal_distribution<double> nd_;
-  boost::variate_generator< boost::mt19937, boost::normal_distribution<double> > gen_;
 
 };
 
@@ -186,7 +152,7 @@ public:
       typename StateType::Vec x;
       typename StateType::Mat S;
       s_km.get(x, S);
-      S += (this->S_zmgn_ * dT * dT);
+      S += (this->Q_ * dT * dT);
       s_k.set(x, S);
     }else{
       s_k = s_km;

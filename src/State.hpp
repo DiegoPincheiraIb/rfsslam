@@ -35,7 +35,7 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
   /** Default constructor */
-  RandomVec(){
+  RandomVec() : pSx_L_(NULL){
 
     if ( !dimCheck() ){
       exit(-1);
@@ -51,7 +51,7 @@ public:
    * \param Sx covariance
    * \param t time
    */
-  RandomVec(VecType x, MatType Sx, double t = -1){
+  RandomVec(VecType x, MatType Sx, double t = -1) : pSx_L_(NULL){
     if ( !dimCheck() ){
       exit(-1);
     }
@@ -65,7 +65,7 @@ public:
    * \param x vector
    * \param t time
    */
-  RandomVec(VecType x, double t = -1){
+  RandomVec(VecType x, double t = -1) : pSx_L_(NULL){
     if ( !dimCheck() ){
       exit(-1);
     }
@@ -75,7 +75,10 @@ public:
   }
 
   /** Default destructor */
-  ~RandomVec(){};
+  ~RandomVec(){
+    if( pSx_L_ != NULL)
+      delete pSx_L_;
+  };
 
   /** 
    * Set the vector
@@ -91,6 +94,10 @@ public:
     Sx_ = Sx;
     SxInv_ = Sx_.inverse();
     Sx_det_ = Sx.determinant();
+    if( pSx_L_ != NULL){
+      delete pSx_L_;
+      pSx_L_ = NULL;
+    }
   }
 
   /**
@@ -146,6 +153,20 @@ public:
    */
   void getCov( MatType &Sx){
     Sx = Sx_;
+  }
+
+  /**
+   * Get the lower triangular part of the Cholesky decomposition 
+   * on the covariance matrx Sx_ 
+   * \param[out] Sx_Chol_L The lower triangular part of the Choloesky decomposition
+   */
+  void getCovCholeskyDecompLower( MatType &Sx_Chol_L){
+    if(pSx_L_ == NULL){
+      pSx_L_ = new MatType;
+      Eigen::LLT<MatType> cholesky( Sx_ );
+      *pSx_L_ = cholesky.matrixL();
+    }
+    Sx_Chol_L = *pSx_L_;
   }
 
   /** 
@@ -264,6 +285,7 @@ private:
   MatType Sx_; /**< Covariance */
   MatType SxInv_; /**< Inverse covariance */
   double Sx_det_; /** Determinant of Sx_ */
+  MatType* pSx_L_; /** Lower triangular part of Cholesky decomposition on Sx_ */
   double t_; /**< time */
 
   /** Dimensionality check during initialization */
@@ -302,8 +324,31 @@ public:
 				     boost::normal_distribution<double> > 
       gen_(rng_, nd_);
     
-    Eigen::LLT<typename RandomVecDerivedClass::Mat> cholesky( Sx );
-    Sx_L = cholesky.matrixL();
+    s.getCovCholeskyDecompLower(Sx_L);
+
+    int n = Sx_L.cols();
+    for(int i = 0; i < n; i++){
+      indep_noise(i) = gen_();
+    }
+    e = Sx_L * indep_noise;
+    x += e;
+    s_sample.set( x, Sx );
+
+  }
+
+  static void sample( typename RandomVecDerivedClass::Vec &x,
+		      typename RandomVecDerivedClass::Mat &Sx,
+		      typename RandomVecDerivedClass::Mat &Sx_L,
+		      RandomVecDerivedClass &s_sample ){
+    
+    typename RandomVecDerivedClass::Vec indep_noise, e;
+    
+    static boost::mt19937 rng_;
+    static boost::normal_distribution<double> nd_;
+    static boost::variate_generator< boost::mt19937, 
+				     boost::normal_distribution<double> > 
+      gen_(rng_, nd_);
+    
     int n = Sx_L.cols();
     for(int i = 0; i < n; i++){
       indep_noise(i) = gen_();
