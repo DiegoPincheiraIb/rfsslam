@@ -4,7 +4,7 @@
 #ifndef MEASUREMENT_HPP
 #define MEASUREMENT_HPP
 
-#include "State.hpp"
+#include "RandomVec.hpp"
 
 /** Definition for a  NULL measurement */
 typedef RandomVec < Eigen::Matrix<double, 1, 1>,

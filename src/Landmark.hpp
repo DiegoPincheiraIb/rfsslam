@@ -4,9 +4,7 @@
 #ifndef LANDMARK_HPP
 #define LANDMARK_HPP
 
-#include <Eigen/Core>
-#include <Eigen/LU>
-#include "State.hpp"
+#include "RandomVec.hpp"
 
 /** 
  * \class Landmark

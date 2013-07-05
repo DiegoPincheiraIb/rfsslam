@@ -10,8 +10,6 @@
 #include <iostream>
 #include <stdio.h>
 
-double const PI = acos(-1);
-
 /**
  * \class RandomVec
  * \brief An abstract base class for deriving pose and measurement classes

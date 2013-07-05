@@ -4,7 +4,7 @@
 #ifndef POSE_HPP
 #define POSE_HPP
 
-#include "State.hpp"
+#include "RandomVec.hpp"
 
 /********** Define a 1d vehicle pose state **********/
 

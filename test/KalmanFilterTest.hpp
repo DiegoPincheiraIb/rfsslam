@@ -1,7 +1,5 @@
 #include "gtest/gtest.h"
 #include "KalmanFilter.hpp"
-#include "State.hpp"
-
 
 /**
  * \class KalmanFilterTest
