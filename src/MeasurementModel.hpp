@@ -12,6 +12,7 @@
 #include "Measurement.hpp"
 #include "Landmark.hpp"
 #include "Pose.hpp"
+#include "Tools.hpp"
 
 /** 
  * \class MeasurementModel
@@ -28,7 +29,7 @@ public:
   typedef MeasurementType TMeasurement;
   
   /** Default constructor */
-  MeasurementModel() : nd_(0, 1), gen_(rng_, nd_) {}
+  MeasurementModel() : nd_(0, 1), gen_(rng_, nd_), R_( MeasurementType::Mat::Zero()) {}
 
   /** Default destructor */
   ~MeasurementModel(){}
@@ -199,11 +200,12 @@ public:
     return 0;
   }  
 
-  
+protected:
+
   typename MeasurementType::Mat R_; /**< Additive zero-mean Gaussian noise covariance */
   typename MeasurementType::Mat L_; /** Lower triangular part of Cholesky decomposition on R_ */
 
-private:
+
   
   /** Generate a random number from a normal distribution */
   double randn(){
@@ -315,5 +317,149 @@ protected:
   double sensingArea_;
 
 };
+
+
+
+//////////  Linear Measurement Model //////////
+
+/** 
+ * \class LinearModel
+ * \brief  This is a linear measurement model that measures directly the state 
+ * of a landmark, this is made for testing purposes only. 
+ * 
+ * \author Felipe Inostroza 
+ */
+template <class LandmarkType , class MeasurementType> 
+class LinearModel: public MeasurementModel <Pose2d, LandmarkType, MeasurementType>{
+
+public:
+
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
+  /** \brief Configuration for the Model */
+  struct Config{
+    double probabilityOfDetection_;
+    double probabilityOfFalseAlarm_; /**<  interpret as p( NULL | measurement exists) */
+  }config;
+
+ /** Default constructor 
+  *  Sets the H matrix to the identity matrix (The matrix is cut to have the proper dimensions)
+  */
+  LinearModel(){
+
+  config.probabilityOfDetection_ = 0.95;
+  config.probabilityOfFalseAlarm_ = 0.01;
+ 
+};
+
+ /**
+  * Constructor that sets the uncertainty (covariance) of the measurement model
+  * \param covZ measurement covariance
+  */
+  LinearModel(typename MeasurementType::Mat &R , Eigen::Matrix<double, MeasurementType::Vec::RowsAtCompileTime, LandmarkType::Vec::RowsAtCompileTime> &H){
+  
+  config.probabilityOfDetection_ = 0.95;
+  config.probabilityOfFalseAlarm_ = 0.01;
+  H_=H;
+  H_inv_=(H.transpose()*H).inverse()*H.transpose();
+  setNoise(R);
+};
+
+
+ /** Default destructor */
+  ~LinearModel(){};
+
+  /** 
+   * Get a measurement
+   * \param[in] pose robot pose from which the measurement is made
+   * \param[in] landmark The measured landmark
+   * \param[out] measurement The measurement
+   * \param[out] jacobian If not NULL, the pointed-to matrix will be overwritten 
+   * by the Jacobian of the measurement model at the point where the prediction is made
+   */
+  void measure( Pose2d &pose, LandmarkType &landmark, 
+		MeasurementType &measurement, Eigen::Matrix<double, 
+		MeasurementType::Vec::RowsAtCompileTime, 
+		LandmarkType::Vec::RowsAtCompileTime> *jacobian = NULL){
+  
+  typename LandmarkType::Mat S_land;
+  typename LandmarkType::Vec land;
+  typename MeasurementType::Vec z;
+  typename MeasurementType::Mat Sz;
+
+  landmark.get(land,S_land);
+  z=H_*land;
+  Sz=H_*S_land*H_.transpose();
+  measurement.set(z, Sz);
+  if(jacobian != NULL)
+    *jacobian = H_;
+};
+
+  /** 
+   * Inverse measurement
+   * \param[in] pose robot pose 
+   * \param[in] measurement measurement
+   * \param[out] landmark position
+   */
+  void inverseMeasure(Pose2d &pose, MeasurementType &measurement, LandmarkType &landmark){
+    typename MeasurementType::Vec z;
+    typename MeasurementType::Mat Sz;  
+    typename LandmarkType::Mat S_land;
+    typename LandmarkType::Vec land;  
+
+    measurement.get(z,Sz);
+    land = H_inv_*z;
+    S_land = H_inv_*Sz*H_inv_.transpose();
+    landmark.set(land , S_land);
+    
+    
+};
+
+  /** 
+   * Determine the probability of detection
+   * \note This is where we can indirectly specify sensing limits and other sensor characteristics
+   * \param[in] pose robot pose
+   * \param[in] landmark landmark position
+   * \param[out] Pd_upper
+   * \param[out] Pd_lower
+   * \return probability of detection
+   */
+  double probabilityOfDetection( Pose2d &pose,
+				 LandmarkType &landmark,
+				 bool &isCloseToSensingLimit){
+    return config.probabilityOfDetection_;
+  };
+
+  /**
+   * Determine the clutter intensity in measurement space
+   * \note uniform clutter intensity is assumed
+   * \param[in] z measurement point at which clutter intensity will be determined
+   * \param[in] nZ the cardinality of Z, of which z is a member.
+   * \return clutter intensity
+   */
+  double clutterIntensity( MeasurementType &z,
+			   int nZ ){
+    return config.probabilityOfFalseAlarm_;
+  };
+
+  /**
+   * Determine the clutter intensity integral in measurement space
+   * \brief This is calculated based on the probablity of false alarm,
+   * defined as p( NULL | measurement exists)
+   * \param[in] nZ the cardinality of Z
+   * \return clutter intensity
+   */
+  double clutterIntensityIntegral( int nZ ){
+    return config.probabilityOfFalseAlarm_*nZ;
+  };
+
+protected:
+  
+  Eigen::Matrix<double, MeasurementType::Vec::RowsAtCompileTime, LandmarkType::Vec::RowsAtCompileTime> H_;
+  Eigen::Matrix<double, MeasurementType::Vec::RowsAtCompileTime, LandmarkType::Vec::RowsAtCompileTime> H_inv_;
+
+
+};
+
 
 #endif
