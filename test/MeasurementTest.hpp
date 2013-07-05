@@ -1,7 +1,9 @@
 // Test for classes derived from Measurement
 // Keith Leung 2013
 
+#include "gtest/gtest.h"
 #include "Measurement.hpp"
+#include "RandomVecMathTools.hpp"
 
 /**
  * \class MeasurementTest

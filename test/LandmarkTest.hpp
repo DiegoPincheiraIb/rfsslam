@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "Landmark.hpp"
+#include "RandomVecMathTools.hpp"
 
 /**
  * \class LandmarkTest

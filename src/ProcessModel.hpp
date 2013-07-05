@@ -4,13 +4,9 @@
 #ifndef PROCESSMODEL_HPP
 #define PROCESSMODEL_HPP
 
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/normal_distribution.hpp>
-#include <boost/random/variate_generator.hpp>
-#include <Eigen/Core>
-#include <Eigen/Cholesky>
 #include "Measurement.hpp"
 #include "Pose.hpp"
+#include "RandomVecMathTools.hpp"
 
 /**
  * \class ProcessModel
