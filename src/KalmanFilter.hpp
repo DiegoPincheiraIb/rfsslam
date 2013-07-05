@@ -206,7 +206,10 @@ correct(TPose &pose, TMeasurement &measurement,
   if(zLikelihood != NULL){
     RandomVec<Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1>, Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> > z_innov;
     z_innov.set( z_act, S_ );
-    *zLikelihood = z_innov.evalGaussianLikelihood(z_exp_);
+    *zLikelihood = RandomVecMathTools< RandomVec< 
+      Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1>, 
+      Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> > > :: evalGaussianLikelihood( z_innov, z_exp_);
+
   }
 
 }

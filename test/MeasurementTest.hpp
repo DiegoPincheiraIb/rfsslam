@@ -68,7 +68,7 @@ TEST_F(MeasurementTest, testConstructorOdometry2d){
   EXPECT_EQ(u_in, u_out);
   EXPECT_EQ(t_in, t_out);
 
-  EXPECT_EQ( 0, u2.mahalanobisDist( u1 ) );
+  EXPECT_EQ( 0, RandomVecMathTools<Odometry2d>::mahalanobisDist(u2, u1));
 }
 
 // Test Measurement2d Class
@@ -91,13 +91,13 @@ TEST_F(MeasurementTest, testMeasurement2d){
   EXPECT_EQ(z, z_out2);
   EXPECT_EQ(t, t_out2); 
 
-  EXPECT_EQ(0, y.mahalanobisDist( z ) );
-  EXPECT_EQ(0, y.mahalanobisDist( y ) );
+  EXPECT_EQ(0, RandomVecMathTools<Measurement2d>::mahalanobisDist(y, z) );
+  EXPECT_EQ(0, RandomVecMathTools<Measurement2d>::mahalanobisDist(y, y) );
   z << 0.1, 9.5;
-  EXPECT_LT(0, y.mahalanobisDist( z ) );
-  EXPECT_EQ(0, y.mahalanobisDist( y ) );
-  EXPECT_LT(0, y.evalGaussianLikelihood( z ) );
-  EXPECT_LT(0, y.evalGaussianLikelihood( y ) );
+  EXPECT_LT(0, RandomVecMathTools<Measurement2d>::mahalanobisDist(y, z) );
+  EXPECT_EQ(0, RandomVecMathTools<Measurement2d>::mahalanobisDist(y, y) );
+  EXPECT_LT(0, RandomVecMathTools<Measurement2d>::evalGaussianLikelihood(y, z) );
+  EXPECT_LT(0, RandomVecMathTools<Measurement2d>::evalGaussianLikelihood(y, y) );
 }
 
 // Test Measurement1d Class
@@ -123,11 +123,11 @@ TEST_F(MeasurementTest, testMeasurement1d){
   EXPECT_EQ(z, z_out2);
   EXPECT_EQ(t, t_out2); 
 
-  EXPECT_EQ(0, y.mahalanobisDist( z ) );
-  EXPECT_EQ(0, y.mahalanobisDist( y ) );
+  EXPECT_EQ(0, RandomVecMathTools<Measurement1d>::mahalanobisDist(y, z) );
+  EXPECT_EQ(0, RandomVecMathTools<Measurement1d>::mahalanobisDist(y, y) );
   z << 9.5;
-  EXPECT_LT(0, y.mahalanobisDist( z ) );
-  EXPECT_EQ(0, y.mahalanobisDist( y ) );
-  EXPECT_LT(0, y.evalGaussianLikelihood( z ) );
-  EXPECT_LT(0, y.evalGaussianLikelihood( y ) );
+  EXPECT_LT(0, RandomVecMathTools<Measurement1d>::mahalanobisDist(y, z) );
+  EXPECT_EQ(0, RandomVecMathTools<Measurement1d>::mahalanobisDist(y, y) );
+  EXPECT_LT(0, RandomVecMathTools<Measurement1d>::evalGaussianLikelihood(y, z) );
+  EXPECT_LT(0, RandomVecMathTools<Measurement1d>::evalGaussianLikelihood(y, y) );
 }

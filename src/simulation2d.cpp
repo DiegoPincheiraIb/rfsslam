@@ -12,7 +12,7 @@ public:
   Simulator2d(){
     
     pFilter_ = NULL;
-
+    
   }
   
   ~Simulator2d(){
@@ -77,6 +77,7 @@ public:
     printf("varzb_ %f\n", varzb_);
 
     return true;
+
   }
 
   /** Generate a random trajectory in 2d space */
@@ -138,6 +139,9 @@ public:
 	     k, in.get(0),  in.get(1),  in.get(2), 
 	     k, out.get(0), out.get(1), out.get(2) );*/
 
+      RangeBearingModel model;
+      
+      
     }
 
   }

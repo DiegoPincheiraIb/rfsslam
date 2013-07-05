@@ -35,7 +35,11 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
   /** Default constructor */
-  RandomVec() : pSx_L_(NULL){
+  RandomVec() : 
+    pSx_L_(NULL), 
+    pSxInv_(NULL),
+    pSx_det_(NULL)
+  {
 
     if ( !dimCheck() ){
       exit(-1);
@@ -51,7 +55,11 @@ public:
    * \param Sx covariance
    * \param t time
    */
-  RandomVec(VecType x, MatType Sx, double t = -1) : pSx_L_(NULL){
+  RandomVec(VecType x, MatType Sx, double t = -1) : 
+    pSx_L_(NULL),
+    pSxInv_(NULL),
+    pSx_det_(NULL)
+  {
     if ( !dimCheck() ){
       exit(-1);
     }
@@ -65,7 +73,10 @@ public:
    * \param x vector
    * \param t time
    */
-  RandomVec(VecType x, double t = -1) : pSx_L_(NULL){
+  RandomVec(VecType x, double t = -1) : 
+    pSx_L_(NULL),
+    pSxInv_(NULL),
+    pSx_det_(NULL){
     if ( !dimCheck() ){
       exit(-1);
     }
@@ -78,6 +89,10 @@ public:
   ~RandomVec(){
     if( pSx_L_ != NULL)
       delete pSx_L_;
+    if( pSxInv_ != NULL)
+      delete pSxInv_;
+    if( pSx_det_ != NULL)
+      delete pSx_det_;
   };
 
   /** 
@@ -92,11 +107,17 @@ public:
    */
   void setCov( MatType &Sx){
     Sx_ = Sx;
-    SxInv_ = Sx_.inverse();
-    Sx_det_ = Sx.determinant();
     if( pSx_L_ != NULL){
       delete pSx_L_;
       pSx_L_ = NULL;
+    }
+    if( pSxInv_ != NULL){
+      delete pSxInv_;
+      pSxInv_ = NULL;
+    }
+    if( pSx_det_ != NULL){
+      delete pSx_det_;
+      pSx_det_ = NULL;
     }
   }
 
@@ -170,6 +191,30 @@ public:
   }
 
   /** 
+   * Get the invserve covariance matrix 
+   * \param[out] Sx_inv inverse covariance
+   */ 
+  void getInvCov( MatType &Sx_inv){
+    if(pSxInv_ == NULL){
+      pSxInv_ = new MatType;
+      *pSxInv_ = Sx_.inverse(); 
+    }
+    Sx_inv = *pSxInv_;
+  }
+
+  /** 
+   * Get the determinant of the covariance
+   * \return determinant
+   */
+  double getCovDet(){
+    if(pSx_det_ == NULL){
+      pSx_det_ = new double;
+      *pSx_det_ = Sx_.determinant();
+    }
+    return *pSx_det_;
+  }
+
+  /** 
    * Get the vector and covariance matrix
    * \param[out] x vector
    * \param[out] Sx uncertainty
@@ -215,76 +260,13 @@ public:
    */ 
   unsigned int getNDim(){ return nDim_; }
 
-  /** 
-   * Calculate the sqaured Mahalanobis distance 
-   * from the current vector, scaled by the covariance
-   * \param[in] x vector to which we measure the distance to
-   * \return mahalanobis distance squared
-   */
-  double mahalanobisDist2( VecType &x){
-    VecType e = x_ - x;
-    return (e.transpose() * SxInv_ * e);
-  }
-
-  /**
-   * Calculate the Mahalanobis distance from the current vector,
-   * scaled by the covariance
-   * \param[in] x vector to which we measure the distance to
-   * \return mahalanobis distance
-   */
-  double mahalanobisDist( VecType &x){
-    double md2 = mahalanobisDist2( x );
-    if( md2 >= 0)
-      return sqrt( md2 );
-    else
-      return -1;
-  }
-
-
- /**
-   * Calculate the Mahalanobis distance from the current vector,
-   * scaled by the covariance
-   * \param[in] x vector to which we measure the distance to
-   * \return mahalanobis distance
-   */
-  double mahalanobisDist( RandomVec<VecType, MatType> &x ){   
-    VecType s;
-    x.get(s);
-    return mahalanobisDist( s );
-  }
-
-  /** 
-   * Evaluate the Gaussian likelihood of a given evaluation point
-   * the current vector as the mean, with its covariance
-   * \param[in] x vector to the evaluation point
-   * \return likelihood
-   */
-  double evalGaussianLikelihood( VecType &x ){
-    double md2 = mahalanobisDist2( x );
-    return ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim_) * Sx_det_ )  );
-  }
-
-
-  /** 
-   * Evaluate the Gaussian likelihood of a given evaluation point
-   * the current vector as the mean, with its covariance
-   * \param[in] x vector to the evaluation point
-   * \return likelihood
-   */
-  double evalGaussianLikelihood( RandomVec<VecType, MatType> &x ){ 
-    VecType s;
-    x.get(s);
-    return evalGaussianLikelihood( s );
-  }
-  
-
 private:
 
   Vec x_; /**< State */
   unsigned int nDim_; /**< Number of dimensions */
   MatType Sx_; /**< Covariance */
-  MatType SxInv_; /**< Inverse covariance */
-  double Sx_det_; /** Determinant of Sx_ */
+  MatType* pSxInv_; /**< Inverse covariance */
+  double* pSx_det_; /** Determinant of Sx_ */
   MatType* pSx_L_; /** Lower triangular part of Cholesky decomposition on Sx_ */
   double t_; /**< time */
 
@@ -316,6 +298,92 @@ template< class RandomVecDerivedClass >
 class RandomVecMathTools
 {
 public:
+
+  /** 
+   * Calculate the sqaured Mahalanobis distance from a random vector,
+   * \param[in] x_fm the random vector from which we can calcuating the 
+   * distance, and of which the covariance is taken for scaling
+   * \param[in] x_to the random vector to which we are measuring.
+   * The covariance of this is ignored
+   * \return mahalanobis distance squared
+   */
+  static double mahalanobisDist2( RandomVecDerivedClass &x_fm,
+				  RandomVecDerivedClass &x_to){
+    typename RandomVecDerivedClass::Vec x1;
+    x_to.get(x1);
+    return mahalanobisDist2( x_fm, x1 );
+  }
+
+  /** 
+   * Calculate the sqaured Mahalanobis distance from a random vector,
+   * \param[in] x_fm the random vector from which we can calcuating the 
+   * distance, and of which the covariance is taken for scaling
+   * \param[in] x_to the random vector to which we are measuring.
+   * \return mahalanobis distance squared
+   */
+  static double mahalanobisDist2( RandomVecDerivedClass &x_fm,
+				  typename RandomVecDerivedClass::Vec &x_to){
+    typename RandomVecDerivedClass::Vec x0;
+    typename RandomVecDerivedClass::Mat Sx0Inv;
+    x_fm.get(x0);
+    x_fm.getInvCov( Sx0Inv );
+    typename RandomVecDerivedClass::Vec e = x_to - x0;
+    return (e.transpose() * Sx0Inv * e);
+  }
+
+  /** 
+   * Calculate the Mahalanobis distance from a random vector,
+   * \param[in] x_fm the random vector from which we can calcuating the 
+   * distance, and of which the covariance is taken for scaling
+   * \param[in] x_to the random vector to which we are measuring.
+   * The covariance of this is ignored
+   * \return mahalanobis distance
+   */
+  static double mahalanobisDist( RandomVecDerivedClass &x_fm,
+				 RandomVecDerivedClass &x_to){
+    return sqrt( mahalanobisDist2( x_fm, x_to ) );
+  }
+
+  /** 
+   * Calculate the Mahalanobis distance from a random vector,
+   * \param[in] x_fm the random vector from which we can calcuating the 
+   * distance, and of which the covariance is taken for scaling
+   * \param[in] x_to the random vector to which we are measuring.
+   * \return mahalanobis distance
+   */
+  static double mahalanobisDist( RandomVecDerivedClass &x_fm,
+				  typename RandomVecDerivedClass::Vec &x_to){
+    return sqrt( mahalanobisDist2( x_fm, x_to ) );
+  }
+
+  
+  /** 
+   * Evaluate the Gaussian likelihood of a evaluation point
+   * \param[in] gaussian The Gaussian distribution represented by a random vector
+   * \param[in] x_eval evaluation point
+   * \return likelihood
+   */
+  static double evalGaussianLikelihood( RandomVecDerivedClass &gaussian,
+				 RandomVecDerivedClass &x_eval ){
+    double nDim = gaussian.getNDim();
+    double covDet = gaussian.getCovDet();
+    double md2 = mahalanobisDist2( gaussian, x_eval );
+    return ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim) * covDet ) );
+  }
+
+  /** 
+   * Evaluate the Gaussian likelihood of a evaluation point
+   * \param[in] gaussian The Gaussian distribution represented by a random vector
+   * \param[in] x_eval evaluation point
+   * \return likelihood
+   */
+  static double evalGaussianLikelihood( RandomVecDerivedClass &gaussian,
+					typename RandomVecDerivedClass::Vec &x_eval ){
+    double nDim = gaussian.getNDim();
+    double covDet = gaussian.getCovDet();
+    double md2 = mahalanobisDist2( gaussian, x_eval );
+    return ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim) * covDet ) );
+  }  
 
   /** 
    * Sample the random vector

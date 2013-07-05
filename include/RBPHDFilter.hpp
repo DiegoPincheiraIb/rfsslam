@@ -29,7 +29,7 @@ public:
   typedef typename ProcessModel::TState TPose;
   typedef typename ProcessModel::TInput TInput;
   typedef typename MeasurementModel::TLandmark TLandmark;
-  typedef typename MeasurementModel::TMeasurement TMeasure;
+  typedef typename MeasurementModel::TMeasurement TMeasurement;
   typedef typename GaussianMixture<TLandmark>::Gaussian TGaussian;
 
   /** 
@@ -101,7 +101,7 @@ public:
    * \param Z set of measurements to use for the update, placed in a stl vector, which
    * gets cleared after the function call. 
    */
-  void update( std::vector<TMeasure> &Z );
+  void update( std::vector<TMeasurement> &Z );
 
 
 private:
@@ -167,7 +167,7 @@ RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::~RBPHDFilter(){
 }
 
 template< class ProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasure> &Z ){
+void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z ){
 
   this->setMeasurements( Z );
   updateMap();
@@ -408,8 +408,11 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::importanceWeig
 	TLandmark* plm;
 	double w, w_prev;
 	maps_[i]->getGaussian(m, plm, w, w_prev);
-	intensity_at_evalPt_beforeUpdate += w_prev * plm->evalGaussianLikelihood( *lm_evalPt );
-	intensity_at_evalPt_afterUpdate += w * plm->evalGaussianLikelihood( *lm_evalPt );
+
+	double likelihood = RandomVecMathTools< TLandmark >::evalGaussianLikelihood( *plm, *lm_evalPt);
+
+	intensity_at_evalPt_beforeUpdate += w_prev * likelihood;
+	intensity_at_evalPt_afterUpdate += w * likelihood;
       }
 
       intensityProd_beforeUpdate *= intensity_at_evalPt_beforeUpdate;
@@ -448,7 +451,7 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::addBirthGaussi
      
       // get measurement
       int unused_idx = unused_measurements_[i].back();
-      TMeasure unused_z = this->measurements_[unused_idx];
+      TMeasurement unused_z = this->measurements_[unused_idx];
       unused_measurements_[i].pop_back();
 
       // use inverse measurement model to get landmark
@@ -498,11 +501,12 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
 
      for( int z = 0; z < nZ; z++ ){
 
-       TMeasure expected_z;
+       TMeasurement expected_z;
        this->pMeasurementModel_->measure( x, *evalPt, expected_z);
-       TMeasure actual_z = this->measurements_[z];
+       TMeasurement actual_z = this->measurements_[z];
 
-       double likelihood = actual_z.evalGaussianLikelihood( expected_z );
+       double likelihood = RandomVecMathTools<TMeasurement>::
+	 evalGaussianLikelihood( actual_z, expected_z );
        
        if( likelihood >= config.importanceWeightingMeasurementLikelihoodThreshold_ ){
 	 likelihoodTab[m][z] = likelihood * Pd;
@@ -522,7 +526,7 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
     }
     if( z_sum = 0 ){
       nClutter++;
-      TMeasure actual_z = this->measurements_[z];
+      TMeasurement actual_z = this->measurements_[z];
       double c = this->pMeasurementModel_->clutterIntensity(actual_z, nZ);
       for( int m = 0; m < nM; m++ ){
 	likelihoodTab[m][z] = c;
@@ -544,7 +548,7 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
     likelihoodTab.push_back(new double [nZ]);
     int m = likelihoodTab.size() - 1;
     for( int z = 0; z < nZ; z++ ){
-      TMeasure actual_z = this->measurements_[z];
+      TMeasurement actual_z = this->measurements_[z];
       likelihoodTab[m][z] = this->pMeasurementModel_->clutterIntensity(actual_z, nZ);
     }
   }
@@ -562,7 +566,7 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
       likelihoodTab.push_back(new double [nZ]);
       int m = likelihoodTab.size() - 1;
       for( int z = 0; z < nZ; z++ ){
-	TMeasure actual_z = this->measurements_[z];
+	TMeasurement actual_z = this->measurements_[z];
 	likelihoodTab[m][z] = this->pMeasurementModel_->clutterIntensity(actual_z, nZ);
       }
 
