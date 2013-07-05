@@ -4,6 +4,12 @@
 
 Odometry2d::Odometry2d(){}
 
+Odometry2d::Odometry2d(Vec &x, Mat &Sx, double t) : 
+  RandomVec< Eigen::Vector3d, Eigen::Matrix3d >(x, Sx, t){}
+
+Odometry2d::Odometry2d(Vec &x, double t) : 
+  RandomVec< Eigen::Vector3d, Eigen::Matrix3d >(x, t){}
+
 Odometry2d::Odometry2d(double dx_k_km, double dy_k_km, double dtheta_k_km, 
 		       double vardx_k_km, double vardy_k_km, 
 		       double vartheta_k_km, double t) {

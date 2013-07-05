@@ -14,7 +14,7 @@
  * \author Keith Leung
  */
 template<class VecType, class MatType>
-class Landmark : public StateWithUncertainty<VecType, MatType>
+class Landmark : public RandomVec<VecType, MatType>
 {
 public:
 

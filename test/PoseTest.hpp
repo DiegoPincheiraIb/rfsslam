@@ -31,6 +31,7 @@ TEST_F(PoseTest, constructorTestPose2d){
   Pose2d::Vec x, y;
 
   Pose2d p1;
+
   p1.get(x);
   EXPECT_EQ(Pose2d::Vec::Zero() ,x);
 

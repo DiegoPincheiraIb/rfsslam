@@ -85,6 +85,8 @@ public:
     int seg = 0;
     OdometryMotionModel2d::TState::Mat Q;
     Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
+    Q = dT_ * Q * dT_;
+    std::cout << "\n\n" << Q << "\n\n";
     OdometryMotionModel2d motionModel(Q);
     OdometryMotionModel2d::TInput input_k(0, 0, 0, 0, 0, 0, 0);
     OdometryMotionModel2d::TState pose_k(0, 0, 0, 0, 0, 0, 0);
@@ -100,7 +102,8 @@ public:
 	double dx = drand48() * max_dx_ * dT_;
 	double dy = (drand48() * max_dy_ * 2 - max_dy_) * dT_;
 	double dz = (drand48() * max_dz_ * 2 - max_dz_) * dT_; 
-	input_k = OdometryMotionModel2d::TInput(dx, dy, dz, 0, 0, 0, 1);  
+	input_k = OdometryMotionModel2d::TInput(dx, dy, dz, 
+						Q(0,0), Q(1,1), Q(2,2), k);  
       }
 
       groundtruth_displacement_[k] = input_k;
@@ -126,7 +129,16 @@ public:
   
   void generateOdometry(){
 
-    // need sample function in measurement class
+    for( int k = 1; k < kMax_; k++){
+      
+      OdometryMotionModel2d::TInput &in = groundtruth_displacement_[k];
+      OdometryMotionModel2d::TInput out;
+      RandomVecMathTools<OdometryMotionModel2d::TInput>::sample(in, out);
+      /*printf("u[%d] = [%f %f %f]  u_[%d] = [%f %f %f]\n", 
+	     k, in.get(0),  in.get(1),  in.get(2), 
+	     k, out.get(0), out.get(1), out.get(2) );*/
+
+    }
 
   }
 
@@ -166,35 +178,32 @@ public:
   }
 
   void generateMeasurements(){
-
-    // need sample function in measurement class
-
-    /*
-    RangeBearingModel;
-
-    if( S_zmgn_ != StateType::Mat::Zero() ){
-      Eigen::LLT<typename StateType::Mat> cholesky( S );
-      L_ = cholesky.matrixL();
-    }
-
-    InputType in = input_k;
-    typename InputType::Vec u;
-    typename InputType::Mat Su, Su_L;
-    double t;
-    in.get( u, Su, t );
-    Eigen::LLT<typename InputType::Mat> cholesky( Su );
-    Su_L = cholesky.matrixL();
     
-    int n = Su_L.cols();
-    typename InputType::Vec randomVecNormal, randomVecGaussian;
-    for(int i = 0; i < n; i++){
-      randomVecNormal(i) = randn();
-    }
-    randomVecGaussian = Su_L * randomVecNormal;
-    u = u + randomVecGaussian;
-    step( s_k, s_km, in, dT );
-    */
 
+    RangeBearingModel measurementModel( varzr_, varzb_);
+    RangeBearingModel::TMeasurement z_m_k;
+
+    for( int k = 1; k < kMax_; k++ ){
+      
+      groundtruth_pose_[k];
+      
+      for( int m = 0; m < groundtruth_landmark_.size(); m++){
+
+	measurementModel.sample( groundtruth_pose_[k],
+				 groundtruth_landmark_[m],
+				 z_m_k);
+
+	z_m_k.set(k);
+	measurements_.push_back( z_m_k );
+
+	/*printf("Measurement[%d] = [%f %f]\n", int(measurements_.size()),
+	       (measurements_.back()).get(0),
+	       (measurements_.back()).get(1));*/
+
+      }
+      
+   }
+    
   }
 
   void setupRBPHDFilter(){
@@ -225,6 +234,7 @@ private:
   double vardz_;
   std::vector<OdometryMotionModel2d::TInput> groundtruth_displacement_;
   std::vector<OdometryMotionModel2d::TState> groundtruth_pose_;
+  std::vector<RangeBearingModel::TMeasurement> measurements_;
 
   // Landmarks 
   int nLandmarks_;
@@ -256,7 +266,9 @@ int main(int argc, char* argv[]){
     return -1;
   }
   sim.generateTrajectory();
+  sim.generateOdometry();
   sim.generateLandmarks();
+  sim.generateMeasurements();
 
   return 0;
 
