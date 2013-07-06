@@ -78,6 +78,7 @@ public:
 
     return true;
 
+   
   }
 
   /** Generate a random trajectory in 2d space */
@@ -140,8 +141,7 @@ public:
 	     k, out.get(0), out.get(1), out.get(2) );*/
 
       RangeBearingModel model;
-      
-      
+
     }
 
   }
