@@ -2,17 +2,21 @@
 // Keith Leung 2013
 // Requires libconfig to be installed
 
+#include <boost/lexical_cast.hpp>
 #include <libconfig.h++>
 #include "RBPHDFilter.hpp"
+#include <stdio.h>
 
 class Simulator2d{
 
 public:
 
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
   Simulator2d(){
     
     pFilter_ = NULL;
-    
+   
   }
   
   ~Simulator2d(){
@@ -46,6 +50,7 @@ public:
     max_dx_ = cfg.lookup("Trajectory.max_dx_per_sec");
     max_dy_ = cfg.lookup("Trajectory.max_dy_per_sec");
     max_dz_ = cfg.lookup("Trajectory.max_dz_per_sec");
+    min_dx_ = cfg.lookup("Trajectory.min_dx_per_sec");
     vardx_ = cfg.lookup("Trajectory.vardx");
     vardy_ = cfg.lookup("Trajectory.vardy");
     vardz_ = cfg.lookup("Trajectory.vardz");
@@ -59,77 +64,67 @@ public:
     varzb_ = cfg.lookup("Measurement.varzb");
 
     nParticles_ = cfg.lookup("Filter.nParticles");
-    
-    printf("kMax_ %d\n", kMax_);
-    printf("dT_ %f\n", dT_);
-    printf("nSegments_ %d\n", nSegments_);
-    printf("max_dx_ %f\n", max_dx_);
-    printf("max_dy_ %f\n", max_dy_);
-    printf("max_dz_ %f\n", max_dz_);
-    printf("vardx_ %f\n", vardx_);
-    printf("vardy_ %f\n", vardy_);
-    printf("vardz_ %f\n", vardz_);
-    printf("nLandmarks_ %d\n", nLandmarks_);
-    printf("rangeLimit_ %f\n", rangeLimit_);
-    printf("Pd_ %f\n", Pd_);
-    printf("Pfa_ %f\n", Pfa_);
-    printf("varzr_ %f\n", varzr_);
-    printf("varzb_ %f\n", varzb_);
 
-    return true;
-
-   
+    return true;   
   }
 
   /** Generate a random trajectory in 2d space */
-  void generateTrajectory(){
+  void generateTrajectory(int randSeed = 0){
+
+    printf("Generating trajectory with random seed = %d\n", randSeed);
+    srand48( randSeed);
 
     int seg = 0;
     OdometryMotionModel2d::TState::Mat Q;
     Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
     Q = dT_ * Q * dT_;
-    std::cout << "\n\n" << Q << "\n\n";
+    // std::cout << "\n\n" << Q << "\n\n";
     OdometryMotionModel2d motionModel(Q);
     OdometryMotionModel2d::TInput input_k(0, 0, 0, 0, 0, 0, 0);
     OdometryMotionModel2d::TState pose_k(0, 0, 0, 0, 0, 0, 0);
     OdometryMotionModel2d::TState pose_km(0, 0, 0, 0, 0, 0, 0);
-    groundtruth_displacement_.resize( kMax_ );
-    groundtruth_pose_.resize( kMax_ );
-    groundtruth_displacement_[0] = input_k;
+    groundtruth_displacement_.reserve( kMax_ );
+    groundtruth_pose_.reserve( kMax_ );
+    groundtruth_displacement_.push_back(input_k);
+    groundtruth_pose_.push_back(pose_k);
 
     for( int k = 1; k < kMax_; k++ ){
 
       if( k >= kMax_ / nSegments_ * seg ){
 	seg++;
 	double dx = drand48() * max_dx_ * dT_;
+	while( dx < min_dx_ * dT_ ){
+	  dx = drand48() * max_dx_ * dT_;
+	}
 	double dy = (drand48() * max_dy_ * 2 - max_dy_) * dT_;
 	double dz = (drand48() * max_dz_ * 2 - max_dz_) * dT_; 
 	input_k = OdometryMotionModel2d::TInput(dx, dy, dz, 
 						Q(0,0), Q(1,1), Q(2,2), k);  
       }
 
-      groundtruth_displacement_[k] = input_k;
-      groundtruth_displacement_[k].set(k);
+      groundtruth_displacement_.push_back(input_k);
+      groundtruth_displacement_.back().set(k);
 
-      motionModel.step(groundtruth_pose_[k],
-		       groundtruth_pose_[k-1], 
-		       input_k);
-      groundtruth_pose_[k].set(k);
+      OdometryMotionModel2d::TState x_k;
+      motionModel.step(x_k, groundtruth_pose_[k-1], input_k);
+      groundtruth_pose_.push_back( x_k );
+      groundtruth_pose_.back().set(k);
       
-      OdometryMotionModel2d::TState::Vec x;
+      /*OdometryMotionModel2d::TState::Vec x;
       OdometryMotionModel2d::TInput::Vec u;
       double t;
       groundtruth_pose_[k].get(x);
       groundtruth_displacement_[k].get(u, t);
-      
-      //printf("x[%d] = [%f %f %f]  u[%f] = [%f %f %f]\n", 
-      //     k, x(0), x(1), x(2), t, u(0), u(1), u(2));
+      printf("x[%d] = [%f %f %f]  u[%f] = [%f %f %f]\n", 
+           k, x(0), x(1), x(2), t, u(0), u(1), u(2)); */
 
     }
 
   }
   
   void generateOdometry(){
+
+    odometry_.reserve( kMax_ );
 
     for( int k = 1; k < kMax_; k++){
       
@@ -139,8 +134,8 @@ public:
       /*printf("u[%d] = [%f %f %f]  u_[%d] = [%f %f %f]\n", 
 	     k, in.get(0),  in.get(1),  in.get(2), 
 	     k, out.get(0), out.get(1), out.get(2) );*/
-
-      RangeBearingModel model;
+      
+      odometry_.push_back( out );
 
     }
 
@@ -150,7 +145,8 @@ public:
 
     RangeBearingModel measurementModel( varzr_, varzb_);
     RangeBearingModel::TPose pose;
-    groundtruth_landmark_.resize(nLandmarks_);
+
+    groundtruth_landmark_.reserve(nLandmarks_);
 
     int nLandmarksCreated = 0;
     for( int k = 1; k < kMax_; k++ ){
@@ -164,17 +160,21 @@ public:
 	double b = drand48() * 2 * PI;
 	z << r, b;
 	measurementToCreateLandmark.set(z);
+	RangeBearingModel::TLandmark lm;
 	
 	measurementModel.inverseMeasure( groundtruth_pose_[k], 
 					 measurementToCreateLandmark, 
-					 groundtruth_landmark_[nLandmarksCreated]);
+					 lm);
+
+	groundtruth_landmark_.push_back(lm);
+	//groundtruth_landmark_[nLandmarksCreated] = lm;
 	
 	/*printf("Landmark[%d] = [%f %f]\n", nLandmarksCreated,
 	       groundtruth_landmark_[nLandmarksCreated].State::get(0),
 	       groundtruth_landmark_[nLandmarksCreated].State::get(1));*/
 
 	nLandmarksCreated++;
-
+	
       }
 
     }
@@ -182,44 +182,103 @@ public:
   }
 
   void generateMeasurements(){
-    
+
+    std::vector<RangeBearingModel::TMeasurement> z;
+    for(int m = 0; m < 100000; m++){
+      RangeBearingModel::TMeasurement a;
+      z.push_back(a);
+    }
 
     RangeBearingModel measurementModel( varzr_, varzb_);
-    RangeBearingModel::TMeasurement z_m_k;
-
+    
     for( int k = 1; k < kMax_; k++ ){
       
       groundtruth_pose_[k];
       
       for( int m = 0; m < groundtruth_landmark_.size(); m++){
-
+	
+	RangeBearingModel::TMeasurement z_m_k;
 	measurementModel.sample( groundtruth_pose_[k],
 				 groundtruth_landmark_[m],
 				 z_m_k);
-
+	
 	z_m_k.set(k);
-	measurements_.push_back( z_m_k );
-
+	
 	/*printf("Measurement[%d] = [%f %f]\n", int(measurements_.size()),
-	       (measurements_.back()).get(0),
-	       (measurements_.back()).get(1));*/
+	  z_m_k.get(0), z_m_k.get(1)); */
+	
+        if(z_m_k.get(0) <= rangeLimit_)
+	  measurements_.push_back( z_m_k );
 
       }
       
-   }
+    }
     
+  }
+
+  void exportSimData(){
+
+    double t;
+
+    FILE* pGTPoseFile;
+    pGTPoseFile = fopen("data/gtPose.dat", "w");
+    OdometryMotionModel2d::TInput::Vec x;
+    for(int i = 0; i < groundtruth_pose_.size(); i++){
+      groundtruth_pose_[i].get(x, t);
+      fprintf( pGTPoseFile, "%f   %f   %f   %f\n", t, x(0), x(1), x(2));
+    }
+    fclose(pGTPoseFile);
+
+    FILE* pGTLandmarkFile;
+    pGTLandmarkFile = fopen("data/gtLandmark.dat", "w");
+    RangeBearingModel::TLandmark::Vec m;
+    for(int i = 0; i < groundtruth_landmark_.size(); i++){
+      groundtruth_landmark_[i].get(m);
+      fprintf( pGTLandmarkFile, "%f   %f\n", m(0), m(1));
+    }
+    fclose(pGTLandmarkFile);
+
+    FILE* pOdomFile;
+    pOdomFile = fopen("data/odometry.dat","w");
+    OdometryMotionModel2d::TInput::Vec u;
+    for(int i = 0; i < odometry_.size(); i++){
+      odometry_[i].get(u, t);
+      fprintf( pOdomFile, "%f   %f   %f   %f\n", t, u(0), u(1), u(2));
+    }
+    fclose(pOdomFile);
+
+    FILE* pMeasurementFile;
+    pMeasurementFile = fopen("data/measurement.dat", "w");
+    RangeBearingModel::TMeasurement::Vec z;
+    for(int i = 0; i < measurements_.size(); i++){
+      measurements_[i].get(z, t);
+      fprintf( pMeasurementFile, "%f   %f   %f\n", t, z(0), z(1) );
+    }
+    fclose(pMeasurementFile);
+
   }
 
   void setupRBPHDFilter(){
     
     pFilter_ = new RBPHDFilter<OdometryMotionModel2d,
+			       StaticProcessModel<Landmark2d>,
 			       RangeBearingModel,
 			       RangeBearingKalmanFilter>( nParticles_ );
 
-    // configure motion model
+    // configure robot motion model
     OdometryMotionModel2d::TState::Mat Q;
     Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
     pFilter_->getProcessModel()->setNoise(Q);
+
+    // configure landmark process model
+    // Landmark2d::Mat Q_lm;
+    // Q_lm.setZero();
+    // pFilter_->getLmkProcessModel()->setNoise(Q_lm);
+
+    // configure measurement model
+    RangeBearingModel::TMeasurement::Mat R;
+    R << varzr_, 0, 0, varzb_;
+    pFilter_->getMeasurementModel()->setNoise(R);
     
   }
 
@@ -233,12 +292,13 @@ private:
   double max_dx_;
   double max_dy_;
   double max_dz_;
+  double min_dx_;
   double vardx_;
   double vardy_;
   double vardz_;
   std::vector<OdometryMotionModel2d::TInput> groundtruth_displacement_;
   std::vector<OdometryMotionModel2d::TState> groundtruth_pose_;
-  std::vector<RangeBearingModel::TMeasurement> measurements_;
+  std::vector<OdometryMotionModel2d::TInput> odometry_;
 
   // Landmarks 
   int nLandmarks_;
@@ -250,10 +310,12 @@ private:
   double Pfa_;
   double varzr_;
   double varzb_;
+  std::vector<RangeBearingModel::TMeasurement> measurements_;
 
   // Filters
   RangeBearingKalmanFilter kf_;
   RBPHDFilter<OdometryMotionModel2d, 
+	      StaticProcessModel<Landmark2d>,
 	      RangeBearingModel,  
 	      RangeBearingKalmanFilter> *pFilter_; 
   int nParticles_;
@@ -262,6 +324,11 @@ private:
 
 int main(int argc, char* argv[]){
 
+  int initRandSeed = 0;
+  if( argc == 2 ){
+    initRandSeed = boost::lexical_cast<int>(argv[1]);
+  }
+
   OdometryMotionModel2d g;
   RangeBearingModel h;
 
@@ -269,10 +336,13 @@ int main(int argc, char* argv[]){
   if( !sim.readConfigFile() ){
     return -1;
   }
-  sim.generateTrajectory();
+  sim.generateTrajectory( initRandSeed );
   sim.generateOdometry();
   sim.generateLandmarks();
   sim.generateMeasurements();
+  sim.exportSimData();
+
+  sim.setupRBPHDFilter();
 
   return 0;
 

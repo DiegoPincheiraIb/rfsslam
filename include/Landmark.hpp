@@ -16,6 +16,8 @@ class Landmark : public RandomVec<VecType, MatType>
 {
 public:
 
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   /** Default constructor */
   Landmark(){ 
     nReferences_ = 0; 

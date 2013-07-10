@@ -26,6 +26,8 @@ class Pose2d : public RandomVec< Eigen::Vector3d, Eigen::Matrix3d >
 
 public:
 
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   /** 
    * Default constructor, implementation of which can be empty
    */

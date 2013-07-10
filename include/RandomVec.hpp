@@ -7,6 +7,7 @@
 #include <Eigen/Core>
 #include <Eigen/Cholesky>
 #include <Eigen/LU>
+//#include <Eigen/StdVector>
 #include <iostream>
 #include <stdio.h>
 
@@ -31,7 +32,7 @@ public:
   /** Default constructor */
   RandomVec() : 
     pSx_L_(NULL), 
-    pSxInv_(NULL),
+    pSx_inv_(NULL),
     pSx_det_(NULL)
   {
 
@@ -51,7 +52,7 @@ public:
    */
   RandomVec(VecType x, MatType Sx, double t = -1) : 
     pSx_L_(NULL),
-    pSxInv_(NULL),
+    pSx_inv_(NULL),
     pSx_det_(NULL)
   {
     if ( !dimCheck() ){
@@ -69,7 +70,7 @@ public:
    */
   RandomVec(VecType x, double t = -1) : 
     pSx_L_(NULL),
-    pSxInv_(NULL),
+    pSx_inv_(NULL),
     pSx_det_(NULL){
     if ( !dimCheck() ){
       exit(-1);
@@ -83,8 +84,8 @@ public:
   ~RandomVec(){
     if( pSx_L_ != NULL)
       delete pSx_L_;
-    if( pSxInv_ != NULL)
-      delete pSxInv_;
+    if( pSx_inv_ != NULL)
+      delete pSx_inv_;
     if( pSx_det_ != NULL)
       delete pSx_det_;
   };
@@ -105,9 +106,9 @@ public:
       delete pSx_L_;
       pSx_L_ = NULL;
     }
-    if( pSxInv_ != NULL){
-      delete pSxInv_;
-      pSxInv_ = NULL;
+    if( pSx_inv_ != NULL){
+      delete pSx_inv_;
+      pSx_inv_ = NULL;
     }
     if( pSx_det_ != NULL){
       delete pSx_det_;
@@ -188,12 +189,12 @@ public:
    * Get the invserve covariance matrix 
    * \param[out] Sx_inv inverse covariance
    */ 
-  void getInvCov( MatType &Sx_inv){
-    if(pSxInv_ == NULL){
-      pSxInv_ = new MatType;
-      *pSxInv_ = Sx_.inverse(); 
+  void getCovInv( MatType &Sx_inv){
+    if(pSx_inv_ == NULL){
+      pSx_inv_ = new MatType;
+      *pSx_inv_ = Sx_.inverse(); 
     }
-    Sx_inv = *pSxInv_;
+    Sx_inv = *pSx_inv_;
   }
 
   /** 
@@ -256,10 +257,10 @@ public:
 
 private:
 
-  Vec x_; /**< State */
+  VecType x_; /**< State */
   unsigned int nDim_; /**< Number of dimensions */
   MatType Sx_; /**< Covariance */
-  MatType* pSxInv_; /**< Inverse covariance */
+  MatType* pSx_inv_; /**< Inverse covariance */
   double* pSx_det_; /** Determinant of Sx_ */
   MatType* pSx_L_; /** Lower triangular part of Cholesky decomposition on Sx_ */
   double t_; /**< time */

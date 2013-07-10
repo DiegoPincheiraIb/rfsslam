@@ -15,19 +15,28 @@
  *  \brief Rao-Blackwellized Probability Hypothesis Density Filter class
  *  
  *  This class implements the Rao-Bloackwellized Probability Hypothesis Density
- *  filter. 
+ *  filter. The constructor of this class will internally instantiate the 
+ *  process model for both the robot and landmarks, the measurement model, 
+ *  and the Kalman filter. Users have access to these through pointers that 
+ *  can be obtained by calling the appropraite get function.
  *
+ *  \tparam RobotProcessModel A robot process model derived from ProcessModel
+ *  \tparam LmkProcessModel A landmark process model derived from ProcessModel
+ *  \tparam MeasurementModel A sensor model derived from MeasurementModel
+ *  \tparam KalmanFilter A Kalman filter that uses LmkProcessModel and MeasurementModel
  *  \author Keith Leung, Felipe Inostroza
  *  \version 0.1 
  */
 
-template< class ProcessModel, class MeasurementModel, class KalmanFilter>
-class RBPHDFilter : public ParticleFilter<ProcessModel, MeasurementModel>
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter>
+class RBPHDFilter : public ParticleFilter<RobotProcessModel, MeasurementModel>
 {
 public:
 
-  typedef typename ProcessModel::TState TPose;
-  typedef typename ProcessModel::TInput TInput;
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  typedef typename RobotProcessModel::TState TPose;
+  typedef typename RobotProcessModel::TInput TInput;
   typedef typename MeasurementModel::TLandmark TLandmark;
   typedef typename MeasurementModel::TMeasurement TMeasurement;
   typedef typename GaussianMixture<TLandmark>::Gaussian TGaussian;
@@ -73,27 +82,15 @@ public:
    * \param n number of particles
    * \param initState initial state of particles
    */
-  RBPHDFilter(int n)
-    : ParticleFilter<ProcessModel, MeasurementModel>(n){
-
-    kfPtr_ = new KalmanFilter;
-    
-    for(int i = 0; i < n; i++){
-      maps_.push_back( new GaussianMixture<TLandmark>() );
-    }
-
-    config.birthGaussianWeight_ = 0.25; 
-    config.gaussianMergingThreshold_ = 0.1;
-    config.gaussianMergingCovarianceInflationFactor_ = 1.5;
-    config.gaussianPruningThreshold_ = 0.2;
-    config.importanceWeightingEvalPointCount_ = 8;
-    config.importanceWeightingMeasurementLikelihoodThreshold_ = 0.1;
-    config.newGaussianCreateLikelihoodThreshold_ = 0.2;
-    
-  }
+  RBPHDFilter(int n);
 
   /** Destructor */
   ~RBPHDFilter();
+
+  /** 
+   * Get the landmark process model
+   */
+  LmkProcessModel* getLmkProcessModel();
 
   /**
    * Update the map, calculate importance weighting, sample if necessary, and
@@ -107,6 +104,7 @@ public:
 private:
 
   KalmanFilter *kfPtr_; /**< pointer to the Kalman filter */
+  LmkProcessModel *lmkModelPtr_; /**< pointer to landmark process model */
 
   std::vector< GaussianMixture<TLandmark>* > maps_; /**< Particle dependent maps */
 
@@ -157,17 +155,45 @@ private:
 
 ////////// Implementation //////////
 
-template< class ProcessModel, class MeasurementModel, class KalmanFilter >
-RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::~RBPHDFilter(){
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::RBPHDFilter(int n)
+  : ParticleFilter<RobotProcessModel, MeasurementModel>(n)
+{
+
+  lmkModelPtr_ = new LmkProcessModel;
+  kfPtr_ = new KalmanFilter(lmkModelPtr_, this->getMeasurementModel());
+  
+  for(int i = 0; i < n; i++){
+    maps_.push_back( new GaussianMixture<TLandmark>() );
+  }
+  
+  config.birthGaussianWeight_ = 0.25; 
+  config.gaussianMergingThreshold_ = 0.1;
+  config.gaussianMergingCovarianceInflationFactor_ = 1.5;
+  config.gaussianPruningThreshold_ = 0.2;
+    config.importanceWeightingEvalPointCount_ = 8;
+    config.importanceWeightingMeasurementLikelihoodThreshold_ = 0.1;
+    config.newGaussianCreateLikelihoodThreshold_ = 0.2;
+    
+}
+
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::~RBPHDFilter(){
 
   for(int i = 0; i < maps_.size(); i++){
     delete maps_[i];
   }
   delete kfPtr_;
+  delete lmkModelPtr_;
 }
 
-template< class ProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z ){
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+LmkProcessModel* RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::getLmkProcessModel(){
+  return lmkModelPtr_;
+}
+
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z ){
 
   this->setMeasurements( Z );
   updateMap();
@@ -242,8 +268,8 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::update( std::v
 
 }
 
-template< class ProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::updateMap(){
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::updateMap(){
 
   for(int i = 0; i < this->nParticles_; i++){
 
@@ -371,8 +397,8 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::updateMap(){
 }
 
 
-template< class ProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::importanceWeighting(){
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::importanceWeighting(){
 
   for(int i = 0; i < this->nParticles_; i++){
 
@@ -442,8 +468,8 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::importanceWeig
 
 }
 
-template< class ProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::addBirthGaussians(){
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::addBirthGaussians(){
 
   for(int i = 0; i < this->nParticles_; i++){
     
@@ -471,8 +497,8 @@ void RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::addBirthGaussi
 
 
 
-template< class ProcessModel, class MeasurementModel, class KalmanFilter >
-double RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+double RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
 rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
 
   // eval points are first nEvalPoints elements of maps_[i]; 
@@ -587,8 +613,8 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
 }
 
 
-template< class ProcessModel, class MeasurementModel, class KalmanFilter >
-double RBPHDFilter< ProcessModel, MeasurementModel, KalmanFilter >::
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+double RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
 rfsMeasurementLikelihoodPermutations( std::vector< double* > &likelihoodTab, 
 				      const int nM,
 				      const int nZ){

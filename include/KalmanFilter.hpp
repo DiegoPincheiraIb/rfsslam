@@ -22,6 +22,8 @@ class KalmanFilter
 
 public:
 
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   typedef typename ProcessModelType::TInput TInput;
   typedef typename MeasurementModelType::TPose TPose;
   typedef typename MeasurementModelType::TLandmark TLandmark;

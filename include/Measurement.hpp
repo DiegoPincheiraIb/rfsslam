@@ -29,6 +29,8 @@ typedef RandomVec <Eigen::Vector2d, Eigen::Matrix2d> Measurement2d;
 class Odometry2d : public RandomVec< Eigen::Vector3d, Eigen::Matrix3d >
 {
 public:
+
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   
   /** Default constructor */
   Odometry2d();

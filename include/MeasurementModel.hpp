@@ -19,6 +19,8 @@ class MeasurementModel
 {
 public:
 
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   typedef PoseType TPose;
   typedef LandmarkType TLandmark;
   typedef MeasurementType TMeasurement;
