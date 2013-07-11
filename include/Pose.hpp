@@ -4,7 +4,7 @@
 #ifndef POSE_HPP
 #define POSE_HPP
 
-#include "State.hpp"
+#include "RandomVec.hpp"
 
 /********** Define a 1d vehicle pose state **********/
 
@@ -25,6 +25,8 @@ class Pose2d : public RandomVec< Eigen::Vector3d, Eigen::Matrix3d >
 {
 
 public:
+
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   /** 
    * Default constructor, implementation of which can be empty

@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include "Landmark.hpp"
+#include "RandomVecMathTools.hpp"
 
 /**
  * \class LandmarkTest
@@ -115,26 +116,25 @@ TEST_F(LandmarkTest, mahalanobisDistanceTest2d){
   Landmark2d::Mat Sx_in;
   
   Landmark2d m;
-  // \todo Look up how to do expect error 
 
   x_in << 1, 2;
   Sx_in << 2, 0.0, 0.0, 2;
   
   x = x_in;
   m.set(x_in, Sx_in);
-  EXPECT_EQ(0, m.mahalanobisDist(x) ); 
+  EXPECT_EQ(0, RandomVecMathTools<Landmark2d>::mahalanobisDist(m, x) ); 
 
   x << 0, 2;
-  EXPECT_EQ(sqrt(0.5), m.mahalanobisDist(x) ); 
+  EXPECT_EQ(sqrt(0.5), RandomVecMathTools<Landmark2d>::mahalanobisDist(m, x) ); 
 
   x << 0, 1;
-  EXPECT_EQ(1, m.mahalanobisDist(x) ); 
+  EXPECT_EQ(1, RandomVecMathTools<Landmark2d>::mahalanobisDist(m, x) ); 
 
   x << 4.4, 7.2;
   Sx_in << 1, -0.5, -0.5, 2;
   m.set(x_in, Sx_in);
   double d2 = (x - x_in).transpose() * Sx_in.inverse() * (x - x_in);
-  EXPECT_EQ( sqrt(d2), m.mahalanobisDist(x)); 
+  EXPECT_EQ( sqrt(d2), RandomVecMathTools<Landmark2d>::mahalanobisDist(m, x) ); 
 }
 
 // Mahalanobis distance calculation test for Landmark1d
@@ -151,18 +151,18 @@ TEST_F(LandmarkTest, mahalanobisDistanceTest1d){
   
   x << x_in;
   m.set(x_in, Sx_in);
-  EXPECT_EQ(0, m.mahalanobisDist(x) ); 
+  EXPECT_EQ(0, RandomVecMathTools<Landmark1d>::mahalanobisDist(m, x) ); 
 
   x << 0;
-  EXPECT_EQ(sqrt(0.5), m.mahalanobisDist(x) ); 
+  EXPECT_EQ(sqrt(0.5), RandomVecMathTools<Landmark1d>::mahalanobisDist(m, x) ); 
 
   x << 3;
-  EXPECT_EQ(sqrt(2), m.mahalanobisDist(x) ); 
+  EXPECT_EQ(sqrt(2), RandomVecMathTools<Landmark1d>::mahalanobisDist(m, x) ); 
 
   x << 4.4;
   Sx_in << 0.75;
   m.set(x_in, Sx_in);
   double d2 = (x - x_in).transpose() * Sx_in.inverse() * (x - x_in);
-  EXPECT_EQ( sqrt(d2), m.mahalanobisDist(x)); 
+  EXPECT_EQ( sqrt(d2), RandomVecMathTools<Landmark1d>::mahalanobisDist(m, x) ); 
 }
 

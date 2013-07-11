@@ -22,6 +22,8 @@ class ParticleFilter
 {
 public:
 
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   typedef typename ProcessModel::TState TPose;
   typedef typename ProcessModel::TInput TInput;
   typedef typename MeasurementModel::TMeasurement TMeasure;
@@ -36,7 +38,7 @@ public:
    * \param n number of particles
    * \param initState if not NULL, all particles will take this initial state
    */ 
-  ParticleFilter(int n, TPose* initState);
+  ParticleFilter(int n, TPose* initState = NULL);
 
   /** Default destructor */
   ~ParticleFilter();
@@ -117,7 +119,7 @@ protected:
   
   double effNParticles_t_; /**< Effective particle count threshold for resampling */
 
-  std::vector<TMeasure> measurements_; /** Container for measurements to use for update of particle weight and map
+  std::vector<TMeasure> measurements_; /** Container for measurements to use for update of particle weight and map */
 
   /** 
    * Normalize particle weights so that they sum to 1
@@ -139,7 +141,7 @@ ParticleFilter(){
 
 template< class ProcessModel, class MeasurementModel>
 ParticleFilter<ProcessModel, MeasurementModel>::
-ParticleFilter(int n, TPose* initState = NULL){
+ParticleFilter(int n, TPose* initState){
   
   // initiate particles
   nParticles_ = n;

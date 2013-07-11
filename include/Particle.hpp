@@ -16,6 +16,8 @@ class Particle
 
 public:
 
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   typedef PoseType tPose;
 
   /** Default constructor */

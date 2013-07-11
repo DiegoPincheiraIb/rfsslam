@@ -4,13 +4,9 @@
 #ifndef PROCESSMODEL_HPP
 #define PROCESSMODEL_HPP
 
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/normal_distribution.hpp>
-#include <boost/random/variate_generator.hpp>
-#include <Eigen/Core>
-#include <Eigen/Cholesky>
 #include "Measurement.hpp"
 #include "Pose.hpp"
+#include "RandomVecMathTools.hpp"
 
 /**
  * \class ProcessModel
@@ -30,13 +26,15 @@ public:
   typedef InputType TInput;
 
   /** Default constructor */
-  ProcessModel(){}
+  ProcessModel(){
+    inputNoiseDefined_ = false;
+  }
 
   /** Constructor 
    * \param S additive zero mean while Gaussian noise for this model 
    */
-  ProcessModel(typename StateType::Mat &S){
-    setNoise(S);
+  ProcessModel(typename StateType::Mat &Q){
+    setNoise(Q);
   }
 
   /** Default destructor */
@@ -45,10 +43,11 @@ public:
   /** Set the additive zero mean Gaussian noise covariance matrix 
    *  \param[in] S additive zero mean while Gaussian noise for this model
    */
-  void setNoise(typename StateType::Mat &S){
-    Q_ = S;
-    Eigen::LLT<typename StateType::Mat> cholesky( S );
+  void setNoise(typename StateType::Mat &Q){
+    Q_ = Q;
+    Eigen::LLT<typename StateType::Mat> cholesky( Q );
     L_ = cholesky.matrixL();
+    inputNoiseDefined_ = true;
   }
 
   /** 
@@ -115,6 +114,9 @@ protected:
   /** Lower triangular part of Cholesky decomposition on S_zmgn */
   typename StateType::Mat L_;
 
+  /** Flag to indicate if Q_ has been assigned a value */
+  bool inputNoiseDefined_;
+
 };
 
 /**
@@ -128,13 +130,14 @@ class StaticProcessModel : public ProcessModel< StateType, NullInput>
 
 public:
 
-  StaticProcessModel(){
-    inputNoiseDefined = false;
-  }
+  /** Default constructor */
+  StaticProcessModel(){}
 
-  StaticProcessModel(typename StateType::Mat &S): 
-    ProcessModel< StateType, NullInput>(S){
-    inputNoiseDefined = true;
+  /** Constructor
+   *  \param S additive zero-mean Gaussian noise for the model
+   */ 
+  StaticProcessModel(typename StateType::Mat &Q): 
+    ProcessModel< StateType, NullInput>(Q){
   }
 
   ~StaticProcessModel(){}
@@ -149,7 +152,7 @@ public:
   void step( StateType &s_k, StateType &s_km, 
 	     NullInput &input_k , double const dT = 1 ){
     
-    if( inputNoiseDefined ){
+    if( this->inputNoiseDefined_ ){
       typename StateType::Vec x;
       typename StateType::Mat S;
       s_km.get(x, S);
@@ -171,10 +174,6 @@ public:
     NullInput input;
     step(s_k , s_km , input , dT);
   }
-		     
-private:
-
-  bool inputNoiseDefined;
 
 };
 

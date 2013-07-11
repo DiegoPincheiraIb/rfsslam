@@ -1,6 +1,5 @@
 #include "gtest/gtest.h"
 #include "KalmanFilter.hpp"
-#include "State.hpp"
 #include "Measurement.hpp"
 #include <Eigen/Core>
 
@@ -71,7 +70,7 @@ TEST_F(KalmanFilterTest, TestKalmanFilter2d_example){
 
     RangeBearingModel measModel( 0.1 , 0.01 );
     measModel.config.probabilityOfDetection_ = 0.7;
-    measModel.config.probabilityOfFalseAlarm_ = 0.3;
+    measModel.config.uniformClutterIntensity_ = 0.1;
     measModel.config.rangeLim_=10;
     measModel.config.rangeLimBuffer_=1;
   
@@ -162,7 +161,7 @@ TEST_F(KalmanFilterTest, TestKalmanFilterExample2){
     measModel(R , H);
   
   measModel.config.probabilityOfDetection_ = 0.7;
-  measModel.config.probabilityOfFalseAlarm_ = 0.3;
+  measModel.config.uniformClutterIntensity_ = 0.3;
   
   KalmanFilter<
     StaticProcessModel< RandomVec<Eigen::Matrix<double, 4, 1> , Eigen::Matrix<double, 4, 4> > > ,

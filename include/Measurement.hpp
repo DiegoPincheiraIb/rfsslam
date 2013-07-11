@@ -4,7 +4,7 @@
 #ifndef MEASUREMENT_HPP
 #define MEASUREMENT_HPP
 
-#include "State.hpp"
+#include "RandomVec.hpp"
 
 /** Definition for a  NULL measurement */
 typedef RandomVec < Eigen::Matrix<double, 1, 1>,
@@ -29,6 +29,8 @@ typedef RandomVec <Eigen::Vector2d, Eigen::Matrix2d> Measurement2d;
 class Odometry2d : public RandomVec< Eigen::Vector3d, Eigen::Matrix3d >
 {
 public:
+
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   
   /** Default constructor */
   Odometry2d();

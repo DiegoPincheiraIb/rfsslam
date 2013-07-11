@@ -4,14 +4,10 @@
 #ifndef MEASUREMENTMODEL_HPP
 #define MEASUREMENTMODEL_HPP
 
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/normal_distribution.hpp>
-#include <boost/random/variate_generator.hpp>
-#include <Eigen/Core>
-#include <Eigen/Cholesky>
 #include "Measurement.hpp"
 #include "Landmark.hpp"
 #include "Pose.hpp"
+#include "RandomVecMathTools.hpp"
 
 /** 
  * \class MeasurementModel
@@ -22,6 +18,8 @@ template<class PoseType, class LandmarkType, class MeasurementType>
 class MeasurementModel
 {
 public:
+
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   typedef PoseType TPose;
   typedef LandmarkType TLandmark;
@@ -176,7 +174,6 @@ public:
   /**
    * Abstract function for Determining the clutter intensity integral
    * \note This should be reimplemented in a derived class
-   * \param[in] z measurement point at which clutter intensity will be determined
    * \param[in] nZ the cardinality of Z, of which z is a member.
    * \return clutter intensity integral
    */
@@ -219,8 +216,8 @@ public:
 
   /** \brief Configuration for the 2d RangeBearingModel */
   struct Config{
-    double probabilityOfDetection_;
-    double probabilityOfFalseAlarm_; /**<  interpret as p( NULL | measurement exists) */
+    double probabilityOfDetection_; /** probability of detection */
+    double uniformClutterIntensity_; /** clutter per area */
     double rangeLim_; /**< sensing range limit, beyond which Pd = 0 */
     double rangeLimBuffer_; /**< A buffer for Pd ambiguity */
   }config;
@@ -294,11 +291,7 @@ public:
    * \param[in] nZ the cardinality of Z
    * \return clutter intensity
    */
-  double clutterIntensityIntegral( int nZ );
-
-protected:
-  
-  double sensingArea_;
+  double clutterIntensityIntegral( int nZ = 0);
 
 };
 
@@ -323,7 +316,7 @@ public:
   /** \brief Configuration for the Model */
   struct Config{
     double probabilityOfDetection_;
-    double probabilityOfFalseAlarm_; /**<  interpret as p( NULL | measurement exists) */
+    double uniformClutterIntensity_; /**<  interpret as p( NULL | measurement exists) */
   }config;
 
  /** Default constructor 
@@ -332,7 +325,7 @@ public:
   LinearModel(){
 
   config.probabilityOfDetection_ = 0.95;
-  config.probabilityOfFalseAlarm_ = 0.01;
+  config.uniformClutterIntensity_ = 0.01;
  
 };
 
@@ -343,7 +336,7 @@ public:
   LinearModel(typename MeasurementType::Mat &R , Eigen::Matrix<double, MeasurementType::Vec::RowsAtCompileTime, LandmarkType::Vec::RowsAtCompileTime> &H){
   
   config.probabilityOfDetection_ = 0.95;
-  config.probabilityOfFalseAlarm_ = 0.01;
+  config.uniformClutterIntensity_ = 0.01;
   H_=H;
   Eigen::Matrix<double, LandmarkType::Vec::RowsAtCompileTime , LandmarkType::Vec::RowsAtCompileTime > aux;
   aux=H.transpose()*H;
@@ -446,7 +439,7 @@ public:
    */
   double clutterIntensity( MeasurementType &z,
 			   int nZ ){
-    return config.probabilityOfFalseAlarm_;
+    return config.uniformClutterIntensity_;
   };
 
   /**
@@ -457,7 +450,7 @@ public:
    * \return clutter intensity
    */
   double clutterIntensityIntegral( int nZ ){
-    return config.probabilityOfFalseAlarm_*nZ;
+    return config.uniformClutterIntensity_*nZ;
   };
 
 protected:

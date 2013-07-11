@@ -4,9 +4,7 @@
 #ifndef LANDMARK_HPP
 #define LANDMARK_HPP
 
-#include <Eigen/Core>
-#include <Eigen/LU>
-#include "State.hpp"
+#include "RandomVec.hpp"
 
 /** 
  * \class Landmark
@@ -17,6 +15,8 @@ template<class VecType, class MatType>
 class Landmark : public RandomVec<VecType, MatType>
 {
 public:
+
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   /** Default constructor */
   Landmark(){ 
