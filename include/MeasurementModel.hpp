@@ -174,7 +174,6 @@ public:
   /**
    * Abstract function for Determining the clutter intensity integral
    * \note This should be reimplemented in a derived class
-   * \param[in] z measurement point at which clutter intensity will be determined
    * \param[in] nZ the cardinality of Z, of which z is a member.
    * \return clutter intensity integral
    */
@@ -217,8 +216,8 @@ public:
 
   /** \brief Configuration for the 2d RangeBearingModel */
   struct Config{
-    double probabilityOfDetection_;
-    double probabilityOfFalseAlarm_; /**<  interpret as p( NULL | measurement exists) */
+    double probabilityOfDetection_; /** probability of detection */
+    double uniformClutterIntensity_; /** clutter per area */
     double rangeLim_; /**< sensing range limit, beyond which Pd = 0 */
     double rangeLimBuffer_; /**< A buffer for Pd ambiguity */
   }config;
@@ -292,11 +291,7 @@ public:
    * \param[in] nZ the cardinality of Z
    * \return clutter intensity
    */
-  double clutterIntensityIntegral( int nZ );
-
-protected:
-  
-  double sensingArea_;
+  double clutterIntensityIntegral( int nZ = 0);
 
 };
 

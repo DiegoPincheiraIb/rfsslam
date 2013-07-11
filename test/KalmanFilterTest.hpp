@@ -66,7 +66,7 @@ TEST_F(KalmanFilterTest, TestKalmanFilter2d_example){
 
     RangeBearingModel measModel( 0.1 , 0.01 );
     measModel.config.probabilityOfDetection_ = 0.7;
-    measModel.config.probabilityOfFalseAlarm_ = 0.3;
+    measModel.config.uniformClutterIntensity_ = 0.1;
     measModel.config.rangeLim_=10;
     measModel.config.rangeLimBuffer_=1;
   

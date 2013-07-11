@@ -58,8 +58,9 @@ public:
     nLandmarks_ = cfg.lookup("Landmarks.nLandmarks");
 
     rangeLimit_ = cfg.lookup("Measurement.rangeLimit");
+    rangeLimitBuffer_ = cfg.lookup("Measurement.rangeLimitBuffer");
     Pd_ = cfg.lookup("Measurement.probDetection");
-    Pfa_ = cfg.lookup("Measurement.probFalseAlarm");
+    c_ = cfg.lookup("Measurement.clutterIntensity");
     varzr_ = cfg.lookup("Measurement.varzr");
     varzb_ = cfg.lookup("Measurement.varzb");
 
@@ -125,6 +126,18 @@ public:
   void generateOdometry(){
 
     odometry_.reserve( kMax_ );
+    OdometryMotionModel2d::TInput zero;
+    OdometryMotionModel2d::TInput::Vec u0;
+    u0.setZero();
+    zero.set(u0, 0);
+    odometry_.push_back( zero );
+
+
+    OdometryMotionModel2d::TState::Mat Q;
+    Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
+    OdometryMotionModel2d motionModel(Q);
+    deadReckoning_pose_.reserve( kMax_ );
+    deadReckoning_pose_.push_back( groundtruth_pose_[0] );
 
     for( int k = 1; k < kMax_; k++){
       
@@ -137,6 +150,9 @@ public:
       
       odometry_.push_back( out );
 
+      OdometryMotionModel2d::TState p;
+      motionModel.step(p, deadReckoning_pose_[k-1], odometry_[k]);
+      deadReckoning_pose_.push_back( p );
     }
 
   }
@@ -183,18 +199,34 @@ public:
 
   void generateMeasurements(){
 
-    std::vector<RangeBearingModel::TMeasurement> z;
-    for(int m = 0; m < 100000; m++){
-      RangeBearingModel::TMeasurement a;
-      z.push_back(a);
-    }
 
     RangeBearingModel measurementModel( varzr_, varzb_);
-    
+    measurementModel.config.rangeLim_ = rangeLimit_;
+    measurementModel.config.probabilityOfDetection_ = Pd_;
+    measurementModel.config.uniformClutterIntensity_ = c_;
+    double meanClutter = measurementModel.clutterIntensityIntegral();
+
+    printf("Generating measurements with mean clutter = %f\n", meanClutter);
+
+    double expNegMeanClutter = exp( -meanClutter );
+    double poissonPmf[100];
+    double poissonCmf[100];
+    double mean_pow_i = 1;
+    double i_factorial = 1;
+    poissonPmf[0] = expNegMeanClutter;
+    poissonCmf[0] = poissonPmf[0];
+    for( int i = 1; i < 100; i++){
+      mean_pow_i *= meanClutter;
+      i_factorial *= i;
+      poissonPmf[i] = mean_pow_i / i_factorial * expNegMeanClutter;
+      poissonCmf[i] = poissonCmf[i-1] + poissonPmf[i]; 
+    }
+
     for( int k = 1; k < kMax_; k++ ){
       
       groundtruth_pose_[k];
       
+      // Real detections
       for( int m = 0; m < groundtruth_landmark_.size(); m++){
 	
 	RangeBearingModel::TMeasurement z_m_k;
@@ -203,13 +235,31 @@ public:
 				 z_m_k);
 	
 	z_m_k.set(k);
-	
-	/*printf("Measurement[%d] = [%f %f]\n", int(measurements_.size()),
-	  z_m_k.get(0), z_m_k.get(1)); */
-	
-        if(z_m_k.get(0) <= rangeLimit_)
+   
+        if(z_m_k.get(0) <= rangeLimit_ && drand48() <= Pd_){
+	  /*printf("Measurement[%d] = [%f %f]\n", int(measurements_.size()),
+	    z_m_k.get(0), z_m_k.get(1)); */
 	  measurements_.push_back( z_m_k );
+	}
 
+      }
+
+      // False alarms
+      double randomNum = drand48();
+      int nClutterToGen = 0;
+      while( randomNum > poissonCmf[ nClutterToGen ] ){
+	nClutterToGen++;
+      }
+      for( int i = 0; i < nClutterToGen; i++ ){
+	
+	double r = drand48() * rangeLimit_;
+	double b = drand48() * 2 * PI - PI;
+	RangeBearingModel::TMeasurement z_clutter;
+	RangeBearingModel::TMeasurement::Vec z;
+	z << r, b;
+	z_clutter.set(z, k);
+	measurements_.push_back(z_clutter);
+	
       }
       
     }
@@ -222,7 +272,7 @@ public:
 
     FILE* pGTPoseFile;
     pGTPoseFile = fopen("data/gtPose.dat", "w");
-    OdometryMotionModel2d::TInput::Vec x;
+    OdometryMotionModel2d::TState::Vec x;
     for(int i = 0; i < groundtruth_pose_.size(); i++){
       groundtruth_pose_[i].get(x, t);
       fprintf( pGTPoseFile, "%f   %f   %f   %f\n", t, x(0), x(1), x(2));
@@ -256,6 +306,15 @@ public:
     }
     fclose(pMeasurementFile);
 
+    FILE* pDeadReckoningFile;
+    pDeadReckoningFile = fopen("data/deadReckoning.dat", "w");
+    OdometryMotionModel2d::TState::Vec odo;
+    for(int i = 0; i < deadReckoning_pose_.size(); i++){
+      deadReckoning_pose_[i].get(odo, t);
+      fprintf( pDeadReckoningFile, "%f   %f   %f   %f\n", t, odo(0), odo(1), odo(2));
+    }
+    fclose(pDeadReckoningFile);
+
   }
 
   void setupRBPHDFilter(){
@@ -279,7 +338,10 @@ public:
     RangeBearingModel::TMeasurement::Mat R;
     R << varzr_, 0, 0, varzb_;
     pFilter_->getMeasurementModel()->setNoise(R);
-    
+    pFilter_->getMeasurementModel()->config.probabilityOfDetection_ = Pd_;
+    pFilter_->getMeasurementModel()->config.uniformClutterIntensity_ = c_;
+    pFilter_->getMeasurementModel()->config.rangeLim_ = rangeLimit_;
+    pFilter_->getMeasurementModel()->config.rangeLimBuffer_ = rangeLimitBuffer_;
   }
 
 private:
@@ -299,6 +361,7 @@ private:
   std::vector<OdometryMotionModel2d::TInput> groundtruth_displacement_;
   std::vector<OdometryMotionModel2d::TState> groundtruth_pose_;
   std::vector<OdometryMotionModel2d::TInput> odometry_;
+  std::vector<OdometryMotionModel2d::TState> deadReckoning_pose_;
 
   // Landmarks 
   int nLandmarks_;
@@ -306,8 +369,9 @@ private:
 
   // Range-Bearing Measurements
   double rangeLimit_;
+  double rangeLimitBuffer_;
   double Pd_;
-  double Pfa_;
+  double c_;
   double varzr_;
   double varzb_;
   std::vector<RangeBearingModel::TMeasurement> measurements_;

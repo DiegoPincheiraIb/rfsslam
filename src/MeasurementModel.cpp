@@ -7,11 +7,9 @@
 RangeBearingModel::RangeBearingModel(){
 
   config.probabilityOfDetection_ = 0.95;
-  config.probabilityOfFalseAlarm_ = 0.01;
+  config.uniformClutterIntensity_ = 0.1;
   config.rangeLim_ = 5;
   config.rangeLimBuffer_ = 0.25;
-
-  sensingArea_ = 2 * PI * config.rangeLim_;
 }
 
 
@@ -19,11 +17,9 @@ RangeBearingModel::RangeBearingModel(Eigen::Matrix2d &covZ){
 
   setNoise(covZ);
   config.probabilityOfDetection_ = 0.95;
-  config.probabilityOfFalseAlarm_ = 0.01;
+  config.uniformClutterIntensity_ = 0.1;
   config.rangeLim_ = 5;
   config.rangeLimBuffer_ = 0.25;
-
-  sensingArea_ = 2 * PI * config.rangeLim_;
 }
 
 RangeBearingModel::RangeBearingModel(double Sr, double Sb){
@@ -32,11 +28,9 @@ RangeBearingModel::RangeBearingModel(double Sr, double Sb){
   covZ <<  Sr, 0, 0, Sb;
   setNoise(covZ);
   config.probabilityOfDetection_ = 0.95;
-  config.probabilityOfFalseAlarm_ = 0.01;
+  config.uniformClutterIntensity_ = 0.1;
   config.rangeLim_ = 5;
   config.rangeLimBuffer_ = 0.25;
-
-  sensingArea_ = 2 * PI * config.rangeLim_;
 }
 
 RangeBearingModel::~RangeBearingModel(){}
@@ -124,15 +118,12 @@ double RangeBearingModel::probabilityOfDetection( Pose2d &pose,
 
 double RangeBearingModel::clutterIntensity( Measurement2d &z,
 					    int nZ){
-
-  double expected_n_clutter_measurements = clutterIntensityIntegral( nZ );
-  double c = expected_n_clutter_measurements / sensingArea_;
-  return c;
+  return config.uniformClutterIntensity_;
 }
 
 
 double RangeBearingModel::clutterIntensityIntegral( int nZ ){
-  
-  return ( config.probabilityOfFalseAlarm_ * nZ );
+  double sensingArea_ = 2 * PI * config.rangeLim_;
+  return ( config.uniformClutterIntensity_ * sensingArea_ );
 }
 
