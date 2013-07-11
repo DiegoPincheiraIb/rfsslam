@@ -1,6 +1,8 @@
 #include "gtest/gtest.h"
 #include "KalmanFilter.hpp"
 #include "State.hpp"
+#include "Measurement.hpp"
+#include <Eigen/Core>
 
 
 /**
@@ -14,6 +16,7 @@ class KalmanFilterTest : public ::testing::Test{
 
 protected:
 
+  static const double abs_error=1e-14;
   /** Constructor for setting up each test */
   KalmanFilterTest(){}
   
@@ -95,6 +98,106 @@ TEST_F(KalmanFilterTest, TestKalmanFilter2d_example){
   
 }
 
+TEST_F(KalmanFilterTest, TestKalmanFilterExample2){
+
+
+  
+  
+  Pose2d::Vec robot_x = Pose2d::Vec::Zero();
+  Pose2d::Mat robot_Sx = Pose2d::Mat::Zero();
+    
+  robot_x(2)=0;
+  Eigen::Matrix<double, 4, 1> l2_x , expected_x;
+  Eigen::Matrix<double, 4, 4> l2_Sx , expected_Sx;
+  
+  Pose2d robot_pose(robot_x , robot_Sx);
+  
+  Eigen::Matrix<double, 6, 1> z;
+  Eigen::Matrix<double, 6, 6> Sz;
+  Eigen::Matrix<double, 4, 1> l_x;
+  Eigen::Matrix<double, 4, 4> l_Sx;
+  
+  z << 1 , 1 , 1 , 1 , 1 , 1 ;
+  Sz << 
+    1 , 0 , 0 , 0 , 0 , 0 ,
+    0 , 1 , 0 , 0 , 0 , 0 ,
+    0 , 0 , 1 , 0 , 0 , 0 ,
+    0 , 0 , 0 , 1 , 0 , 0 ,
+    0 , 0 , 0 , 0 , 1 , 0 ,
+    0 , 0 , 0 , 0 , 0 , 1 ;
+
+  l_x << 0 , 0 , 0 , 0 ;
+  l_Sx << 
+    1 , 0 , 0 , 0 ,
+    0 , 1 , 0 , 0 ,
+    0 , 0 , 1 , 0 ,
+    0 , 0 , 0 , 1 ;
+
+  
+  
+  Landmark< Eigen::Matrix<double, 4, 1> , Eigen::Matrix<double, 4, 4> >  
+    landmark(l_x , l_Sx); 
+  Landmark< Eigen::Matrix<double, 4, 1> , Eigen::Matrix<double, 4, 4> > 
+    updatedLandmark;
+  
+  RandomVec< Eigen::Matrix<double, 6, 1> , Eigen::Matrix<double, 6, 6> > 
+    meas(z , Sz);
+  
+  StaticProcessModel< RandomVec<Eigen::Matrix<double, 4, 1> , Eigen::Matrix<double, 4, 4> > > processModel;
+  
+  
+  Eigen::Matrix<double, 6, 4> H;
+  Eigen::Matrix<double, 6, 6> R;
+  R=Sz;
+  H <<
+    1 , 0 , 0 , 0 ,
+    0 , 1 , 0 , 0 ,
+    0 , 0 , 1 , 0 ,
+    0 , 0 , 0 , 1 ,
+    1 , 0 , 0 , 0 ,
+    0 , 1 , 0 , 0 ;
+
+
+  LinearModel< Landmark< Eigen::Matrix<double, 4, 1> , Eigen::Matrix<double, 4, 4> > , RandomVec< Eigen::Matrix<double, 6, 1> , Eigen::Matrix<double, 6, 6> > >
+    measModel(R , H);
+  
+  measModel.config.probabilityOfDetection_ = 0.7;
+  measModel.config.probabilityOfFalseAlarm_ = 0.3;
+  
+  KalmanFilter<
+    StaticProcessModel< RandomVec<Eigen::Matrix<double, 4, 1> , Eigen::Matrix<double, 4, 4> > > ,
+    LinearModel< Landmark< Eigen::Matrix<double, 4, 1> , Eigen::Matrix<double, 4, 4> > , RandomVec< Eigen::Matrix<double, 6, 1> , Eigen::Matrix<double, 6, 6> > > >
+    filter(&processModel, &measModel);
+    
+  filter.predict(landmark, updatedLandmark);
+  
+  filter.correct(robot_pose, meas, updatedLandmark, updatedLandmark);
+  
+  expected_x << 
+    0.666666666666667,
+    0.666666666666667,
+    0.500000000000000,
+    0.500000000000000;
+  expected_Sx <<
+    0.333333333333333, 0,                  0,                0,
+    0,                 0.333333333333333,  0,                0,
+    0,	               0,                  0.500000000000000,0,
+    0,	               0,                  0,                0.500000000000000;
+
+
+  
+  updatedLandmark.get(l2_x , l2_Sx);
+    
+  for(int i=0;i<4;i++){
+    EXPECT_NEAR(l2_x(i), expected_x(i), abs_error);
+    for(int j=0;j<4;j++)
+      EXPECT_NEAR(l2_Sx(i,j), expected_Sx(i,j), abs_error);
+
+  }
+  
+  
+  
+}
 
 
 // Constructor test for Landmark2d

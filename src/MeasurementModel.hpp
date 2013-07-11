@@ -38,8 +38,8 @@ public:
    */
   void setNoise( typename MeasurementType::Mat &R ){
     R_ = R;
-    if( R_ != Eigen::Matrix2d::Zero() ){
-      Eigen::LLT<Eigen::Matrix2d> cholesky(R_);
+    if( R_ != MeasurementType::Mat::Zero() ){
+      Eigen::LLT<typename MeasurementType::Mat> cholesky(R_);
       L_ = cholesky.matrixL();
     }
   }
@@ -345,13 +345,36 @@ public:
   config.probabilityOfDetection_ = 0.95;
   config.probabilityOfFalseAlarm_ = 0.01;
   H_=H;
-  H_inv_=(H.transpose()*H).inverse()*H.transpose();
-  setNoise(R);
+  Eigen::Matrix<double, LandmarkType::Vec::RowsAtCompileTime , LandmarkType::Vec::RowsAtCompileTime > aux;
+  aux=H.transpose()*H;
+  H_inv_=aux.inverse()*H.transpose();
+  this->setNoise(R);
 };
 
 
  /** Default destructor */
   ~LinearModel(){};
+
+
+  /**
+   * Set the measurement matrix
+   * \param[in] H the measurement matrix. It should have at least as much rows as columns 
+   * so that the inverse measurement model can be defined.
+   */
+  void setH(Eigen::Matrix<double, MeasurementType::Vec::RowsAtCompileTime, LandmarkType::Vec::RowsAtCompileTime> &H){
+    
+    H_=H;
+    H_inv_=(H.transpose()*H).inverse()*H.transpose();
+  };
+
+  /**
+   * Get the measurement matrix
+   * \param[out] H the measurement matrix.
+   */
+  void getH(Eigen::Matrix<double, MeasurementType::Vec::RowsAtCompileTime, LandmarkType::Vec::RowsAtCompileTime> &H){
+    
+    H=H_;
+  };
 
   /** 
    * Get a measurement
@@ -440,7 +463,7 @@ public:
 protected:
   
   Eigen::Matrix<double, MeasurementType::Vec::RowsAtCompileTime, LandmarkType::Vec::RowsAtCompileTime> H_;
-  Eigen::Matrix<double, MeasurementType::Vec::RowsAtCompileTime, LandmarkType::Vec::RowsAtCompileTime> H_inv_;
+  Eigen::Matrix<double, LandmarkType::Vec::RowsAtCompileTime , MeasurementType::Vec::RowsAtCompileTime > H_inv_;
 
 
 };
