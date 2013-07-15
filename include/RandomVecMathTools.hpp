@@ -91,7 +91,11 @@ public:
     double nDim = gaussian.getNDim();
     double covDet = gaussian.getCovDet();
     double md2 = mahalanobisDist2( gaussian, x_eval );
-    return ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim) * covDet ) );
+    double l = ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim) * covDet ) );
+    //If md2 is very large, l will become NAN;
+    if( l != l)
+      l = 0;
+    return l;
   }
 
   /** 
@@ -105,7 +109,11 @@ public:
     double nDim = gaussian.getNDim();
     double covDet = gaussian.getCovDet();
     double md2 = mahalanobisDist2( gaussian, x_eval );
-    return ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim) * covDet ) );
+    double l = ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim) * covDet ) );
+    // If md2 is very large, l will become NAN;
+    if( l != l)
+      l = 0;
+    return l;
   }  
 
   /** 

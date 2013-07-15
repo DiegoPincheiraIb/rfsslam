@@ -65,6 +65,7 @@ public:
     varzb_ = cfg.lookup("Measurement.varzb");
 
     nParticles_ = cfg.lookup("Filter.nParticles");
+    zNoiseInflation_ = cfg.lookup("Filter.measurementNoiseInflationFactor");
 
     return true;   
   }
@@ -104,12 +105,12 @@ public:
       }
 
       groundtruth_displacement_.push_back(input_k);
-      groundtruth_displacement_.back().set(k);
+      groundtruth_displacement_.back().setTime(k);
 
       OdometryMotionModel2d::TState x_k;
       motionModel.step(x_k, groundtruth_pose_[k-1], input_k);
       groundtruth_pose_.push_back( x_k );
-      groundtruth_pose_.back().set(k);
+      groundtruth_pose_.back().setTime(k);
       
       /*OdometryMotionModel2d::TState::Vec x;
       OdometryMotionModel2d::TInput::Vec u;
@@ -234,7 +235,7 @@ public:
 				 groundtruth_landmark_[m],
 				 z_m_k);
 	
-	z_m_k.set(k);
+	z_m_k.setTime(k);
    
         if(z_m_k.get(0) <= rangeLimit_ && drand48() <= Pd_){
 	  /*printf("Measurement[%d] = [%f %f]\n", int(measurements_.size()),
@@ -337,11 +338,59 @@ public:
     // configure measurement model
     RangeBearingModel::TMeasurement::Mat R;
     R << varzr_, 0, 0, varzb_;
+    R *= zNoiseInflation_;
     pFilter_->getMeasurementModel()->setNoise(R);
     pFilter_->getMeasurementModel()->config.probabilityOfDetection_ = Pd_;
     pFilter_->getMeasurementModel()->config.uniformClutterIntensity_ = c_;
     pFilter_->getMeasurementModel()->config.rangeLim_ = rangeLimit_;
     pFilter_->getMeasurementModel()->config.rangeLimBuffer_ = rangeLimitBuffer_;
+  }
+
+  void run(){
+
+    printf("Running simulation\n\n");
+    
+    FILE* pParticlePoseFile;
+    pParticlePoseFile = fopen("data/particlePose.dat", "w");
+    fprintf( pParticlePoseFile, "Timesteps: %d\n", kMax_);
+    fprintf( pParticlePoseFile, "nParticles: %d\n\n", pFilter_->getParticleCount());
+
+    OdometryMotionModel2d::TState x_i;
+    int zIdx = 0;
+
+    for(int i = 0; i < pFilter_->getParticleCount(); i++){
+      pFilter_->getParticleSet()->at(i)->getPose(x_i);
+      fprintf( pParticlePoseFile, "%f   %f   %f\n", x_i.get(0), x_i.get(1), x_i.get(2));
+    }
+
+    for(int k = 1; k < kMax_; k++){
+
+      if( k % 1 == 0)
+	printf("k = %d\n", k);
+      fprintf( pParticlePoseFile, "k = %d\n", k);
+
+      pFilter_->predict( odometry_[k] );
+
+      std::vector<RangeBearingModel::TMeasurement> Z;
+      double kz = measurements_[ zIdx ].getTime();
+      while( kz == k ){
+	Z.push_back( measurements_[zIdx] );
+	zIdx++;
+	if(zIdx >= measurements_.size())
+	  break;
+	kz = measurements_[ zIdx ].getTime();
+      }
+
+      pFilter_->update(Z);
+      
+      for(int i = 0; i < pFilter_->getParticleCount(); i++){
+	pFilter_->getParticleSet()->at(i)->getPose(x_i);
+	fprintf( pParticlePoseFile, "%f   %f   %f\n", x_i.get(0), x_i.get(1), x_i.get(2));
+      }
+      fprintf( pParticlePoseFile, "\n");
+    }
+    fclose(pParticlePoseFile);
+
   }
 
 private:
@@ -383,6 +432,7 @@ private:
 	      RangeBearingModel,  
 	      RangeBearingKalmanFilter> *pFilter_; 
   int nParticles_;
+  double zNoiseInflation_;
 
 };
 
@@ -407,6 +457,7 @@ int main(int argc, char* argv[]){
   sim.exportSimData();
 
   sim.setupRBPHDFilter();
+  sim.run();
 
   return 0;
 

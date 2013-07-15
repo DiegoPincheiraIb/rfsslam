@@ -79,7 +79,7 @@ public:
    * Get the number of particles
    * \return count
    */
-  double getParticleCount();
+  int getParticleCount();
 
   /** 
    * Get the pointer to the particle container
@@ -235,7 +235,7 @@ void ParticleFilter<ProcessModel, MeasurementModel>::normalizeWeights(){
 
 
 template< class ProcessModel, class MeasurementModel>
-double ParticleFilter<ProcessModel, MeasurementModel>::getParticleCount(){
+int ParticleFilter<ProcessModel, MeasurementModel>::getParticleCount(){
   return nParticles_;
 }
 
@@ -259,11 +259,14 @@ bool ParticleFilter<ProcessModel, MeasurementModel>::resample( unsigned int n ){
   normalizeWeights(); // sum of all particle weights is now 1
   for( int i = 0; i < nParticles_; i++ ){
     double w_i = particleSet_[i]->getWeight();
+    // printf("Particle %d weight = %f\n", i, w_i);
     sum_of_weight_squared += w_i * w_i; // and divide by 1
   }
   double nEffParticles_ = 1.0 / sum_of_weight_squared;
   if( nEffParticles_ > effNParticles_t_ ){
     return false;
+  }else{
+    printf("Resampling trggered\n");
   }
 
   if( n == 0 )

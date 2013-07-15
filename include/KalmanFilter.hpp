@@ -161,45 +161,20 @@ correct(TPose &pose, TMeasurement &measurement,
   double t;
   pose.get( x );
   landmark_current.get(m , P);
-  measurement.get(z_act , R , t);
+  measurement.get(z_act , t);
+  pMeasurementModel_->getNoise(R);
+    
+  pMeasurementModel_->measure( pose , landmark_current , measurement_exp_ , &H_ );
+  measurement_exp_.get(z_exp_ , z_exp_cov_ , t);
+  S_ = z_exp_cov_ + R;
+  S_inv_ = S_.inverse();
+  K_ = P * H_.transpose() * S_inv_;
+  P_updated = ( I_ - K_*H_ ) * P;
+  P_updated = ( P_updated + P_updated.transpose() ) / 2;
   
-  if(x == x_prev_ && m == m_prev_ && P == P_prev_ ){
-    
-    if(R == R_prev_){
-    
-      // Reuse K, newCov and measurement prediction
-     
-    }else{
-    
-      // Reuse the measurement prediction's covariance, 
-      // but not the innovation covariance (S), 
-      // gain (K), or landmark Covariance (P) 
-      
-      S_ = z_exp_cov_ + R;
-      S_inv_ = S_.inverse();
-      K_ = P * H_.transpose() * S_inv_;
-      P_updated = ( I_ - K_*H_ ) * P;
-      P_updated = ( P_updated + P_updated.transpose() ) / 2;
-      
-      R_prev_ = R;
-    } 
-   
-  }else{
-    
-    // Recalculate everything
-    
-    pMeasurementModel_->measure( pose , landmark_current , measurement_exp_ , &H_ );
-    measurement_exp_.get(z_exp_ , z_exp_cov_ , t);
-    S_ = z_exp_cov_ + R;
-    S_inv_ = S_.inverse();
-    K_ = P * H_.transpose() * S_inv_;
-    P_updated = ( I_ - K_*H_ ) * P;
-    P_updated = ( P_updated + P_updated.transpose() ) / 2;
-  
-    x_prev_ = x;
-    m_prev_ = m;
-    P_prev_ = P;
-  }
+  x_prev_ = x;
+  m_prev_ = m;
+  P_prev_ = P;
   
   calculateInnovation(z_exp_, z_act);
   m_updated= m + K_ * innovation_;
@@ -210,8 +185,15 @@ correct(TPose &pose, TMeasurement &measurement,
     z_innov.set( z_act, S_ );
     *zLikelihood = RandomVecMathTools< RandomVec< 
       Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1>, 
-      Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> > > :: evalGaussianLikelihood( z_innov, z_exp_);
-
+      Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> > > :: 
+      evalGaussianLikelihood( z_innov, z_exp_);
+    
+    // When likelihood is so small that it becomes NAN
+    // (very large mahalanobis distance)
+    if(*zLikelihood != *zLikelihood){
+      zLikelihood = 0;
+    }
+      
   }
 
 }

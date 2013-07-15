@@ -33,6 +33,21 @@ fid = fopen('../../data/measurement.dat');
 meas = fscanf(fid, '%f %f %f\n', [3, inf]);
 fclose(fid);
 
+disp('Reading particle pose file');
+fid = fopen('../../data/particlePose.dat');
+kMax = textscan(fid, 'Timesteps: %d');
+nParticles = textscan(fid, 'nParticles: %d\n');
+x_i = zeros(3, nParticles{1}, kMax{1});
+for k = 1:kMax{1} 
+    kSim = textscan(fid, 'k = %d\n');
+    x_i_temp = textscan(fid, '%f %f %f\n');
+    for i = 1:nParticles{1}
+        x_i(1, i, k) = x_i_temp{1}(i);
+        x_i(2, i, k) = x_i_temp{2}(i);
+        x_i(3, i, k) = x_i_temp{3}(i);
+    end
+end
+
 hfig = figure;
 set(gcf, 'Color', 'w');
 title('Groundturth robot trajectory and landmark positions');
@@ -48,6 +63,7 @@ h_robotPos = plot(gt_pose(2,1), gt_pose(3,1), 'ro', 'MarkerSize', 5, 'MarkerFace
 h_robotHdg = line([gt_pose(2,1) gt_pose(2,1)+0.5*cos(gt_pose(4,1))], [gt_pose(3,1) gt_pose(3,1)+0.5*sin(gt_pose(4,1))], 'Color', 'k');
 h_drPos = plot(dr_pose(2,1), dr_pose(3,1), 'ro', 'MarkerSize', 5, 'MarkerFaceColor', 'g');
 h_drHdg = line([dr_pose(2,1) dr_pose(2,1)+0.5*cos(dr_pose(4,1))], [dr_pose(3,1) dr_pose(3,1)+0.5*sin(dr_pose(4,1))], 'Color', 'k');
+%h_particlePos = plot(x_i(1, :, 1), x_i(2, :, 1), 'm.');
 pause(0.005);
 meas_idx = 1;
 for k = 1 : length(gt_pose)
@@ -56,6 +72,7 @@ for k = 1 : length(gt_pose)
     delete( h_robotHdg )
     delete( h_drPos )
     delete( h_drHdg )
+    %delete( h_particlePos );
     delete(findobj('Color','b'))
     
     x = gt_pose(2,k);
@@ -70,6 +87,7 @@ for k = 1 : length(gt_pose)
     h_drPos = plot(dr_x, dr_y, 'go', 'MarkerSize', 5, 'MarkerFaceColor', 'g');
     h_drHdg = line([dr_x dr_x+0.5*cos(dr_z)], [dr_y dr_y+0.5*sin(dr_z)], 'Color', 'k');
     
+    %h_particlePos = plot(x_i(1, :, k), x_i(2, :, k), 'm.');
     
     while( meas(1, meas_idx) == k )
         r = meas(2, meas_idx);
@@ -83,8 +101,8 @@ for k = 1 : length(gt_pose)
         end
     end
     
-    export_fig(sprintf('results/anim/%06d.png',k), hfig);
-    %pause(0.005)
+    %export_fig(sprintf('results/anim/%06d.png',k), hfig);
+    pause(0.005)
     
 end
     
