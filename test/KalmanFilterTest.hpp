@@ -71,7 +71,8 @@ TEST_F(KalmanFilterTest, TestKalmanFilter2d_example){
     RangeBearingModel measModel( 0.1 , 0.01 );
     measModel.config.probabilityOfDetection_ = 0.7;
     measModel.config.uniformClutterIntensity_ = 0.1;
-    measModel.config.rangeLim_=10;
+    measModel.config.rangeLimMax_=10;
+    measModel.config.rangeLimMin_=1;
     measModel.config.rangeLimBuffer_=1;
   
     RangeBearingKalmanFilter filter(&processModel, &measModel);

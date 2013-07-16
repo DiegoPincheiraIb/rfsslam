@@ -66,12 +66,15 @@ public:
    * \param[out] landmark_updated The updated landmark state
    * \param[out] zLikelihood if supplied, this stores the measurement likelihood 
    * (required by RBPHDFilter)
+   * \param[out] mahalanobisDist2 if supplied, stores the saured mahalanobis distance 
+   * used to calculate zlikelihood (required by RBPHDFilter)
    * \warning this function is not thread-safe (if multiple threads using the same
    * instantiation of this class calls this function)
    */
   virtual void correct(TPose &pose, TMeasurement &measurement, 
 		       TLandmark &landmark_current, TLandmark &landmark_updated,
-		       double* zLikelihood = NULL);
+		       double* zLikelihood = NULL, 
+		       double* mahalanobisDist2 = NULL);
   
    /**
    * This funtion uses the ProcessModel to propagate the feature through time
@@ -150,7 +153,7 @@ template <class ProcessModelType, class MeasurementModelType>
 void KalmanFilter<ProcessModelType, MeasurementModelType>::
 correct(TPose &pose, TMeasurement &measurement, 
 	TLandmark &landmark_current, TLandmark &landmark_updated,
-	double* zLikelihood){
+	double* zLikelihood, double* mahalanobisDist2 ){
 
   Eigen::Matrix < double , TPose::Vec::RowsAtCompileTime, 1> x;
   Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1> z_act;
@@ -164,7 +167,8 @@ correct(TPose &pose, TMeasurement &measurement,
   measurement.get(z_act , t);
   pMeasurementModel_->getNoise(R);
     
-  pMeasurementModel_->measure( pose , landmark_current , measurement_exp_ , &H_ );
+  pMeasurementModel_->measure( pose , landmark_current , measurement_exp_ , &H_);
+ 
   measurement_exp_.get(z_exp_ , z_exp_cov_ , t);
   S_ = z_exp_cov_ + R;
   S_inv_ = S_.inverse();
@@ -186,7 +190,7 @@ correct(TPose &pose, TMeasurement &measurement,
     *zLikelihood = RandomVecMathTools< RandomVec< 
       Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1>, 
       Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> > > :: 
-      evalGaussianLikelihood( z_innov, z_exp_);
+      evalGaussianLikelihood( z_innov, z_exp_, mahalanobisDist2 );
     
     // When likelihood is so small that it becomes NAN
     // (very large mahalanobis distance)

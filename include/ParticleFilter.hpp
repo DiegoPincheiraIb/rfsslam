@@ -259,14 +259,14 @@ bool ParticleFilter<ProcessModel, MeasurementModel>::resample( unsigned int n ){
   normalizeWeights(); // sum of all particle weights is now 1
   for( int i = 0; i < nParticles_; i++ ){
     double w_i = particleSet_[i]->getWeight();
-    // printf("Particle %d weight = %f\n", i, w_i);
+    //printf("Particle %d weight = %f\n", i, w_i);
     sum_of_weight_squared += w_i * w_i; // and divide by 1
   }
   double nEffParticles_ = 1.0 / sum_of_weight_squared;
   if( nEffParticles_ > effNParticles_t_ ){
-    return false;
+    return false; // no resampling
   }else{
-    printf("Resampling trggered\n");
+    printf("Resampling triggered. Effective N Particles = %f   Threshold = %f\n", nEffParticles_, effNParticles_t_);
   }
 
   if( n == 0 )
