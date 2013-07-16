@@ -244,6 +244,11 @@ LmkProcessModel* RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementMod
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::predict( TInput u,
 												 int currentTimestep){
+
+  // Add birth Gaussians using pose before prediction
+  addBirthGaussians();
+
+  // propagate particles
   k_currentTimestep_ = currentTimestep;
   this->propagate(u);
   for( int i = 0; i < this->nParticles_; i++ ){
@@ -259,9 +264,6 @@ template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z,
 												int currentTimestep){
   k_currentTimestep_ = currentTimestep;
-
-  // Add birth Gaussians
-  addBirthGaussians();
 
   this->setMeasurements( Z );
 
@@ -291,8 +293,11 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   if( k_currentTimestep_ - k_lastResample_ >= config.minInterSampleTimesteps_){
     resampleOccured = this->resample();
   }
+
   if( resampleOccured ){
     k_lastResample_ = k_currentTimestep_;
+  }else{
+    this->normalizeWeights();
   }
 
   // reassign maps as well according to resampling of particles
@@ -305,16 +310,15 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     for(int i = 0; i < this->nParticles_; i++){
       int j = this->particleSet_[i]->getParentId();
       useCount[j]++;
-      if( maps_temp[i] == NULL ){
-	maps_temp[i] = maps_[i];
-      }
     }
 
-    // Get rid of the GMs that die along with particles
-    for(int j = 0; j < this->nParticles_; j++){
-      if( useCount[j] == 0 ){
-	delete maps_[j];
-	maps_[j] = NULL;
+    // for maps that get used, make a (pointer copy) before doing any overwriting
+    // Also rid of the maps that die along with particles
+    for(int i = 0; i < this->nParticles_; i++){
+      if( useCount[i] > 0){
+	maps_temp[i] = maps_[i];
+      }else{
+	delete maps_[i];
       }
     }
     
@@ -322,29 +326,17 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     for(int i = 0; i < this->nParticles_; i++){
       int j = this->particleSet_[i]->getParentId();
 
-      if( i != j){
+      if( useCount[j] == 1){ // map j is only copied over to map i and not to any other particle's map
 	
-	if( useCount[j] == 1){
-
-	  // GM_j is only required by particle i, and it could not have
-	  // been overwritten by the GM of another particle, so copy pointer directly
-	  maps_[i] = maps_[j];
-	  maps_[j] = NULL;
-
-	}else{
-
-	  // GM_j is used by more than 1 particle i, need to allocate memory
-	  maps_[i] = new GaussianMixture<TLandmark>;
-
-	  if( maps_temp[j] == NULL ){
-	    maps_[j]->copyTo( maps_[i] );
-	  }else{
-	    maps_temp[j]->copyTo( maps_[i] );
-	  }
-
-	}
-
+	maps_[i] = maps_temp[j];
+	maps_temp[j] = NULL;
+	
+      }else{ // GM_j is used by more than 1 particle, need to allocate memory for copying map
+	
+	maps_[i] = new GaussianMixture<TLandmark>;
+	maps_temp[j]->copyTo( maps_[i] );
       }
+      useCount[j]--;
     }
 
   }
@@ -426,50 +418,11 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	    delete lmNew;
 	  }else{
 	    newLandmarkPointer[m][z] = lmNew;
-
-	    /*
-	    typename TLandmark::Vec lmn_x;
-	    typename TLandmark::Mat lmn_S;
-	    lmNew->get(lmn_x, lmn_S);
-	  
-	    
-	    bool problem = false;
-	    if( lmn_S == TLandmark::Mat::Zero() ){
-	    problem = true;
-	    }
-	    for( int r = 0; r < lmn_S.rows(); r++ ){
-	    for( int c = 0; c < lmn_S.cols(); c++ ){
-	    if (abs(lmn_S(r,c) - lmn_S(c,r)) > abs(lmn_S(r,c)) )
-	    problem = true;
-	    }
-	    }
-	    double posDefCheck = lmn_x.transpose() * lmn_S * lmn_x;
-	    if( posDefCheck != posDefCheck || posDefCheck <= 0){
-	    problem = true;
-	    }
-
-	    if( problem ){
-	    typename TLandmark::Vec lm_x;
-	    typename TLandmark::Mat lm_S;
-	    typename TPose::Vec x;
-	    typename TPose::Mat Sx;
-	    typename TMeasurement::Vec y;
-	    typename TMeasurement::Mat Sy;
-	    lm->get(lm_x, lm_S);
-	    pose->get(x, Sx);
-	    this->measurements_[z].get(y, Sy);
-	    std::cout << " Kalman Filter update problem for particle " << i << "\n " 
-	    << lmn_x << "\n" << lmn_S << "\n\n" 		      
-	    << lm_x << "\n" << lm_S << "\n\n" 
-	    << x << "\n" << Sx << "\n\n" 
-	    << y << "\n" << Sy << "\n\n";
-	    }*/
-      
 	  }	
 	  weightingTable[m][z] = Pd_times_w_km * innovationLikelihood;
 	}
 
-      }else{
+      }else{ // Pd = 0
 
 	for(int z = 0; z < nZ; z++){
 
@@ -481,16 +434,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     }
     delete pose;
 
-    /*
-    Eigen::MatrixXd WT= Eigen::MatrixXd::Zero(nM, nZ);
-    for(unsigned int m = 0; m < nM; m++){
-      for(int z = 0; z < nZ; z++){
-	WT(m,z) = weightingTable[m][z];
-      }
-    }
-    std::cout << "particle " << i << " weighting table:\n" << WT << "\n\n";
-    */
-
+    // Now calculate the weight of each new Gaussian
     for(int z = 0; z < nZ; z++){
       double clutter = this->pMeasurementModel_->clutterIntensity( this->measurements_[z], nZ );
       double sum = clutter;
@@ -508,9 +452,6 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     for(int m = 0; m < nM; m++){
       for(int z = 0; z < nZ; z++){
 	if(newLandmarkPointer[m][z] != NULL){
-	  typename TLandmark::Vec x;
-	  typename TLandmark::Mat S;
-	  newLandmarkPointer[m][z]->get(x, S);
 	  maps_[i]->addGaussian( newLandmarkPointer[m][z], weightingTable[m][z]);  
 	}
       }
@@ -522,6 +463,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       double w_km = maps_[i]->getWeight(m);
       double w_k = (1 - Pd[m]) * w_km;
 
+      // For landmarks close to sensing limit
       if (landmarkCloseToSensingLimit[m] == 1){
 	double weight_sum_m = 0;
 	for(int z = 0; z < nZ; z++){
@@ -536,11 +478,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       maps_[i]->setWeight(m, w_k);
     }
 
-    /*for(int m = 0; m < maps_[i]->getGaussianCount(); m++){
-      printf("particle %d map %d weight = %f\n", i, m, maps_[i]->getWeight(m));
-      }*/
-
-    //----------  5. Identity unused measurements for adding birth Gaussians later ----------
+    //----------  5. Identify unused measurements for adding birth Gaussians later ----------
     unused_measurements_[i].clear();
     for(int z = 0; z < nZ; z++){
       bool unused = true;
@@ -553,7 +491,6 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       if (unused)
 	unused_measurements_[i].push_back( z );
     }
-    //printf("Particle %d unused measurement count = %d\n", i, unused_measurements_[i].size()); 
 
     //----------  6. Cleanup - Free memory ----------
     for( int n = 0; n < nM; n++ ){
@@ -562,8 +499,6 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     }
     delete[] weightingTable;
     delete[] newLandmarkPointer;
-
-    //printf("Particle %d map size = %d\n", i, maps_[i]->getGaussianCount()  );
 
   }
 
@@ -581,10 +516,10 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     const unsigned int nM = maps_[i]->getGaussianCount();
     const int nEvalPoints = config.importanceWeightingEvalPointCount_ > nM ? nM : config.importanceWeightingEvalPointCount_ ;
     if( nEvalPoints == 0 ){
-      this->particleSet_[i]->setWeight( 0.0 - std::numeric_limits<double>::denorm_min() );
+      this->particleSet_[i]->setWeight( std::numeric_limits<double>::denorm_min() );
       continue;
     }
-    maps_[i]->sortByWeight();
+    maps_[i]->sortByWeight(); // sort by weight so that we can pick off the top nEvalPoints Gaussians
 
     // 2. evaluate sum of Gaussian weights
     double gaussianWeightSumBeforeUpdate = 0;
@@ -592,17 +527,18 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     for(int m = 0; m < nM; m++){
       TLandmark* plm_temp;
       double w, w_prev;
-      maps_[i]->getGaussian(m, plm_temp, w, w_prev);
+      maps_[i]->getGaussian(m, plm_temp, w, w_prev); // for newly created Gaussians, w_prev = 0
       gaussianWeightSumBeforeUpdate += w_prev;
       gaussianWeightSumAfterUpdate += w;
       //printf("w_[%d] = %f\n", i, w);
     }
+    // Check for NaN
     if( gaussianWeightSumBeforeUpdate != gaussianWeightSumBeforeUpdate ||
 	gaussianWeightSumAfterUpdate != gaussianWeightSumAfterUpdate ){
       printf("Particle %d map size before update = %f\n", i, gaussianWeightSumBeforeUpdate);
       printf("Particle %d map size after update = %f\n", i, gaussianWeightSumAfterUpdate);
     }
-
+    printf("Particle %d map size after - before update = %f\n", i, gaussianWeightSumAfterUpdate - gaussianWeightSumBeforeUpdate);
     // 3. evaluate intensity function at eval points and take their product
     double intensityProd_beforeUpdate = 1;
     double intensityProd_afterUpdate = 1;
@@ -619,24 +555,12 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	TLandmark* plm;
 	double w, w_prev;
 	maps_[i]->getGaussian(m, plm, w, w_prev);
-
-	double md = RandomVecMathTools<TLandmark>::mahalanobisDist(*plm, *lm_evalPt);
+	// New Gaussians from update will have w_prev = 0
+	// Out Gaussians (missed-detection) will not have been updated, but weights will have changed
 	double likelihood = RandomVecMathTools< TLandmark >::evalGaussianLikelihood( *plm, *lm_evalPt);
-
-	typename TLandmark::Vec x0, x1;
-	typename TLandmark::Mat Sx, Sx0Inv;
-	plm->get(x0, Sx);
-	plm->getCovInv( Sx0Inv );
-	lm_evalPt->get(x1);
-	typename TLandmark::Vec e = x1 - x0;
-	double md2 = (e.transpose() * Sx0Inv * e);
-	/*if (likelihood > 0.1){
-	  std::cout << "\nm = " << m << "   w = " << w << "\n";
-	  std::cout << "\n" << e << "\n\n" << Sx << "\n";
-	  printf("%f   %f   %f\n\n", md2, md, likelihood);
-	  }*/
-	intensity_at_evalPt_beforeUpdate += w_prev * likelihood;
+	intensity_at_evalPt_beforeUpdate += w_prev * likelihood; // w_prev for newly created Gaussians are 0
 	intensity_at_evalPt_afterUpdate += w * likelihood;
+	// NaN check
 	if( likelihood != likelihood || 
 	    intensity_at_evalPt_beforeUpdate != intensity_at_evalPt_beforeUpdate || 
 	    intensity_at_evalPt_afterUpdate != intensity_at_evalPt_afterUpdate){
@@ -645,9 +569,9 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	  printf("intensity after update = %f\n", intensity_at_evalPt_afterUpdate);
 	}
       }
-
       intensityProd_beforeUpdate *= intensity_at_evalPt_beforeUpdate;
       intensityProd_afterUpdate *= intensity_at_evalPt_afterUpdate;
+      // NaN Check
       if( intensityProd_beforeUpdate != intensityProd_beforeUpdate ||
 	  intensityProd_afterUpdate != intensityProd_afterUpdate ){
 	printf("Particle %d map intensity product error\n", i);
@@ -655,22 +579,20 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	printf("intensity product after update = %f\n", intensityProd_afterUpdate);
       } 
     }
-
-    //printf("Particle %d intensity product before update = %f\n", i, intensityProd_beforeUpdate);
-    //printf("Particle %d intensity product after update = %f\n", i, intensityProd_afterUpdate);
+    printf("Particle %d intensity product before / after update = %f\n", i, intensityProd_beforeUpdate / intensityProd_afterUpdate);
 
     // 4. calculate measurement likelihood at eval points
     // note that rfsMeasurementLikelihood uses maps_[i] which is already sorted by weight
     double measurementLikelihood = rfsMeasurementLikelihood( i, nEvalPoints );
-    //printf("Particle %d measurement likelihood = %f\n", i, measurementLikelihood);
+    printf("Particle %d measurement likelihood = %f\n", i, measurementLikelihood);
 
     // 5. calculate overall weight
     double overall_weight = measurementLikelihood * intensityProd_beforeUpdate / intensityProd_afterUpdate *
-      exp( gaussianWeightSumAfterUpdate - gaussianWeightSumAfterUpdate); 
+      exp( gaussianWeightSumAfterUpdate - gaussianWeightSumBeforeUpdate); 
     
     double prev_weight = this->particleSet_[i]->getWeight();
     this->particleSet_[i]->setWeight( overall_weight * prev_weight );
-    //printf("Particle %d overall weight = %f\n", i, overall_weight);
+    printf("Particle %d overall weight = %f\n\n", i, overall_weight);
 
   }
 
@@ -693,25 +615,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       TLandmark landmark_pos;
       this->particleSet_[i]->getPose(robot_pose);
       this->pMeasurementModel_->inverseMeasure( robot_pose,  unused_z, landmark_pos );
-
-      /*
-      typename TLandmark::Vec lm_x;
-      typename TLandmark::Mat lm_S;
-      typename TPose::Vec x;
-      typename TPose::Mat Sx;
-      typename TMeasurement::Vec z;
-      typename TMeasurement::Mat Sz;
-      landmark_pos.get(lm_x, lm_S);
-      robot_pose.get(x, Sx);
-      unused_z.get(z, Sz);
-      if( lm_S == TLandmark::Mat::Zero() ){
-	std::cout << " Birth Gaussian problem particle " << i << "\n " 
-		  << lm_x << "\n" << lm_S << "\n\n" 
-		  << x << "\n" << Sx << "\n\n" 
-		  << z << "\n" << Sz << "\n\n";
-      }
-      */
-
+      
       // add birth landmark to Gaussian mixture (last param = true to allocate mem)
       maps_[i]->addGaussian( &landmark_pos, config.birthGaussianWeight_, true);
       
@@ -720,7 +624,6 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   }
 
 }
-
 
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
@@ -738,23 +641,23 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
   this->particleSet_[i]->getPose( x );
   std::vector< double* > likelihoodTab;
   for( int m = 0; m < nM; m++ ){
-
-    double* row = new double [nZ];
-
+    
+    double* row = new double[nZ];
+    
     TLandmark* evalPt; 
     maps_[i]->getGaussian( m, evalPt );
     bool temp;
     double Pd = this->pMeasurementModel_->probabilityOfDetection( x, *evalPt, temp);
-
+    
     double row_sum = 0;
     for( int z = 0; z < nZ; z++ ){
-      
+
       TMeasurement expected_z;
       this->pMeasurementModel_->measure( x, *evalPt, expected_z);
       TMeasurement actual_z = this->measurements_[z];
       
       double likelihood = RandomVecMathTools<TMeasurement>::
-	 evalGaussianLikelihood( actual_z, expected_z );
+	evalGaussianLikelihood( actual_z, expected_z );
       
       if( likelihood >= config.importanceWeightingMeasurementLikelihoodThreshold_ ){
 	row[z] = likelihood * Pd;
@@ -764,36 +667,32 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
       }
       
     }
-
+    
     // Check to see if likelihood to all measurements is 0, if so remove this eval point
-    // as it will no contribute anythiing to the output likelihood
+    // as it will not contribute anything to the output likelihood
     if( row_sum == 0 ){
       delete[] row;
     }else{
       likelihoodTab.push_back(row);
     }
-     
+    
   }
+  const int likelihoodTabSizeWithoutClutter = likelihoodTab.size();
 
-  /*Eigen::MatrixXd LT1 = Eigen::MatrixXd::Zero(likelihoodTab.size(), nZ );
-  for( int m = 0; m < likelihoodTab.size(); m++ ){
-    for( int z = 0; z < nZ; z++ ){
-      LT1(m,z) = likelihoodTab[m][z];
-    }
-  }
-  std::cout << "\n" << LT1 << "\n";*/
-
-  // Check measurements with 0 likelihood to all eval points
+  // Check measurements (columns) with 0 likelihood to all eval points
   // if so, that measurement is considered clutter
   int nClutter = 0;
   double clutterLikelihood = 1; // we will multiply the likelihood sum of all d.a. permuations with this at the end
-  std::vector<int> z_noClutter;
+  std::vector<int> z_noClutter; // we only want the non-clutter measurements when we permutate over all data assocation pairs later
   for( int z = 0; z < nZ; z++ ){
-    double z_sum = 0;
+    double isClutter = true;
     for( int m = 0; m < likelihoodTab.size(); m++ ){
-      z_sum += likelihoodTab[m][z];
+      if( likelihoodTab[m][z] > 0 ){
+	isClutter = false;
+	break;
+      }
     }
-    if( z_sum == 0 ){
+    if( isClutter ){
       nClutter++;
       TMeasurement actual_z = this->measurements_[z];
       clutterLikelihood *= this->pMeasurementModel_->clutterIntensity(actual_z, nZ);;
@@ -803,36 +702,24 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
   }
 
   // If the number of measurements is greater than the number of
-  // eval points, then some measurements must be forced to be assigned as clutter.
-  // We will add extra rows for these clutter measurements in likelihoodTab
-  int nC = z_noClutter.size() - likelihoodTab.size();
-  if (nC < 0){
-    nC = 0;
-  }else{
-    double *clutterRow = new double[nZ];
+  // eval points, then some measurements have to be assigned as clutter.
+  // We will add extra rows for these assignments in likelihoodTab
+  double *clutterRow = NULL;
+  int nR = z_noClutter.size() - likelihoodTab.size();
+  if (nR > 0){
+    clutterRow = new double[nZ];
     for( int z = 0; z < nZ; z++ ){
       TMeasurement actual_z = this->measurements_[z];
       clutterRow[z] = this->pMeasurementModel_->clutterIntensity(actual_z, nZ);
     }
-    for( int c = 0; c < nC; c++ ){
+    for( int r = 0; r < nR; r++ ){
       likelihoodTab.push_back(clutterRow);
     }
   }
 
-  /*
-  Eigen::MatrixXd LT = Eigen::MatrixXd::Zero(likelihoodTab.size(), z_noClutter.size() );
-  for( int m = 0; m < likelihoodTab.size(); m++ ){
-    for( int z = 0; z < z_noClutter.size(); z++ ){
-      LT(m,z) = likelihoodTab[m][ z_noClutter[z] ];
-    }
-  }
-  std::cout << "\n" << LT << "\n";
-  std::cin.get();*/
-
   // Go through all permutations of eval point - measurement pairs
   // to calculate the likelihood
   double likelihood = 0;
-  int extraClutterRows = 0;
   while (likelihood == 0){
 
     if( likelihoodTab.size() == 0 ){
@@ -848,23 +735,26 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
     if( likelihood == 0 ){
 
       // Add another row to of clutter to likelihoodTab
-      extraClutterRows++;
-      printf("Adding clutter row %d for RFS measurement likelihood calculation\n", extraClutterRows);
-      likelihoodTab.push_back(new double [nZ]);
-      int m = likelihoodTab.size() - 1;
-      for( int z = 0; z < nZ; z++ ){
-	TMeasurement actual_z = this->measurements_[z];
-	likelihoodTab[m][z] = this->pMeasurementModel_->clutterIntensity(actual_z, nZ);
+      // printf("Adding clutter row for RFS measurement likelihood calculation\n");
+      if( clutterRow == NULL ){
+	clutterRow = new double[nZ];
+	for( int z = 0; z < nZ; z++ ){
+	  TMeasurement actual_z = this->measurements_[z];
+	  clutterRow[z] = this->pMeasurementModel_->clutterIntensity(actual_z, nZ);
+	}
       }
-
+      likelihoodTab.push_back( clutterRow );
+      
     }
 
   }
 
   // Deallocate likelihood table
-  for( int m = 0; m < likelihoodTab.size(); m++ ){
+  for( int m = 0; m < likelihoodTabSizeWithoutClutter; m++ ){
     delete[] likelihoodTab[m];
   }
+  if( clutterRow != NULL )
+    delete[] clutterRow;
 
   if (nClutter > 0){
     likelihood /= this->pMeasurementModel_->clutterIntensityIntegral( nZ );
@@ -900,10 +790,6 @@ rfsMeasurementLikelihoodPermutations( std::vector< double* > &likelihoodTab,
   while( !lastPermutationSequence ){
 
     // find the likelihood of the current permutation
-    /*for(int z = 0; z < nZ; z++){    
-      int m = currentPermutation[z];
-      std::cout << m << "   ";
-      }*/
     
     double currentPermutationLikelihood  = 1;
     for(int z = 0; z < nZ; z++){
@@ -914,24 +800,13 @@ rfsMeasurementLikelihoodPermutations( std::vector< double* > &likelihoodTab,
       // have 0 likelihood
       if( currentPermutationLikelihood == 0 && z < nZ - 1){
 	std::sort(currentPermutation.begin() + z + 1, currentPermutation.end(), sort::descend);
-	//printf(" Fast forward (element %d == 0)\n", z);
 	break;
       }
-
     }
-   
-
-    /*for(int z = 0; z < nZ; z++){    
-      int m = currentPermutation[z];
-      std::cout << m << "   ";
-    }
-    std::cout << "   likelihood = " << currentPermutationLikelihood  << "\n";
-    std::cin.get();*/
-
 
     allPermutationLikelihood += currentPermutationLikelihood;
 
-    // Fast-forward if nM > nZ
+    // Fast-forward if nM > nZ (i.e., the last nM - nZ elements in the permutation sequence does not matter)
     if( nM > nZ ){
       std::sort(currentPermutation.begin() + nZ, currentPermutation.end(), sort::descend);
     }
@@ -977,7 +852,6 @@ rfsMeasurementLikelihoodPermutations( std::vector< double* > &likelihoodTab,
     }
 
     // now we should have the next permutation sequence
-
   }
 
   return allPermutationLikelihood;

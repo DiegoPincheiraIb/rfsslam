@@ -193,11 +193,6 @@ public:
 					 lm);
 
 	groundtruth_landmark_.push_back(lm);
-	//groundtruth_landmark_[nLandmarksCreated] = lm;
-	
-	/*printf("Landmark[%d] = [%f %f]\n", nLandmarksCreated,
-	       groundtruth_landmark_[nLandmarksCreated].State::get(0),
-	       groundtruth_landmark_[nLandmarksCreated].State::get(1));*/
 
 	nLandmarksCreated++;
 	
@@ -210,15 +205,13 @@ public:
   void generateMeasurements(){
 
 
-    RangeBearingModel measurementModel( varzr_, varzb_);
+    RangeBearingModel measurementModel( varzr_, varzb_ );
     measurementModel.config.rangeLimMax_ = rangeLimitMax_;
     measurementModel.config.rangeLimMin_ = rangeLimitMin_;
     measurementModel.config.probabilityOfDetection_ = Pd_;
     measurementModel.config.uniformClutterIntensity_ = c_;
     double meanClutter = measurementModel.clutterIntensityIntegral();
-
-    printf("Generating measurements with mean clutter = %f\n", meanClutter);
-
+    
     double expNegMeanClutter = exp( -meanClutter );
     double poissonPmf[100];
     double poissonCmf[100];
@@ -387,7 +380,7 @@ public:
 
     for(int i = 0; i < pFilter_->getParticleCount(); i++){
       pFilter_->getParticleSet()->at(i)->getPose(x_i);
-      fprintf( pParticlePoseFile, "%f   %f   %f\n", x_i.get(0), x_i.get(1), x_i.get(2));
+      fprintf( pParticlePoseFile, "%f   %f   %f   1.0\n", x_i.get(0), x_i.get(1), x_i.get(2));
     }
 
     for(int k = 1; k < kMax_; k++){
@@ -397,6 +390,8 @@ public:
       fprintf( pParticlePoseFile, "k = %d\n", k);
 
       pFilter_->predict( odometry_[k], k );
+      //for( int i = 0; i < nParticles_; i++)
+      //pFilter_->setParticlePose(0, groundtruth_pose_[k]);
 
       // Prepare measurement vector for update
       std::vector<RangeBearingModel::TMeasurement> Z;
@@ -410,12 +405,12 @@ public:
       }
 
       pFilter_->update(Z, k);
-      // pFilter_->setParticlePose(0, groundtruth_pose_[k]);
       
       // Log particle poses
       for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	pFilter_->getParticleSet()->at(i)->getPose(x_i);
-	fprintf( pParticlePoseFile, "%f   %f   %f\n", x_i.get(0), x_i.get(1), x_i.get(2));
+	double w = pFilter_->getParticleSet()->at(i)->getWeight();
+	fprintf( pParticlePoseFile, "%f   %f   %f   %f\n", x_i.get(0), x_i.get(1), x_i.get(2), w);
       }
       fprintf( pParticlePoseFile, "\n");
 
@@ -516,7 +511,7 @@ int main(int argc, char* argv[]){
   sim.generateLandmarks();
   sim.generateMeasurements();
   sim.exportSimData();
-
+ ;
   sim.setupRBPHDFilter();
   sim.run();
 

@@ -57,8 +57,15 @@ for k = 1 : length(gt_pose)
         end
     end
     
-
-    for i = 1:1
+    highest_weight_i = 0;
+    highest_weight = 0;
+    for i = 1:nParticles{1}
+        if x_i(4, i, k) > highest_weight
+            highest_weight = x_i(4, i, k);
+            highest_weight_i = i;
+        end
+    end
+    for i = highest_weight_i
         [nLm tmp] = size(landmarkEst{i,k});
         for m = 1:nLm
             u = landmarkEst{i,k}{m,1};

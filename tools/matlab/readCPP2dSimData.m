@@ -37,14 +37,15 @@ disp('Reading particle pose file');
 fid = fopen('../../data/particlePose.dat');
 kMax = textscan(fid, 'Timesteps: %d');
 nParticles = textscan(fid, 'nParticles: %d\n');
-x_i = zeros(3, nParticles{1}, kMax{1});
+x_i = zeros(4, nParticles{1}, kMax{1});
 for k = 1:kMax{1} 
     kSim = textscan(fid, 'k = %d\n');
-    x_i_temp = textscan(fid, '%f %f %f\n');
+    x_i_temp = textscan(fid, '%f %f %f %f\n');
     for i = 1:nParticles{1}
         x_i(1, i, k) = x_i_temp{1}(i);
         x_i(2, i, k) = x_i_temp{2}(i);
         x_i(3, i, k) = x_i_temp{3}(i);
+        x_i(4, i, k) = x_i_temp{4}(i);
     end
 end
 
