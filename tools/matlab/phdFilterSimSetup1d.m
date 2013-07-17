@@ -1,8 +1,8 @@
 % PHD Filter Simulation setup
 % Keith Leung 2013
 
-clear all;
-close all;
+%clear all;
+%close all;
 
 %% Simulation settings
 k_max = 3000;
@@ -38,9 +38,9 @@ noise_obs_inflation_factor = 2 ; % inflate noise for Kalman filter
 resample_interval = 0;
 effective_particle_threshold = n_particles / 4;
 
-sensor_limit_upper_buffer = 0.20;
-sensor_limit_lower_buffer = 0.20;
-particle_weighting_feautre_set_max_size = 8; % Set to 9 for multi-feature weighting strategy
+%sensor_limit_upper_buffer = 0.20;
+%sensor_limit_lower_buffer = 0.20;
+%particle_weighting_feautre_set_max_size = 0; % Set to 9 for multi-feature weighting strategy
 particle_weighting_random_map = 0;
 birth_Gaussian_likelihood_threshold = 2;
 merging_mahalanoblis_distance_threshold = 0.1;
@@ -89,7 +89,7 @@ randn('seed', simulator_seed);
 
 if strcmp(filter_type, 'rb-phd')
     phdFilterSim1d;
-    phdFilterSimPlot1d;
+    %phdFilterSimPlot1d;
 elseif strcmp(filter_type, 'fastSLAM')
     fastSlamSim1d;
     fastSlamSimPlot1d;

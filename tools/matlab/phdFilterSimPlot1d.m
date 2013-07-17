@@ -3,6 +3,7 @@ addpath '~/src/Matlab/export_fig' % export_fig can be downloaded from Matlab Cen
 
 figure;
 set(gcf, 'Color', 'w');
+
 %title('Vehicle Trajectory');
 xlabel('Time [s]');
 ylabel('Position [m]');

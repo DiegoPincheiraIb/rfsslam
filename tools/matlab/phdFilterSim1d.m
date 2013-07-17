@@ -85,11 +85,12 @@ if(visualize)
     x_gt_max = ceil(p_k_groundtruth(1,1) )+5;
     x_gt_min = -5;
     x_gt_max = 35;
-    figure
+    figure(1)
+    set(gcf, 'Position', [300 300 680 200])
     hold on
     grid on
     xlim([-5 30]);
-    ylim([-2 20]);
+    ylim([-2 10]);
     h_p_k = plot(p_k(1,1), 0, 'ro', 'MarkerSize', 5);
     h_p_k_gt = plot(p_k(1,1), 0, 'ko', 'MarkerSize', 10);
     p_k_particles = zeros(n_particles, 1);
@@ -296,6 +297,7 @@ for k = k_sim_start:k_sim_end;
         x_gt_min = min(floor(p_k_groundtruth(1,k) )-5, x_gt_min);
         x_gt_max = max(ceil(p_k_groundtruth(1,k) )+5, x_gt_max);
 
+        
         pause(0.005);
     end
     
@@ -490,6 +492,8 @@ for k = k_sim_start:k_sim_end;
             end
             delete(h_updated);
             h_updated = plot(x_plot, y_plot, 'r-');
+            
+            export_fig(sprintf('results/Animations/map_p%d_ws%d_buff%d_it%d.pdf', n_particles, particle_weighting_feautre_set_max_size,sensor_limit_upper_buffer>0, k));
             pause(0.005);
         end
 
