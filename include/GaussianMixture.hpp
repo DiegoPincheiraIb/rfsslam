@@ -4,8 +4,8 @@
 #include <algorithm>
 #include <iostream>
 #include "Landmark.hpp"
+#include "RandomVecMathTools.hpp"
 #include <vector>
-// #include <Eigen/StdVector>
 
 /** 
  * \class GaussianMixture
@@ -86,7 +86,7 @@ public:
   /**
    * Get the state and weight of a Gaussian
    * \param[in] idx index
-   * \return pointer to landmark
+   * \return pointer to landmark. NULL if the Gaussian does not exist.
    */
   pLandmark getGaussian( unsigned int idx );
   
@@ -209,7 +209,7 @@ void GaussianMixture<Landmark>::copyTo( GaussianMixture *other){
   other->n_ = n_;
   other->gList_ = gList_;
   for(int i = 0; i < gList_.size(); i++){
-    gList_.landmark->incNRef();
+    gList_[i].landmark->incNRef();
   }
   other->isSorted_ = isSorted_;
 }
@@ -312,13 +312,7 @@ double GaussianMixture<Landmark>::getWeight( unsigned int idx){
 
 template< class Landmark >
 typename GaussianMixture<Landmark>::pLandmark GaussianMixture<Landmark>::getGaussian( unsigned int idx ){
-  pLandmark p;
-  try{
-    p = gList_[idx].landmark;
-  }catch(...){
-    std::cout << "Unable to get Gaussian\n";
-  }
-  return p;
+  return (gList_[idx].landmark);
 }
 
 template< class Landmark >
@@ -423,14 +417,15 @@ bool GaussianMixture<Landmark>::merge(unsigned int idx1, unsigned int idx2,
 
   gList_[idx1].landmark->get(x_1, S_1);
   gList_[idx2].landmark->get(x_2, S_2);
-
+  
+  double t2 = t * t;
   d_12 = x_1 - x_2;
-  d_mahalanobis = d_12.transpose() * S_1.inverse() * d_12;
-  if( d_mahalanobis > t ){
+  d_mahalanobis = RandomVecMathTools<Landmark>::mahalanobisDist2( *(gList_[idx1].landmark), *(gList_[idx2].landmark) );
+  if( d_mahalanobis > t2 ){
     return false;
   }
-  d_mahalanobis = d_12.transpose() * S_2.inverse() * d_12;
-  if( d_mahalanobis > t ){
+  d_mahalanobis = RandomVecMathTools<Landmark>::mahalanobisDist2( *(gList_[idx1].landmark), *(gList_[idx2].landmark) );
+  if( d_mahalanobis > t2 ){
     return false;
   }
 
@@ -447,6 +442,11 @@ bool GaussianMixture<Landmark>::merge(unsigned int idx1, unsigned int idx2,
   d_2 = x_m - x_2;
   S_m = ( w_1 * ( S_1 + f_inflation * d_1 * d_1.transpose() ) +
           w_2 * ( S_2 + f_inflation * d_2 * d_2.transpose() ) ) / w_m;
+
+
+  //std::cout << "\n" << x_1 << "\n" << S_1 << "\n\n";
+  //std::cout << "\n" << x_2 << "\n" << S_2 << "\n\n";
+  //std::cout << "\n" << x_m << "\n" << S_m << "\n\n";
 
   gList_[idx1].landmark->set(x_m, S_m);
   gList_[idx1].weight = w_m;

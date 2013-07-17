@@ -33,59 +33,43 @@ fid = fopen('../../data/measurement.dat');
 meas = fscanf(fid, '%f %f %f\n', [3, inf]);
 fclose(fid);
 
-hfig = figure;
-set(gcf, 'Color', 'w');
-title('Groundturth robot trajectory and landmark positions');
-plot(gt_pose(2,:), gt_pose(3,:), 'r--');
-hold on
-plot(gt_lmk(1,:), gt_lmk(2,:), 'k.');
-axis square
-grid on
-set(gca, 'XLim', get(gca, 'XLim') + [-1, 1] );
-set(gca, 'YLim', get(gca, 'YLim') + [-1, 1] );
-   
-h_robotPos = plot(gt_pose(2,1), gt_pose(3,1), 'ro', 'MarkerSize', 5, 'MarkerFaceColor', 'r');
-h_robotHdg = line([gt_pose(2,1) gt_pose(2,1)+0.5*cos(gt_pose(4,1))], [gt_pose(3,1) gt_pose(3,1)+0.5*sin(gt_pose(4,1))], 'Color', 'k');
-h_drPos = plot(dr_pose(2,1), dr_pose(3,1), 'ro', 'MarkerSize', 5, 'MarkerFaceColor', 'g');
-h_drHdg = line([dr_pose(2,1) dr_pose(2,1)+0.5*cos(dr_pose(4,1))], [dr_pose(3,1) dr_pose(3,1)+0.5*sin(dr_pose(4,1))], 'Color', 'k');
-pause(0.005);
-meas_idx = 1;
-for k = 1 : length(gt_pose)
+disp('Reading particle pose file');
+fid = fopen('../../data/particlePose.dat');
+kMax = textscan(fid, 'Timesteps: %d');
+nParticles = textscan(fid, 'nParticles: %d\n');
+x_i = zeros(4, nParticles{1}, kMax{1});
+for k = 1:kMax{1} 
+    kSim = textscan(fid, 'k = %d\n');
+    x_i_temp = textscan(fid, '%f %f %f %f\n');
+    for i = 1:nParticles{1}
+        x_i(1, i, k) = x_i_temp{1}(i);
+        x_i(2, i, k) = x_i_temp{2}(i);
+        x_i(3, i, k) = x_i_temp{3}(i);
+        x_i(4, i, k) = x_i_temp{4}(i);
+    end
+end
 
-    delete( h_robotPos )
-    delete( h_robotHdg )
-    delete( h_drPos )
-    delete( h_drHdg )
-    delete(findobj('Color','b'))
-    
-    x = gt_pose(2,k);
-    y = gt_pose(3,k);
-    z = gt_pose(4,k);
-    h_robotPos = plot(x, y, 'ro', 'MarkerSize', 5, 'MarkerFaceColor', 'r');
-    h_robotHdg = line([x x+0.5*cos(z)], [y y+0.5*sin(z)], 'Color', 'k');
-    
-    dr_x = dr_pose(2,k);
-    dr_y = dr_pose(3,k);
-    dr_z = dr_pose(4,k);
-    h_drPos = plot(dr_x, dr_y, 'go', 'MarkerSize', 5, 'MarkerFaceColor', 'g');
-    h_drHdg = line([dr_x dr_x+0.5*cos(dr_z)], [dr_y dr_y+0.5*sin(dr_z)], 'Color', 'k');
-    
-    
-    while( meas(1, meas_idx) == k )
-        r = meas(2, meas_idx);
-        b = meas(3, meas_idx);
-        mx = x + r*cos(b + z);
-        my = y + r*sin(b + z);
-        line([x mx], [y my], 'Color', 'b');
-        meas_idx = meas_idx + 1;
-        if(meas_idx > length(meas))
-            break
+disp('Reading landmark estimate file');
+fid = fopen('../../data/landmarkEst.dat');
+kMax = textscan(fid, 'Timesteps: %d');
+nParticles = textscan(fid, 'nParticles: %d\n');
+landmarkEst = cell(nParticles{1}, kMax{1} );
+for k = 1:kMax{1} - 1
+    for i = 1:nParticles{1}
+        header = textscan(fid, 'Timestep: %d   Particle: %d   Map Size: %d', 1);
+        map_size = header{3};
+        data = textscan(fid, '%f %f %f %f %f %f %f\n');
+        landmarkEst{i, k + 1} = cell(map_size, 3);
+        for m = 1:map_size
+            u = [data{1}(m); data{2}(m)];
+            cov = [data{3}(m) data{4}(m); data{5}(m) data{6}(m)];
+            weight = data{7}(m);
+            landmarkEst{i, k + 1}{m, 1} = u;
+            landmarkEst{i, k + 1}{m, 2} = cov;
+            landmarkEst{i, k + 1}{m, 3} = weight;
         end
     end
-    
-    export_fig(sprintf('results/anim/%06d.png',k), hfig);
-    %pause(0.005)
-    
 end
-    
+
+playCPP2dSimData;
    

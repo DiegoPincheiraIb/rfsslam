@@ -8,7 +8,8 @@ RangeBearingModel::RangeBearingModel(){
 
   config.probabilityOfDetection_ = 0.95;
   config.uniformClutterIntensity_ = 0.1;
-  config.rangeLim_ = 5;
+  config.rangeLimMax_ = 5;
+  config.rangeLimMin_ = 0.3;
   config.rangeLimBuffer_ = 0.25;
 }
 
@@ -18,7 +19,8 @@ RangeBearingModel::RangeBearingModel(Eigen::Matrix2d &covZ){
   setNoise(covZ);
   config.probabilityOfDetection_ = 0.95;
   config.uniformClutterIntensity_ = 0.1;
-  config.rangeLim_ = 5;
+  config.rangeLimMax_ = 5;
+  config.rangeLimMin_ = 0.3;
   config.rangeLimBuffer_ = 0.25;
 }
 
@@ -29,13 +31,14 @@ RangeBearingModel::RangeBearingModel(double Sr, double Sb){
   setNoise(covZ);
   config.probabilityOfDetection_ = 0.95;
   config.uniformClutterIntensity_ = 0.1;
-  config.rangeLim_ = 5;
+  config.rangeLimMax_ = 5;
+  config.rangeLimMin_ = 0.3;
   config.rangeLimBuffer_ = 0.25;
 }
 
 RangeBearingModel::~RangeBearingModel(){}
 
-void RangeBearingModel::measure(Pose2d  &pose, Landmark2d &landmark, 
+bool RangeBearingModel::measure(Pose2d  &pose, Landmark2d &landmark, 
 				Measurement2d &measurement, 
 				Eigen::Matrix2d *jacobian){
 
@@ -49,6 +52,7 @@ void RangeBearingModel::measure(Pose2d  &pose, Landmark2d &landmark,
 
   range = sqrt(  pow(landmarkState(0) - robotPose(0), 2)
 		+pow(landmarkState(1) - robotPose(1), 2) );
+
   bearing = atan2( landmarkState(1) - robotPose(1) , landmarkState(0) - robotPose(0) ) - robotPose(2);
 
   while(bearing>PI) bearing-=2*PI;
@@ -65,6 +69,10 @@ void RangeBearingModel::measure(Pose2d  &pose, Landmark2d &landmark,
   if(jacobian != NULL)
     *jacobian = H;
 
+  if(range > config.rangeLimMax_ || range < config.rangeLimMin_)
+    return false;
+  else
+    return true;
 }
 
 void RangeBearingModel::inverseMeasure(Pose2d &pose, Measurement2d &measurement, 
@@ -73,9 +81,10 @@ void RangeBearingModel::inverseMeasure(Pose2d &pose, Measurement2d &measurement,
   Eigen::Vector2d measurementState, mean;
   Eigen::Matrix2d measurementUncertainty, covariance, Hinv;
   double t;
-
+ 
   pose.get(poseState);
-  measurement.get(measurementState, measurementUncertainty, t);
+  measurement.get(measurementState, t);
+  this->getNoise(measurementUncertainty); 
   mean << poseState(0) + measurementState(0) *cos( poseState(2) + measurementState(1) ),
           poseState(1) + measurementState(0) *sin( poseState(2) + measurementState(1) );
 
@@ -103,13 +112,15 @@ double RangeBearingModel::probabilityOfDetection( Pose2d &pose,
   range = sqrt(  pow(landmarkState(0) - robotPose(0), 2)
 		+pow(landmarkState(1) - robotPose(1), 2) );
 
-  if( range <= config.rangeLim_){
+  if( range <= config.rangeLimMax_ && range >= config.rangeLimMin_){
     Pd = config.probabilityOfDetection_;
-    if( range >= (config.rangeLim_ - config.rangeLimBuffer_ ) )
+    if( range >= (config.rangeLimMax_ - config.rangeLimBuffer_ ) ||
+	range <= (config.rangeLimMin_ + config.rangeLimBuffer_ ) )
       isCloseToSensingLimit = true;
   }else{
     Pd = 0;
-    if( range <= (config.rangeLim_ + config.rangeLimBuffer_ ) )
+    if( range <= (config.rangeLimMax_ + config.rangeLimBuffer_ ) || 
+	range >= (config.rangeLimMin_ - config.rangeLimBuffer_ ) )
       isCloseToSensingLimit = true;
   } 
 
@@ -123,7 +134,7 @@ double RangeBearingModel::clutterIntensity( Measurement2d &z,
 
 
 double RangeBearingModel::clutterIntensityIntegral( int nZ ){
-  double sensingArea_ = 2 * PI * config.rangeLim_;
+  double sensingArea_ = 2 * PI * (config.rangeLimMax_ - config.rangeLimMin_);
   return ( config.uniformClutterIntensity_ * sensingArea_ );
 }
 

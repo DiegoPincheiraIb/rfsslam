@@ -120,7 +120,7 @@ public:
    * Set the time
    * \param[in] t time
    */
-  void set( double t ){
+  void setTime( double t ){
     t_ = t;
   }
 
@@ -247,6 +247,14 @@ public:
    * \return element n
    */
   double get( int n ){ return x_(n);}
+
+  /**
+   * Get the time
+   * \return time
+   */
+  double getTime(){
+    return t_;
+  }
 
 
   /** 

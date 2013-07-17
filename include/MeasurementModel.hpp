@@ -58,8 +58,9 @@ public:
    * \param[out] measurement The measurement
    * \param[out] jacobian If not NULL, the pointed-to matrix will be overwritten 
    * by the Jacobian of the measurement model at the point where the prediction is made
+   * \return true if a measurement can be produced
    */
-  virtual void measure( PoseType &pose, LandmarkType &landmark, 
+  virtual bool measure( PoseType &pose, LandmarkType &landmark, 
 			MeasurementType &meaurement, 
 			Eigen::Matrix<double , 
 				      MeasurementType::Vec::RowsAtCompileTime ,
@@ -77,8 +78,9 @@ public:
    * and interpret as zero-mean-white-Gaussian noise
    * \param[in] useLandmarkWhiteGaussianNoise include the noise set for 
    * landmark and interpret as zero-mean-white-Gaussian noise
+   * \return true if sucessfully sampled a measurement
    */
-  void sample( PoseType &pose, LandmarkType &landmark, 
+  bool sample( PoseType &pose, LandmarkType &landmark, 
 	       MeasurementType &measurement,
       	       bool useAdditiveWhiteGaussianNoise = true,		       
 	       bool usePoseWhiteGaussianNoise = false,
@@ -106,14 +108,16 @@ public:
       RandomVecMathTools<LandmarkType>::sample(landmark, *landmark_sample);
     }
 
-    this->measure( *pose_sample, *landmark_sample, measurement);
+    bool success = this->measure( *pose_sample, *landmark_sample, measurement);
 
-    if(useAdditiveWhiteGaussianNoise){
+    if(success){
+      if(useAdditiveWhiteGaussianNoise){
 
-      typename MeasurementType::Vec z_k;
-      double t;
-      measurement.get(z_k, t );
-      RandomVecMathTools<MeasurementType>::sample(z_k, R_, L_, t, measurement);
+	typename MeasurementType::Vec z_k;
+	double t;
+	measurement.get(z_k, t );
+	RandomVecMathTools<MeasurementType>::sample(z_k, R_, L_, t, measurement);
+      }
     }
 
     
@@ -121,6 +125,9 @@ public:
       delete pose_sample;
     if(deallocateLandmark)
       delete landmark_sample;
+
+    return success;
+
   }
 
   /** 
@@ -218,7 +225,8 @@ public:
   struct Config{
     double probabilityOfDetection_; /** probability of detection */
     double uniformClutterIntensity_; /** clutter per area */
-    double rangeLim_; /**< sensing range limit, beyond which Pd = 0 */
+    double rangeLimMax_; /**< sensing range limit, beyond which Pd = 0 */
+    double rangeLimMin_; /**< sensing range limit, beyond which Pd = 0 */
     double rangeLimBuffer_; /**< A buffer for Pd ambiguity */
   }config;
 
@@ -249,8 +257,9 @@ public:
    * \param[out] measurement The measurement
    * \param[out] jacobian If not NULL, the pointed-to matrix will be overwritten 
    * by the Jacobian of the measurement model at the point where the prediction is made
+   * \return true if measurement is generated
    */
-  void measure( Pose2d &pose, Landmark2d &landmark, 
+  bool measure( Pose2d &pose, Landmark2d &landmark, 
 		Measurement2d &measurement, Eigen::Matrix2d *jacobian = NULL);
 
   /** 
@@ -377,7 +386,7 @@ public:
    * \param[out] jacobian If not NULL, the pointed-to matrix will be overwritten 
    * by the Jacobian of the measurement model at the point where the prediction is made
    */
-  void measure( Pose2d &pose, LandmarkType &landmark, 
+  bool measure( Pose2d &pose, LandmarkType &landmark, 
 		MeasurementType &measurement, Eigen::Matrix<double, 
 		MeasurementType::Vec::RowsAtCompileTime, 
 		LandmarkType::Vec::RowsAtCompileTime> *jacobian = NULL){
@@ -393,6 +402,7 @@ public:
   measurement.set(z, Sz);
   if(jacobian != NULL)
     *jacobian = H_;
+  return true;
 };
 
   /** 

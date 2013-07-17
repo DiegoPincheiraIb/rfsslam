@@ -84,28 +84,46 @@ public:
    * Evaluate the Gaussian likelihood of a evaluation point
    * \param[in] gaussian The Gaussian distribution represented by a random vector
    * \param[in] x_eval evaluation point
+   * \param[out] mDist2 if not NULL, stores the squared mahalanobis distance used 
+   * to calculate the likelihood
    * \return likelihood
    */
   static double evalGaussianLikelihood( RandomVecDerived &gaussian,
-				 RandomVecDerived &x_eval ){
+					RandomVecDerived &x_eval,
+					double* mDist2 = NULL){
     double nDim = gaussian.getNDim();
     double covDet = gaussian.getCovDet();
     double md2 = mahalanobisDist2( gaussian, x_eval );
-    return ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim) * covDet ) );
+    double l = ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim) * covDet ) );
+    //If md2 is very large, l will become NAN;
+    if( l != l)
+      l = 0;
+    if(mDist2 != NULL)
+      *mDist2 = md2;
+    return l;
   }
 
   /** 
    * Evaluate the Gaussian likelihood of a evaluation point
    * \param[in] gaussian The Gaussian distribution represented by a random vector
    * \param[in] x_eval evaluation point
+   * \param[out] mDist2 if not NULL, stores the squared mahalanobis distance used 
+   * to calculate the likelihood
    * \return likelihood
    */
   static double evalGaussianLikelihood( RandomVecDerived &gaussian,
-					typename RandomVecDerived::Vec &x_eval ){
+					typename RandomVecDerived::Vec &x_eval,
+					double* mDist2 = NULL ){
     double nDim = gaussian.getNDim();
     double covDet = gaussian.getCovDet();
     double md2 = mahalanobisDist2( gaussian, x_eval );
-    return ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim) * covDet ) );
+    double l = ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim) * covDet ) );
+    // If md2 is very large, l will become NAN;
+    if( l != l)
+      l = 0;
+    if(mDist2 != NULL)
+      *mDist2 = md2;
+    return l;
   }  
 
   /** 

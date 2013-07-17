@@ -56,8 +56,11 @@ public:
     vardz_ = cfg.lookup("Trajectory.vardz");
 
     nLandmarks_ = cfg.lookup("Landmarks.nLandmarks");
+    varlmx_ = cfg.lookup("Landmarks.varlmx");
+    varlmy_ = cfg.lookup("Landmarks.varlmy");
 
-    rangeLimit_ = cfg.lookup("Measurement.rangeLimit");
+    rangeLimitMax_ = cfg.lookup("Measurement.rangeLimitMax");
+    rangeLimitMin_ = cfg.lookup("Measurement.rangeLimitMin");
     rangeLimitBuffer_ = cfg.lookup("Measurement.rangeLimitBuffer");
     Pd_ = cfg.lookup("Measurement.probDetection");
     c_ = cfg.lookup("Measurement.clutterIntensity");
@@ -65,7 +68,14 @@ public:
     varzb_ = cfg.lookup("Measurement.varzb");
 
     nParticles_ = cfg.lookup("Filter.nParticles");
-
+    zNoiseInflation_ = cfg.lookup("Filter.measurementNoiseInflationFactor");
+    birthGaussianWeight_ = cfg.lookup("Filter.birthGaussianWeight");
+    newGaussianCreateInnovMDThreshold_ = cfg.lookup("Filter.newGaussianCreateInnovMDThreshold");
+    effNParticleThreshold_ = cfg.lookup("Filter.effectiveNumberOfParticlesThreshold");
+    minInterSampleTimesteps_ = cfg.lookup("Filter.minInterSampleTimesteps");
+    gaussianMergingThreshold_ = cfg.lookup("Filter.gaussianMergingThreshold");
+    gaussianMergingCovarianceInflationFactor_ = cfg.lookup("Filter.gaussianMergingCovarianceInflationFactor");
+    gaussianPruningThreshold_ = cfg.lookup("Filter.gaussianPruningThreshold");
     return true;   
   }
 
@@ -104,12 +114,12 @@ public:
       }
 
       groundtruth_displacement_.push_back(input_k);
-      groundtruth_displacement_.back().set(k);
+      groundtruth_displacement_.back().setTime(k);
 
       OdometryMotionModel2d::TState x_k;
       motionModel.step(x_k, groundtruth_pose_[k-1], input_k);
       groundtruth_pose_.push_back( x_k );
-      groundtruth_pose_.back().set(k);
+      groundtruth_pose_.back().setTime(k);
       
       /*OdometryMotionModel2d::TState::Vec x;
       OdometryMotionModel2d::TInput::Vec u;
@@ -172,7 +182,7 @@ public:
 	RangeBearingModel::TPose pose;
 	RangeBearingModel::TMeasurement measurementToCreateLandmark;
 	RangeBearingModel::TMeasurement::Vec z;
-	double r = drand48() * rangeLimit_;
+	double r = drand48() * rangeLimitMax_;
 	double b = drand48() * 2 * PI;
 	z << r, b;
 	measurementToCreateLandmark.set(z);
@@ -183,11 +193,6 @@ public:
 					 lm);
 
 	groundtruth_landmark_.push_back(lm);
-	//groundtruth_landmark_[nLandmarksCreated] = lm;
-	
-	/*printf("Landmark[%d] = [%f %f]\n", nLandmarksCreated,
-	       groundtruth_landmark_[nLandmarksCreated].State::get(0),
-	       groundtruth_landmark_[nLandmarksCreated].State::get(1));*/
 
 	nLandmarksCreated++;
 	
@@ -200,14 +205,13 @@ public:
   void generateMeasurements(){
 
 
-    RangeBearingModel measurementModel( varzr_, varzb_);
-    measurementModel.config.rangeLim_ = rangeLimit_;
+    RangeBearingModel measurementModel( varzr_, varzb_ );
+    measurementModel.config.rangeLimMax_ = rangeLimitMax_;
+    measurementModel.config.rangeLimMin_ = rangeLimitMin_;
     measurementModel.config.probabilityOfDetection_ = Pd_;
     measurementModel.config.uniformClutterIntensity_ = c_;
     double meanClutter = measurementModel.clutterIntensityIntegral();
-
-    printf("Generating measurements with mean clutter = %f\n", meanClutter);
-
+    
     double expNegMeanClutter = exp( -meanClutter );
     double poissonPmf[100];
     double poissonCmf[100];
@@ -229,17 +233,22 @@ public:
       // Real detections
       for( int m = 0; m < groundtruth_landmark_.size(); m++){
 	
+	bool success;
 	RangeBearingModel::TMeasurement z_m_k;
-	measurementModel.sample( groundtruth_pose_[k],
-				 groundtruth_landmark_[m],
-				 z_m_k);
-	
-	z_m_k.set(k);
+	success = measurementModel.sample( groundtruth_pose_[k],
+					   groundtruth_landmark_[m],
+					   z_m_k);
+	/*success = measurementModel.measure( groundtruth_pose_[k],
+					   groundtruth_landmark_[m],
+					   z_m_k);*/
+	if(success){
+	  z_m_k.setTime(k);
    
-        if(z_m_k.get(0) <= rangeLimit_ && drand48() <= Pd_){
-	  /*printf("Measurement[%d] = [%f %f]\n", int(measurements_.size()),
-	    z_m_k.get(0), z_m_k.get(1)); */
-	  measurements_.push_back( z_m_k );
+	  if(z_m_k.get(0) <= rangeLimitMax_ && z_m_k.get(0) >= rangeLimitMin_ && drand48() <= Pd_){
+	    /*printf("Measurement[%d] = [%f %f]\n", int(measurements_.size()),
+	      z_m_k.get(0), z_m_k.get(1)); */
+	    measurements_.push_back( z_m_k );
+	  }
 	}
 
       }
@@ -252,7 +261,7 @@ public:
       }
       for( int i = 0; i < nClutterToGen; i++ ){
 	
-	double r = drand48() * rangeLimit_;
+	double r = drand48() * rangeLimitMax_;
 	double b = drand48() * 2 * PI - PI;
 	RangeBearingModel::TMeasurement z_clutter;
 	RangeBearingModel::TMeasurement::Vec z;
@@ -330,18 +339,105 @@ public:
     pFilter_->getProcessModel()->setNoise(Q);
 
     // configure landmark process model
-    // Landmark2d::Mat Q_lm;
-    // Q_lm.setZero();
-    // pFilter_->getLmkProcessModel()->setNoise(Q_lm);
+    Landmark2d::Mat Q_lm;
+    Q_lm << varlmx_, 0, 0, varlmy_;
+    pFilter_->getLmkProcessModel()->setNoise(Q_lm);
 
     // configure measurement model
     RangeBearingModel::TMeasurement::Mat R;
     R << varzr_, 0, 0, varzb_;
+    R *= zNoiseInflation_;
     pFilter_->getMeasurementModel()->setNoise(R);
     pFilter_->getMeasurementModel()->config.probabilityOfDetection_ = Pd_;
     pFilter_->getMeasurementModel()->config.uniformClutterIntensity_ = c_;
-    pFilter_->getMeasurementModel()->config.rangeLim_ = rangeLimit_;
+    pFilter_->getMeasurementModel()->config.rangeLimMax_ = rangeLimitMax_;
+    pFilter_->getMeasurementModel()->config.rangeLimMin_ = rangeLimitMin_;
     pFilter_->getMeasurementModel()->config.rangeLimBuffer_ = rangeLimitBuffer_;
+
+    // configure the filter
+    pFilter_->config.birthGaussianWeight_ = birthGaussianWeight_;
+    pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
+    pFilter_->config.minInterSampleTimesteps_ = minInterSampleTimesteps_;
+    pFilter_->config.newGaussianCreateInnovMDThreshold_ = newGaussianCreateInnovMDThreshold_;
+  }
+
+  void run(){
+
+    printf("Running simulation\n\n");
+    
+    FILE* pParticlePoseFile;
+    pParticlePoseFile = fopen("data/particlePose.dat", "w");
+    fprintf( pParticlePoseFile, "Timesteps: %d\n", kMax_);
+    fprintf( pParticlePoseFile, "nParticles: %d\n\n", pFilter_->getParticleCount());
+
+    FILE* pLandmarkEstFile;
+    pLandmarkEstFile = fopen("data/landmarkEst.dat", "w");
+    fprintf( pLandmarkEstFile, "Timesteps: %d\n", kMax_);
+    fprintf( pLandmarkEstFile, "nParticles: %d\n\n", pFilter_->getParticleCount());
+
+    OdometryMotionModel2d::TState x_i;
+    int zIdx = 0;
+
+    for(int i = 0; i < pFilter_->getParticleCount(); i++){
+      pFilter_->getParticleSet()->at(i)->getPose(x_i);
+      fprintf( pParticlePoseFile, "%f   %f   %f   1.0\n", x_i.get(0), x_i.get(1), x_i.get(2));
+    }
+
+    for(int k = 1; k < kMax_; k++){
+
+      if( k % 1 == 0)
+	printf("k = %d\n", k);
+      fprintf( pParticlePoseFile, "k = %d\n", k);
+
+      pFilter_->predict( odometry_[k], k );
+      //for( int i = 0; i < nParticles_; i++)
+      //pFilter_->setParticlePose(0, groundtruth_pose_[k]);
+
+      // Prepare measurement vector for update
+      std::vector<RangeBearingModel::TMeasurement> Z;
+      double kz = measurements_[ zIdx ].getTime();
+      while( kz == k ){
+	Z.push_back( measurements_[zIdx] );
+	zIdx++;
+	if(zIdx >= measurements_.size())
+	  break;
+	kz = measurements_[ zIdx ].getTime();
+      }
+
+      pFilter_->update(Z, k);
+      
+      // Log particle poses
+      for(int i = 0; i < pFilter_->getParticleCount(); i++){
+	pFilter_->getParticleSet()->at(i)->getPose(x_i);
+	double w = pFilter_->getParticleSet()->at(i)->getWeight();
+	fprintf( pParticlePoseFile, "%f   %f   %f   %f\n", x_i.get(0), x_i.get(1), x_i.get(2), w);
+      }
+      fprintf( pParticlePoseFile, "\n");
+
+      // Log landmark estimates
+      for(int i = 0; i < pFilter_->getParticleCount(); i++){
+	int mapSize = pFilter_->getGMSize(i);
+	fprintf( pLandmarkEstFile, "Timestep: %d\tParticle: %d\tMap Size: %d\n", k, i, mapSize);
+	for( int m = 0; m < mapSize; m++ ){
+	  RangeBearingModel::TLandmark::Vec u;
+	  RangeBearingModel::TLandmark::Mat S;
+	  double w;
+	  pFilter_->getLandmark(i, m, u, S, w);
+	  
+	  fprintf( pLandmarkEstFile, "%f   %f      ", u(0), u(1));
+	  fprintf( pLandmarkEstFile, "%f   %f   ", S(0,0), S(0,1));
+	  fprintf( pLandmarkEstFile, "%f   %f   ", S(1,0), S(1,1));
+	  fprintf( pLandmarkEstFile, "   %f\n", w );
+	}
+	fprintf( pLandmarkEstFile, "\n");
+      }
+      fprintf( pLandmarkEstFile, "\n");
+
+
+    }
+    fclose(pParticlePoseFile);
+    fclose(pLandmarkEstFile);
+
   }
 
 private:
@@ -366,9 +462,12 @@ private:
   // Landmarks 
   int nLandmarks_;
   std::vector<RangeBearingModel::TLandmark> groundtruth_landmark_;
+  double varlmx_;
+  double varlmy_;
 
   // Range-Bearing Measurements
-  double rangeLimit_;
+  double rangeLimitMax_;
+  double rangeLimitMin_;
   double rangeLimitBuffer_;
   double Pd_;
   double c_;
@@ -383,7 +482,14 @@ private:
 	      RangeBearingModel,  
 	      RangeBearingKalmanFilter> *pFilter_; 
   int nParticles_;
-
+  double zNoiseInflation_;
+  double birthGaussianWeight_;
+  double newGaussianCreateInnovMDThreshold_;
+  double effNParticleThreshold_;
+  int minInterSampleTimesteps_;
+  double gaussianMergingThreshold_;
+  double gaussianMergingCovarianceInflationFactor_;
+  double gaussianPruningThreshold_;
 };
 
 int main(int argc, char* argv[]){
@@ -405,8 +511,9 @@ int main(int argc, char* argv[]){
   sim.generateLandmarks();
   sim.generateMeasurements();
   sim.exportSimData();
-
+ ;
   sim.setupRBPHDFilter();
+  sim.run();
 
   return 0;
 
