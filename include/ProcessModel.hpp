@@ -231,4 +231,47 @@ private:
   
 };
 
+
+
+/*
+ * \class OdometryMotionModel1d
+ * \brief A 1d odometry motion model with translational displacement
+ * \author Keith Leung
+ */
+class OdometryMotionModel1d : public ProcessModel< Pose1d, Odometry1d >
+{
+public:
+
+  /** Default constructor */
+  OdometryMotionModel1d(){}
+
+  /** Constructor with process noise input 
+   * \param S additive zero-mean white Gaussian noise variance
+   */
+  OdometryMotionModel1d( Pose1d::Mat S );
+
+  /** Default destructor */
+  ~OdometryMotionModel1d(){}
+
+   /** 
+   * This overrides the virtual function in the parent class for
+   * determining the position at time-step k from position at time-step k-1
+   * \param s_k position at current time-step k [overwritten]
+   * \param s_km position at previous time-step k-1
+   * \param input_k input to process model
+   * \param dT size of time-step (not used)
+   */
+  void step( Pose1d &s_k, Pose1d &s_km, Odometry1d &input_k, 
+	     double const dT=0);
+  
+private:
+
+  Pose1d::Vec x_km_; /**< position at k-1 */
+  Pose1d::Vec x_k_;  /**< position at k */
+  Odometry1d::Vec u_k_; /**< odometry from k-1 to k */
+
+
+};
+
+
 #endif

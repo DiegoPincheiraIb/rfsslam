@@ -157,7 +157,6 @@ correct(TPose &pose, TMeasurement &measurement,
 
   Eigen::Matrix < double , TPose::Vec::RowsAtCompileTime, 1> x;
   Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1> z_act;
-  Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> R;
   Eigen::Matrix < double , TLandmark::Vec::RowsAtCompileTime, 1> m, m_updated;
   Eigen::Matrix < double , TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime> P, P_updated;;
   
@@ -165,12 +164,11 @@ correct(TPose &pose, TMeasurement &measurement,
   pose.get( x );
   landmark_current.get(m , P);
   measurement.get(z_act , t);
-  pMeasurementModel_->getNoise(R);
     
   pMeasurementModel_->measure( pose , landmark_current , measurement_exp_ , &H_);
  
   measurement_exp_.get(z_exp_ , z_exp_cov_ , t);
-  S_ = z_exp_cov_ + R;
+  S_ = z_exp_cov_;
   S_inv_ = S_.inverse();
   K_ = P * H_.transpose() * S_inv_;
   P_updated = ( I_ - K_*H_ ) * P;

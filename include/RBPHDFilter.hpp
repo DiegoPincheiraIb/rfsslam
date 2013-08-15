@@ -63,10 +63,10 @@ public:
     */
     int importanceWeightingEvalPointCount_;
 
-    /** The threshold used to determine if a possible meaurement-landmark
+    /** The mahalanobis distance threshold used to determine if a possible meaurement-landmark
      *  pairing is significant to worth considering 
      */
-    double importanceWeightingMeasurementLikelihoodThreshold_;
+    double importanceWeightingMeasurementLikelihoodMDThreshold_;
 
     /** Gaussian merging Mahalanobis distance threshold */
     double gaussianMergingThreshold_;
@@ -219,7 +219,7 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   config.gaussianMergingCovarianceInflationFactor_ = 1.5;
   config.gaussianPruningThreshold_ = 0.2;
   config.importanceWeightingEvalPointCount_ = 8;
-  config.importanceWeightingMeasurementLikelihoodThreshold_ = 0.1;
+  config.importanceWeightingMeasurementLikelihoodMDThreshold_ = 3.0;
   config.newGaussianCreateInnovMDThreshold_ = 0.2;
   config.minInterSampleTimesteps_ = 5;
   
@@ -251,6 +251,8 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   // propagate particles
   k_currentTimestep_ = currentTimestep;
   this->propagate(u);
+
+  // propagate landmarks
   for( int i = 0; i < this->nParticles_; i++ ){
     for( int m = 0; m < maps_[i]->getGaussianCount(); m++){
       TLandmark *plm;
@@ -451,7 +453,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
     for(int m = 0; m < nM; m++){
       for(int z = 0; z < nZ; z++){
-	if(newLandmarkPointer[m][z] != NULL){
+	if(newLandmarkPointer[m][z] != NULL && weightingTable[m][z] > 0){
 	  maps_[i]->addGaussian( newLandmarkPointer[m][z], weightingTable[m][z]);  
 	}
       }
@@ -481,14 +483,13 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     //----------  5. Identify unused measurements for adding birth Gaussians later ----------
     unused_measurements_[i].clear();
     for(int z = 0; z < nZ; z++){
-      bool unused = true;
+      int useCount = 0;
       for(int m = 0; m < nM; m++){
 	if (weightingTable[m][z] != 0){
-	  unused = false;
-	  break;
+	  useCount++;
 	}
       }
-      if (unused)
+      if (useCount != 1)
 	unused_measurements_[i].push_back( z );
     }
 
@@ -656,10 +657,12 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
       this->pMeasurementModel_->measure( x, *evalPt, expected_z);
       TMeasurement actual_z = this->measurements_[z];
       
+      double md2;
+      double threshold = config.importanceWeightingMeasurementLikelihoodMDThreshold_;
+      threshold *= threshold;
       double likelihood = RandomVecMathTools<TMeasurement>::
-	evalGaussianLikelihood( actual_z, expected_z );
-      
-      if( likelihood >= config.importanceWeightingMeasurementLikelihoodThreshold_ ){
+	evalGaussianLikelihood( actual_z, expected_z, &md2 );
+      if( md2 <= threshold ){
 	row[z] = likelihood * Pd;
 	row_sum += row[z];
       }else{

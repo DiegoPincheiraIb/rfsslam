@@ -71,6 +71,7 @@ public:
     zNoiseInflation_ = cfg.lookup("Filter.measurementNoiseInflationFactor");
     birthGaussianWeight_ = cfg.lookup("Filter.birthGaussianWeight");
     newGaussianCreateInnovMDThreshold_ = cfg.lookup("Filter.newGaussianCreateInnovMDThreshold");
+    importanceWeightingMeasurementLikelihoodMDThreshold_ = cfg.lookup("Filter.importanceWeightingMeasurementLikelihoodMDThreshold");
     effNParticleThreshold_ = cfg.lookup("Filter.effectiveNumberOfParticlesThreshold");
     minInterSampleTimesteps_ = cfg.lookup("Filter.minInterSampleTimesteps");
     gaussianMergingThreshold_ = cfg.lookup("Filter.gaussianMergingThreshold");
@@ -359,6 +360,7 @@ public:
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
     pFilter_->config.minInterSampleTimesteps_ = minInterSampleTimesteps_;
     pFilter_->config.newGaussianCreateInnovMDThreshold_ = newGaussianCreateInnovMDThreshold_;
+    pFilter_->config.importanceWeightingMeasurementLikelihoodMDThreshold_ = importanceWeightingMeasurementLikelihoodMDThreshold_;
   }
 
   void run(){
@@ -485,6 +487,7 @@ private:
   double zNoiseInflation_;
   double birthGaussianWeight_;
   double newGaussianCreateInnovMDThreshold_;
+  double importanceWeightingMeasurementLikelihoodMDThreshold_;
   double effNParticleThreshold_;
   int minInterSampleTimesteps_;
   double gaussianMergingThreshold_;

@@ -8,9 +8,52 @@
 
 /********** Define a 1d vehicle pose state **********/
 
-/** Definition for 1d pose */
-typedef RandomVec< Eigen::Matrix<double, 1, 1>,
-		   Eigen::Matrix<double, 1, 1> > Pose1d;
+/**
+ * \class Pose1d
+ * \brief Vehicle position
+ * \author Keith Leung
+ * \note The custom constructors are defined for convenience.
+ */
+class Pose1d : public RandomVec< Eigen::Matrix<double, 1, 1>,
+				 Eigen::Matrix<double, 1, 1> >
+{
+public:
+
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  /** Default constructor */
+  Pose1d();
+
+  /** Constructor 
+   *  \param x position
+   *  \param Sx variance
+   *  \param t time
+   */
+  Pose1d(double x, double Sx, double t = -1);
+
+  /** Constructor 
+   *  \param x position
+   *  \param Sx variance
+   *  \param t time
+   */
+  Pose1d(Eigen::Matrix<double, 1, 1> &x, Eigen::Matrix<double, 1, 1> &Sx, double t = -1);
+
+  /** Constructor 
+   *  \param x position
+   *  \param t time
+   */
+  Pose1d(double x, double t = -1);
+
+  /** Constructor 
+   *  \param x position
+   *  \param t time
+   */
+  Pose1d(Eigen::Matrix<double, 1, 1> &x, double t = -1);
+
+  /** Destructor */
+  ~Pose1d(){}
+
+};
 
 /********** Example implementation of a 2d vehicle pose state **********/
 
