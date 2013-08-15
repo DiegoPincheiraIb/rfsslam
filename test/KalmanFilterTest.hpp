@@ -96,7 +96,7 @@ public:
 
     landmark.get(land,S_land);
     z=H_*land;
-    Sz=H_*S_land*H_.transpose();
+    Sz=H_*S_land*H_.transpose() + this->R_;
     measurement.set(z, Sz);
     if(jacobian != NULL)
       *jacobian = H_;
