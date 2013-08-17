@@ -207,6 +207,8 @@ public:
 
 
     RangeBearingModel measurementModel( varzr_, varzb_ );
+    RangeBearingModel::TMeasurement::Mat R;
+    measurementModel.getNoise(R);
     measurementModel.config.rangeLimMax_ = rangeLimitMax_;
     measurementModel.config.rangeLimMin_ = rangeLimitMin_;
     measurementModel.config.probabilityOfDetection_ = Pd_;
@@ -243,11 +245,12 @@ public:
 					   groundtruth_landmark_[m],
 					   z_m_k);*/
 	if(success){
-	  z_m_k.setTime(k);
    
 	  if(z_m_k.get(0) <= rangeLimitMax_ && z_m_k.get(0) >= rangeLimitMin_ && drand48() <= Pd_){
 	    /*printf("Measurement[%d] = [%f %f]\n", int(measurements_.size()),
 	      z_m_k.get(0), z_m_k.get(1)); */
+	    z_m_k.setTime(k);
+	    z_m_k.setCov(R);
 	    measurements_.push_back( z_m_k );
 	  }
 	}
@@ -514,7 +517,7 @@ int main(int argc, char* argv[]){
   sim.generateLandmarks();
   sim.generateMeasurements();
   sim.exportSimData();
- ;
+ 
   sim.setupRBPHDFilter();
   sim.run();
 

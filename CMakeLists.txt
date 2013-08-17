@@ -56,3 +56,6 @@ ADD_TEST(unitTest bin/unitTest)
 
 ADD_EXECUTABLE(sim2d src/simulation2d.cpp src/Measurement.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(sim2d config++ ProcessModel MeasurementModel)
+
+ADD_EXECUTABLE(sim1d src/simulation1d.cpp src/Measurement.cpp src/Pose.cpp)
+TARGET_LINK_LIBRARIES(sim1d config++ ProcessModel MeasurementModel)

@@ -71,7 +71,7 @@ public:
    * Sample a measurement with noise
    * \param[in] pose robot pose 
    * \param[in] landmark The measured landmark
-   * \param[out] measurement Sampled measurement
+   * \param[out] measurement Sampled measurement (which does not contain uncertainty information)
    * \param[in] useAdditiveWhiteGaussianNoise include the zero-mean white 
    * Gaussian noise set for this model
    * \param[in] usePoseWhiteGaussianNoise include the noise set for the pose 
