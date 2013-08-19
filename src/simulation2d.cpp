@@ -152,7 +152,8 @@ public:
 
     for( int k = 1; k < kMax_; k++){
       
-      OdometryMotionModel2d::TInput &in = groundtruth_displacement_[k];
+      OdometryMotionModel2d::TInput in = groundtruth_displacement_[k];
+      in.setCov(Q);
       OdometryMotionModel2d::TInput out;
       RandomVecMathTools<OdometryMotionModel2d::TInput>::sample(in, out);
       /*printf("u[%d] = [%f %f %f]  u_[%d] = [%f %f %f]\n", 

@@ -232,15 +232,15 @@ double MeasurementModel1d::probabilityOfDetection( Pose1d &pose,
 
   if( range <= config.rangeLimMax_ && range >= config.rangeLimMin_){
     Pd = config.probabilityOfDetection_;
-    if( range >= (config.rangeLimMax_ - config.rangeLimBuffer_ ) ||
-	range <= (config.rangeLimMin_ + config.rangeLimBuffer_ ) )
-      isCloseToSensingLimit = true;
   }else{
     Pd = 0;
-    if( range <= (config.rangeLimMax_ + config.rangeLimBuffer_ ) || 
-	range >= (config.rangeLimMin_ - config.rangeLimBuffer_ ) )
-      isCloseToSensingLimit = true;
   } 
+
+  if( ( range >= (config.rangeLimMax_ - config.rangeLimBuffer_ ) &&
+	range <= (config.rangeLimMax_ + config.rangeLimBuffer_ ) ) ||
+      ( range >= (config.rangeLimMin_ - config.rangeLimBuffer_ ) &&
+	range <= (config.rangeLimMin_ + config.rangeLimBuffer_ ) ) )
+    isCloseToSensingLimit = true;
 
   return Pd;
 }
