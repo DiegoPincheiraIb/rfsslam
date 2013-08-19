@@ -186,14 +186,14 @@ bool MeasurementModel1d::measure(Pose1d &pose, Landmark1d &landmark,
   landmark.get(lmkPos, lmkPosUncertainty);
   z = lmkPos - robotPos;
   H << 1;
-  var = H + R_;
+  var = H * lmkPosUncertainty * H.transpose() + R_;
 
   measurement.set(z, var);
 
   if(jacobian != NULL)
     *jacobian = H;
 
-  if(abs(z(0)) > config.rangeLimMax_ || abs(z(0)) < config.rangeLimMin_)
+  if(fabs(z(0)) > config.rangeLimMax_ || fabs(z(0)) < config.rangeLimMin_)
     return false;
   else
     return true;
@@ -228,7 +228,7 @@ double MeasurementModel1d::probabilityOfDetection( Pose1d &pose,
 
   pose.get(robotPose);
   landmark.get(landmarkState);
-  range = abs( landmarkState(0) - robotPose(0) );
+  range = fabs( landmarkState(0) - robotPose(0) );
 
   if( range <= config.rangeLimMax_ && range >= config.rangeLimMin_){
     Pd = config.probabilityOfDetection_;

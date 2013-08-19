@@ -265,7 +265,7 @@ bool ParticleFilter<ProcessModel, MeasurementModel>::resample( unsigned int n ){
   if( nEffParticles_ > effNParticles_t_ ){
     return false; // no resampling
   }else{
-    printf("Resampling triggered. Effective N Particles = %f   Threshold = %f\n", nEffParticles_, effNParticles_t_);
+    //printf("Resampling triggered. Effective N Particles = %f   Threshold = %f\n", nEffParticles_, effNParticles_t_);
   }
 
   if( n == 0 )

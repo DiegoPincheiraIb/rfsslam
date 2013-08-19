@@ -69,5 +69,5 @@ for k = 1:kMax{1} - 1
     end
 end
 
-%playCPP2dSimData;
+%playCPP1dSimData;
    
