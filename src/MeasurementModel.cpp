@@ -207,6 +207,10 @@ void MeasurementModel1d::inverseMeasure(Pose1d &pose, Measurement1d &measurement
   Measurement1d::Vec z;
   Landmark1d::Vec m;
  
+  pose.get(x);
+  measurement.get(z);
+  landmark.get(m);
+
   m = x + z;
   landmark.set( m, R_ );
 
