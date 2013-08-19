@@ -109,7 +109,7 @@ public:
   /**
    * Update the map, calculate importance weighting, sample if necessary, and
    * create new birth Gaussians.
-   * \param[in] Z set of measurements to use for the update, placed in a stl vector, which
+   * \param[in] Z set of measurements to use for the update, placed in a std vector, which
    * gets cleared after the function call. 
    * \param[in] currentTimestep current timestep;
    */
@@ -378,9 +378,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       newLandmarkPointer[n] = new TLandmark* [ nZ ];
     }
 
-    for(int m = 0; m < nM; m++){
-      double w = maps_[i]->getWeight(m);
-    }
+
 
     //----------  2. Kalman Filter map update ----------
 

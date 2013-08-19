@@ -1,8 +1,5 @@
-i=0
-for file in `ls *.png` ;do
-  let "i+=1"
-done 
-echo $i
+
+
 
 echo making  frames
 i=1
@@ -16,7 +13,7 @@ done
 
 
 echo encoding video
-avconv -r 20 -i %d.png -b 15M -s 640x480 ../Strats.mp4
+avconv -r 20 -i %d.bmp -b 15M -s 640x480 ../Strats.mp4
 
 
 

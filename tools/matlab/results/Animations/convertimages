@@ -1,5 +1,19 @@
-for file in `ls *.pdf`; do
+tot=0
+for file in `ls *.pdf` ;do
+  let "tot+=1"
+done 
+
+i=0
+for file in `ls -r *.pdf`; do
+  if [ -a `echo $file | sed 's/\.pdf$/\.png/'` ]
+  then
+    let "i+=1"
+    echo -n -e $i/$tot'\r'
+    continue
+  fi
        convert  -resize 680x200 -density 600  $file `echo $file | sed 's/\.pdf$/\.png/'`
+       let "i+=1"
+       echo -n -e $i/$tot'\r'
 done
 
 

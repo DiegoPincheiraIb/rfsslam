@@ -16,7 +16,7 @@ simulator_seed = 18;
 
 noise_motion = [0.1, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15]; 
 noise_obs = [0.1, 1e-10, 1e-10];
-P_detection_static = 0.85;
+P_detection_static = 0.95;
 P_false_alarm_static = 0.01;
 P_feature_existence_prior = 0.5;
 N_c = 0.1; % number of expected clutter measurements per timestep
@@ -28,7 +28,7 @@ data_generation_seed = 18; %8-8, 68-8, 18-10, 18-np=10-k=3000
 filter_type = 'rb-phd';
 %filter_type = 'fastSLAM';
 
-n_particles = 25;
+n_particles = 50;
 n_particles_max = 100;
 n_particles_max_spawn = 5; % for MH-FastSLAM, max number of particles that can be spawned from a single particle
 map_size_limit = 1000; % number of Gaussians in each particle's map
