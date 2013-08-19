@@ -150,7 +150,7 @@ ParticleFilter(int n, TPose* initState){
   bool noInitState = true; 
   if(initState == NULL){
     typename TPose::Vec x0;
-    x0 << 0, 0, 0;  
+    x0.setZero();  
     initState = new TPose(x0, 0);
   }else{
     noInitState = false;

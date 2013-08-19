@@ -132,7 +132,7 @@ public:
    * \param[in] f_inflation Merged Gaussian inflation factor
    * \return number of merging operations
    */
-  unsigned int merge(const double t = 0.1, const double f_inflation = 1.0);
+  unsigned int merge(const double t = 0.31622776601, const double f_inflation = 1.0);
 
   /**
    * Merge two Guassians if the second is within a Mahalanobis distance of the first. 

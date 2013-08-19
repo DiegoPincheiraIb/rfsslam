@@ -71,6 +71,7 @@ public:
     zNoiseInflation_ = cfg.lookup("Filter.measurementNoiseInflationFactor");
     birthGaussianWeight_ = cfg.lookup("Filter.birthGaussianWeight");
     newGaussianCreateInnovMDThreshold_ = cfg.lookup("Filter.newGaussianCreateInnovMDThreshold");
+    importanceWeightingMeasurementLikelihoodMDThreshold_ = cfg.lookup("Filter.importanceWeightingMeasurementLikelihoodMDThreshold");
     effNParticleThreshold_ = cfg.lookup("Filter.effectiveNumberOfParticlesThreshold");
     minInterSampleTimesteps_ = cfg.lookup("Filter.minInterSampleTimesteps");
     gaussianMergingThreshold_ = cfg.lookup("Filter.gaussianMergingThreshold");
@@ -206,6 +207,8 @@ public:
 
 
     RangeBearingModel measurementModel( varzr_, varzb_ );
+    RangeBearingModel::TMeasurement::Mat R;
+    measurementModel.getNoise(R);
     measurementModel.config.rangeLimMax_ = rangeLimitMax_;
     measurementModel.config.rangeLimMin_ = rangeLimitMin_;
     measurementModel.config.probabilityOfDetection_ = Pd_;
@@ -242,11 +245,12 @@ public:
 					   groundtruth_landmark_[m],
 					   z_m_k);*/
 	if(success){
-	  z_m_k.setTime(k);
    
 	  if(z_m_k.get(0) <= rangeLimitMax_ && z_m_k.get(0) >= rangeLimitMin_ && drand48() <= Pd_){
 	    /*printf("Measurement[%d] = [%f %f]\n", int(measurements_.size()),
 	      z_m_k.get(0), z_m_k.get(1)); */
+	    z_m_k.setTime(k);
+	    z_m_k.setCov(R);
 	    measurements_.push_back( z_m_k );
 	  }
 	}
@@ -359,6 +363,7 @@ public:
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
     pFilter_->config.minInterSampleTimesteps_ = minInterSampleTimesteps_;
     pFilter_->config.newGaussianCreateInnovMDThreshold_ = newGaussianCreateInnovMDThreshold_;
+    pFilter_->config.importanceWeightingMeasurementLikelihoodMDThreshold_ = importanceWeightingMeasurementLikelihoodMDThreshold_;
   }
 
   void run(){
@@ -485,6 +490,7 @@ private:
   double zNoiseInflation_;
   double birthGaussianWeight_;
   double newGaussianCreateInnovMDThreshold_;
+  double importanceWeightingMeasurementLikelihoodMDThreshold_;
   double effNParticleThreshold_;
   int minInterSampleTimesteps_;
   double gaussianMergingThreshold_;
@@ -511,7 +517,7 @@ int main(int argc, char* argv[]){
   sim.generateLandmarks();
   sim.generateMeasurements();
   sim.exportSimData();
- ;
+ 
   sim.setupRBPHDFilter();
   sim.run();
 

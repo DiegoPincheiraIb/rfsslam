@@ -1,7 +1,7 @@
 #include <math.h>
 #include "ProcessModel.hpp"
 
-/********** Implementation for an examples 2D motion model **********/
+/********** Implementation for a 2D motion model **********/
 
 OdometryMotionModel2d::OdometryMotionModel2d(){}
 
@@ -42,3 +42,24 @@ void OdometryMotionModel2d::step(  Pose2d &s_k,
   s_k.set(x_k_i_);
 }
 
+
+/************ Implementation of a 1D motion model ***********/
+
+OdometryMotionModel1d::OdometryMotionModel1d( Pose1d::Mat S ) : ProcessModel(S) {}
+
+void OdometryMotionModel1d::step ( Pose1d &s_k, Pose1d &s_km, Odometry1d &input_k, 
+				   double const dT){
+
+  /* k - 1 */
+  s_km.get(x_km_);
+
+  /* odometry */
+  input_k.get(u_k_);
+
+  /* step forward */
+  x_k_ = x_km_ + u_k_;
+
+  /* write state at k */
+  s_k.set(x_k_);
+
+}

@@ -8,14 +8,19 @@
 
 /** Definition for a  NULL measurement */
 typedef RandomVec < Eigen::Matrix<double, 1, 1>,
-		      Eigen::Matrix<double, 1, 1> > NullInput;
+		    Eigen::Matrix<double, 1, 1> > NullInput;
 
 /** Definition for 1d measurement */
 typedef RandomVec < Eigen::Matrix<double, 1, 1>,
-		      Eigen::Matrix<double, 1, 1> > Measurement1d;
+		    Eigen::Matrix<double, 1, 1> > Measurement1d;
 
 /** Definition for 2d measurement */
 typedef RandomVec <Eigen::Vector2d, Eigen::Matrix2d> Measurement2d;
+
+
+/** Definition for 1d odometry */
+typedef RandomVec <  Eigen::Matrix<double, 1, 1>,
+		     Eigen::Matrix<double, 1, 1> > Odometry1d;
 
 
 /********** Examples implementation of 2d odometry measurement **********/

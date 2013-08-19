@@ -1,6 +1,31 @@
 #include "Pose.hpp"
 
-/********** Implementation of example 2d vehicle pose state **********/
+/********** Implementation of 1d vechile position state ***********/
+
+Pose1d::Pose1d(){}
+
+Pose1d::Pose1d(double x, double Sx, double t){
+  Vec state;
+  Mat cov;
+  state << x;
+  cov << Sx;
+  set(state, cov, t);
+}
+
+Pose1d::Pose1d(Eigen::Matrix<double, 1, 1> &x, Eigen::Matrix<double, 1, 1> &Sx, double t):
+  RandomVec< Eigen::Matrix<double, 1, 1>, Eigen::Matrix<double, 1, 1> >(x, Sx, t){}
+
+Pose1d::Pose1d(double x, double t){
+  Vec state;
+  state << x;
+  set(state, t);
+}
+
+Pose1d::Pose1d(Eigen::Matrix<double, 1, 1> &x, double t):
+  RandomVec< Eigen::Matrix<double, 1, 1>, Eigen::Matrix<double, 1, 1> >(x, t){}
+
+
+/********** Implementation of 2d vehicle pose state **********/
 
 Pose2d::Pose2d(){}
 
