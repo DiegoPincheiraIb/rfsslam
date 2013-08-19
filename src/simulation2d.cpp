@@ -164,6 +164,7 @@ public:
 
       OdometryMotionModel2d::TState p;
       motionModel.step(p, deadReckoning_pose_[k-1], odometry_[k]);
+      p.setTime(k);
       deadReckoning_pose_.push_back( p );
     }
 
@@ -365,6 +366,10 @@ public:
     pFilter_->config.minInterSampleTimesteps_ = minInterSampleTimesteps_;
     pFilter_->config.newGaussianCreateInnovMDThreshold_ = newGaussianCreateInnovMDThreshold_;
     pFilter_->config.importanceWeightingMeasurementLikelihoodMDThreshold_ = importanceWeightingMeasurementLikelihoodMDThreshold_;
+    pFilter_->config.importanceWeightingEvalPointCount_ = importanceWeightingEvalPointCount_;
+    pFilter_->config.gaussianMergingThreshold_ = gaussianMergingThreshold_;
+    pFilter_->config.gaussianMergingCovarianceInflationFactor_ = gaussianMergingCovarianceInflationFactor_;
+    pFilter_->config.gaussianPruningThreshold_ = gaussianPruningThreshold_;
   }
 
   void run(){
@@ -497,6 +502,7 @@ private:
   double gaussianMergingThreshold_;
   double gaussianMergingCovarianceInflationFactor_;
   double gaussianPruningThreshold_;
+  int importanceWeightingEvalPointCount_;
 };
 
 int main(int argc, char* argv[]){

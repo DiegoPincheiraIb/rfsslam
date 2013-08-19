@@ -65,6 +65,7 @@ public:
     gaussianMergingThreshold_ = cfg.lookup("Filter.gaussianMergingThreshold");
     gaussianMergingCovarianceInflationFactor_ = cfg.lookup("Filter.gaussianMergingCovarianceInflationFactor");
     gaussianPruningThreshold_ = cfg.lookup("Filter.gaussianPruningThreshold");
+    importanceWeightingEvalPointCount_ = cfg.lookup("Filter.importanceWeightingEvalPointCount");
 
     return true;
 
@@ -199,6 +200,10 @@ public:
     measurementModel.config.uniformClutterIntensity_ = c_;
     double meanClutter = measurementModel.clutterIntensityIntegral();
     
+    printf("Range lim max = %f\n", measurementModel.config.rangeLimMax_);
+    printf("Range lim min = %f\n", measurementModel.config.rangeLimMin_);
+    printf("Var_z = %f\n", varzr_);
+
     // lookup table for generating clutter
     double expNegMeanClutter = exp( -meanClutter );
     double poissonPmf[100];
@@ -221,12 +226,14 @@ public:
 	
 	bool success;
 	MeasurementModel1d::TMeasurement z_m_k;
+	MeasurementModel1d::TMeasurement::Vec zv;
 	success = measurementModel.sample( groundtruth_pose_[k],
 					   groundtruth_landmark_[m],
 					   z_m_k);
 	/*success = measurementModel.measure( groundtruth_pose_[k],
-					   groundtruth_landmark_[m],
-					   z_m_k);*/
+					    groundtruth_landmark_[m],
+					    z_m_k);*/
+	z_m_k.get(zv);
 	if(success){
 	  if(drand48() <= Pd_){
 	    /*printf("Measurement[%d] = [%f %f]\n", int(measurements_.size()),
@@ -347,6 +354,12 @@ public:
     pFilter_->config.minInterSampleTimesteps_ = minInterSampleTimesteps_;
     pFilter_->config.newGaussianCreateInnovMDThreshold_ = newGaussianCreateInnovMDThreshold_;
     pFilter_->config.importanceWeightingMeasurementLikelihoodMDThreshold_ = importanceWeightingMeasurementLikelihoodMDThreshold_;
+    pFilter_->config.importanceWeightingEvalPointCount_ = importanceWeightingEvalPointCount_;
+    pFilter_->config.gaussianMergingThreshold_ = gaussianMergingThreshold_;
+    pFilter_->config.gaussianMergingCovarianceInflationFactor_ = gaussianMergingCovarianceInflationFactor_;
+    pFilter_->config.gaussianPruningThreshold_ = gaussianPruningThreshold_;
+
+
   }
 
 
@@ -374,7 +387,7 @@ public:
 
     for(int k = 1; k < kMax_; k++){
 
-      if( k % 1 == 0)
+      if( k % 100 == 0)
 	printf("k = %d\n", k);
       fprintf( pParticlePoseFile, "k = %d\n", k);
 
@@ -473,6 +486,7 @@ private:
   double gaussianMergingThreshold_;
   double gaussianMergingCovarianceInflationFactor_;
   double gaussianPruningThreshold_;
+  int importanceWeightingEvalPointCount_;
  
 
 };

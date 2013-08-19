@@ -1,14 +1,14 @@
 close all
 
-hfig = figure('Renderer','OpenGL');
-set(gcf, 'Color', 'w');
-title('Groundturth robot trajectory and landmark positions');
-plot(gt_pose(1,:), gt_pose(2,:), 'r--');
-hold on
-plot(zeros(1, length(gt_lmk(1,:))), gt_lmk(1,:), 'k.');
+%%hfig = figure('Renderer','OpenGL');
+%%set(gcf, 'Color', 'w');
+%%title('Groundturth robot trajectory and landmark positions');
+%%plot(gt_pose(1,:), gt_pose(2,:), 'r--');
+%%hold on
+%%plot(zeros(1, length(gt_lmk(1,:))), gt_lmk(1,:), 'k.');
 %axis square
-grid on
-set(gca, 'XLim', get(gca, 'XLim') + [-1, 1] );
+%%grid on
+%%set(gca, 'XLim', get(gca, 'XLim') + [-1, 1] );
 
 hfig = figure('Renderer','OpenGL');
 set(gcf, 'Color', 'w');
@@ -21,14 +21,16 @@ grid on
 set(gca, 'XLim', get(gca, 'XLim') + [-1, 1] );
 set(gca, 'YLim', [-1, 15] );
 xLim = get(gca, 'XLim');
-vEvalPts = xLim(1) : 0.05 : xLim(2);
+vEvalPts = xLim(1) : 0.005 : xLim(2);
 v = vEvalPts * 0;
 h_map = plot(vEvalPts, v, 'b-');
 
-pause(0.005);
+pause(0.1);
 meas_idx = 1;
 
 for k = 1 : length(gt_pose)
+    
+    disp(k);
 
     delete( h_robotPos )
     delete( h_drPos )
@@ -42,7 +44,15 @@ for k = 1 : length(gt_pose)
     h_drPos = plot(dr_x, -0.1, 'go', 'MarkerSize', 5, 'MarkerFaceColor', 'g');
     
     h_particlePos = plot(x_i(1, :, k), 0, 'm.');
-    
+
+    line([x+3.1 x+3.1], [-1.5 0], 'Color', 'b');
+    line([x+2.9 x+2.9], [-1.5 0], 'Color', 'b');
+    line([x+0.4 x+0.4], [-1.5 0], 'Color', 'b');
+    line([x+0.6 x+0.6], [-1.5 0], 'Color', 'b');
+    line([x-3.1 x-3.1], [-1.5 0], 'Color', 'b');
+    line([x-2.9 x-2.9], [-1.5 0], 'Color', 'b');
+    line([x-0.4 x-0.4], [-1.5 0], 'Color', 'b');
+    line([x-0.6 x-0.6], [-1.5 0], 'Color', 'b');
     if(meas_idx <= length(meas))
         while( meas(1, meas_idx) == k )
             r = meas(2, meas_idx);
@@ -71,8 +81,11 @@ for k = 1 : length(gt_pose)
             cov = landmarkEst{i,k}{m,2};
             w = landmarkEst{i,k}{m,3};
             v = v + pdf('norm', vEvalPts, u, cov*3) * w;
+            if( w > 0.5)
+                line([u, u],[0 15], 'Color', 'b')
+            end
         end
-        h_map = plot(vEvalPts, v, 'b-');
+        h_map = plot(vEvalPts, v, 'b-');     
     end
     
     %export_fig(sprintf('results/anim/%06d.png',k), hfig);

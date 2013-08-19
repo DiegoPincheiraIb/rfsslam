@@ -434,7 +434,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	}
       }
     }
-    delete pose;
+    
 
     // Now calculate the weight of each new Gaussian
     for(int z = 0; z < nZ; z++){
@@ -450,7 +450,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
 
     // ---------- 3. Add new Gaussians to map  ----------
-
+    // New Gaussians will have indices >= nM 
     for(int m = 0; m < nM; m++){
       for(int z = 0; z < nZ; z++){
 	if(newLandmarkPointer[m][z] != NULL && weightingTable[m][z] > 0){
@@ -489,11 +489,13 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	  useCount++;
 	}
       }
-      if (useCount != 1)
+      if (useCount == 0)
 	unused_measurements_[i].push_back( z );
     }
 
     //----------  6. Cleanup - Free memory ----------
+    delete pose;
+
     for( int n = 0; n < nM; n++ ){
       delete[] weightingTable[n];
       delete[] newLandmarkPointer[n];
@@ -536,10 +538,10 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     // Check for NaN
     if( gaussianWeightSumBeforeUpdate != gaussianWeightSumBeforeUpdate ||
 	gaussianWeightSumAfterUpdate != gaussianWeightSumAfterUpdate ){
-      printf("Particle %d map size before update = %f\n", i, gaussianWeightSumBeforeUpdate);
-      printf("Particle %d map size after update = %f\n", i, gaussianWeightSumAfterUpdate);
+      //printf("Particle %d map size before update = %f\n", i, gaussianWeightSumBeforeUpdate);
+      //printf("Particle %d map size after update = %f\n", i, gaussianWeightSumAfterUpdate);
     }
-    printf("Particle %d map size after - before update = %f\n", i, gaussianWeightSumAfterUpdate - gaussianWeightSumBeforeUpdate);
+    //printf("Particle %d map size after - before update = %f\n", i, gaussianWeightSumAfterUpdate - gaussianWeightSumBeforeUpdate);
     // 3. evaluate intensity function at eval points and take their product
     double intensityProd_beforeUpdate = 1;
     double intensityProd_afterUpdate = 1;
@@ -580,12 +582,12 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	printf("intensity product after update = %f\n", intensityProd_afterUpdate);
       } 
     }
-    printf("Particle %d intensity product before / after update = %f\n", i, intensityProd_beforeUpdate / intensityProd_afterUpdate);
+    //printf("Particle %d intensity product before / after update = %f\n", i, intensityProd_beforeUpdate / intensityProd_afterUpdate);
 
     // 4. calculate measurement likelihood at eval points
     // note that rfsMeasurementLikelihood uses maps_[i] which is already sorted by weight
     double measurementLikelihood = rfsMeasurementLikelihood( i, nEvalPoints );
-    printf("Particle %d measurement likelihood = %f\n", i, measurementLikelihood);
+    //printf("Particle %d measurement likelihood = %f\n", i, measurementLikelihood);
 
     // 5. calculate overall weight
     double overall_weight = measurementLikelihood * intensityProd_beforeUpdate / intensityProd_afterUpdate *
@@ -593,7 +595,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     
     double prev_weight = this->particleSet_[i]->getWeight();
     this->particleSet_[i]->setWeight( overall_weight * prev_weight );
-    printf("Particle %d overall weight = %f\n\n", i, overall_weight);
+    //printf("Particle %d overall weight = %f\n\n", i, overall_weight);
 
   }
 
