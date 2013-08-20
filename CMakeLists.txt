@@ -15,7 +15,7 @@ SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-msse4.2")
 FILE(MAKE_DIRECTORY "bin")
 FILE(MAKE_DIRECTORY "lib")
 
-FIND_PACKAGE(Boost COMPONENTS math_c99 REQUIRED)
+FIND_PACKAGE(Boost COMPONENTS math_c99 timer system REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON) 
 set(Boost_USE_STATIC_RUNTIME ON)
@@ -55,7 +55,7 @@ TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread Mea
 ADD_TEST(unitTest bin/unitTest)
 
 ADD_EXECUTABLE(sim2d src/simulation2d.cpp src/Measurement.cpp src/Pose.cpp)
-TARGET_LINK_LIBRARIES(sim2d config++ ProcessModel MeasurementModel)
+TARGET_LINK_LIBRARIES(sim2d config++ ${Boost_LIBRARIES} ProcessModel MeasurementModel)
 
 ADD_EXECUTABLE(sim1d src/simulation1d.cpp src/Measurement.cpp src/Pose.cpp)
-TARGET_LINK_LIBRARIES(sim1d config++ ProcessModel MeasurementModel)
+TARGET_LINK_LIBRARIES(sim1d config++ ${Boost_LIBRARIES} ProcessModel MeasurementModel)

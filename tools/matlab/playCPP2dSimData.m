@@ -73,7 +73,7 @@ for k = 1 : length(gt_pose)
             w = landmarkEst{i,k}{m,3};
             [evec, eval] = eig(cov);
             axes_length = 3 * sqrt(diag(eval));
-            if(axes_length(1) > axes_length(2))
+            if(axes_length(2) > axes_length(1))
                 angle = atan2(evec(2,1), evec(1,1));
             else
                 angle = atan2(evec(2,2), evec(1,2));

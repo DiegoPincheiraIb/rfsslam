@@ -39,7 +39,7 @@ public:
     }
     kMax_ = cfg.lookup("timesteps");
     dT_ = cfg.lookup("sec_per_timestep");
-    
+
     nSegments_ = cfg.lookup("Trajectory.nSegments");
     max_dx_ = cfg.lookup("Trajectory.max_dx_per_sec");
     min_dx_ = cfg.lookup("Trajectory.min_dx_per_sec");
@@ -66,6 +66,7 @@ public:
     gaussianMergingCovarianceInflationFactor_ = cfg.lookup("Filter.gaussianMergingCovarianceInflationFactor");
     gaussianPruningThreshold_ = cfg.lookup("Filter.gaussianPruningThreshold");
     importanceWeightingEvalPointCount_ = cfg.lookup("Filter.importanceWeightingEvalPointCount");
+    reportTimingInfo_ = cfg.lookup("Filter.reportTimingInfo");
 
     return true;
 
@@ -358,7 +359,7 @@ public:
     pFilter_->config.gaussianMergingThreshold_ = gaussianMergingThreshold_;
     pFilter_->config.gaussianMergingCovarianceInflationFactor_ = gaussianMergingCovarianceInflationFactor_;
     pFilter_->config.gaussianPruningThreshold_ = gaussianPruningThreshold_;
-
+    pFilter_->config.reportTimingInfo_ = reportTimingInfo_;
 
   }
 
@@ -487,7 +488,7 @@ private:
   double gaussianMergingCovarianceInflationFactor_;
   double gaussianPruningThreshold_;
   int importanceWeightingEvalPointCount_;
- 
+  bool reportTimingInfo_;
 
 };
 

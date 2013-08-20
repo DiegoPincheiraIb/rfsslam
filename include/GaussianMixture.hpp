@@ -410,7 +410,7 @@ bool GaussianMixture<Landmark>::merge(unsigned int idx1, unsigned int idx2,
     return false;
   }
 
-  double w_m, w_1, w_2, d_mahalanobis; 
+  double w_m, w_1, w_2, d_mahalanobis_1, d_mahalanobis_2; 
   Gaussian m;
   typename Landmark::Vec x_1, x_2, x_m, d_1, d_2;
   typename Landmark::Mat S_1, S_2, S_m;
@@ -422,19 +422,15 @@ bool GaussianMixture<Landmark>::merge(unsigned int idx1, unsigned int idx2,
   w_2 = gList_[idx2].weight;
   
   double t2 = t * t;
-  if(w_1 >= w_2 ){
-    d_mahalanobis = RandomVecMathTools<Landmark>::mahalanobisDist2( *(gList_[idx1].landmark), *(gList_[idx2].landmark) );
-    if( d_mahalanobis > t2 ){
-      return false;
-    }
-  }else{
-    d_mahalanobis = RandomVecMathTools<Landmark>::mahalanobisDist2( *(gList_[idx1].landmark), *(gList_[idx2].landmark) );
-    if( d_mahalanobis > t2 ){
+  d_mahalanobis_1 = RandomVecMathTools<Landmark>::mahalanobisDist2( *(gList_[idx1].landmark), *(gList_[idx2].landmark) );
+  if( d_mahalanobis_1 > t2 ){
+    d_mahalanobis_2 = RandomVecMathTools<Landmark>::mahalanobisDist2( *(gList_[idx2].landmark), *(gList_[idx1].landmark) );
+    if( d_mahalanobis_2 > t2 ){
       return false;
     }
   }
 
-  w_m = w_1  + w_2;
+  w_m = w_1 + w_2;
   
   if( w_m == 0 )
     return false;

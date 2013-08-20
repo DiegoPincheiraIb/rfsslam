@@ -77,6 +77,7 @@ public:
     gaussianMergingThreshold_ = cfg.lookup("Filter.gaussianMergingThreshold");
     gaussianMergingCovarianceInflationFactor_ = cfg.lookup("Filter.gaussianMergingCovarianceInflationFactor");
     gaussianPruningThreshold_ = cfg.lookup("Filter.gaussianPruningThreshold");
+    reportTimingInfo_ = cfg.lookup("Filter.reportTimingInfo");
     return true;   
   }
 
@@ -102,7 +103,13 @@ public:
 
     for( int k = 1; k < kMax_; k++ ){
 
-      if( k >= kMax_ / nSegments_ * seg ){
+      if( k <= 50 ){
+	double dx = 0;
+	double dy = 0;
+	double dz = 0;
+	input_k = OdometryMotionModel2d::TInput(dx, dy, dz, 
+						0, 0, 0, k);
+      }else if( k >= kMax_ / nSegments_ * seg ){
 	seg++;
 	double dx = drand48() * max_dx_ * dT_;
 	while( dx < min_dx_ * dT_ ){
@@ -242,7 +249,7 @@ public:
 	RangeBearingModel::TMeasurement z_m_k;
 	success = measurementModel.sample( groundtruth_pose_[k],
 					   groundtruth_landmark_[m],
-					   z_m_k);
+					   z_m_k, false);
 	/*success = measurementModel.measure( groundtruth_pose_[k],
 					   groundtruth_landmark_[m],
 					   z_m_k);*/
@@ -370,6 +377,8 @@ public:
     pFilter_->config.gaussianMergingThreshold_ = gaussianMergingThreshold_;
     pFilter_->config.gaussianMergingCovarianceInflationFactor_ = gaussianMergingCovarianceInflationFactor_;
     pFilter_->config.gaussianPruningThreshold_ = gaussianPruningThreshold_;
+    pFilter_->config.reportTimingInfo_ = reportTimingInfo_;
+
   }
 
   void run(){
@@ -401,8 +410,11 @@ public:
       fprintf( pParticlePoseFile, "k = %d\n", k);
 
       pFilter_->predict( odometry_[k], k );
-      //for( int i = 0; i < nParticles_; i++)
-      //pFilter_->setParticlePose(0, groundtruth_pose_[k]);
+      
+      if( k <= 100){
+	for( int i = 0; i < nParticles_; i++)
+	  pFilter_->setParticlePose(0, groundtruth_pose_[k]);
+      }
 
       // Prepare measurement vector for update
       std::vector<RangeBearingModel::TMeasurement> Z;
@@ -503,6 +515,7 @@ private:
   double gaussianMergingCovarianceInflationFactor_;
   double gaussianPruningThreshold_;
   int importanceWeightingEvalPointCount_;
+  bool reportTimingInfo_;
 };
 
 int main(int argc, char* argv[]){

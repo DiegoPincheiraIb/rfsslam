@@ -74,19 +74,20 @@ for k = 1 : length(gt_pose)
     end
     
     v = vEvalPts * 0;
-    for i = highest_weight_i
+    for i = 1:nParticles{1}
         [nLm tmp] = size(landmarkEst{i,k});
         for m = 1:nLm
             u = landmarkEst{i,k}{m,1};
             cov = landmarkEst{i,k}{m,2};
             w = landmarkEst{i,k}{m,3};
             v = v + pdf('norm', vEvalPts, u, cov*3) * w;
-            if( w > 0.5)
-                line([u, u],[0 15], 'Color', 'b')
-            end
-        end
-        h_map = plot(vEvalPts, v, 'b-');     
+            %if( w > 0.5)
+            %    line([u, u],[0 15], 'Color', 'b')
+            %end
+        end         
     end
+    v = v / double(nParticles{1});
+    h_map = plot(vEvalPts, v, 'b-');
     
     %export_fig(sprintf('results/anim/%06d.png',k), hfig);
     pause(0.05)
