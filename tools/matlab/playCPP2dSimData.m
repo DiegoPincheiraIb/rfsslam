@@ -85,6 +85,6 @@ for k = 1 : length(gt_pose)
 
     
     %export_fig(sprintf('results/anim/%06d.png',k), hfig);
-    pause(0.1)
+    pause(0.05)
     
 end

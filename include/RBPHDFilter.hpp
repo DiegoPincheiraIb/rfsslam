@@ -289,12 +289,14 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   boost::timer::auto_cpu_timer *timer_mapCheck = NULL;
   boost::timer::auto_cpu_timer *timer_mapUpdate = NULL;
   boost::timer::auto_cpu_timer *timer_particleWeighting = NULL;
+  boost::timer::auto_cpu_timer *timer_mapMerge = NULL;
   boost::timer::auto_cpu_timer *timer_mapPrune = NULL;
   boost::timer::auto_cpu_timer *timer_particleResample = NULL;
   if(config.reportTimingInfo_){
     timer_mapCheck = new boost::timer::auto_cpu_timer(6, "Map check time: %ws\n");
     timer_mapUpdate = new boost::timer::auto_cpu_timer(6, "Map update time: %ws\n");
     timer_particleWeighting = new boost::timer::auto_cpu_timer(6, "Particle weighting time: %ws\n");
+    timer_mapMerge = new boost::timer::auto_cpu_timer(6, "Map merge time: %ws\n");
     timer_mapPrune = new boost::timer::auto_cpu_timer(6, "Map prune time: %ws\n");
     timer_particleResample = new boost::timer::auto_cpu_timer(6, "Particle resample time: %ws\n");
   }
@@ -329,19 +331,39 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     delete timer_particleWeighting;
 
   // Merge and prune
+  int maxMapSize = -1;
+  int i_maxMapSize = -1;
+  if(config.reportTimingInfo_){
+    timer_mapMerge = new boost::timer::auto_cpu_timer(6, "Map merge time: %ws\n");
+  }
+  int nMergeOps = 0;
+  for( int i = 0; i < maps_.size(); i++){ // maps_size is same as number of particles
+
+    int mapSize =  maps_[i]->getGaussianCount();
+    if( mapSize > maxMapSize ){
+      maxMapSize = mapSize;
+      i_maxMapSize = i;
+    }
+
+   nMergeOps +=  maps_[i]->merge( config.gaussianMergingThreshold_, 
+				  config.gaussianMergingCovarianceInflationFactor_ );
+    
+  }
+  if(timer_mapMerge != NULL)
+    delete timer_mapMerge;
+  printf("Number of merging operations = %d\n", nMergeOps);
+
   if(config.reportTimingInfo_){
     timer_mapPrune = new boost::timer::auto_cpu_timer(6, "Map prune time: %ws\n");
   }
-
   for( int i = 0; i < maps_.size(); i++){ // maps_size is same as number of particles
-
-    maps_[i]->merge( config.gaussianMergingThreshold_, 
-		     config.gaussianMergingCovarianceInflationFactor_ );
-
+   
     maps_[i]->prune( config.gaussianPruningThreshold_ );
+    
   }
   if(timer_mapPrune != NULL)
     delete timer_mapPrune;
+
 
   if(!checkMapIntegrity())
     std::cin.get();

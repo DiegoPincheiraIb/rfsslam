@@ -180,27 +180,19 @@ correct(TPose &pose, TMeasurement &measurement,
   P_updated = ( I_ - K_*H_ ) * P;
   P_updated = ( P_updated + P_updated.transpose() ) / 2;
   
-  x_prev_ = x;
-  m_prev_ = m;
-  P_prev_ = P;
+  //x_prev_ = x;
+  //m_prev_ = m;
+  //P_prev_ = P;
   
-  m_updated= m + K_ * innovation_;
+  m_updated = m + K_ * innovation_;
   landmark_updated.set(m_updated, P_updated);
   
   if(zLikelihood != NULL){
     RandomVec<Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1>, Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> > z_innov;
     z_innov.set( z_act, S_ );
-    *zLikelihood = RandomVecMathTools< RandomVec< 
-      Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1>, 
-      Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> > > :: 
-      evalGaussianLikelihood( z_innov, z_exp_, mahalanobisDist2 );
-    
-    // When likelihood is so small that it becomes NAN
-    // (very large mahalanobis distance)
-    if(*zLikelihood != *zLikelihood){
-      zLikelihood = 0;
-    }
-      
+    *zLikelihood = z_innov.evalGaussianLikelihood( z_exp_, mahalanobisDist2 );   
+    if(*zLikelihood != *zLikelihood) // When likelihood is so small that it becomes NAN
+      zLikelihood = 0;  
   }
 
   return true;

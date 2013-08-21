@@ -7,7 +7,7 @@
 
 #include <math.h>
 
-double const PI = acos(-1);
+//double const PI = acos(-1);
 
 /**
  * \class RandomVecMathTools

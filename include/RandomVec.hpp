@@ -11,6 +11,8 @@
 #include <iostream>
 #include <stdio.h>
 
+double const PI = acos(-1);
+
 /**
  * \class RandomVec
  * \brief An abstract base class for deriving pose and measurement classes
@@ -263,6 +265,66 @@ public:
    */ 
   unsigned int getNDim(){ return nDim_; }
 
+  /**
+   * Calculate the squared Mahalanobis distance to another random vector of the same type
+   */
+  double mahalanobisDist2( RandomVec<VecType, MatType> &to ){
+    if(pSx_inv_ == NULL){
+      pSx_inv_ = new MatType;
+      *pSx_inv_ = Sx_.inverse(); 
+    }
+    e_ = to.x_ - x_;
+    return (e_.transpose() * *pSx_inv_ * e_);
+  }
+
+  /**
+   * Calculate the squared Mahalanobis distance to another random vector of the same type
+   */
+  double mahalanobisDist2( typename RandomVec<VecType, MatType>::Vec &to_x ){
+    if(pSx_inv_ == NULL){
+      pSx_inv_ = new MatType;
+      *pSx_inv_ = Sx_.inverse(); 
+    }
+    e_ = to_x - x_;
+    return (e_.transpose() * *pSx_inv_ * e_);
+  }
+
+  /**
+   * Calculate likelihood
+   */ 
+  double evalGaussianLikelihood( RandomVec<VecType, MatType> &x_eval,
+				 double* mDist2 = NULL){
+    if(pSx_det_ == NULL){
+      pSx_det_ = new double;
+      *pSx_det_ = Sx_.determinant();
+    }
+    double md2 = mahalanobisDist2( x_eval );
+    double l = ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim_ ) * *pSx_det_ ) );
+    if( l != l) //If md2 is very large, l will become NAN;
+      l = 0;
+    if(mDist2 != NULL)
+      *mDist2 = md2;
+    return l;
+  }
+
+  /**
+   * Calculate likelihood
+   */ 
+  double evalGaussianLikelihood( typename RandomVec<VecType, MatType>::Vec &x_eval,
+				 double* mDist2 = NULL){
+    if(pSx_det_ == NULL){
+      pSx_det_ = new double;
+      *pSx_det_ = Sx_.determinant();
+    }
+    double md2 = mahalanobisDist2( x_eval );
+    double l = ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim_ ) * *pSx_det_ ) );
+    if( l != l) //If md2 is very large, l will become NAN;
+      l = 0;
+    if(mDist2 != NULL)
+      *mDist2 = md2;
+    return l;
+  }
+
 private:
 
   VecType x_; /**< State */
@@ -272,6 +334,8 @@ private:
   double* pSx_det_; /** Determinant of Sx_ */
   MatType* pSx_L_; /** Lower triangular part of Cholesky decomposition on Sx_ */
   double t_; /**< time */
+
+  VecType e_; /**< temporary */
 
   /** Dimensionality check during initialization */
   bool dimCheck(){

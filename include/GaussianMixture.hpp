@@ -388,13 +388,18 @@ unsigned int GaussianMixture<Landmark>::merge(const double t,
 					      const double f_inflation){
   isSorted_ = false;
   unsigned int nMerged = 0;
+  int nGaussians = gList_.size();
 
-  for(unsigned int i = 0; i < gList_.size(); i++){
-    for(unsigned int j = i+1; j < gList_.size(); j++){
+  for(unsigned int i = 0; i < nGaussians; i++){
+   
+    for(unsigned int j = i+1; j < nGaussians; j++){
+
       if( merge(i, j, t, f_inflation) ){
 	nMerged++;
       } 
+	
     }
+    
   }
   return nMerged;
 }
@@ -410,21 +415,16 @@ bool GaussianMixture<Landmark>::merge(unsigned int idx1, unsigned int idx2,
     return false;
   }
 
-  double w_m, w_1, w_2, d_mahalanobis_1, d_mahalanobis_2; 
-  Gaussian m;
-  typename Landmark::Vec x_1, x_2, x_m, d_1, d_2;
-  typename Landmark::Mat S_1, S_2, S_m;
-
-  gList_[idx1].landmark->get(x_1, S_1);
-  gList_[idx2].landmark->get(x_2, S_2);
+  double w_m, w_1, w_2; 
+  double d_mahalanobis_1, d_mahalanobis_2; 
 
   w_1 = gList_[idx1].weight;
   w_2 = gList_[idx2].weight;
   
   double t2 = t * t;
-  d_mahalanobis_1 = RandomVecMathTools<Landmark>::mahalanobisDist2( *(gList_[idx1].landmark), *(gList_[idx2].landmark) );
+  d_mahalanobis_1 = gList_[idx1].landmark->mahalanobisDist2( *(gList_[idx2].landmark) );
   if( d_mahalanobis_1 > t2 ){
-    d_mahalanobis_2 = RandomVecMathTools<Landmark>::mahalanobisDist2( *(gList_[idx2].landmark), *(gList_[idx1].landmark) );
+    d_mahalanobis_2 = gList_[idx2].landmark->mahalanobisDist2( *(gList_[idx1].landmark) );
     if( d_mahalanobis_2 > t2 ){
       return false;
     }
@@ -434,6 +434,12 @@ bool GaussianMixture<Landmark>::merge(unsigned int idx1, unsigned int idx2,
   
   if( w_m == 0 )
     return false;
+
+  typename Landmark::Vec x_1, x_2, x_m, d_1, d_2;
+  typename Landmark::Mat S_1, S_2, S_m;
+
+  gList_[idx1].landmark->get(x_1, S_1);
+  gList_[idx2].landmark->get(x_2, S_2);
 
   x_m = (x_1 * w_1 + x_2 * w_2) / w_m;
 
@@ -461,7 +467,7 @@ template< class Landmark >
 unsigned int GaussianMixture<Landmark>::prune( const double t ){
 
   isSorted_ = false;
-  
+
   unsigned int nPruned = 0;
   if( gList_.size() < 1 ){
     return nPruned;
