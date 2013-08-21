@@ -68,10 +68,11 @@ public:
    * (required by RBPHDFilter)
    * \param[out] mahalanobisDist2 if supplied, stores the saured mahalanobis distance 
    * used to calculate zlikelihood (required by RBPHDFilter)
+   * \return true if the correction was performed. This could be false if calculateInnovation returns false
    * \warning this function is not thread-safe (if multiple threads using the same
    * instantiation of this class calls this function)
    */
-  virtual void correct(TPose &pose, TMeasurement &measurement, 
+  virtual bool correct(TPose &pose, TMeasurement &measurement, 
 		       TLandmark &landmark_current, TLandmark &landmark_updated,
 		       double* zLikelihood = NULL, 
 		       double* mahalanobisDist2 = NULL);
@@ -91,8 +92,10 @@ public:
    * innovation_
    * \param[in] z_exp Expected measurement 
    * \param[in] z_act Actual measurement
+   * \return true to allow the correction step to proceed. This is useful for ignoring an update when
+   * the innovation is too large, which may cause problems for the filter.
    */
-  virtual void calculateInnovation(Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_exp, 
+  virtual bool calculateInnovation(Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_exp, 
 				   Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_act);
 
 
@@ -150,7 +153,7 @@ setProcessModel(ProcessModelType *pProcessModel){
 }
 
 template <class ProcessModelType, class MeasurementModelType> 
-void KalmanFilter<ProcessModelType, MeasurementModelType>::
+bool KalmanFilter<ProcessModelType, MeasurementModelType>::
 correct(TPose &pose, TMeasurement &measurement, 
 	TLandmark &landmark_current, TLandmark &landmark_updated,
 	double* zLikelihood, double* mahalanobisDist2 ){
@@ -164,8 +167,11 @@ correct(TPose &pose, TMeasurement &measurement,
   pose.get( x );
   landmark_current.get(m , P);
   measurement.get(z_act , t);
-    
   pMeasurementModel_->measure( pose , landmark_current , measurement_exp_ , &H_);
+
+  bool continueUpdate = calculateInnovation(z_exp_, z_act);
+  if(!continueUpdate)
+    return false;
  
   measurement_exp_.get(z_exp_ , z_exp_cov_ , t);
   S_ = z_exp_cov_;
@@ -178,7 +184,6 @@ correct(TPose &pose, TMeasurement &measurement,
   m_prev_ = m;
   P_prev_ = P;
   
-  calculateInnovation(z_exp_, z_act);
   m_updated= m + K_ * innovation_;
   landmark_updated.set(m_updated, P_updated);
   
@@ -198,14 +203,17 @@ correct(TPose &pose, TMeasurement &measurement,
       
   }
 
+  return true;
+
 }
 
 
 template <class ProcessModelType, class MeasurementModelType> 
-void KalmanFilter<ProcessModelType, MeasurementModelType>::
+bool KalmanFilter<ProcessModelType, MeasurementModelType>::
 calculateInnovation(Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_exp, 
 		    Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_act){
   innovation_ = z_act - z_exp;
+  return true;
 }
 
 template <class ProcessModelType, class MeasurementModelType> 
@@ -231,10 +239,17 @@ class RangeBearingKalmanFilter :
   typedef RangeBearingModel::TMeasurement::Vec Vec;
 
 public:
+
+  struct Config{
+    double rangeInnovationThreshold_; /**< threshold above which update is not processed */
+  }config;
+
   /**
    * Default constructor
    */
-  RangeBearingKalmanFilter(){};
+  RangeBearingKalmanFilter(){
+    config.rangeInnovationThreshold_ = -1;
+  };
   
   /**
    * Constructor
@@ -244,16 +259,22 @@ public:
   RangeBearingKalmanFilter(StaticProcessModel<Landmark2d> *pProcessModel,
 			   RangeBearingModel *pMeasurementModel):
   KalmanFilter<StaticProcessModel<Landmark2d>, RangeBearingModel>
-  (pProcessModel, pMeasurementModel){}
+  (pProcessModel, pMeasurementModel){
+    config.rangeInnovationThreshold_ = -1;
+  }
 
   /**
    * Function to calculate the innovation 
    * \param prediction Prediction of the measurement 
    * \param measurement measurement 
    */
-  void calculateInnovation(Vec &z_exp, Vec &z_act){
+  bool calculateInnovation(Vec &z_exp, Vec &z_act){
     
     innovation_ = z_act - z_exp;
+
+    if(config.rangeInnovationThreshold_ > 0 && fabs(innovation_(0)) > config.rangeInnovationThreshold_){
+      return false;
+    }
   
     while(innovation_(1)>PI){
       innovation_(1)-=2*PI;
@@ -261,6 +282,9 @@ public:
     while(innovation_(1)<-PI){
       innovation_(1)+=2*PI;
     }  
+
+    return true;
+
   }
 
 };

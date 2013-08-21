@@ -140,7 +140,15 @@ public:
 		   typename TLandmark::Mat &S,
 		   double &w);
   
+  /**
+   * Get the pointer to the Kalman Filter used for updating the map
+   * \return pointer to the Kalman Filter
+   */
+  KalmanFilter* getKalmanFilter();
+
+  /** Function for testing */
   void setParticlePose(int i, TPose &p);
+
 
 private:
 
@@ -463,16 +471,18 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	  // because we cannot determine actual weight until the entire weighting table is
 	  // filled in
 	
-	  kfPtr_->correct(*pose, this->measurements_[z], *lm, *lmNew, 
-			  &innovationLikelihood, &innovationMahalanobisDist2);
+	  bool updateMade = kfPtr_->correct(*pose, this->measurements_[z], *lm, *lmNew, 
+					    &innovationLikelihood, &innovationMahalanobisDist2);
 
-	  if ( innovationMahalanobisDist2 > threshold ){
+	  
+	  if ( !updateMade || innovationMahalanobisDist2 > threshold ){
 	    innovationLikelihood = 0;
 	    delete lmNew;
 	  }else{
 	    newLandmarkPointer[m][z] = lmNew;
 	  }	
 	  weightingTable[m][z] = Pd_times_w_km * innovationLikelihood;
+	    
 	}
 
       }else{ // Pd = 0
@@ -1016,4 +1026,10 @@ setParticlePose(int i, TPose &p){
   
   this->particleSet_[i]->setPose(p);
 
+}
+
+
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+KalmanFilter* RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::getKalmanFilter(){
+  return kfPtr_;
 }

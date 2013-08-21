@@ -68,7 +68,9 @@ public:
     varzb_ = cfg.lookup("Measurement.varzb");
 
     nParticles_ = cfg.lookup("Filter.nParticles");
+    pNoiseInflation_ = cfg.lookup("Filter.processNoiseInflationFactor");
     zNoiseInflation_ = cfg.lookup("Filter.measurementNoiseInflationFactor");
+    innovationRangeThreshold_ = cfg.lookup("Filter.innovationRangeThreshold");
     birthGaussianWeight_ = cfg.lookup("Filter.birthGaussianWeight");
     newGaussianCreateInnovMDThreshold_ = cfg.lookup("Filter.newGaussianCreateInnovMDThreshold");
     importanceWeightingMeasurementLikelihoodMDThreshold_ = cfg.lookup("Filter.importanceWeightingMeasurementLikelihoodMDThreshold");
@@ -249,7 +251,8 @@ public:
 	RangeBearingModel::TMeasurement z_m_k;
 	success = measurementModel.sample( groundtruth_pose_[k],
 					   groundtruth_landmark_[m],
-					   z_m_k, false);
+					   z_m_k);
+
 	/*success = measurementModel.measure( groundtruth_pose_[k],
 					   groundtruth_landmark_[m],
 					   z_m_k);*/
@@ -349,6 +352,7 @@ public:
     // configure robot motion model
     OdometryMotionModel2d::TState::Mat Q;
     Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
+    Q *= pNoiseInflation_;
     pFilter_->getProcessModel()->setNoise(Q);
 
     // configure landmark process model
@@ -366,6 +370,9 @@ public:
     pFilter_->getMeasurementModel()->config.rangeLimMax_ = rangeLimitMax_;
     pFilter_->getMeasurementModel()->config.rangeLimMin_ = rangeLimitMin_;
     pFilter_->getMeasurementModel()->config.rangeLimBuffer_ = rangeLimitBuffer_;
+
+    // configure the Kalman filter for landmark updates
+    pFilter_->getKalmanFilter()->config.rangeInnovationThreshold_ = innovationRangeThreshold_;
 
     // configure the filter
     pFilter_->config.birthGaussianWeight_ = birthGaussianWeight_;
@@ -505,7 +512,9 @@ private:
 	      RangeBearingModel,  
 	      RangeBearingKalmanFilter> *pFilter_; 
   int nParticles_;
+  double pNoiseInflation_;
   double zNoiseInflation_;
+  double innovationRangeThreshold_;
   double birthGaussianWeight_;
   double newGaussianCreateInnovMDThreshold_;
   double importanceWeightingMeasurementLikelihoodMDThreshold_;

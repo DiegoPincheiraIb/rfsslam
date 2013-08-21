@@ -6,7 +6,7 @@ title('Groundturth robot trajectory and landmark positions');
 plot(gt_pose(2,:), gt_pose(3,:), 'r--');
 hold on
 plot(gt_lmk(1,:), gt_lmk(2,:), 'k.');
-axis square
+axis equal
 grid on
 set(gca, 'XLim', get(gca, 'XLim') + [-1, 1] );
 set(gca, 'YLim', get(gca, 'YLim') + [-1, 1] );
@@ -29,6 +29,7 @@ for k = 1 : length(gt_pose)
     delete( h_particlePos );
     delete(findobj('Color','b'))
     
+    t = gt_pose(1,k);
     x = gt_pose(2,k);
     y = gt_pose(3,k);
     z = gt_pose(4,k);
@@ -44,7 +45,7 @@ for k = 1 : length(gt_pose)
     h_particlePos = plot(x_i(1, :, k), x_i(2, :, k), 'm.');
     
     if(meas_idx <= length(meas))
-        while( meas(1, meas_idx) == k )
+        while( meas(1, meas_idx) == t )
             r = meas(2, meas_idx);
             b = meas(3, meas_idx);
             mx = x + r*cos(b + z);
@@ -84,6 +85,6 @@ for k = 1 : length(gt_pose)
 
     
     %export_fig(sprintf('results/anim/%06d.png',k), hfig);
-    pause(0.05)
+    pause(0.1)
     
 end

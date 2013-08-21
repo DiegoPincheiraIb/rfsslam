@@ -37,6 +37,7 @@ for k = 1 : length(gt_pose)
     delete( h_particlePos );
     delete(findobj('Color','b'))
     
+    t = gt_pose(1,k)
     x = gt_pose(2,k);
     h_robotPos = plot(x, 0, 'ro', 'MarkerSize', 5, 'MarkerFaceColor', 'r');
     
@@ -54,7 +55,7 @@ for k = 1 : length(gt_pose)
     line([x-0.4 x-0.4], [-1.5 0], 'Color', 'b');
     line([x-0.6 x-0.6], [-1.5 0], 'Color', 'b');
     if(meas_idx <= length(meas))
-        while( meas(1, meas_idx) == k )
+        while( meas(1, meas_idx) == t )
             r = meas(2, meas_idx);
             line([x+r x+r], [-0.5 0.5], 'Color', 'b');
             meas_idx = meas_idx + 1;
