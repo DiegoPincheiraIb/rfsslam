@@ -80,6 +80,8 @@ public:
     gaussianMergingCovarianceInflationFactor_ = cfg.lookup("Filter.gaussianMergingCovarianceInflationFactor");
     gaussianPruningThreshold_ = cfg.lookup("Filter.gaussianPruningThreshold");
     reportTimingInfo_ = cfg.lookup("Filter.reportTimingInfo");
+    importanceWeightingEvalPointCount_ = cfg.lookup("Filter.importanceWeightingEvalPointCount");
+    
     return true;   
   }
 
