@@ -168,12 +168,12 @@ correct(TPose &pose, TMeasurement &measurement,
   landmark_current.get(m , P);
   measurement.get(z_act , t);
   pMeasurementModel_->measure( pose , landmark_current , measurement_exp_ , &H_);
+  measurement_exp_.get(z_exp_ , z_exp_cov_ , t);
 
   bool continueUpdate = calculateInnovation(z_exp_, z_act);
   if(!continueUpdate)
     return false;
- 
-  measurement_exp_.get(z_exp_ , z_exp_cov_ , t);
+
   S_ = z_exp_cov_;
   S_inv_ = S_.inverse();
   K_ = P * H_.transpose() * S_inv_;

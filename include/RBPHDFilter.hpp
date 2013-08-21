@@ -446,6 +446,8 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     TPose *pose = new TPose;
     this->particleSet_[i]->getPose(*pose);
 
+    TLandmark* lmNew = NULL;
+
     for(unsigned int m = 0; m < nM; m++){
 
       TLandmark* lm = maps_[i]->getGaussian(m);
@@ -460,7 +462,9 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
 	for(int z = 0; z < nZ; z++){
 
-	  TLandmark* lmNew = new TLandmark;
+	  if(lmNew == NULL)
+	    lmNew = new TLandmark;
+
 	  newLandmarkPointer[m][z] = NULL;
 	  weightingTable[m][z] = 0;
 	  double innovationLikelihood = 0;
@@ -474,12 +478,11 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	  bool updateMade = kfPtr_->correct(*pose, this->measurements_[z], *lm, *lmNew, 
 					    &innovationLikelihood, &innovationMahalanobisDist2);
 
-	  
 	  if ( !updateMade || innovationMahalanobisDist2 > threshold ){
 	    innovationLikelihood = 0;
-	    delete lmNew;
 	  }else{
 	    newLandmarkPointer[m][z] = lmNew;
+	    lmNew = NULL;
 	  }	
 	  weightingTable[m][z] = Pd_times_w_km * innovationLikelihood;
 	    
@@ -495,8 +498,9 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	}
       }
     }
+    if(lmNew != NULL)
+      delete lmNew;
     
-
     // Now calculate the weight of each new Gaussian
     for(int z = 0; z < nZ; z++){
       double clutter = this->pMeasurementModel_->clutterIntensity( this->measurements_[z], nZ );
