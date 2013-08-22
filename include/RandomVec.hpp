@@ -33,9 +33,9 @@ public:
 
   /** Default constructor */
   RandomVec() : 
-    pSx_L_(NULL), 
-    pSx_inv_(NULL),
-    pSx_det_(NULL)
+    isValid_Sx_L_(false), 
+    isValid_Sx_inv_(false),
+    isValid_Sx_det_(false)
   {
 
     if ( !dimCheck() ){
@@ -53,9 +53,9 @@ public:
    * \param t time
    */
   RandomVec(VecType x, MatType Sx, double t = -1) : 
-    pSx_L_(NULL),
-    pSx_inv_(NULL),
-    pSx_det_(NULL)
+    isValid_Sx_L_(false), 
+    isValid_Sx_inv_(false),
+    isValid_Sx_det_(false)
   {
     if ( !dimCheck() ){
       exit(-1);
@@ -71,9 +71,10 @@ public:
    * \param t time
    */
   RandomVec(VecType x, double t = -1) : 
-    pSx_L_(NULL),
-    pSx_inv_(NULL),
-    pSx_det_(NULL){
+    isValid_Sx_L_(false), 
+    isValid_Sx_inv_(false),
+    isValid_Sx_det_(false)
+  {
     if ( !dimCheck() ){
       exit(-1);
     }
@@ -83,14 +84,7 @@ public:
   }
 
   /** Default destructor */
-  ~RandomVec(){
-    if( pSx_L_ != NULL)
-      delete pSx_L_;
-    if( pSx_inv_ != NULL)
-      delete pSx_inv_;
-    if( pSx_det_ != NULL)
-      delete pSx_det_;
-  };
+  ~RandomVec(){};
 
   /** 
    * Set the vector
@@ -104,18 +98,9 @@ public:
    */
   void setCov( MatType &Sx){
     Sx_ = Sx;
-    if( pSx_L_ != NULL){
-      delete pSx_L_;
-      pSx_L_ = NULL;
-    }
-    if( pSx_inv_ != NULL){
-      delete pSx_inv_;
-      pSx_inv_ = NULL;
-    }
-    if( pSx_det_ != NULL){
-      delete pSx_det_;
-      pSx_det_ = NULL;
-    }
+    isValid_Sx_L_ = false; 
+    isValid_Sx_inv_ = false;
+    isValid_Sx_det_ =false;
   }
 
   /**
@@ -179,12 +164,12 @@ public:
    * \param[out] Sx_Chol_L The lower triangular part of the Choloesky decomposition
    */
   void getCovCholeskyDecompLower( MatType &Sx_Chol_L){
-    if(pSx_L_ == NULL){
-      pSx_L_ = new MatType;
+    if(!isValid_Sx_L_){
       Eigen::LLT<MatType> cholesky( Sx_ );
-      *pSx_L_ = cholesky.matrixL();
+      Sx_L_ = cholesky.matrixL();
+      isValid_Sx_L_ = true;
     }
-    Sx_Chol_L = *pSx_L_;
+    Sx_Chol_L = Sx_L_;
   }
 
   /** 
@@ -192,11 +177,11 @@ public:
    * \param[out] Sx_inv inverse covariance
    */ 
   void getCovInv( MatType &Sx_inv){
-    if(pSx_inv_ == NULL){
-      pSx_inv_ = new MatType;
-      *pSx_inv_ = Sx_.inverse(); 
+    if(!isValid_Sx_inv_){
+      Sx_inv_ = Sx_.inverse(); 
+      isValid_Sx_inv_ = true;
     }
-    Sx_inv = *pSx_inv_;
+    Sx_inv = Sx_inv_;
   }
 
   /** 
@@ -204,11 +189,11 @@ public:
    * \return determinant
    */
   double getCovDet(){
-    if(pSx_det_ == NULL){
-      pSx_det_ = new double;
-      *pSx_det_ = Sx_.determinant();
+    if(!isValid_Sx_det_){
+      Sx_det_ = Sx_.determinant();
+      isValid_Sx_det_ = true;
     }
-    return *pSx_det_;
+    return Sx_det_;
   }
 
   /** 
@@ -269,24 +254,24 @@ public:
    * Calculate the squared Mahalanobis distance to another random vector of the same type
    */
   double mahalanobisDist2( RandomVec<VecType, MatType> &to ){
-    if(pSx_inv_ == NULL){
-      pSx_inv_ = new MatType;
-      *pSx_inv_ = Sx_.inverse(); 
+    if(!isValid_Sx_inv_){
+      Sx_inv_ = Sx_.inverse(); 
+      isValid_Sx_inv_ = true;
     }
     e_ = to.x_ - x_;
-    return (e_.transpose() * *pSx_inv_ * e_);
+    return (e_.transpose() * Sx_inv_ * e_);
   }
 
   /**
    * Calculate the squared Mahalanobis distance to another random vector of the same type
    */
   double mahalanobisDist2( typename RandomVec<VecType, MatType>::Vec &to_x ){
-    if(pSx_inv_ == NULL){
-      pSx_inv_ = new MatType;
-      *pSx_inv_ = Sx_.inverse(); 
+    if(!isValid_Sx_inv_){
+      Sx_inv_ = Sx_.inverse();
+      isValid_Sx_inv_ = true;
     }
     e_ = to_x - x_;
-    return (e_.transpose() * *pSx_inv_ * e_);
+    return (e_.transpose() * Sx_inv_ * e_);
   }
 
   /**
@@ -294,12 +279,12 @@ public:
    */ 
   double evalGaussianLikelihood( RandomVec<VecType, MatType> &x_eval,
 				 double* mDist2 = NULL){
-    if(pSx_det_ == NULL){
-      pSx_det_ = new double;
-      *pSx_det_ = Sx_.determinant();
+    if(!isValid_Sx_det_){
+      Sx_det_ = Sx_.determinant();
+      isValid_Sx_det_ = true;
     }
     double md2 = mahalanobisDist2( x_eval );
-    double l = ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim_ ) * *pSx_det_ ) );
+    double l = ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim_ ) * Sx_det_ ) );
     if( l != l) //If md2 is very large, l will become NAN;
       l = 0;
     if(mDist2 != NULL)
@@ -312,12 +297,12 @@ public:
    */ 
   double evalGaussianLikelihood( typename RandomVec<VecType, MatType>::Vec &x_eval,
 				 double* mDist2 = NULL){
-    if(pSx_det_ == NULL){
-      pSx_det_ = new double;
-      *pSx_det_ = Sx_.determinant();
+    if(!isValid_Sx_det_){
+      Sx_det_ = Sx_.determinant();
+      isValid_Sx_det_ = true;
     }
     double md2 = mahalanobisDist2( x_eval );
-    double l = ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim_ ) * *pSx_det_ ) );
+    double l = ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim_ ) * Sx_det_ ) );
     if( l != l) //If md2 is very large, l will become NAN;
       l = 0;
     if(mDist2 != NULL)
@@ -330,9 +315,12 @@ private:
   VecType x_; /**< State */
   unsigned int nDim_; /**< Number of dimensions */
   MatType Sx_; /**< Covariance */
-  MatType* pSx_inv_; /**< Inverse covariance */
-  double* pSx_det_; /** Determinant of Sx_ */
-  MatType* pSx_L_; /** Lower triangular part of Cholesky decomposition on Sx_ */
+  MatType Sx_inv_; /**< Inverse covariance */
+  bool isValid_Sx_inv_;
+  double Sx_det_; /** Determinant of Sx_ */
+  bool isValid_Sx_det_;
+  MatType Sx_L_; /** Lower triangular part of Cholesky decomposition on Sx_ */
+  bool isValid_Sx_L_;
   double t_; /**< time */
 
   VecType e_; /**< temporary */

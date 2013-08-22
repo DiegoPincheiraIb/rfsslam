@@ -187,10 +187,13 @@ private:
    * \brief The current measurements in measurements_ are used to determine the
    * RFS measurement likelihood given a set of landmarks 
    * \param[in] particleIdx particle for which the likelihood is calcuated
-   * \param[in] maxNumOfEvalPoints the maximum number of map evaluation points to use
+   * \param[in] indices of evaluation points in maps_[particleIdx]
+   * \param[in] probability of detection of evaluation point 
    * \return measurement likelihood
    */
-  double rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints );
+  double rfsMeasurementLikelihood( const int particleIdx, 
+				   std::vector<unsigned int> &evalPtIdx,
+				   std::vector<double> &evalPtPd );
 
   /**
    * Calculate the sum of all permutations of measurement likelihood from a likelihood
@@ -303,7 +306,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
   k_currentTimestep_ = currentTimestep;
 
-  this->setMeasurements( Z );
+  this->setMeasurements( Z ); // Z gets cleared after this call, measurements now stored in this->measurements_
 
   if(config.reportTimingInfo_){
     timer_mapCheck = new boost::timer::auto_cpu_timer(6, "Map check time: %ws\n");
@@ -601,15 +604,34 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   for(int i = 0; i < this->nParticles_; i++){
 
     //printf("Importance weighting for particle %d\n", i);
+    TPose x;
+    this->particleSet_[i]->getPose( x );
 
-    // 1. select evaluation points from highest-weighted Gaussians after update
+    // 1. select evaluation points from highest-weighted Gaussians after update, that are within sensor FOV
     const unsigned int nM = maps_[i]->getGaussianCount();
-    const int nEvalPoints = config.importanceWeightingEvalPointCount_ > nM ? nM : config.importanceWeightingEvalPointCount_ ;
+    int nEvalPoints = config.importanceWeightingEvalPointCount_ > nM ? nM : config.importanceWeightingEvalPointCount_ ;
+    std::vector<unsigned int> evalPointIdx;
+    std::vector<double> evalPointPd;
+    evalPointIdx.reserve(nEvalPoints);
     if( nEvalPoints == 0 ){
       this->particleSet_[i]->setWeight( std::numeric_limits<double>::denorm_min() );
       continue;
     }
     maps_[i]->sortByWeight(); // sort by weight so that we can pick off the top nEvalPoints Gaussians
+    for(int m = 0; m < nM; m++){
+      TLandmark* plm_temp;
+      double w, w_prev;
+      bool closeToSensingLim;
+      maps_[i]->getGaussian(m, plm_temp, w, w_prev);
+      double Pd = this->pMeasurementModel_->probabilityOfDetection(x,*plm_temp, closeToSensingLim);
+      if( Pd > 0 ){
+	evalPointIdx.push_back(m);
+	evalPointPd.push_back(Pd);
+      }
+      if(evalPointIdx.size() >= nEvalPoints)
+	break;
+    }
+    nEvalPoints = evalPointIdx.size();
 
     // 2. evaluate sum of Gaussian weights
     double gaussianWeightSumBeforeUpdate = 0;
@@ -629,11 +651,13 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       //printf("Particle %d map size after update = %f\n", i, gaussianWeightSumAfterUpdate);
     }
     //printf("Particle %d map size after - before update = %f\n", i, gaussianWeightSumAfterUpdate - gaussianWeightSumBeforeUpdate);
+    
     // 3. evaluate intensity function at eval points and take their product
     double intensityProd_beforeUpdate = 1;
     double intensityProd_afterUpdate = 1;
-    for(int p = 0; p < nEvalPoints; p++){
+    for(int e = 0; e < nEvalPoints; e++){
 
+      int p = evalPointIdx[e];
       TLandmark* lm_evalPt;
       double w_temp;
       maps_[i]->getGaussian(p, lm_evalPt, w_temp);
@@ -647,7 +671,8 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	maps_[i]->getGaussian(m, plm, w, w_prev);
 	// New Gaussians from update will have w_prev = 0
 	// Out Gaussians (missed-detection) will not have been updated, but weights will have changed
-	double likelihood = RandomVecMathTools< TLandmark >::evalGaussianLikelihood( *plm, *lm_evalPt);
+	//double likelihood = RandomVecMathTools< TLandmark >::evalGaussianLikelihood( *plm, *lm_evalPt);
+	double likelihood = plm->evalGaussianLikelihood( *lm_evalPt );
 	intensity_at_evalPt_beforeUpdate += w_prev * likelihood; // w_prev for newly created Gaussians are 0
 	intensity_at_evalPt_afterUpdate += w * likelihood;
 	// NaN check
@@ -673,7 +698,8 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
     // 4. calculate measurement likelihood at eval points
     // note that rfsMeasurementLikelihood uses maps_[i] which is already sorted by weight
-    double measurementLikelihood = rfsMeasurementLikelihood( i, nEvalPoints );
+    // double measurementLikelihood = rfsMeasurementLikelihood( i, nEvalPoints );
+    double measurementLikelihood = rfsMeasurementLikelihood( i, evalPointIdx, evalPointPd );
     //printf("Particle %d measurement likelihood = %f\n", i, measurementLikelihood);
 
     // 5. calculate overall weight
@@ -689,41 +715,14 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::addBirthGaussians(){
-
-  for(int i = 0; i < this->nParticles_; i++){
-    
-    while( unused_measurements_[i].size() > 0){
-     
-      // get measurement
-      int unused_idx = unused_measurements_[i].back();
-      TMeasurement unused_z = this->measurements_[unused_idx];
-      unused_measurements_[i].pop_back();
-
-      // use inverse measurement model to get landmark
-      TPose robot_pose;
-      TLandmark landmark_pos;
-      this->particleSet_[i]->getPose(robot_pose);
-      this->pMeasurementModel_->inverseMeasure( robot_pose,  unused_z, landmark_pos );
-      
-      // add birth landmark to Gaussian mixture (last param = true to allocate mem)
-      maps_[i]->addGaussian( &landmark_pos, config.birthGaussianWeight_, true);
-      
-    }
-    
-  }
-
-}
-
-
-template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 double RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
-rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
-
+rfsMeasurementLikelihood( const int particleIdx, 
+			  std::vector<unsigned int> &evalPtIdx,
+			  std::vector<double> &evalPtPd ){
   // eval points are first nEvalPoints elements of maps_[i], which are already ordered by weight; 
 
   const int i = particleIdx;
-  const int nM = maxNumOfEvalPoints;
+  const int nM = evalPtIdx.size();
   const int nZ = this->measurements_.size();
 
   // Fill in likelihood table
@@ -735,22 +734,20 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
     double* row = new double[nZ];
     
     TLandmark* evalPt; 
-    maps_[i]->getGaussian( m, evalPt );
-    bool temp;
-    double Pd = this->pMeasurementModel_->probabilityOfDetection( x, *evalPt, temp);
+    maps_[i]->getGaussian( evalPtIdx[m], evalPt );
+    double Pd = evalPtPd[m];
     
     double row_sum = 0;
     for( int z = 0; z < nZ; z++ ){
 
       TMeasurement expected_z;
       this->pMeasurementModel_->measure( x, *evalPt, expected_z);
-      TMeasurement actual_z = this->measurements_[z];
+      //TMeasurement actual_z = this->measurements_[z];
       
       double md2;
       double threshold = config.importanceWeightingMeasurementLikelihoodMDThreshold_;
       threshold *= threshold;
-      double likelihood = RandomVecMathTools<TMeasurement>::
-	evalGaussianLikelihood( actual_z, expected_z, &md2 );
+      double likelihood = this->measurements_[z].evalGaussianLikelihood( expected_z, &md2);
       if( md2 <= threshold ){
 	row[z] = likelihood * Pd;
 	row_sum += row[z];
@@ -786,8 +783,8 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
     }
     if( isClutter ){
       nClutter++;
-      TMeasurement actual_z = this->measurements_[z];
-      clutterLikelihood *= this->pMeasurementModel_->clutterIntensity(actual_z, nZ);;
+      // TMeasurement actual_z = this->measurements_[z];
+      clutterLikelihood *= this->pMeasurementModel_->clutterIntensity(this->measurements_[z], nZ);;
     }else{
       z_noClutter.push_back(z);
     }
@@ -801,8 +798,8 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
   if (nR > 0){
     clutterRow = new double[nZ];
     for( int z = 0; z < nZ; z++ ){
-      TMeasurement actual_z = this->measurements_[z];
-      clutterRow[z] = this->pMeasurementModel_->clutterIntensity(actual_z, nZ);
+      //TMeasurement actual_z = this->measurements_[z];
+      clutterRow[z] = this->pMeasurementModel_->clutterIntensity(this->measurements_[z], nZ);
     }
     for( int r = 0; r < nR; r++ ){
       likelihoodTab.push_back(clutterRow);
@@ -831,8 +828,8 @@ rfsMeasurementLikelihood( const int particleIdx, const int maxNumOfEvalPoints ){
       if( clutterRow == NULL ){
 	clutterRow = new double[nZ];
 	for( int z = 0; z < nZ; z++ ){
-	  TMeasurement actual_z = this->measurements_[z];
-	  clutterRow[z] = this->pMeasurementModel_->clutterIntensity(actual_z, nZ);
+	  //TMeasurement actual_z = this->measurements_[z];
+	  clutterRow[z] = this->pMeasurementModel_->clutterIntensity(this->measurements_[z], nZ);
 	}
       }
       likelihoodTab.push_back( clutterRow );
@@ -949,6 +946,34 @@ rfsMeasurementLikelihoodPermutations( std::vector< double* > &likelihoodTab,
   return allPermutationLikelihood;
 
 }
+
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::addBirthGaussians(){
+
+  for(int i = 0; i < this->nParticles_; i++){
+    
+    while( unused_measurements_[i].size() > 0){
+     
+      // get measurement
+      int unused_idx = unused_measurements_[i].back();
+      TMeasurement unused_z = this->measurements_[unused_idx];
+      unused_measurements_[i].pop_back();
+
+      // use inverse measurement model to get landmark
+      TPose robot_pose;
+      TLandmark landmark_pos;
+      this->particleSet_[i]->getPose(robot_pose);
+      this->pMeasurementModel_->inverseMeasure( robot_pose,  unused_z, landmark_pos );
+      
+      // add birth landmark to Gaussian mixture (last param = true to allocate mem)
+      maps_[i]->addGaussian( &landmark_pos, config.birthGaussianWeight_, true);
+      
+    }
+    
+  }
+
+}
+
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 bool RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::checkMapIntegrity(){
