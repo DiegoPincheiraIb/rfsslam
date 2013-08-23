@@ -295,14 +295,6 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   boost::timer::auto_cpu_timer *timer_mapMerge = NULL;
   boost::timer::auto_cpu_timer *timer_mapPrune = NULL;
   boost::timer::auto_cpu_timer *timer_particleResample = NULL;
-  if(config.reportTimingInfo_){
-    timer_mapCheck = new boost::timer::auto_cpu_timer(6, "Map check time: %ws\n");
-    timer_mapUpdate = new boost::timer::auto_cpu_timer(6, "Map update time: %ws\n");
-    timer_particleWeighting = new boost::timer::auto_cpu_timer(6, "Particle weighting time: %ws\n");
-    timer_mapMerge = new boost::timer::auto_cpu_timer(6, "Map merge time: %ws\n");
-    timer_mapPrune = new boost::timer::auto_cpu_timer(6, "Map prune time: %ws\n");
-    timer_particleResample = new boost::timer::auto_cpu_timer(6, "Particle resample time: %ws\n");
-  }
 
   k_currentTimestep_ = currentTimestep;
 
@@ -463,6 +455,12 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       weightingTable[n] = new double [ nZ ];
       newLandmarkPointer[n] = new TLandmark* [ nZ ];
     }
+    for(int m = 0; m < nM; m++){
+      for(int z = 0; z < nZ; z++){
+	newLandmarkPointer[m][z] = NULL;
+	weightingTable[m][z] = 0;
+      }
+    }
 
 
 
@@ -504,12 +502,14 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 					    &innovationLikelihood, &innovationMahalanobisDist2);
 
 	  if ( !updateMade || innovationMahalanobisDist2 > threshold ){
-	    innovationLikelihood = 0;
+	    newLandmarkPointer[m][z] = NULL;
+	    weightingTable[m][z] = 0;
 	  }else{
 	    newLandmarkPointer[m][z] = lmNew;
 	    lmNew = NULL;
+	    weightingTable[m][z] = Pd_times_w_km * innovationLikelihood;
 	  }	
-	  weightingTable[m][z] = Pd_times_w_km * innovationLikelihood;
+	  
 	    
 	}
 

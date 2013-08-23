@@ -218,20 +218,15 @@ template< class Landmark >
 unsigned int GaussianMixture<Landmark>::addGaussian( pLandmark p, double w, 
 						     bool allocateMem){
   isSorted_ = false;
-  Gaussian g;
 
   if(allocateMem){
-    typename Landmark::Vec x;
-    typename Landmark::Mat S;
-    p->get(x, S);
-    p = new Landmark;
-    p->set(x, S);
+    Landmark* pNew = new Landmark;
+    *pNew = *p;
+    p = pNew;
   }
 
-  g.landmark = p;
+  Gaussian g = {p, w, 0};
   g.landmark->incNRef();
-  g.weight = w;
-  g.weight_prev = 0;
   gList_.push_back(g);
   n_++;
   return n_;
@@ -241,14 +236,11 @@ template< class Landmark >
 unsigned int GaussianMixture<Landmark>::addGaussian( unsigned int idx, pLandmark p, double w, 
 						     bool allocateMem){
   isSorted_ = false;
-  Gaussian g;
 
   if(allocateMem){
-    typename Landmark::Vec x;
-    typename Landmark::Mat S;
-    p->get(x, S);
-    p = new Landmark;
-    p->set(x, S);
+    Landmark* pNew = new Landmark;
+    *pNew = *p;
+    p = pNew;
   }
 
   if (gList_[idx].landmark != NULL){

@@ -7,12 +7,12 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 SET(CMAKE_BUILD_TYPE Debug)
 #SET(CMAKE_BUILD_TYPE Release)
 #CMAKE_BUILD_TYPE(CMAKE_CXX_FLAGS_RELEASE)
-#SET(CMAKE_CXX_FLAGS "-O2")
+#SET(CMAKE_CXX_FLAGS "-O0")
 PROJECT(RB_PHD_FILTER)
 
 # Disable of edit the following line according to your processor's support for SSE
 # For X86-64 architecture, SSE2 is generally enabled by default
-SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-msse4.2")
+SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-msse4.2 -O0")
 
 FILE(MAKE_DIRECTORY "bin")
 FILE(MAKE_DIRECTORY "lib")
