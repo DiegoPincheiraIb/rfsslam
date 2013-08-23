@@ -613,6 +613,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     std::vector<unsigned int> evalPointIdx;
     std::vector<double> evalPointPd;
     evalPointIdx.reserve(nEvalPoints);
+    evalPointPd.reserve(nEvalPoints);
     if( nEvalPoints == 0 ){
       this->particleSet_[i]->setWeight( std::numeric_limits<double>::denorm_min() );
       continue;
@@ -774,6 +775,8 @@ rfsMeasurementLikelihood( const int particleIdx,
   int nClutter = 0;
   double clutterLikelihood = 1; // we will multiply the likelihood sum of all d.a. permuations with this at the end
   std::vector<int> z_noClutter; // we only want the non-clutter measurements when we permutate over all data assocation pairs later
+  z_noClutter.reserve(nZ);
+
   for( int z = 0; z < nZ; z++ ){
     double isClutter = true;
     for( int m = 0; m < likelihoodTab.size(); m++ ){
