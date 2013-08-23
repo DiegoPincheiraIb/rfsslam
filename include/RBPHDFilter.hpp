@@ -729,6 +729,7 @@ rfsMeasurementLikelihood( const int particleIdx,
   TPose x;
   this->particleSet_[i]->getPose( x );
   std::vector< double* > likelihoodTab;
+  likelihoodTab.reserve(nM);
   for( int m = 0; m < nM; m++ ){
     
     double* row = new double[nZ];
