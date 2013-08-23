@@ -4,15 +4,16 @@
 # cmake -D CMAKE_C_COMPILER=gcc CMAKE_CXX_COMPILER=c++ .
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-SET(CMAKE_BUILD_TYPE Debug)
-#SET(CMAKE_BUILD_TYPE Release)
+#SET(CMAKE_BUILD_TYPE Debug)
+SET(CMAKE_BUILD_TYPE Release)
 #CMAKE_BUILD_TYPE(CMAKE_CXX_FLAGS_RELEASE)
 #SET(CMAKE_CXX_FLAGS "-O0")
 PROJECT(RB_PHD_FILTER)
 
 # Disable of edit the following line according to your processor's support for SSE
 # For X86-64 architecture, SSE2 is generally enabled by default
-SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-msse4.2 -O0")
+#SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-msse4.2 -O0")
+SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-msse4.2")
 
 FILE(MAKE_DIRECTORY "bin")
 FILE(MAKE_DIRECTORY "lib")
@@ -48,9 +49,6 @@ INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
 
 ADD_LIBRARY(ProcessModel src/ProcessModel.cpp)
 ADD_LIBRARY(MeasurementModel src/MeasurementModel.cpp)
-
-ADD_EXECUTABLE(sandbox src/test.cpp src/Measurement.cpp src/Pose.cpp)
-TARGET_LINK_LIBRARIES(sandbox ${Boost_LIBRARIES} ProcessModel MeasurementModel)
 
 ADD_EXECUTABLE(unitTest test/test.cpp src/Measurement.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread MeasurementModel ProcessModel)

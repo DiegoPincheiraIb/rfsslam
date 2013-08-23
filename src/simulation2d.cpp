@@ -254,15 +254,9 @@ public:
 	success = measurementModel.sample( groundtruth_pose_[k],
 					   groundtruth_landmark_[m],
 					   z_m_k);
-
-	/*success = measurementModel.measure( groundtruth_pose_[k],
-					   groundtruth_landmark_[m],
-					   z_m_k);*/
 	if(success){
    
 	  if(z_m_k.get(0) <= rangeLimitMax_ && z_m_k.get(0) >= rangeLimitMin_ && drand48() <= Pd_){
-	    /*printf("Measurement[%d] = [%f %f]\n", int(measurements_.size()),
-	      z_m_k.get(0), z_m_k.get(1)); */
 	    z_m_k.setTime(k);
 	    z_m_k.setCov(R);
 	    measurements_.push_back( z_m_k );
@@ -280,6 +274,8 @@ public:
       for( int i = 0; i < nClutterToGen; i++ ){
 	
 	double r = drand48() * rangeLimitMax_;
+	while(r < rangeLimitMin_)
+	  r = drand48() * rangeLimitMax_;
 	double b = drand48() * 2 * PI - PI;
 	RangeBearingModel::TMeasurement z_clutter;
 	RangeBearingModel::TMeasurement::Vec z;
@@ -550,6 +546,7 @@ int main(int argc, char* argv[]){
   sim.exportSimData();
  
   sim.setupRBPHDFilter();
+
   sim.run();
 
   return 0;

@@ -209,7 +209,9 @@ void GaussianMixture<Landmark>::copyTo( GaussianMixture *other){
   other->n_ = n_;
   other->gList_ = gList_;
   for(int i = 0; i < gList_.size(); i++){
-    gList_[i].landmark->incNRef();
+    Landmark* lmkCopy = new Landmark;
+    *lmkCopy = *(gList_[i].landmark);
+    other->gList_[i].landmark = lmkCopy; 
   }
   other->isSorted_ = isSorted_;
 }
@@ -219,14 +221,15 @@ unsigned int GaussianMixture<Landmark>::addGaussian( pLandmark p, double w,
 						     bool allocateMem){
   isSorted_ = false;
 
+  Landmark* pNew = NULL;
   if(allocateMem){
-    Landmark* pNew = new Landmark;
+    pNew = new Landmark;
     *pNew = *p;
-    p = pNew;
+  }else{
+    pNew = p;
   }
 
-  Gaussian g = {p, w, 0};
-  g.landmark->incNRef();
+  Gaussian g = {pNew, w, 0};
   gList_.push_back(g);
   n_++;
   return n_;
@@ -237,18 +240,19 @@ unsigned int GaussianMixture<Landmark>::addGaussian( unsigned int idx, pLandmark
 						     bool allocateMem){
   isSorted_ = false;
 
+  Landmark* pNew = NULL;
   if(allocateMem){
-    Landmark* pNew = new Landmark;
+    pNew = new Landmark;
     *pNew = *p;
-    p = pNew;
+  }else{
+    pNew = p;
   }
 
   if (gList_[idx].landmark != NULL){
     removeGaussian( idx );
   }
 
-  gList_[idx].landmark = p;
-  gList_[idx].landmark->incNRef();
+  gList_[idx].landmark = pNew;
   gList_[idx].weight = w;
   gList_[idx].weight_prev = 0;
   n_++;
@@ -259,21 +263,14 @@ template< class Landmark >
 unsigned int GaussianMixture<Landmark>::removeGaussian( unsigned int idx ){
 
   isSorted_ = false;
-  try{
-    if(gList_[idx].landmark != NULL){
-      unsigned int nRef = gList_[idx].landmark->decNRef();
-      if( nRef == 0 ){
-	delete gList_[idx].landmark; // no more references to g, so delete it
-      }
-      gList_[idx].landmark = NULL;
-      gList_[idx].weight = 0;
-      gList_[idx].weight_prev = 0;
-      n_--;
-    }
-    return n_;
-  }catch(...){
-    std::cout << "Error in removing Gaussian\n";
+  if(gList_[idx].landmark != NULL){
+    delete gList_[idx].landmark;
+    gList_[idx].landmark = NULL;
+    gList_[idx].weight = 0;
+    gList_[idx].weight_prev = 0;
+    n_--;
   }
+  return n_;
 }
 
 
@@ -285,21 +282,13 @@ unsigned int GaussianMixture<Landmark>::getGaussianCount(){
 template< class Landmark >
 void GaussianMixture<Landmark>::setWeight( unsigned int idx, double w ){
   isSorted_ = false;
-  try{
-    gList_[idx].weight_prev = gList_[idx].weight;
-    gList_[idx].weight = w;
-  }catch(...){
-    std::cout << "Unable to set Gaussian weight\n";
-  }
+  gList_[idx].weight_prev = gList_[idx].weight;
+  gList_[idx].weight = w;
 }
 
 template< class Landmark >
 double GaussianMixture<Landmark>::getWeight( unsigned int idx){
-  try{
-    return gList_[idx].weight;
-  }catch(...){
-    std::cout << "Unable to get Gaussian weight\n";
-  }
+  return gList_[idx].weight;
 }
 
 template< class Landmark >
@@ -309,71 +298,41 @@ typename GaussianMixture<Landmark>::pLandmark GaussianMixture<Landmark>::getGaus
 
 template< class Landmark >
 void GaussianMixture<Landmark>::getGaussian( unsigned int idx, pLandmark &p){
- 
-  try{
-    p = gList_[idx].landmark;
-  }catch(...){
-    std::cout << "Unable to get Gaussian\n";
-  }
+  p = gList_[idx].landmark; 
 }
 
 template< class Landmark >
 void GaussianMixture<Landmark>::getGaussian( unsigned int idx, pLandmark &p, double &w){
- 
-  try{
     p = gList_[idx].landmark;
     w = gList_[idx].weight;
-  }catch(...){
-    std::cout << "Unable to get Gaussian\n";
-  }
 }
 
 template< class Landmark >
 void GaussianMixture<Landmark>::getGaussian( unsigned int idx, pLandmark &p, double &w, double &w_prev){
- 
-  try{
     p = gList_[idx].landmark;
     w = gList_[idx].weight;
     w_prev = gList_[idx].weight_prev;
-  }catch(...){
-    std::cout << "Unable to get Gaussian\n";
-  }
 }
+
 
 template< class Landmark >
 bool GaussianMixture<Landmark>::updateGaussian( unsigned int idx, Landmark &lm, double w){
   
   isSorted_ = false;
 
-  if( idx > gList_.size() ) 
+  if( idx > gList_.size() || gList_[idx].landmark == NULL) 
     return false;
-
-  if (gList_[idx].landmark == NULL)
-    return false;
-
-  typename Landmark::Vec x;
-  typename Landmark::Mat S;
-  lm.get(x, S);
 
   if ( w < 0 )
     w = getWeight( idx );
 
-  if (gList_[idx].landmark->getNRef() == 1){ // update in place
-    gList_[idx].landmark->set(x, S);
-    gList_[idx].weight_prev = gList_[idx].weight;
-    gList_[idx].weight = w;
-  }else{
-    double w_prev = gList_[idx].weight;
-    removeGaussian( idx );
-    Landmark* l = new Landmark;
-    l->set(x, S);
-    addGaussian( idx, l, w);
-    gList_[idx].weight_prev = w_prev;
-  }
+  *(gList_[idx].landmark) = lm;
+  gList_[idx].weight_prev = gList_[idx].weight;
+  gList_[idx].weight = w;
 
   return true;
 
-}
+  }
 
 template< class Landmark >
 unsigned int GaussianMixture<Landmark>::merge(const double t, 
@@ -484,7 +443,7 @@ unsigned int GaussianMixture<Landmark>::prune( const double t ){
     idx = (unsigned int)( (max_idx + min_idx) / 2 );
     w = gList_[idx].weight;
   }
-  while( w >= t && idx < gList_.size() ){
+  while( w >= t && idx < gList_.size() - 1 ){
     idx++;
     w = gList_[idx].weight;
   }

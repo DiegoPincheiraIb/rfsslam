@@ -11,7 +11,8 @@
  * \brief An abstract class for defining landmark state
  * \author Keith Leung
  */
-template<class VecType, class MatType>
+
+template<class VecType, class MatType, class DescriptorType = int>
 class Landmark : public RandomVec<VecType, MatType>
 {
 public:
@@ -19,43 +20,43 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   /** Default constructor */
-  Landmark(){ 
-    nReferences_ = 0; 
+  Landmark(){}
+
+  /** 
+   * Constructor
+   */
+  Landmark(VecType &x, MatType &Sx){
+    this->set(x, Sx);
   }
 
   /** 
-   * Constructor - defined only for our convenience and non-essential
+   * Constructor
    */
-  Landmark(VecType x, MatType Sx){
+  Landmark(VecType &x, MatType &Sx, DescriptorType &d){
     this->set(x, Sx);
-    nReferences_ = 0;
+    desc_ = d;
   }
 
   /** Default destructor */
   ~Landmark(){};
 
-  /** 
-   * Increase the count for objects referencing this object 
-   * \return number of references 
+  /** Set descriptor for landmark 
+   *  \param[in] d descriptor
    */
-  unsigned int incNRef(){ nReferences_++; return getNRef(); }
+  void setDescriptor(DescriptorType &d){
+    desc_ = d;
+  }
 
-  /**  
-   * Decrease the count for objects referencing this object
-   * \return number of references
+  /** Get descriptor for landmark 
+   *  \param[in] d descriptor
    */
-  unsigned int decNRef(){ nReferences_--; return getNRef(); }
+  void getDescriptor(DescriptorType &d){
+    d = desc_;
+  }
 
-  /**
-   * Get the count of objects referencing this object
-   * \return number of references
-   */
-  unsigned int getNRef(){ return nReferences_; }
-
-
-protected:
-
-  unsigned int nReferences_; /**< Number of references to this landmark */ 
+private:
+  
+  DescriptorType desc_;
 
 };
 

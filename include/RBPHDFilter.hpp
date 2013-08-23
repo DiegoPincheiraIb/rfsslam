@@ -289,7 +289,7 @@ template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z,
 												int currentTimestep){
   
-  boost::timer::auto_cpu_timer *timer_mapCheck = NULL;
+  // boost::timer::auto_cpu_timer *timer_mapCheck = NULL;
   boost::timer::auto_cpu_timer *timer_mapUpdate = NULL;
   boost::timer::auto_cpu_timer *timer_particleWeighting = NULL;
   boost::timer::auto_cpu_timer *timer_mapMerge = NULL;
@@ -300,13 +300,13 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
   this->setMeasurements( Z ); // Z gets cleared after this call, measurements now stored in this->measurements_
 
-  if(config.reportTimingInfo_){
+  /*if(config.reportTimingInfo_){
     timer_mapCheck = new boost::timer::auto_cpu_timer(6, "Map check time: %ws\n");
   }
   if(!checkMapIntegrity())
     std::cin.get();
   if(timer_mapCheck != NULL)
-    delete timer_mapCheck;
+  delete timer_mapCheck;*/
 
   if(config.reportTimingInfo_){
     timer_mapUpdate = new boost::timer::auto_cpu_timer(6, "Map update time: %ws\n");
@@ -315,8 +315,10 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   if(timer_mapUpdate != NULL)
     delete timer_mapUpdate;
 
+  /*
   if(!checkMapIntegrity())
     std::cin.get();
+  */
 
   if(config.reportTimingInfo_){
     timer_particleWeighting = new boost::timer::auto_cpu_timer(6, "Particle weighting time: %ws\n");
@@ -346,7 +348,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   }
   if(timer_mapMerge != NULL)
     delete timer_mapMerge;
-  printf("Number of merging operations = %d\n", nMergeOps);
+  // printf("Number of merging operations = %d\n", nMergeOps);
 
   if(config.reportTimingInfo_){
     timer_mapPrune = new boost::timer::auto_cpu_timer(6, "Map prune time: %ws\n");
@@ -359,9 +361,10 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   if(timer_mapPrune != NULL)
     delete timer_mapPrune;
 
-
+  /*
   if(!checkMapIntegrity())
     std::cin.get();
+  */
 
   if(config.reportTimingInfo_){
     timer_particleResample = new boost::timer::auto_cpu_timer(6, "Particle resample time: %ws\n");
