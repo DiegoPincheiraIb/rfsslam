@@ -223,7 +223,8 @@ predict(TLandmark &landmark_current,
 /**
  * \class RangeBearingKalmanFilter
  * \brief A Kalman filter for updating a 2d landmark position from 
- * a single range-bearing measurements
+ * a single range-bearing measurements. This is derived from the base
+ * Kalman Filter to handle innovation involving a rotation (bearing)
  */
 class RangeBearingKalmanFilter : 
   public KalmanFilter <StaticProcessModel<Landmark2d>, RangeBearingModel>{
@@ -232,8 +233,10 @@ class RangeBearingKalmanFilter :
 
 public:
 
+  /** \brief Configuration for this RangeBearingKalmanFilter */
   struct Config{
-    double rangeInnovationThreshold_; /**< threshold above which update is not processed */
+    /** If positive, the innovation threshold above which an update is not processed for stability reasons. */
+    double rangeInnovationThreshold_; 
   }config;
 
   /**

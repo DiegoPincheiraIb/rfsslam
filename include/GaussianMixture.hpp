@@ -27,9 +27,9 @@ public:
 
   /** \brief A data structure representing a weighted Gaussian distribution in GaussianMixture */ 
   struct Gaussian{
-    pLandmark landmark; /**< pointer to landmark */
+    pLandmark landmark; /**< pointer to a Landmark, which holds the mean and covariance */
     double weight; /**< weight of Gaussian */
-    double weight_prev; /**< previous weight of Gaussian (used by RB-PHD-Filter) */
+    double weight_prev; /**< previous weight of Gaussian (used in computations by the RBPHDFilter) */
   };
   
   /** Default constructor */
@@ -39,26 +39,25 @@ public:
   ~GaussianMixture();
 
   /** 
-   * Copy data from this Gaussian mixture to another.
-   * Reference counts to all landmarks will be incremented by 1
+   * Copy data from this GaussianMixture to another GaussianMixture.
    * \param[in/out] other the other Gaussian mixture to which data is copied to
    */
   void copyTo( GaussianMixture *other);
 
   /** 
-   * Add Gaussian 
-   * \param[in] p pointer to Landmark to add
+   * Add a Gaussian to this GaussianMixture
+   * \param[in] p pointer to the Landmark to add, which holds the mean and covariance
    * \param[in] w weight of the new Gaussian
-   * \param[in] allocateMem if true, assumes memory for Landmark has been allocated
-   * and will not go out of scope or get deleted by anything method outside this object.
-   * If false, memory is allocated for a new Landmark and data from p is copied over.
+   * \param[in] allocateMem if false, assumes memory for Landmark has already been allocated
+   * and will not go out of scope or get deleted, other than by the current instantiation of GaussianMixture.
+   * If true, memory is allocated for a new Landmark and data from p is copied to it.
    * \return number of Gaussians in the mixture
    */
   unsigned int addGaussian( pLandmark p, double w = 1, bool allocateMem = false);
 
   /** 
-   * Remove a Gaussian and updates the number of Gaussians in the mixture 
-   * \param[in] idx index number of Gaussian \ Landmark
+   * Remove a Gaussian from the mixture 
+   * \param[in] idx index number of the Gaussian to remove
    * \return number of Gaussians in the mixture
    */
   unsigned int removeGaussian( unsigned int idx );
@@ -84,16 +83,16 @@ public:
   double getWeight( unsigned int idx );
 
   /**
-   * Get the state and weight of a Gaussian
+   * Get the parameters of a Gaussian (stored as a Landmark)
    * \param[in] idx index
-   * \return pointer to landmark. NULL if the Gaussian does not exist.
+   * \return pointer to a Landmark, or NULL if the Gaussian does not exist.
    */
   pLandmark getGaussian( unsigned int idx );
   
   /**
-   * Get the state and weight of a Gaussian
+   * Get the parameters of a Gaussian (stored as a Landmark)
    * \param[in] idx index
-   * \param[out] p overwritten by pointer to landmark
+   * \param[out] p pointer to a Landmark that holds the Gaussian parameters
    */
   void getGaussian( unsigned int idx, pLandmark &p);
 
@@ -106,85 +105,81 @@ public:
   void getGaussian( unsigned int idx, pLandmark &p, double &w);
 
   /**
-   * Get the state and weight of a Gaussian
+   * Get the parameters and weight of a Gaussian
    * \param[in] idx index
-   * \param[out] p overwritten by pointer to landmark
+   * \param[out] p overwritten by a pointer to a Landmark that holds the Gaussian parameters.
    * \param[out] w overwritten by the weight 
-   * \param[out] w_prev overwritten by the previous weight
+   * \param[out] w_prev overwritten by the previous weight (used in parts of the RBPHDFilter)
    */
   void getGaussian( unsigned int idx, pLandmark &p, double &w, double &w_prev);
 
   /**
    * Update an Gaussian in the mixture. 
-   * If there is only 1 reference to the Landmark, it will be updated in place
-   * If there are multiple references to the landmark, a new landmark will be
-   * created, and the reference count to the original landmark will decrease by 1
-   * \param[in] idx index of Gaussian / landmark to update
+   * \param[in] idx index of the Gaussian to update
    * \param[in] lm Landmark object with the updated data
-   * \param[in] w weight of the updated Gaussian. No change if negative.
+   * \param[in] w weight of the updated Gaussian. No change are made to the existing weight if this is negative.
    * \return true if idx is valid and Gaussian is updated
    */
   bool updateGaussian( unsigned int idx, Landmark &lm, double w = -1);
 
   /**
    * Merge Gaussians that are within a certain Mahalanobis distance of each other
-   * \param[in] t Distance threshold
-   * \param[in] f_inflation Merged Gaussian inflation factor
+   * \param[in] t distance threshold (the default value squares to 0.1)
+   * \param[in] f_inflation merged Gaussian covariance inflation factor (default value causes no inflation)
    * \return number of merging operations
    */
   unsigned int merge(const double t = 0.31622776601, const double f_inflation = 1.0);
 
   /**
-   * Merge two Guassians if the second is within a Mahalanobis distance of the first. 
-   * If merging occurs The resulting Gaussian will overwrite the first Gaussian.
-   * The second one will be removed from the Gaussian mixture.
-   * \param[in] idx1 index of the first Gaussian
-   * \param[in] idx2 index of the second Gaussian
-   * \param[in] t distance threshold
-   * \param[in] f_inflation Merged Gaussian inflation factor
-   * \return true if merging is successful
-   */
-  bool merge(unsigned int idx1, unsigned int idx2, 
-	     const double t = 0.1, const double f_inflation = 1.0);
-
-  /**
    * Prune the Gaussian mixture to remove Gaussians with weights that are
-   * less than a threshold. 
-   * \note Gaussians may have difference indices after using this function
-   * \param[in] t weight threshold
+   * less than a given threshold. 
+   * \note Gaussians may have difference indices after using this function due to sorting to gList_
+   * \param[in] t weight threshold, below which Gaussians are removed.
    * \return number of Gaussians removed
    */
   unsigned int prune( const double t );
 
   /**					       
-   * Sort the Gaussian mixture container from highest to lowest Gaussian weight 
+   * Sort the Gaussian mixture container gList_ from highest to lowest Gaussian weight.
    */
   void sortByWeight();
 
 protected:
 
-  int n_; /**< number of Gaussians / Landmarks */
+  int n_; /**< number of Gaussians in this GaussianMixture */
   std::vector<Gaussian> gList_; /**< container for Gaussians */ 
-  bool isSorted_; /**< flag to prevent unecessary sorting */
+  bool isSorted_; /**< a flag to prevent unecessary sorting */
   
   /**
-   * Comparison function for sorting Gaussian container
+   * Comparison function used by sortByWeight() for sorting the Gaussian container gList_.
    */
   static bool weightCompare(Gaussian a, Gaussian b);
 
-   /** 
-   * Add Gaussian and overwrite an existing spot in the Gaussian container
-   * \param[in] idx element in gList_ to overwrite
-   * \param[in] p pointer to Landmark to add
-   * \param[in] w weight of the new Gaussian
-   * \param[in] allocateMem if true, assumes memory for Landmark has been allocated
-   * and will not go out of scope or get deleted by anything method outside this object.
-   * If false, memory is allocated for a new Landmark and data from p is copied over.
+  /** 
+   * Add a Gaussian to this GaussianMixture, by overwrite an existing spot in the Gaussian container.
+   * \param[in] idx element in the container gList_ to overwrite.
+   * \param[in] p pointer to the Landmark to add, which holds the mean and covariance.
+   * \param[in] w weight of the new Gaussian.
+   * \param[in] allocateMem if false, assumes memory for Landmark has already been allocated
+   * and will not go out of scope or get deleted, other than by the current instantiation of GaussianMixture.
+   * If true, memory is allocated for a new Landmark and data from p is copied to it.
    * \return number of Gaussians in the mixture
-   */
+   */  
   unsigned int addGaussian( unsigned int idx, pLandmark p, double w = 1, bool allocateMem = false);
 
-  
+  /**
+   * Merge two Guassians if the second is within a Mahalanobis distance of the first. 
+   * If merging occurs, the resulting Gaussian will overwrite the first Gaussian,
+   * and second one will be removed from the Gaussian mixture.
+   * \param[in] idx1 index of the first Gaussian
+   * \param[in] idx2 index of the second Gaussian
+   * \param[in] t distance threshold (the default value squares to 0.1)
+   * \param[in] f_inflation merged Gaussian covariance inflation factor
+   * \return true if merging is successful
+   */
+  bool merge(unsigned int idx1, unsigned int idx2, 
+	     const double t = 0.3162277660, const double f_inflation = 1.0);
+
 };
 
 ////////// Implementation //////////

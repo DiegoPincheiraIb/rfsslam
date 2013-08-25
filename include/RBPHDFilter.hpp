@@ -46,14 +46,14 @@ public:
   typedef typename GaussianMixture<TLandmark>::Gaussian TGaussian;
 
   /** 
-   * \brief Configurations for running the RB-PHD-Filter 
+   * \brief Configurations for this RBPHDFilter 
    */
   struct Config{
     
-    /**  new birth Gaussians are set with this weight */
+    /**  New birth Gaussians are set with this weight */
     double birthGaussianWeight_;   
 
-    /**  new Gaussians are only created during map update if the innovation mahalanobis distance 
+    /**  New Gaussians are only created during map update if the innovation mahalanobis distance 
 	 is less than this threshold */
     double newGaussianCreateInnovMDThreshold_;
 
@@ -75,13 +75,13 @@ public:
     /** Gaussian merging covariance inflation factor */
     double gaussianMergingCovarianceInflationFactor_;
 
-    /** Gaussian pruning weight threshold */
+    /** Gaussian pruning weight threshold, below which Gaussians are eliminated from a Gaussian mixture */
     double gaussianPruningThreshold_;
 
-    /** Minimum timeteps betwen resampling */
+    /** Minimum timeteps betwen resampling of particles*/
     double minInterSampleTimesteps_;
 
-    /** Flag for reporting timing information */
+    /** If true, timing information is written to the console every update*/
     bool reportTimingInfo_;
 
 

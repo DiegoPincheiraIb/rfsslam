@@ -6,8 +6,6 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 #SET(CMAKE_BUILD_TYPE Debug)
 SET(CMAKE_BUILD_TYPE Release)
-#CMAKE_BUILD_TYPE(CMAKE_CXX_FLAGS_RELEASE)
-#SET(CMAKE_CXX_FLAGS "-O0")
 PROJECT(RB_PHD_FILTER)
 
 # Disable of edit the following line according to your processor's support for SSE

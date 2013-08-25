@@ -12,6 +12,9 @@
 /** 
  * \class MeasurementModel
  * \brief An abstract class for defining the measurement model
+ *
+ * \f[ \mathbf{z} = \mathbf{h}(\mathbf{x}, \mathbf{m} ) + \mathbf{e}, \mathbf{e} \sim (\mathbf{0}, \mathbf{R}) \f] 
+ * where \f$\mathbf{z}\f$ is a measurement, \f$\mathbf{x}\f$ is the robot pose, \f$\mathbf{m}\f$ is a landmark position, \f$\mathbf{e}\f$ is the zero-mean Gaussian noise.
  * \author Felipe Inostroza, Keith Leung
  */
 template<class PoseType, class LandmarkType, class MeasurementType>
@@ -19,20 +22,21 @@ class MeasurementModel
 {
 public:
 
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
   typedef PoseType TPose;
   typedef LandmarkType TLandmark;
   typedef MeasurementType TMeasurement;
   
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   /** Default constructor */
   MeasurementModel() : nd_(0, 1), gen_(rng_, nd_), R_( MeasurementType::Mat::Zero()) {}
 
   /** Default destructor */
   ~MeasurementModel(){}
 
-  /** Set the zero-mean-white-Gaussian noise covariance matrix for this model
-   *  \param[in] R covariance matrix
+  /** 
+   * Set the zero-mean-white-Gaussian additive noise covariance matrix, \f$\mathbf{R}\f$
+   * \param[in] R covariance matrix
    */
   void setNoise( typename MeasurementType::Mat &R ){
     R_ = R;
@@ -42,23 +46,25 @@ public:
     }
   }
 
-  /** Get the zero-mean-white-Gaussian noise covariance matrix for this model
-   *  \param[out] R covariance matrix
+  /** 
+   * Get the zero-mean-white-Gaussian noise covariance matrix, \f$\mathbf{R}\f$
+   * \param[out] R covariance matrix
    */
   void getNoise( typename MeasurementType::Mat &R ){
     R = R_;
   }
   
-
   /** 
-   * Abstract function for predicting measurements using pose and landmark estimates
+   * Abstract function for predicting a measurement from a robot pose and a landmark position
+   * \f[ \mathbf{z} = \mathbf{h}(\mathbf{x}, \mathbf{m} ) + \mathbf{e}, \mathbf{e} \sim (\mathbf{0}, \mathbf{R}) \f] 
+   * where \f$\mathbf{z}\f$ is a measurement, \f$\mathbf{x}\f$ is the robot pose, \f$\mathbf{m}\f$ is a landmark position, \f$\mathbf{e}\f$ is the zero-mean Gaussian noise.
    * \note This must be implemented in a derived class
-   * \param[in] pose robot pose from which the measurement is made
-   * \param[in] landmark The measured landmark
-   * \param[out] measurement The measurement
-   * \param[out] jacobian If not NULL, the pointed-to matrix will be overwritten 
-   * by the Jacobian of the measurement model at the point where the prediction is made
-   * \return true if a measurement can be produced
+   * \param[in] pose \f$\mathbf{x}\f$, robot pose from which the measurement is made
+   * \param[in] landmark \f$\mathbf{m}\f$, the measured landmark
+   * \param[out] measurement \f$\mathbf{x}\f$, the measurement
+   * \param[out] jacobian if not NULL, the pointed-to matrix is overwritten 
+   * by the Jacobian of the measurement model, \f$\mathbf{H}\f$, evaluated at \f$\mathbf{x}\f$ and \f$\mathbf{m}\f$
+   * \return true if a valid measurement is produced
    */
   virtual bool measure( PoseType &pose, LandmarkType &landmark, 
 			MeasurementType &meaurement, 
@@ -68,16 +74,15 @@ public:
 			*jacobian = NULL ) = 0;
   
   /**
-   * Sample a measurement with noise
-   * \param[in] pose robot pose 
-   * \param[in] landmark The measured landmark
-   * \param[out] measurement Sampled measurement (which does not contain uncertainty information)
-   * \param[in] useAdditiveWhiteGaussianNoise include the zero-mean white 
-   * Gaussian noise set for this model
-   * \param[in] usePoseWhiteGaussianNoise include the noise set for the pose 
-   * and interpret as zero-mean-white-Gaussian noise
-   * \param[in] useLandmarkWhiteGaussianNoise include the noise set for 
-   * landmark and interpret as zero-mean-white-Gaussian noise
+   * Sample a measurement with noise parameters from the model, robot pose, and landmark position.
+   * \param[in] pose \f$\mathbf{x}\f$, robot pose from which the measurement is made
+   * \param[in] landmark \f$\mathbf{m}\f$, the measured landmark
+   * \param[out] measurement sampled measurement (which does not contain uncertainty information, i.e., the covariance information is not set for this RandomVec)
+   * \param[in] useAdditiveWhiteGaussianNoise if true, sample from the model's noise covariance, \f$\mathbf{R}\f$
+   * \param[in] usePoseWhiteGaussianNoise if true, sample the uncertain robot pose using its covariance, 
+   * \f$\boldsymbol{\Sigma}_{\mathbf{x}}\f$, and interpret as zero-mean-white-Gaussian noise
+   * \param[in] useLandmarkWhiteGaussianNoise if true, sample the uncertain landmark position using its covariance,  
+   * \f$\boldsymbol{\Sigma}_{\mathbf{m}}\f$, and interpret as zero-mean-white-Gaussian noise
    * \return true if sucessfully sampled a measurement
    */
   bool sample( PoseType &pose, LandmarkType &landmark, 
@@ -120,7 +125,6 @@ public:
       }
     }
 
-    
     if(deallocatePose)
       delete pose_sample;
     if(deallocateLandmark)
@@ -132,30 +136,30 @@ public:
 
   /** 
    * Abstract function for the inverse measurement model
-   * \note This must be implemented in a derived class
-   * \param[in] pose robot pose 
-   * \param[in] measurement measurement
-   * \param[out] landmark position
+   * \f[ \mathbf{m} = \mathbf{h}^{-1}(\mathbf{x}, \mathbf{z} )\f] 
+   * where \f$\mathbf{z}\f$ is a measurement, \f$\mathbf{x}\f$ is the robot pose, \f$\mathbf{m}\f$ is a landmark position
+   * \note This must be implemented in a derived class, and both the mean and the covariance of \f$\mathbf{m}\f$ should 
+   * be calculated. This is used in the RBPHDFilter for generating birth Gaussians
+   * \param[in] pose \f$\mathbf{x}\f$, robot pose (the uncertainty is not used here because the 
+   * RBPHDFilter represents robot pose estimates with particles)
+   * \param[in] measurement  \f$\mathbf{z}\f$ measurement, for which the uncertainty is \f$\mathbf{R}\f$
+   * \param[out] landmark  \f$\mathbf{m}\f$, predicted landmark position with uncertainty
    */
   virtual void inverseMeasure( PoseType &pose,
 			       MeasurementType &measurement, 
 			       LandmarkType &landmark ) = 0;
 
   /**
-   * Abstract function of determining a landmark's probability of detection
+   * Abstract function of determining a landmark's probability of detection, and if the landmark is close to the sensing limit.
+   * Through this we can indirectly specify sensing limits and other sensor characteristics
+   * The probability of detection is necessary as a parameter is the PHD Filter. Indicating whether a landmark is close to the 
+   * sensing limit matters in the implementation for providing a better map estimate, as it reduces landmark disappearance
+   * near the sensing limit due to the probability of detection mismatch.
    * \note If this is not reimplemented in a derived class, it will always
    * return a probability of detection of 1
-   * \brief In addition to specifying a single probability of detection as the
-   * return value, we can also specify whether a landmark is close to the sensing limit,
-   * where there can be mismatch between the probability of detection returned by this
-   * function, and the actual probability of detection in real life. This flag is read 
-   * by the RB-PHD-Filter and is important in its implementation to prevent landmarks
-   * near the sensing limit from dissapearing due to the probability of detection mismatch.
    * \param[in] pose robot pose
    * \param[in] landmark landmark position
-   * \param[out] isClostToSensingLimit true if landmark is close to the sensing limit,
-   * where there can be a mismatch between the returned value and the actual probability
-   * of detection in reality.
+   * \param[out] isCloseToSensingLimit true if landmark is close to the sensing limit
    * \return probability of detection
    */
   virtual double probabilityOfDetection( PoseType &pose,
@@ -165,12 +169,11 @@ public:
     return 1;
   }
 
-
   /**
-   * Abstract function for Determining the clutter intensity in the measurement space
+   * Abstract function for determining the clutter intensity, \f$c\f$
    * \note This should be reimplemented in a derived class
-   * \param[in] z measurement point at which clutter intensity will be determined
-   * \param[in] nZ the cardinality of Z, of which z is a member.
+   * \param[in] z measurement point at which clutter intensity is to be determined
+   * \param[in] nZ the cardinality of measurement set Z, of which z is a member.
    * \return clutter intensity
    */
   virtual double clutterIntensity( MeasurementType &z,
@@ -179,7 +182,8 @@ public:
   }
 
   /**
-   * Abstract function for Determining the clutter intensity integral
+   * Abstract function for determining the clutter intensity integral over the measurement space
+   * (i.e., the expected number of clutter measurements) 
    * \note This should be reimplemented in a derived class
    * \param[in] nZ the cardinality of Z, of which z is a member.
    * \return clutter intensity integral
@@ -190,18 +194,20 @@ public:
 
 protected:
 
-  typename MeasurementType::Mat R_; /**< Additive zero-mean Gaussian noise covariance */
-  typename MeasurementType::Mat L_; /** Lower triangular part of Cholesky decomposition on R_ */
-
+  typename MeasurementType::Mat R_; /**< additive zero-mean Gaussian noise covariance */
+  typename MeasurementType::Mat L_; /**< lower triangular part of the Cholesky decomposition of R_ */
 
   
-  /** Generate a random number from a normal distribution */
+  /** 
+   * Generate a random number from a normal distribution, used in sample() 
+   * \return a random number
+   */
   double randn(){
     return gen_();
   }
-  boost::mt19937 rng_;
-  boost::normal_distribution<double> nd_;
-  boost::variate_generator< boost::mt19937, boost::normal_distribution<double> > gen_;
+  boost::mt19937 rng_; /**< random number generator */
+  boost::normal_distribution<double> nd_; /**< normal distribution object */
+  boost::variate_generator< boost::mt19937, boost::normal_distribution<double> > gen_; /**< normal distribution random number generator */
 
 };
 
@@ -210,9 +216,18 @@ protected:
 
 /** 
  * \class RangeBearingModel
- * \brief Range and bearing measurement model for 2d point landmarks.
- * The noise is considered to be Gaussian in the range and bearing space
- * \author Felipe Inostroza 
+ * A range and bearing measurement model for 2d point landmarks, with Gaussian noise.
+ * \f[ \mathbf{z} = 
+ * \begin{bmatrix} r \\ b \end{bmatrix} =
+ * \mathbf{h}(\mathbf{x}, \mathbf{m}) + \mathbf{e} = 
+ * \mathbf{h}\left(\begin{bmatrix}x \\ y \\ \theta\end{bmatrix}, \begin{bmatrix}x_m \\ y_m\end{bmatrix}\right) + \mathbf{e} = 
+ * \begin{bmatrix} \sqrt{(x_m - x)^2+(y_m - y)^2}) \\ \arctan{\left(\frac{y_m - y}{x_m - x}\right)} - \theta \end{bmatrix} + \mathbf{e} , \quad \mathbf{e} \sim (\mathbf{0}, \mathbf{R}) \f]
+ * where
+ * \f$\mathbf{z} = (r, b)\f$ is the range and bearing measurement,
+ * \f$\mathbf{x} = (x, y, \theta)\f$ is the robot pose,
+ * \f$\mathbf{m} = (x_m, y_m)\f$ is the landmark position, and
+ * \f$\mathbf{e}\f$ is the noise with covariance \f$\mathbf{R}\f$ 
+ * \author Felipe Inostroza, Keith Leung 
  */
                                                                
 class RangeBearingModel : public MeasurementModel <Pose2d, Landmark2d, Measurement2d>{
@@ -221,29 +236,30 @@ public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-  /** \brief Configuration for the 2d RangeBearingModel */
+  /** \brief Configuration for this 2d RangeBearingModel */
   struct Config{
-    double probabilityOfDetection_; /** probability of detection */
-    double uniformClutterIntensity_; /** clutter per area */
-    double rangeLimMax_; /**< sensing range limit, beyond which Pd = 0 */
-    double rangeLimMin_; /**< sensing range limit, beyond which Pd = 0 */
-    double rangeLimBuffer_; /**< A buffer for Pd ambiguity */
+    double probabilityOfDetection_; /**< probability of detection, \f$ P_D \f$ */
+    double uniformClutterIntensity_; /**< clutter intensity, \f$ c \f$, assumed to be constant over the sensing area */
+    double rangeLimMax_; /**< sensing range limit, beyond which \f$ P_D = 0 \f$*/
+    double rangeLimMin_; /**< sensing range limit, below which \f$ P_D = 0 \f$*/
+    double rangeLimBuffer_; /**< Used to define a buffer zone around rangeLimMax_ and rangeLimMin_ to indicate a measurement is close to to the sensing limit */
   }config;
 
  /** Default constructor */
   RangeBearingModel();
 
  /**
-  * Constructor that sets the uncertainty (covariance) of the measurement model
-  * \param covZ measurement covariance
+  * Constructor that sets the uncertainty (covariance) of the measurement model, \f$\mathbf{R}\f$
+  * \param covZ measurement covariance, \f$\mathbf{R}\f$
   */
   RangeBearingModel(Eigen::Matrix2d &covZ);
 
  /**
   * Constructor that sets the uncertainty (covariance) of the measurement model, 
+  * \f[\mathbf{R} = \begin{bmatrix} \sigma_r^2 & 0 \\ 0 & \sigma_b^2 \end{bmatrix}\f]
   * range and bearing are assumed to be uncorrelated
-  * \param Sr Range variance
-  * \param Sb Bearing variance
+  * \param Sr Range variance \f$\sigma_r^2\f$
+  * \param Sb Bearing variance \f$\sigma_b^2\f$
   */
   RangeBearingModel(double Sr, double Sb);
 
@@ -251,31 +267,38 @@ public:
   ~RangeBearingModel();
 
   /** 
-   * Get a measurement
-   * \param[in] pose robot pose from which the measurement is made
-   * \param[in] landmark The measured landmark
-   * \param[out] measurement The measurement
-   * \param[out] jacobian If not NULL, the pointed-to matrix will be overwritten 
-   * by the Jacobian of the measurement model at the point where the prediction is made
-   * \return true if measurement is generated
+   * Obtain a measurement from a given robot pose and landmark position
+   * \f[ \mathbf{z} = \mathbf{h}(\mathbf{x}, \mathbf{m} ) + \mathbf{e}, \mathbf{e} \sim (\mathbf{0}, \mathbf{R}) \f] 
+   * where \f$\mathbf{z}\f$ is a measurement, \f$\mathbf{x}\f$ is the robot pose, \f$\mathbf{m}\f$ is a landmark position, \f$\mathbf{e}\f$ is the zero-mean Gaussian noise.
+   * \param[in] pose \f$\mathbf{x}\f$, robot pose from which the measurement is made
+   * \param[in] landmark \f$\mathbf{m}\f$, the measured landmark
+   * \param[out] measurement \f$\mathbf{x}\f$, the measurement
+   * \param[out] jacobian if not NULL, the pointed-to matrix is overwritten 
+   * by the Jacobian of the measurement model, \f$\mathbf{H}\f$, evaluated at \f$\mathbf{x}\f$ and \f$\mathbf{m}\f$
+   * \return true if a valid measurement is produced
    */
   bool measure( Pose2d &pose, Landmark2d &landmark, 
 		Measurement2d &measurement, Eigen::Matrix2d *jacobian = NULL);
 
   /** 
-   * Inverse measurement
-   * \param[in] pose robot pose 
-   * \param[in] measurement measurement
-   * \param[out] landmark position
+   * \f[ \mathbf{m} = \mathbf{h}^{-1}(\mathbf{x}, \mathbf{z} )\f] 
+   * where \f$\mathbf{z}\f$ is a measurement, \f$\mathbf{x}\f$ is the robot pose, \f$\mathbf{m}\f$ is a landmark position
+   * \param[in] pose \f$\mathbf{x}\f$, robot pose (the uncertainty is not used here because the 
+   * RBPHDFilter represents robot pose estimates with particles)
+   * \param[in] measurement  \f$\mathbf{z}\f$ measurement, for which the uncertainty is \f$\mathbf{R}\f$
+   * \param[out] landmark  \f$\mathbf{m}\f$, predicted landmark position with uncertainty
    */
   void inverseMeasure(Pose2d &pose, Measurement2d &measurement, Landmark2d &landmark);
 
-  /** 
-   * Determine the probability of detection
-   * \note This is where we can indirectly specify sensing limits and other sensor characteristics
+  /**
+   * Abstract function of determining a landmark's probability of detection, and if the landmark is close to the sensing limit.
+   * Through this we can indirectly specify sensing limits and other sensor characteristics
+   * The probability of detection is necessary as a parameter is the PHD Filter. Indicating whether a landmark is close to the 
+   * sensing limit matters in the implementation for providing a better map estimate, as it reduces landmark disappearance
+   * near the sensing limit due to the probability of detection mismatch.
    * \param[in] pose robot pose
    * \param[in] landmark landmark position
-   * \param[out] isCloseToSensingLimit true if within range limit buffer zone
+   * \param[out] isCloseToSensingLimit true if landmark is close to the sensing limit
    * \return probability of detection
    */
   double probabilityOfDetection( Pose2d &pose,
@@ -283,8 +306,8 @@ public:
 				 bool &isCloseToSensingLimit);
 
   /**
-   * Determine the clutter intensity in measurement space
-   * \note uniform clutter intensity is assumed
+   * Determine the clutter intensity in measurement space.
+   * Uniform clutter intensity is assumed
    * \param[in] z measurement point at which clutter intensity will be determined
    * \param[in] nZ the cardinality of Z, of which z is a member.
    * \return clutter intensity
@@ -293,8 +316,8 @@ public:
 			   int nZ );
 
   /**
-   * Determine the clutter intensity integral in measurement space
-   * \brief This is calculated based on the probablity of false alarm,
+   * Determine the clutter intensity integral in measurement space.
+   * This is calculated based on the probablity of false alarm,
    * defined as p( NULL | measurement exists)
    * \param[in] nZ the cardinality of Z
    * \return clutter intensity
@@ -309,6 +332,12 @@ public:
 
 /** 
  * \class  MeasurementModel1d
+ * \f[ z = r = h(x, m) + e = m - x + e, e \sim (0, \sigma^2)\f]
+ * where 
+ * \f$z\f$ or \f$r\f$ is the range measurement, 
+ * \f$x\f$ is the robot position,
+ * \f$m\f$ is the landmark position
+ * \f$e\f$ is the Gaussian noise
  * \brief Range measurement model for 1d point landmarks with Gaussian noise.
  * \author Keith Leung
  */
@@ -319,27 +348,27 @@ public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-  /** \brief Configuration for the 2d RangeBearingModel */
+  /** \brief Configuration for this MeasurementModel1d */
   struct Config{
-    double probabilityOfDetection_; /** probability of detection */
-    double uniformClutterIntensity_; /** clutter per length */
-    double rangeLimMax_; /**< sensing range limit, beyond which Pd = 0 */
-    double rangeLimMin_; /**< sensing range limit, beyond which Pd = 0 */
-    double rangeLimBuffer_; /**< A buffer for Pd ambiguity */
+    double probabilityOfDetection_; /**< probability of detection, \f$ P_D \f$ */
+    double uniformClutterIntensity_; /**< clutter intensity, \f$ c \f$, assumed to be constant over the sensing range */
+    double rangeLimMax_; /**< sensing range limit, beyond which \f$ P_D = 0 \f$*/
+    double rangeLimMin_; /**< sensing range limit, below which \f$ P_D = 0 \f$*/
+    double rangeLimBuffer_; /**< Used to define a buffer zone around rangeLimMax_ and rangeLimMin_ to indicate a measurement is close to to the sensing limit */
   }config;
 
  /** Default constructor */
   MeasurementModel1d();
 
  /**
-  * Constructor that sets the uncertainty of the measurement model
-  * \param Sr measurement variance
+  * Constructor that sets the uncertainty of the measurement model, \f$\sigma^2\f$
+  * \param[in] Sr range variance \f$\sigma^2\f$
   */
   MeasurementModel1d(Eigen::Matrix<double, 1, 1> &Sr);
 
  /**
-  * Constructor that sets the uncertainty of the measurement model
-  * \param Sr Range variance
+  * Constructor that sets the uncertainty of the measurement model, \f$\sigma^2\f$
+  * \param[in] Sr range variance \f$\sigma^2\f$
   */
   MeasurementModel1d(double Sr);
 
@@ -347,31 +376,38 @@ public:
   ~MeasurementModel1d();
 
   /** 
-   * Get a measurement
-   * \param[in] pose robot pose from which the measurement is made
-   * \param[in] landmark The measured landmark
-   * \param[out] measurement The measurement
-   * \param[out] jacobian If not NULL, the pointed-to matrix will be overwritten 
-   * by the Jacobian of the measurement model at the point where the prediction is made
-   * \return true if measurement is generated
+   * Obtain a measurement from a given robot pose and landmark position
+   * \f[ z = h(x, m) + e, e \sim (0, \sigma^2) \f] 
+   * where \f$z\f$ is a measurement, \f$x\f$ is the robot pose, \f$m\f$ is a landmark position, \f$e\f$ is the zero-mean Gaussian noise.
+   * \param[in] pose \f$x\f$, robot pose from which the measurement is made
+   * \param[in] landmark \f$m\f$, the measured landmark
+   * \param[out] measurement \f$x\f$, the measurement
+   * \param[out] jacobian if not NULL, the pointed-to matrix is overwritten 
+   * by the derivative of the measurement model, \f$\mathbf{H}\f$, evaluated at \f$x\f$ and \f$m\f$
+   * \return true if a valid measurement is produced
    */
   bool measure( Pose1d &pose, Landmark1d &landmark, 
 		Measurement1d &measurement, Eigen::Matrix<double, 1, 1> *jacobian = NULL);
 
   /** 
-   * Inverse measurement
-   * \param[in] pose robot position 
-   * \param[in] measurement measurement
-   * \param[out] landmark position
+   * \f[ m = h^{-1}(x, z)\f] 
+   * where \f$z\f$ is a measurement, \f$\mathbf{x}\f$ is the robot pose, \f$\mathbf{m}\f$ is a landmark position
+   * \param[in] pose \f$x\f$, robot pose (the uncertainty is not used here because the 
+   * RBPHDFilter represents robot pose estimates with particles)
+   * \param[in] measurement  \f$z\f$ measurement, for which the uncertainty is \f$\sigma^2\f$
+   * \param[out] landmark  \f$m\f$, predicted landmark position with uncertainty
    */
   void inverseMeasure(Pose1d &pose, Measurement1d &measurement, Landmark1d &landmark);
 
-  /** 
-   * Determine the probability of detection
-   * \note This is where we can indirectly specify sensing limits and other sensor characteristics
+  /**
+   * Abstract function of determining a landmark's probability of detection, and if the landmark is close to the sensing limit.
+   * Through this we can indirectly specify sensing limits and other sensor characteristics
+   * The probability of detection is necessary as a parameter is the PHD Filter. Indicating whether a landmark is close to the 
+   * sensing limit matters in the implementation for providing a better map estimate, as it reduces landmark disappearance
+   * near the sensing limit due to the probability of detection mismatch.
    * \param[in] pose robot pose
    * \param[in] landmark landmark position
-   * \param[out] isCloseToSensingLimit true if in range limit buffer zone
+   * \param[out] isCloseToSensingLimit true if landmark is close to the sensing limit
    * \return probability of detection
    */
   double probabilityOfDetection( Pose1d &pose,
@@ -379,8 +415,8 @@ public:
 				 bool &isCloseToSensingLimit);
 
   /**
-   * Determine the clutter intensity in measurement space
-   * \note uniform clutter intensity is assumed
+   * Determine the clutter intensity in measurement space.
+   * Uniform clutter intensity is assumed
    * \param[in] z measurement point at which clutter intensity will be determined
    * \param[in] nZ the cardinality of Z, of which z is a member.
    * \return clutter intensity
@@ -389,8 +425,8 @@ public:
 			   int nZ );
 
   /**
-   * Determine the clutter intensity integral in measurement space
-   * \brief This is calculated based on the probablity of false alarm,
+   * Determine the clutter intensity integral in measurement space.
+   * This is calculated based on the probablity of false alarm,
    * defined as p( NULL | measurement exists)
    * \param[in] nZ the cardinality of Z
    * \return clutter intensity
