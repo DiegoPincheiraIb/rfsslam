@@ -263,23 +263,6 @@ public:
    */
   void step( Pose2d &s_k, Pose2d &s_km, Odometry2d &input_k, 
 	     double const dT=0);
-
-private:
-
-  Pose2d::Vec x_k_i_;       /**< \f[ \begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_{k} \f]*/
-  Pose2d::Vec x_km_i_;      /**< \f[ \begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_{k-1} \f]*/
-  Eigen::Vector2d p_k_i_;   /**< \f[ \begin{bmatrix} x \\ y \end{bmatrix}_{k} \f]*/
-  Eigen::Vector2d p_km_i_;  /**< \f[ \begin{bmatrix} x \\ y \end{bmatrix}_{k-1} \f]*/
-  double theta_k_;          /**< \f[ \theta_k \f\] */
-  double theta_km_;         /**< \f[ \theta_k \f\] */
-  Eigen::Matrix2d C_k_i_;   /**< rotation matrix k */
-  Eigen::Matrix2d C_km_i_;  /**< rotation matrix k-1 */
-  
-  Eigen::Vector3d u_k_km_;  /**< odometry input */
-  Eigen::Matrix3d Sd_k_km_; /**< uncertainty of translation input */
-  Eigen::Vector2d dp_k_km_; /**< translation input */
-  double dtheta_k_km_;      /**< rotation input */
-  Eigen::Matrix2d C_k_km_;  /**< rotation matrix from odometry input */
   
 };
 
@@ -324,12 +307,6 @@ public:
    */
   void step( Pose1d &s_k, Pose1d &s_km, Odometry1d &input_k, 
 	     double const dT=0);
-  
-private:
-
-  Pose1d::Vec x_km_; /**< position at k-1 */
-  Pose1d::Vec x_k_;  /**< position at k */
-  Odometry1d::Vec u_k_; /**< odometry from k-1 to k */
 
 };
 

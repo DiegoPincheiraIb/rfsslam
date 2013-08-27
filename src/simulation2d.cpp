@@ -81,6 +81,9 @@ public:
     gaussianPruningThreshold_ = cfg.lookup("Filter.gaussianPruningThreshold");
     reportTimingInfo_ = cfg.lookup("Filter.reportTimingInfo");
     importanceWeightingEvalPointCount_ = cfg.lookup("Filter.importanceWeightingEvalPointCount");
+
+    nThreadsPropagationStep__ = cfg.lookup("Computation.nThreads");
+    logToFile_ = cfg.lookup("Computation.logToFile");
     
     return true;   
   }
@@ -384,6 +387,8 @@ public:
     pFilter_->config.gaussianPruningThreshold_ = gaussianPruningThreshold_;
     pFilter_->config.reportTimingInfo_ = reportTimingInfo_;
 
+    // set multi-threading parameter
+    pFilter_->PFconfig.nThreadsPropagationStep_ = nThreadsPropagationStep__;
   }
 
   void run(){
@@ -391,21 +396,25 @@ public:
     printf("Running simulation\n\n");
     
     FILE* pParticlePoseFile;
-    pParticlePoseFile = fopen("data/particlePose.dat", "w");
-    fprintf( pParticlePoseFile, "Timesteps: %d\n", kMax_);
-    fprintf( pParticlePoseFile, "nParticles: %d\n\n", pFilter_->getParticleCount());
-
+    if(logToFile_){
+      pParticlePoseFile = fopen("data/particlePose.dat", "w");
+      fprintf( pParticlePoseFile, "Timesteps: %d\n", kMax_);
+      fprintf( pParticlePoseFile, "nParticles: %d\n\n", pFilter_->getParticleCount());
+    }
     FILE* pLandmarkEstFile;
-    pLandmarkEstFile = fopen("data/landmarkEst.dat", "w");
-    fprintf( pLandmarkEstFile, "Timesteps: %d\n", kMax_);
-    fprintf( pLandmarkEstFile, "nParticles: %d\n\n", pFilter_->getParticleCount());
-
+    if(logToFile_){
+      pLandmarkEstFile = fopen("data/landmarkEst.dat", "w");
+      fprintf( pLandmarkEstFile, "Timesteps: %d\n", kMax_);
+      fprintf( pLandmarkEstFile, "nParticles: %d\n\n", pFilter_->getParticleCount());
+    }
     OdometryMotionModel2d::TState x_i;
     int zIdx = 0;
 
-    for(int i = 0; i < pFilter_->getParticleCount(); i++){
-      pFilter_->getParticleSet()->at(i)->getPose(x_i);
-      fprintf( pParticlePoseFile, "%f   %f   %f   1.0\n", x_i.get(0), x_i.get(1), x_i.get(2));
+    if(logToFile_){
+      for(int i = 0; i < pFilter_->getParticleCount(); i++){
+	pFilter_->getParticleSet()->at(i)->getPose(x_i);
+	fprintf( pParticlePoseFile, "%f   %f   %f   1.0\n", x_i.get(0), x_i.get(1), x_i.get(2));
+      }
     }
 
     boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Process Time: %ws\n");;
@@ -414,8 +423,11 @@ public:
 
       if( k % 1 == 0)
 	printf("k = %d\n", k);
-      fprintf( pParticlePoseFile, "k = %d\n", k);
-
+      
+      if(logToFile_){
+	fprintf( pParticlePoseFile, "k = %d\n", k);
+      }
+      
       pFilter_->predict( odometry_[k], k );
       
       if( k <= 100){
@@ -437,40 +449,44 @@ public:
       pFilter_->update(Z, k);
       
       // Log particle poses
-      for(int i = 0; i < pFilter_->getParticleCount(); i++){
-	pFilter_->getParticleSet()->at(i)->getPose(x_i);
-	double w = pFilter_->getParticleSet()->at(i)->getWeight();
-	fprintf( pParticlePoseFile, "%f   %f   %f   %f\n", x_i.get(0), x_i.get(1), x_i.get(2), w);
+      if(logToFile_){
+	for(int i = 0; i < pFilter_->getParticleCount(); i++){
+	  pFilter_->getParticleSet()->at(i)->getPose(x_i);
+	  double w = pFilter_->getParticleSet()->at(i)->getWeight();
+	  fprintf( pParticlePoseFile, "%f   %f   %f   %f\n", x_i.get(0), x_i.get(1), x_i.get(2), w);
+	}
+	fprintf( pParticlePoseFile, "\n");
       }
-      fprintf( pParticlePoseFile, "\n");
 
       // Log landmark estimates
-      for(int i = 0; i < pFilter_->getParticleCount(); i++){
-	int mapSize = pFilter_->getGMSize(i);
-	fprintf( pLandmarkEstFile, "Timestep: %d\tParticle: %d\tMap Size: %d\n", k, i, mapSize);
-	for( int m = 0; m < mapSize; m++ ){
-	  RangeBearingModel::TLandmark::Vec u;
-	  RangeBearingModel::TLandmark::Mat S;
-	  double w;
-	  pFilter_->getLandmark(i, m, u, S, w);
-	  
-	  fprintf( pLandmarkEstFile, "%f   %f      ", u(0), u(1));
-	  fprintf( pLandmarkEstFile, "%f   %f   ", S(0,0), S(0,1));
-	  fprintf( pLandmarkEstFile, "%f   %f   ", S(1,0), S(1,1));
-	  fprintf( pLandmarkEstFile, "   %f\n", w );
+      if(logToFile_){
+	for(int i = 0; i < pFilter_->getParticleCount(); i++){
+	  int mapSize = pFilter_->getGMSize(i);
+	  fprintf( pLandmarkEstFile, "Timestep: %d\tParticle: %d\tMap Size: %d\n", k, i, mapSize);
+	  for( int m = 0; m < mapSize; m++ ){
+	    RangeBearingModel::TLandmark::Vec u;
+	    RangeBearingModel::TLandmark::Mat S;
+	    double w;
+	    pFilter_->getLandmark(i, m, u, S, w);
+	    
+	    fprintf( pLandmarkEstFile, "%f   %f      ", u(0), u(1));
+	    fprintf( pLandmarkEstFile, "%f   %f   ", S(0,0), S(0,1));
+	    fprintf( pLandmarkEstFile, "%f   %f   ", S(1,0), S(1,1));
+	    fprintf( pLandmarkEstFile, "   %f\n", w );
+	  }
+	  fprintf( pLandmarkEstFile, "\n");
 	}
 	fprintf( pLandmarkEstFile, "\n");
       }
-      fprintf( pLandmarkEstFile, "\n");
-
 
     }
 
     delete timer;
 
-    fclose(pParticlePoseFile);
-    fclose(pLandmarkEstFile);
-
+    if(logToFile_){
+      fclose(pParticlePoseFile);
+      fclose(pLandmarkEstFile);
+    }
   }
 
 private:
@@ -528,6 +544,9 @@ private:
   double gaussianPruningThreshold_;
   int importanceWeightingEvalPointCount_;
   bool reportTimingInfo_;
+
+  unsigned int nThreadsPropagationStep__;
+  bool logToFile_;
 };
 
 int main(int argc, char* argv[]){

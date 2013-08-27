@@ -7,7 +7,7 @@
 /** 
  *  \class Particle
  *  \brief A class for a particle for the particle filter
- *  \tparam PoseType PoseWithUncertainty derived class
+ *  \tparam PoseType RandomVec derived class to represent the state of a particle
  *  \author Keith Leung
  */
 template< class PoseType >
@@ -16,17 +16,17 @@ class Particle
 
 public:
 
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
   typedef PoseType tPose;
 
   /** Default constructor */
   Particle();
 
-  /* Constructor 
-   * \param id particle id
-   * \param x_k_i particle pose
-   * \param w particle weight
+  /** Constructor 
+   * \param[in] id particle id
+   * \param[in] x_k_i particle pose
+   * \param[in] w particle weight
    */
   Particle( unsigned int id, PoseType &x_k_i, double w = 0 );
 
@@ -35,13 +35,13 @@ public:
 
   /**
    *  Set particle pose
-   *  \param x_k_i pose
+   *  \param[in] x_k_i pose
    */
   void setPose( PoseType &x_k_i );
 
   /**
    *  Get particle pose
-   *  \param x_k_i pose [overwritten]
+   *  \param[out] x_k_i pose
    */
   void getPose( PoseType &x_k_i );
 
@@ -53,7 +53,7 @@ public:
 
   /**
    *  Set particle importance weight
-   *  \param w weight
+   *  \param[in] w weight
    */
   void setWeight( double w );
 
@@ -78,17 +78,19 @@ public:
 
   /** 
    * Set the particle id
+   * \param[in] id particle id
    */
   void setId( unsigned int id );
 
   /**
    * Set the id of this particle's parent from resampling
+   * \param[in] id parent id
    */
   void setParentId( unsigned int id );
 
   /** 
    * Copy the state from this particle to another particle
-   * \param p particle to which data is copied to
+   * \param[out] p particle to which data is copied to
    */
   void copyStateTo( Particle<PoseType>* p);
 

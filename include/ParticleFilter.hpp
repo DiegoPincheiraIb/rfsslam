@@ -4,7 +4,7 @@
 #ifndef PARTICLE_FILTER_HPP
 #define PARTICLE_FILTER_HPP
 
-#include <ctime> // for seeding random number generation
+#include <boost/thread/thread.hpp>
 #include "Particle.hpp"
 #include "ProcessModel.hpp"
 #include "MeasurementModel.hpp"
@@ -13,8 +13,8 @@
 /** 
  * \class ParticleFilter
  * \brief A class containing functions for implementing the particle filter
- * \tparam ProcessModel class for the process model
- * \tparam MeasurementModel class for the measurement model
+ * \tparam ProcessModel class for the process model for propagating particles
+ * \tparam MeasurementModel class for the measurement model for updateing particles
  * \author Keith Leung
  */
 template< class ProcessModel, class MeasurementModel>
@@ -22,7 +22,7 @@ class ParticleFilter
 {
 public:
 
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
   typedef typename ProcessModel::TState TPose;
   typedef typename ProcessModel::TInput TInput;
@@ -30,13 +30,22 @@ public:
   typedef Particle<TPose>* pParticle;
   typedef std::vector<pParticle> TParticleSet;
 
+
+  /** 
+   * \brief Configurations for this ParticleFilter
+   */
+  struct Config{
+    unsigned int nThreadsPropagationStep_; /**< number of threads to use for computations */
+  }PFconfig;
+
+
   /** Defailt constructor */
   ParticleFilter();
 
   /** 
    * Constructor 
-   * \param n number of particles
-   * \param initState if not NULL, all particles will take this initial state
+   * \param[in] n number of particles
+   * \param[in] initState if not NULL, all particles will take this initial state
    */ 
   ParticleFilter(int n, TPose* initState = NULL);
 
@@ -58,14 +67,14 @@ public:
   /** 
    * Set the measurements for use in importance weight calculations
    * \note The input vector gets cleared
-   * \param Z vector container of measurements
+   * \param[in] Z vector container of measurements
    */
   void setMeasurements(std::vector<TMeasure> &Z);
 
   /** 
    * Propagate particles using the process model
-   * \param input to the process model
-   * \double dT time-step of input (not used by all process models)
+   * \param[in] input to the process model
+   * \param[in] dT time-step of input (not used by all process models)
    */
   void propagate( TInput &input, double const dt = 0);
 
@@ -88,8 +97,8 @@ public:
   TParticleSet* getParticleSet(){return &particleSet_;}
 
   /** 
-   * Set the effective particle count below which we resample
-   * \param t threshold
+   * Set the effective particle count below which we initiate resampling
+   * \param[in] t threshold
    */
   void setEffectiveParticleCountThreshold(double t);
 
@@ -100,9 +109,9 @@ public:
   double getEffectiveParticleCountThreshold();
 
   /**
-   * Particling resampling using a low variance sampling
-   * Sampling will notoccur if number of effective particles is above effNParticles_t_.
-   * \param n number of particles in the resampled set.
+   * Particle resampling using a low variance sampling. 
+   * Sampling will not occur if number of effective particles is above effNParticles_t_.
+   * \param[in] n number of particles in the resampled set.
    *        The default value of 0 will keep the same number of particles 
    * \return true if resampling occured
    */
@@ -126,6 +135,18 @@ protected:
    */
   void normalizeWeights();
 
+  /**
+   * Worker thread for particle propagation, processing particles startIdx to stopIdx - 1
+   * \param[in] input to the process model
+   * \param[in] dT time-step of input (not used by all process models)
+   * \param[in] startIdx start of particle index range for processing (inclusive)
+   * \param[in] stopIdx particle end of particle index range for processing (exclusive)
+   */
+  void propagateThread(TInput &input, 
+		       double const dt,
+		       unsigned int startIdx,
+		       unsigned int stopIdx);
+  
 };
 
 ////////// Implementation //////////
@@ -136,6 +157,7 @@ ParticleFilter(){
   nParticles_ = 0;
   pProcessModel_ =  new ProcessModel;
   pMeasurementModel_ =  new MeasurementModel;
+  PFconfig.nThreadsPropagationStep_ = 1;
 }
 
 
@@ -172,6 +194,8 @@ ParticleFilter(int n, TPose* initState){
   if( noInitState ){
     delete initState;
   }
+
+  PFconfig.nThreadsPropagationStep_ = 1;
   
 }
 
@@ -206,13 +230,51 @@ void ParticleFilter<ProcessModel, MeasurementModel>::setMeasurements(std::vector
 template< class ProcessModel, class MeasurementModel>
 void ParticleFilter<ProcessModel, MeasurementModel>::propagate( TInput &input, 
 								double const dt){
-   
-  for( int i = 0 ; i < nParticles_ ; i++ ){
+  if( PFconfig.nThreadsPropagationStep_ <= 1){ 
     TPose x_km, x_k;
+    for( int i = 0 ; i < nParticles_ ; i++ ){
+      particleSet_[i]->getPose( x_km );
+      pProcessModel_->sample( x_k, x_km, input, dt);
+      particleSet_[i]->setPose( x_k );
+    } 
+  }else{
+    std::vector<boost::thread*> threads;
+    threads.reserve( PFconfig.nThreadsPropagationStep_ );
+    unsigned int particles_per_thread = nParticles_ / PFconfig.nThreadsPropagationStep_;
+    unsigned int startIdx = 0;
+    unsigned int endIdx = startIdx + particles_per_thread;
+    // Start threads
+    for( unsigned int tCount = 0; tCount < PFconfig.nThreadsPropagationStep_; tCount++ ){
+
+      boost::thread t( boost::bind( &ParticleFilter<ProcessModel, MeasurementModel>::propagateThread, this,
+				    input, dt, startIdx, endIdx) );
+      threads.push_back(&t);
+
+      startIdx = endIdx;
+      if( tCount == PFconfig.nThreadsPropagationStep_ - 2){
+	endIdx = nParticles_;
+      }else{
+	endIdx = startIdx + particles_per_thread;
+      }
+    }
+    // Wait for all threads to finish
+    for( unsigned int tCount = 0; tCount < PFconfig.nThreadsPropagationStep_; tCount++ ){
+      threads[tCount]->join();
+    }
+  }
+}
+
+template< class ProcessModel, class MeasurementModel>
+void ParticleFilter<ProcessModel, MeasurementModel>::propagateThread( TInput &input, 
+								      double const dt,
+								      unsigned int startIdx,
+								      unsigned int stopIdx){
+  TPose x_km, x_k;
+  for( unsigned int i = startIdx ; i < stopIdx ; i++ ){
     particleSet_[i]->getPose( x_km );
     pProcessModel_->sample( x_k, x_km, input, dt);
     particleSet_[i]->setPose( x_k );
-  } 
+  }
 }
 
 template< class ProcessModel, class MeasurementModel>
