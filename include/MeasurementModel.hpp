@@ -7,7 +7,6 @@
 #include "Measurement.hpp"
 #include "Landmark.hpp"
 #include "Pose.hpp"
-#include "RandomVecMathTools.hpp"
 
 /** 
  * \class MeasurementModel
@@ -29,7 +28,7 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   /** Default constructor */
-  MeasurementModel() : nd_(0, 1), gen_(rng_, nd_), R_( MeasurementType::Mat::Zero()) {}
+  MeasurementModel() : R_( MeasurementType::Mat::Zero()) {}
 
   /** Default destructor */
   ~MeasurementModel(){}
@@ -40,10 +39,6 @@ public:
    */
   void setNoise( typename MeasurementType::Mat &R ){
     R_ = R;
-    if( R_ != MeasurementType::Mat::Zero() ){
-      Eigen::LLT<typename MeasurementType::Mat> cholesky(R_);
-      L_ = cholesky.matrixL();
-    }
   }
 
   /** 
@@ -103,25 +98,22 @@ public:
 
       pose_sample = new PoseType;
       deallocatePose = true;      
-      RandomVecMathTools<PoseType>::sample(pose, *pose_sample);
+      pose.sample(*pose_sample);
     }
 
     if(useLandmarkWhiteGaussianNoise){
 
       landmark_sample = new LandmarkType;
       deallocateLandmark = true;
-      RandomVecMathTools<LandmarkType>::sample(landmark, *landmark_sample);
+      landmark.sample(*landmark_sample);
     }
 
     bool success = this->measure( *pose_sample, *landmark_sample, measurement);
 
     if(success){
       if(useAdditiveWhiteGaussianNoise){
-
-	typename MeasurementType::Vec z_k;
-	double t;
-	measurement.get(z_k, t );
-	RandomVecMathTools<MeasurementType>::sample(z_k, R_, L_, t, measurement);
+	measurement.setCov(R_);
+	measurement.sample();
       }
     }
 
@@ -195,19 +187,6 @@ public:
 protected:
 
   typename MeasurementType::Mat R_; /**< additive zero-mean Gaussian noise covariance */
-  typename MeasurementType::Mat L_; /**< lower triangular part of the Cholesky decomposition of R_ */
-
-  
-  /** 
-   * Generate a random number from a normal distribution, used in sample() 
-   * \return a random number
-   */
-  double randn(){
-    return gen_();
-  }
-  boost::mt19937 rng_; /**< random number generator */
-  boost::normal_distribution<double> nd_; /**< normal distribution object */
-  boost::variate_generator< boost::mt19937, boost::normal_distribution<double> > gen_; /**< normal distribution random number generator */
 
 };
 
@@ -226,7 +205,8 @@ protected:
  * \f$\mathbf{z} = (r, b)\f$ is the range and bearing measurement,
  * \f$\mathbf{x} = (x, y, \theta)\f$ is the robot pose,
  * \f$\mathbf{m} = (x_m, y_m)\f$ is the landmark position, and
- * \f$\mathbf{e}\f$ is the noise with covariance \f$\mathbf{R}\f$ 
+ * \f$\mathbf{e}\f$ is the noise with covariance \f$\mathbf{R}\f$
+ * \brief A 2d range-bearing measurement model
  * \author Felipe Inostroza, Keith Leung 
  */
                                                                

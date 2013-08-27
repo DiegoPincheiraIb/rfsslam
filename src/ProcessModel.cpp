@@ -5,7 +5,7 @@
 
 OdometryMotionModel2d::OdometryMotionModel2d(){}
 
-OdometryMotionModel2d::OdometryMotionModel2d( Pose2d::Mat S ) : ProcessModel(S) {}
+OdometryMotionModel2d::OdometryMotionModel2d( Pose2d::Mat &Q ) : ProcessModel(Q) {}
 
 OdometryMotionModel2d::~OdometryMotionModel2d(){}
 
@@ -45,7 +45,7 @@ void OdometryMotionModel2d::step(  Pose2d &s_k,
 
 /************ Implementation of a 1D motion model ***********/
 
-OdometryMotionModel1d::OdometryMotionModel1d( Pose1d::Mat S ) : ProcessModel(S) {}
+OdometryMotionModel1d::OdometryMotionModel1d( Pose1d::Mat &Q ) : ProcessModel(Q) {}
 
 void OdometryMotionModel1d::step ( Pose1d &s_k, Pose1d &s_km, Odometry1d &input_k, 
 				   double const dT){

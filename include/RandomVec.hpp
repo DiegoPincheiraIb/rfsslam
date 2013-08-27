@@ -4,6 +4,10 @@
 #ifndef STATE_HPP
 #define STATE_HPP
 
+
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/normal_distribution.hpp>
+#include <boost/random/variate_generator.hpp>
 #include <Eigen/Core>
 #include <Eigen/Cholesky>
 #include <Eigen/LU>
@@ -15,6 +19,7 @@ double const PI = acos(-1);
 
 /**
  * \class RandomVec
+ * Representation of a Gaussian random vector, with mean and covariance. A time variable is also included for time-stamping.
  * \brief An abstract base class for deriving pose and measurement classes
  * \tparam VecType An Eigen vector of dimension n
  * \tparam MatType An Eigen matrix or dimension n x n
@@ -35,7 +40,8 @@ public:
   RandomVec() : 
     isValid_Sx_L_(false), 
     isValid_Sx_inv_(false),
-    isValid_Sx_det_(false)
+    isValid_Sx_det_(false),
+    gen_(NULL)
   {
 
     if ( !dimCheck() ){
@@ -44,18 +50,20 @@ public:
     x_.setZero();
     Sx_.setZero();
     t_ = -1;
+
   }
 
   /** 
    * Constructor 
-   * \param x vector
-   * \param Sx covariance
-   * \param t time
+   * \param[in] x vector
+   * \param[in] Sx covariance
+   * \param[in] t time
    */
   RandomVec(VecType x, MatType Sx, double t = -1) : 
     isValid_Sx_L_(false), 
     isValid_Sx_inv_(false),
-    isValid_Sx_det_(false)
+    isValid_Sx_det_(false),
+    gen_(NULL)
   {
     if ( !dimCheck() ){
       exit(-1);
@@ -63,17 +71,19 @@ public:
     set(x);
     setCov(Sx);
     t_ = t;
+
   }
 
   /** 
    * Constructor 
-   * \param x vector
-   * \param t time
+   * \param[in] x vector
+   * \param[in] t time
    */
   RandomVec(VecType x, double t = -1) : 
     isValid_Sx_L_(false), 
     isValid_Sx_inv_(false),
-    isValid_Sx_det_(false)
+    isValid_Sx_det_(false),
+    gen_(NULL)
   {
     if ( !dimCheck() ){
       exit(-1);
@@ -81,10 +91,55 @@ public:
     set(x);
     Sx_.setZero();
     t_ = t;
+
+  }
+
+  
+  /**
+   * Copy constructor
+   * \param[in] other the RandomVec being copied from
+   */
+  RandomVec( const RandomVec& other ):
+
+    x_( other.x_ ), 
+    nDim_( other.nDim_ ), 
+    Sx_( other.Sx_ ), 
+    Sx_inv_( other.Sx_inv_ ),
+    isValid_Sx_inv_( other.isValid_Sx_inv_),
+    Sx_det_( other.Sx_det_ ),
+    isValid_Sx_det_( other.isValid_Sx_det_),
+    Sx_L_( other.Sx_L_ ),
+    isValid_Sx_L_( other.isValid_Sx_L_), 
+    t_(other.t_) 
+  {
+    gen_ = NULL;
+  }
+
+  /**
+   * Assignment operator
+   * \param[in] rhs the right-hand-side from which data is copied
+   */
+  RandomVec& operator=( const RandomVec& rhs ){
+    
+    x_ = rhs.x_;
+    nDim_ = rhs.nDim_;
+    Sx_ = rhs.Sx_;
+    Sx_inv_ = rhs.Sx_inv_;
+    isValid_Sx_inv_ = rhs.isValid_Sx_inv_;
+    Sx_det_ = rhs.Sx_det_;
+    isValid_Sx_det_ = rhs.isValid_Sx_det_;
+    Sx_L_ = rhs.Sx_L_;
+    isValid_Sx_L_ = rhs.isValid_Sx_L_;
+    t_ = rhs.t_;
+
+    gen_ = NULL;
   }
 
   /** Default destructor */
-  ~RandomVec(){};
+  ~RandomVec(){
+    if( gen_ != NULL )
+      delete gen_;
+  };
 
   /** 
    * Set the vector
@@ -93,7 +148,7 @@ public:
   void set( VecType &x ){x_ = x;}
 
   /** 
-   * Function for setting the pose uncertainty
+   * Set the covariance for uncertainty
    * \param[in] Sx uncertainty to be set
    */
   void setCov( MatType &Sx){
@@ -151,7 +206,7 @@ public:
   void get( VecType &x ){x = x_;}
 
   /** 
-   * Getting the covariance matrix
+   * Get the covariance matrix
    * \param[out] Sx uncertainty 
    */
   void getCov( MatType &Sx){
@@ -161,7 +216,7 @@ public:
   /**
    * Get the lower triangular part of the Cholesky decomposition 
    * on the covariance matrx Sx_ 
-   * \param[out] Sx_Chol_L The lower triangular part of the Choloesky decomposition
+   * \param[out] Sx_Chol_L the lower triangular part of the Choloesky decomposition
    */
   void getCovCholeskyDecompLower( MatType &Sx_Chol_L){
     if(!isValid_Sx_L_){
@@ -243,7 +298,6 @@ public:
     return t_;
   }
 
-
   /** 
    * Get the dimension
    * \return dimension
@@ -252,6 +306,7 @@ public:
 
   /**
    * Calculate the squared Mahalanobis distance to another random vector of the same type
+   * \param[in] to the RandomVec containing the vector we are measuring to 
    */
   double mahalanobisDist2( RandomVec<VecType, MatType> &to ){
     if(!isValid_Sx_inv_){
@@ -264,6 +319,7 @@ public:
 
   /**
    * Calculate the squared Mahalanobis distance to another random vector of the same type
+   * \param[in] to_x the vector we are measuring to 
    */
   double mahalanobisDist2( typename RandomVec<VecType, MatType>::Vec &to_x ){
     if(!isValid_Sx_inv_){
@@ -275,7 +331,10 @@ public:
   }
 
   /**
-   * Calculate likelihood
+   * Calculate the Gaussian likelihood of a given evaluation point
+   * \param[in] x_eval the evaluation point
+   * \param[out] if not NULL, the pointed to variable will be overwritten by the 
+   * squared mahalanobis distance used to calculate the likelihood
    */ 
   double evalGaussianLikelihood( RandomVec<VecType, MatType> &x_eval,
 				 double* mDist2 = NULL){
@@ -294,6 +353,9 @@ public:
 
   /**
    * Calculate likelihood
+   * \param[in] x_eval the evaluation point
+   * \param[out] if not NULL, the pointed to variable will be overwritten by the 
+   * squared mahalanobis distance used to calculate the likelihood
    */ 
   double evalGaussianLikelihood( typename RandomVec<VecType, MatType>::Vec &x_eval,
 				 double* mDist2 = NULL){
@@ -310,20 +372,80 @@ public:
     return l;
   }
 
+  /** 
+   * Sample this random vector
+   * \param[out] s_sample The sampled vector, with time and covariance copied from this random vector
+   */
+  void sample( RandomVec<VecType, MatType> &s_sample ){
+    
+    VecType x_sample, indep_noise;
+
+    if(!isValid_Sx_L_){
+      Eigen::LLT<MatType> cholesky( Sx_ );
+      Sx_L_ = cholesky.matrixL();
+      isValid_Sx_L_ = true;
+    }
+
+    if(gen_ == NULL){
+      gen_ = new boost::variate_generator< boost::mt19937, 
+					   boost::normal_distribution<double> >
+	(boost::mt19937(rand()), boost::normal_distribution<double>());
+    }
+    
+    int n = Sx_L_.cols();
+    for(int i = 0; i < n; i++){
+      indep_noise(i) = (*gen_)();
+    }
+    x_sample = x_ + Sx_L_ * indep_noise;
+    s_sample.set( x_sample, Sx_, t_ );
+
+  }
+
+
+  /** 
+   * Sample this random vector and write the result over the mean x_;
+   */
+  void sample(){
+    
+    VecType x_sample, indep_noise;
+
+    if(!isValid_Sx_L_){
+      Eigen::LLT<MatType> cholesky( Sx_ );
+      Sx_L_ = cholesky.matrixL();
+      isValid_Sx_L_ = true;
+    }
+
+    if(gen_ == NULL){
+      gen_ = new boost::variate_generator< boost::mt19937, 
+					   boost::normal_distribution<double> >
+	(boost::mt19937(rand()), boost::normal_distribution<double>());
+    }
+    
+    int n = Sx_L_.cols();
+    for(int i = 0; i < n; i++){
+      indep_noise(i) = (*gen_)();
+    }
+    x_ += Sx_L_ * indep_noise;
+
+  }
+
 private:
 
   VecType x_; /**< State */
   unsigned int nDim_; /**< Number of dimensions */
   MatType Sx_; /**< Covariance */
   MatType Sx_inv_; /**< Inverse covariance */
-  bool isValid_Sx_inv_;
-  double Sx_det_; /** Determinant of Sx_ */
-  bool isValid_Sx_det_;
-  MatType Sx_L_; /** Lower triangular part of Cholesky decomposition on Sx_ */
-  bool isValid_Sx_L_;
+  bool isValid_Sx_inv_; /**< Inverse covariance is up to date */
+  double Sx_det_; /**< Determinant of Sx_ */
+  bool isValid_Sx_det_; /**< Determinant of Sx_ is up to date */
+  MatType Sx_L_; /**< Lower triangular part of Cholesky decomposition on Sx_ */
+  bool isValid_Sx_L_; /**< Lower triangular part of Cholesky decomposition on Sx_ is up to date */
   double t_; /**< time */
 
   VecType e_; /**< temporary */
+
+  boost::variate_generator< boost::mt19937, 
+			    boost::normal_distribution<double> >* gen_;/**< normal distribution random number generator */ 
 
   /** Dimensionality check during initialization */
   bool dimCheck(){

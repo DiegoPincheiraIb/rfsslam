@@ -168,6 +168,7 @@ public:
    * \param[out] s_sample The sampled vector. The covariance and time
    * of the s are copied.
    */
+  
   static void sample( typename RandomVecDerived::Vec &x,
 		      typename RandomVecDerived::Mat &Sx,
 		      typename RandomVecDerived::Mat &Sx_L,
@@ -192,7 +193,7 @@ public:
     s_sample.set( x, Sx, t );
 
   }
-
+  
 
 };
 

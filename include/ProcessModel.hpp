@@ -6,13 +6,19 @@
 
 #include "Measurement.hpp"
 #include "Pose.hpp"
-#include "RandomVecMathTools.hpp"
 
 /**
  * \class ProcessModel
- * \brief An abstract class for defining vehicle motion models
- * \tparam StateType RandomVector derived type for state 
- * \tparam InputType Measurement derived for process input
+ * An abstract class for defining process models
+ * \f[ \mathbf{x}_k = \mathbf{g}(\mathbf{x}_{k-1}, \mathbf{u}_k) + \boldsymbol{\delta}, \quad \delta \sim (\mathbf{0}, \mathbf{Q}) \f]
+ * where, \f$\mathbf{x}_k\f$ is the updated state,
+ * \f$ \mathbf{x}_{k-1} \f$ is the previous state,
+ * \f$ \mathbf{u}_k \f$ is the input,
+ * \f$ \boldsymbol{\delta} \f$ is the additive white process noise, 
+ * \f$ \mathbf{Q} \f$ is the process noise covariance
+ * \brief An abstract class for defining process models
+ * \tparam StateType RandomVector derived type for state \f$\mathbf{x}\f$ 
+ * \tparam InputType Measurement derived for process input \f$\mathbf{u}\f$
  * \author Keith Leung
  */
 template<class StateType, class InputType>
@@ -26,12 +32,13 @@ public:
   typedef InputType TInput;
 
   /** Default constructor */
-  ProcessModel(){
-    inputNoiseDefined_ = false;
-  }
+  ProcessModel():
+    inputNoiseDefined_(false)
+  {}
 
-  /** Constructor 
-   * \param S additive zero mean while Gaussian noise for this model 
+  /** 
+   * Constructor 
+   * \param[in] Q covariance for the additive zero mean white Gaussian noise for this model 
    */
   ProcessModel(typename StateType::Mat &Q){
     setNoise(Q);
@@ -40,24 +47,22 @@ public:
   /** Default destructor */
   ~ProcessModel(){};
 
-  /** Set the additive zero mean Gaussian noise covariance matrix 
-   *  \param[in] S additive zero mean while Gaussian noise for this model
+  /** 
+   * Set the additive zero mean Gaussian noise covariance matrix 
+   * \param[in] Q noise covariance
    */
   void setNoise(typename StateType::Mat &Q){
     Q_ = Q;
-    Eigen::LLT<typename StateType::Mat> cholesky( Q );
-    L_ = cholesky.matrixL();
     inputNoiseDefined_ = true;
   }
 
   /** 
-   * Abstract function for determining pose at time-step k from pose at 
-   * time-step k-1
+   * Abstract function for determining pose at time-step k from pose at time-step k-1
    * This must be implemented in a derived class
-   * \param s_k pose at current time-step k. This can be the same object as s_km (to update in place). [overwritten]
-   * \param s_km pose at previous time-step k-1
-   * \param input_k input to process model
-   * \param dT size of time-step
+   * \param[out] s_k \f$\mathbf{x}_k\f$ pose at current time-step k. This can be the same object as s_km (to update in place)
+   * \param[in] s_km \f$\mathbf{x}_{k-1}\f$ pose at previous time-step k-1
+   * \param[in] input_k \f$\mathbf{u}_k\f$ input to the process model
+   * \param[in] dT size of time-step
    */
   virtual void step( StateType &s_k, StateType &s_km, 
 		     InputType &input_k , double const dT = 0 ) = 0;		     
@@ -68,14 +73,14 @@ public:
    * other user-defined sampling methods. 
    * \warning This function does not check that the noise covariance matrices
    * are valid (i.e., semi-positive definite)
-   * \param s_k pose at current time-step k. This can be the same object as s_km (to update in place). [overwritten]
-   * \param s_km pose at previous time-step k-1
-   * \param input_k input to process model
-   * \param dT size of time-step
-   * \param useAdditiveWhiteGaussianNoise if true, the output includes 
-   * the zero-mean additive white Gaussian noise specified in the constructor
-   * \param useInputWhiteGaussianNoise if true, the output includes
-   * the noise specified in the input, and assumes that it is zero-mean white
+   * \param[out] s_k \f$\mathbf{x}_k\f$ sampled pose at current time-step k. This can be the same object as s_km (to update in place). 
+   * \param[in] s_km \f$\mathbf{x}_{k-1}\f$ pose at previous time-step k-1
+   * \param[in] input_k \f$\mathbf{u}_k\f$ input to process model
+   * \param[in] dT size of time-step
+   * \param[in] useAdditiveWhiteGaussianNoise if true, the output includes 
+   * the zero-mean additive white Gaussian noise specified for this ProcessModel
+   * \param[in] useInputWhiteGaussianNoise if true, the output includes
+   * the noise specified in the input vector, and assumes that it is zero-mean white
    * Gaussian noise.
    */
   virtual void sample( StateType &s_k, StateType &s_km, 
@@ -86,7 +91,8 @@ public:
     if(useInputWhiteGaussianNoise){
 
       InputType in;
-      RandomVecMathTools<InputType>::sample(input_k, in);
+      input_k.sample(in);
+      //RandomVecMathTools<InputType>::sample(input_k, in);
 
       step( s_k, s_km, in, dT );
 
@@ -98,11 +104,11 @@ public:
     
     if( useAdditiveWhiteGaussianNoise && Q_ != StateType::Mat::Zero() ){
 
-      typename StateType::Vec x_k;
-      double t;
-      s_k.get(x_k, t);
-      RandomVecMathTools<StateType>::sample(x_k, Q_, L_, t, s_k);
-
+      //typename StateType::Vec x_k;
+      //double t;
+      s_k.setCov(Q_);
+      //RandomVecMathTools<StateType>::sample(x_k, Q_, L_, t, s_k);
+      s_k.sample();
     }
   }
 
@@ -112,7 +118,7 @@ protected:
   typename StateType::Mat Q_;
 
   /** Lower triangular part of Cholesky decomposition on S_zmgn */
-  typename StateType::Mat L_;
+  //typename StateType::Mat L_;
 
   /** Flag to indicate if Q_ has been assigned a value */
   bool inputNoiseDefined_;
@@ -121,7 +127,8 @@ protected:
 
 /**
  * \class StaticProcessModel
- * \brief A template process model class with not inputs
+ * A template process model class with not inputs, used for landmarks
+ * \brief A template process model class with not inputs, used for landmarks
  * \author Keith Leung
  */
 template< class StateType >
@@ -134,16 +141,18 @@ public:
   StaticProcessModel(){}
 
   /** Constructor
-   *  \param S additive zero-mean Gaussian noise for the model
+   *  \param Q additive zero-mean Gaussian noise for this model
    */ 
   StaticProcessModel(typename StateType::Mat &Q): 
     ProcessModel< StateType, NullInput>(Q){
   }
 
+  /** Default destructor */
   ~StaticProcessModel(){}
 
   /** 
-   * Determine the pose at time-step k from pose at time-step k-1
+   * Define the step function required by a derived process model and
+   * determine the pose at time-step k from pose at time-step k-1
    * \param[out] s_k pose at current time-step k
    * \param[in] s_km pose at previous time-step k-1
    * \param[in] input_k input to process model
@@ -155,13 +164,14 @@ public:
     if( this->inputNoiseDefined_ ){
       typename StateType::Vec x;
       typename StateType::Mat S;
-      s_km.get(x, S);
+      double t;
+      s_km.get(x, S, t);
       S += (this->Q_ * dT * dT);
-      s_k.set(x, S);
+      t += dT;
+      s_k.set(x, S, t);
     }else{
       s_k = s_km;
     }
-
   }
   
   /** 
@@ -178,12 +188,34 @@ public:
 };
 
 
-////////// Example 2d Odometry Motion Model //////////
+/************* 2d Odometry Motion Model *************/
 
 /**
  * \class OdometryMotionModel2d
+ * A 2d odometry motion model with translational and rotational
+ *        displacement
+ * The 2d motion model is as follows: 
+ * \f[ \mathbf{x}_k = \begin{bmatrix} \mathbf{p} \\ \theta \end{bmatrix}_k =
+ * \begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_k =
+ * \mathbf{g}(\mathbf{x}_{k-1}, \mathbf{u}_k) + \boldsymbol{\delta} = 
+ * \mathbf{g}\left(\begin{bmatrix} \mathbf{p} \\ \theta \end{bmatrix}_{k-1}, 
+ * \begin{bmatrix} \delta \mathbf{p} \\ \delta\theta \end{bmatrix}_k \right) + \boldsymbol{\delta} = 
+ * \mathbf{g}\left(\begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_{k-1}, 
+ * \begin{bmatrix} \delta x \\ \delta y \\ \delta\theta \end{bmatrix}_k \right) + \boldsymbol{\delta},
+ * \boldsymbol\delta \sim (\mathbf{0}, \mathbf{Q})
+ * \f]
+ * Using rotation matrices to represent the rotation, the function \f$\mathbf{g}\f$
+ * composes of the following:
+ * \f[
+ * \mathbf{p}_k = \mathbf{p}_{k-1} + \mathbf{C}_{k-1}^{\mathrm{T}}(\theta_{k-1}) \delta \mathbf{p}_{k-1}
+ * \f]
+ * \f[
+ * \mathbf{C}_k(\mathbf{\theta_k}) = \mathbf{C}_{k,k-1}(\mathbf{\delta\theta_k}) \mathbf{C}_{k-1}(\mathbf{\theta_{k-1}})
+ * \f]
  * \brief A 2d odometry motion model with translational and rotational
  *        displacement
+ * \note Currently the updated state from step does not contain valid
+ * covariance information because it is not needed by the RBPHDFilter
  * \author Keith Leung
  */
 class OdometryMotionModel2d : public ProcessModel< Pose2d, Odometry2d >
@@ -196,18 +228,38 @@ public:
   /** Constructor with process noise input 
    * \param S additive zero-mean white Gaussian noise covariance matrix
    */
-  OdometryMotionModel2d( Pose2d::Mat S );
+  OdometryMotionModel2d( Pose2d::Mat &Q );
 
   /** Default destructor */
   ~OdometryMotionModel2d();
 
-   /** 
+  /** 
    * This overrides the virtual function in the parent class for
-   * determining the pose at time-step k from pose at time-step k-1
-   * \param s_k pose at current time-step k [overwritten]
-   * \param s_km pose at previous time-step k-1
-   * \param input_k input to process model
-   * \param dT size of time-step (not used)
+   * determining the pose at time-step k from pose at time-step k-1.
+   * The 2d motion model is as follows: 
+   * \f[ \mathbf{x}_k = \begin{bmatrix} \mathbf{p} \\ \theta \end{bmatrix}_k =
+   * \begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_k =
+   * \mathbf{g}(\mathbf{x}_{k-1}, \mathbf{u}_k) + \boldsymbol{\delta} = 
+   * \mathbf{g}\left(\begin{bmatrix} \mathbf{p} \\ \theta \end{bmatrix}_{k-1}, 
+   * \begin{bmatrix} \delta \mathbf{p} \\ \delta\theta \end{bmatrix}_k \right) + \boldsymbol{\delta} = 
+   * \mathbf{g}\left(\begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_{k-1}, 
+   * \begin{bmatrix} \delta x \\ \delta y \\ \delta\theta \end{bmatrix}_k \right) + \boldsymbol{\delta},
+   * \boldsymbol\delta \sim (\mathbf{0}, \mathbf{Q})
+   * \f]
+   * Using rotation matrices to represent the rotation, the function \f$\mathbf{g}\f$
+   * composes of the following:
+   * \f[
+   * \mathbf{p}_k = \mathbf{p}_{k-1} + \mathbf{C}_{k-1}^{\mathrm{T}}(\theta_{k-1}) \delta \mathbf{p}_{k-1}
+   * \f]
+   * \f[
+   * \mathbf{C}_k(\mathbf{\theta_k}) = \mathbf{C}_{k,k-1}(\mathbf{\delta\theta_k}) \mathbf{C}_{k-1}(\mathbf{\theta_{k-1}})
+   * \f]
+   * \note Currently the updated state from step does not contain valid
+   * covariance information because it is not needed by the RBPHDFilter
+   * \param[out] s_k pose at current time-step k
+   * \param[in] s_km pose at previous time-step k-1
+   * \param[in] input_k input to process model
+   * \param[in] dT size of time-step (not used)
    */
   void step( Pose2d &s_k, Pose2d &s_km, Odometry2d &input_k, 
 	     double const dT=0);
@@ -233,9 +285,14 @@ private:
 
 
 
-/*
+/**
  * \class OdometryMotionModel1d
+ * A 1d odometry motion model with translational displacement
+ * The 1d model is as follows:
+ * \f[ x_{k} = x_{k-1} + \delta x_k\f]
  * \brief A 1d odometry motion model with translational displacement
+ * \note Currently the updated state from step does not contain valid
+ * covariance information because it is not needed by the RBPHDFilter
  * \author Keith Leung
  */
 class OdometryMotionModel1d : public ProcessModel< Pose1d, Odometry1d >
@@ -246,9 +303,9 @@ public:
   OdometryMotionModel1d(){}
 
   /** Constructor with process noise input 
-   * \param S additive zero-mean white Gaussian noise variance
+   * \param[in] Q additive zero-mean white Gaussian noise variance
    */
-  OdometryMotionModel1d( Pose1d::Mat S );
+  OdometryMotionModel1d( Pose1d::Mat &Q );
 
   /** Default destructor */
   ~OdometryMotionModel1d(){}
@@ -256,10 +313,14 @@ public:
    /** 
    * This overrides the virtual function in the parent class for
    * determining the position at time-step k from position at time-step k-1
-   * \param s_k position at current time-step k [overwritten]
-   * \param s_km position at previous time-step k-1
-   * \param input_k input to process model
-   * \param dT size of time-step (not used)
+   * The 1d model is as follows:
+   * \f[ x_{k} = x_{k-1} + \delta x_k\f]
+   * \note Currently the updated state from step does not contain valid
+   * covariance information because it is not needed by the RBPHDFilter
+   * \param[out] s_k position at current time-step k
+   * \param[in] s_km position at previous time-step k-1
+   * \param[in] input_k input to process model
+   * \param[in] dT size of time-step (not used)
    */
   void step( Pose1d &s_k, Pose1d &s_km, Odometry1d &input_k, 
 	     double const dT=0);
@@ -269,7 +330,6 @@ private:
   Pose1d::Vec x_km_; /**< position at k-1 */
   Pose1d::Vec x_k_;  /**< position at k */
   Odometry1d::Vec u_k_; /**< odometry from k-1 to k */
-
 
 };
 

@@ -408,6 +408,8 @@ public:
       fprintf( pParticlePoseFile, "%f   %f   %f   1.0\n", x_i.get(0), x_i.get(1), x_i.get(2));
     }
 
+    boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Process Time: %ws\n");;
+
     for(int k = 1; k < kMax_; k++){
 
       if( k % 1 == 0)
@@ -463,6 +465,9 @@ public:
 
 
     }
+
+    delete timer;
+
     fclose(pParticlePoseFile);
     fclose(pLandmarkEstFile);
 
