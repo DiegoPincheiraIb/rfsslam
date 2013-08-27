@@ -14,6 +14,9 @@
  *
  * \f[ \mathbf{z} = \mathbf{h}(\mathbf{x}, \mathbf{m} ) + \mathbf{e}, \mathbf{e} \sim (\mathbf{0}, \mathbf{R}) \f] 
  * where \f$\mathbf{z}\f$ is a measurement, \f$\mathbf{x}\f$ is the robot pose, \f$\mathbf{m}\f$ is a landmark position, \f$\mathbf{e}\f$ is the zero-mean Gaussian noise.
+ * \tparam PoseType sensor pose type
+ * \tparam LandmarkType measured object type
+ * \tparam MeasurementType measurement type
  * \author Felipe Inostroza, Keith Leung
  */
 template<class PoseType, class LandmarkType, class MeasurementType>

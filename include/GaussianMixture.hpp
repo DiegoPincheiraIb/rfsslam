@@ -11,8 +11,8 @@
  * \class GaussianMixture
  * \brief A class for mixture of Gaussians
  *
- * This class represents a mixture of weighted Gaussians using a binary tree.
- * It is designed to work in a Rao-Blackwellized particle filter
+ * This class represents a mixture of weighted Gaussians
+ * It is designed to work with the RBPHDFilter
  *
  * \author Keith Leung
  */
@@ -35,20 +35,21 @@ public:
   /** Default constructor */
   GaussianMixture();
   
-  /** Desctructor */
+  /** Destructor */
   ~GaussianMixture();
 
   /** 
    * Copy data from this GaussianMixture to another GaussianMixture.
-   * \param[in/out] other the other Gaussian mixture to which data is copied to
+   * Memory is allocated for creating copies of Gaussians for the other GaussianMixture.
+   * \param[in,out] other the other Gaussian mixture to which data is copied to
    */
   void copyTo( GaussianMixture *other);
 
   /** 
    * Add a Gaussian to this GaussianMixture
-   * \param[in] p pointer to the Landmark to add, which holds the mean and covariance
+   * \param[in] p pointer to the Landmark which holds the mean and covariance
    * \param[in] w weight of the new Gaussian
-   * \param[in] allocateMem if false, assumes memory for Landmark has already been allocated
+   * \param[in] allocateMem if false, the function assumes memory for Landmark has already been allocated
    * and will not go out of scope or get deleted, other than by the current instantiation of GaussianMixture.
    * If true, memory is allocated for a new Landmark and data from p is copied to it.
    * \return number of Gaussians in the mixture
@@ -99,15 +100,15 @@ public:
   /**
    * Get the state and weight of a Gaussian
    * \param[in] idx index
-   * \param[out] p overwritten by pointer to landmark
-   * \param[out] w overwritten by the weight 
+   * \param[out] p pointer to a Landmark which holds the mean and covariance
+   * \param[out] w the weight 
    */
   void getGaussian( unsigned int idx, pLandmark &p, double &w);
 
   /**
    * Get the parameters and weight of a Gaussian
    * \param[in] idx index
-   * \param[out] p overwritten by a pointer to a Landmark that holds the Gaussian parameters.
+   * \param[out] p pointer to a Landmark which holds the mean and covariance
    * \param[out] w overwritten by the weight 
    * \param[out] w_prev overwritten by the previous weight (used in parts of the RBPHDFilter)
    */
@@ -116,14 +117,14 @@ public:
   /**
    * Update an Gaussian in the mixture. 
    * \param[in] idx index of the Gaussian to update
-   * \param[in] lm Landmark object with the updated data
+   * \param[in] lm Landmark object with the updated mean and covariance
    * \param[in] w weight of the updated Gaussian. No change are made to the existing weight if this is negative.
    * \return true if idx is valid and Gaussian is updated
    */
   bool updateGaussian( unsigned int idx, Landmark &lm, double w = -1);
 
   /**
-   * Merge Gaussians that are within a certain Mahalanobis distance of each other
+   * Check all Gaussians in the mixture and merge those that are within a certain Mahalanobis distance of each other
    * \param[in] t distance threshold (the default value squares to 0.1)
    * \param[in] f_inflation merged Gaussian covariance inflation factor (default value causes no inflation)
    * \return number of merging operations
@@ -133,7 +134,7 @@ public:
   /**
    * Prune the Gaussian mixture to remove Gaussians with weights that are
    * less than a given threshold. 
-   * \note Gaussians may have difference indices after using this function due to sorting to gList_
+   * \note Gaussians may have difference indices after using this function due to sorting performed on gList_
    * \param[in] t weight threshold, below which Gaussians are removed.
    * \return number of Gaussians removed
    */
@@ -160,7 +161,7 @@ protected:
    * \param[in] idx element in the container gList_ to overwrite.
    * \param[in] p pointer to the Landmark to add, which holds the mean and covariance.
    * \param[in] w weight of the new Gaussian.
-   * \param[in] allocateMem if false, assumes memory for Landmark has already been allocated
+   * \param[in] allocateMem if false, this assumes memory for Landmark has already been allocated
    * and will not go out of scope or get deleted, other than by the current instantiation of GaussianMixture.
    * If true, memory is allocated for a new Landmark and data from p is copied to it.
    * \return number of Gaussians in the mixture

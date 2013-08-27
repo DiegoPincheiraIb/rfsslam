@@ -9,11 +9,14 @@
 
 /** 
  * \class KalmanFilter
- * \brief A Kalman Filter class for performing landmar estimate predictions and 
- * updates. It is intented for use in RBPHDFilter.
- * \tparam ProcessModelType process model derived from 
+ * \brief An Extended Kalman Filter (EKF) for performing estimate predictions and 
+ * updates on a Landmark, given a MeasurementModel, ProcessModel, and a sensor Pose
+ * \note In the future, we will augment this class with two more correct and update
+ * functions so this can be used to update sensor pose, but there is no immediate
+ * need for this.
+ * \tparam ProcessModelType A process model derived from 
  * ProcessModel or StaticProcessModel
- * \tparam MeasurementModelType measurement model derived from MeasurementModel
+ * \tparam MeasurementModelType A measurement model derived from MeasurementModel
  * \author Felipe Inostroza, Keith Leung
  */
 template <class ProcessModelType, class MeasurementModelType>
@@ -22,7 +25,7 @@ class KalmanFilter
 
 public:
 
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
   typedef typename ProcessModelType::TInput TInput;
   typedef typename MeasurementModelType::TPose TPose;
@@ -57,64 +60,51 @@ public:
   void setProcessModel(ProcessModelType *pProcessModel);
 
   /**
-   * Kalman filter update step. The function will  automatically check whether it can 
-   * reuse the Kalman gain or the predicted covariance from a previous call.
-   * \note This function may be reimplemented in a derived class
-   * \param[in] pose The sensor pose
-   * \param[in] measurement The measurement to use for updating the landmark state
-   * \param[in]  landmark_current The current landmark state
-   * \param[out] landmark_updated The updated landmark state
-   * \param[out] zLikelihood if supplied, this stores the measurement likelihood 
-   * (required by RBPHDFilter)
-   * \param[out] mahalanobisDist2 if supplied, stores the saured mahalanobis distance 
-   * used to calculate zlikelihood (required by RBPHDFilter)
-   * \return true if the correction was performed. This could be false if calculateInnovation returns false
-   * \warning this function is not thread-safe (if multiple threads using the same
-   * instantiation of this class calls this function)
-   */
-  virtual bool correct(TPose &pose, TMeasurement &measurement, 
-		       TLandmark &landmark_current, TLandmark &landmark_updated,
-		       double* zLikelihood = NULL, 
-		       double* mahalanobisDist2 = NULL);
-  
-   /**
-   * This funtion uses the ProcessModel to propagate the feature through time
+   * Kalman filter prediction step
+   * This funtion uses the ProcessModel to propagate the Landmark estimate forward in time
    * \param[in] lanmark_current The landmark before the prediction
    * \param[out] landmark_updated The landmark after the prediction step
    * \param[in] dT time step size, if required by motion model
    */
   void predict(TLandmark &landmark_current, TLandmark &landmark_updated,
 	       double dT = 1);
+
+  /**
+   * Kalman filter update step.
+   * \note This function may be reimplemented in a derived class
+   * \param[in] pose the sensor pose
+   * \param[in] measurement the measurement to use for updating the landmark state
+   * \param[in]  landmark_current the current landmark state
+   * \param[out] landmark_updated the updated landmark state
+   * \param[out] zLikelihood if supplied, this stores the measurement likelihood 
+   * (required by the RBPHDFilter)
+   * \param[out] mahalanobisDist2 if supplied, stores the sqaured mahalanobis distance 
+   * used to calculate zlikelihood (required by the RBPHDFilter)
+   * \return true if the correction was performed. This could be false if calculateInnovation returns false
+   */
+  virtual bool correct(TPose &pose, TMeasurement &measurement, 
+		       TLandmark &landmark_current, TLandmark &landmark_updated,
+		       double* zLikelihood = NULL, 
+		       double* mahalanobisDist2 = NULL);
   
   /**
    * Calculate the innovation. This may be reimplemented in a derived class
-   * for special cases such as dealing with rotations. The result is stored in
-   * innovation_
-   * \param[in] z_exp Expected measurement 
-   * \param[in] z_act Actual measurement
+   * for special cases such as dealing with rotations.
+   * \param[in] z_exp expected measurement 
+   * \param[in] z_act actual measurement
+   * \param[out] z_innov innovation
    * \return true to allow the correction step to proceed. This is useful for ignoring an update when
    * the innovation is too large, which may cause problems for the filter.
    */
   virtual bool calculateInnovation(Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_exp, 
-				   Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_act);
+				   Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_act,
+				   Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_innov);
 
 
 protected:
 
   MeasurementModelType *pMeasurementModel_;
   ProcessModelType *pProcessModel_;
-  TMeasurement measurement_exp_;
-
-  Eigen::Matrix < double , TLandmark::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime>  K_ ;
-  Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime > H_ ;
-  Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> S_ , S_inv_; 
-  Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> z_exp_cov_ , R_prev_ ;
-  Eigen::Matrix < double , TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime>  P_prev_ , I_;
-
-  Eigen::Matrix < double , TLandmark::Vec::RowsAtCompileTime , 1> m_prev_;
-  Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1> z_exp_ , innovation_;
-  Eigen::Matrix < double , TPose::Vec::RowsAtCompileTime, 1> x_prev_;
-
 
 };
 
@@ -127,7 +117,6 @@ KalmanFilter()
 {
   pMeasurementModel_ = NULL;
   pProcessModel_ = NULL;
-  I_.setIdentity();
 }
 
 template <class ProcessModelType, class MeasurementModelType> 
@@ -137,7 +126,6 @@ KalmanFilter(ProcessModelType *pProcessModel,
 {
   pMeasurementModel_= pMeasurementModel;
   pProcessModel_= pProcessModel;
-  I_.setIdentity();
 }
 
 template <class ProcessModelType, class MeasurementModelType> 
@@ -152,45 +140,58 @@ setProcessModel(ProcessModelType *pProcessModel){
   pProcessModel_ = pProcessModel;
 }
 
+
+template <class ProcessModelType, class MeasurementModelType> 
+void KalmanFilter<ProcessModelType, MeasurementModelType>::
+predict(TLandmark &landmark_current, 
+	TLandmark &landmark_updated,
+	double dT){
+
+  pProcessModel_->staticStep(landmark_updated, landmark_current, dT);
+
+}
+
 template <class ProcessModelType, class MeasurementModelType> 
 bool KalmanFilter<ProcessModelType, MeasurementModelType>::
 correct(TPose &pose, TMeasurement &measurement, 
 	TLandmark &landmark_current, TLandmark &landmark_updated,
 	double* zLikelihood, double* mahalanobisDist2 ){
 
-  Eigen::Matrix < double , TPose::Vec::RowsAtCompileTime, 1> x;
-  Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1> z_act;
-  Eigen::Matrix < double , TLandmark::Vec::RowsAtCompileTime, 1> m, m_updated;
-  Eigen::Matrix < double , TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime> P, P_updated;;
-  
-  double t;
-  pose.get( x );
-  landmark_current.get(m , P);
-  measurement.get(z_act , t);
-  pMeasurementModel_->measure( pose , landmark_current , measurement_exp_ , &H_);
-  measurement_exp_.get(z_exp_ , z_exp_cov_ , t);
+  TMeasurement measurement_exp; // expected measurement
 
-  bool continueUpdate = calculateInnovation(z_exp_, z_act);
-  if(!continueUpdate)
-    return false;
+  Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime>  K; // Kalman gain
+  Eigen::Matrix <double, TMeasurement::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime > H; // measurement model Jacobian
+  Eigen::Matrix <double, TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> S , S_inv; // innovation covariance
+  Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime>  I; // identity matrix
+  Eigen::Matrix <double, TMeasurement::Vec::RowsAtCompileTime, 1> z_act, z_exp ,z_innov; // measurement: actual, expected, innovation
+  Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, 1> m, m_updated; // means
+  Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime> P, P_updated; // covariance
+  
+  if(!pMeasurementModel_->measure( pose , landmark_current , measurement_exp , &H))
+    return false; // invalid expected measurement produced
+  
+  double t; 
+  measurement.get(z_act, t);
+  measurement_exp.get(z_exp, S);
 
-  S_ = z_exp_cov_;
-  S_inv_ = S_.inverse();
-  K_ = P * H_.transpose() * S_inv_;
-  P_updated = ( I_ - K_*H_ ) * P;
-  P_updated = ( P_updated + P_updated.transpose() ) / 2;
+  if(!calculateInnovation(z_exp, z_act, z_innov))
+    return false; // innovation cannot be used, abort update
   
-  //x_prev_ = x;
-  //m_prev_ = m;
-  //P_prev_ = P;
+  landmark_current.get(m, P);
+
+  I.setIdentity();
+  measurement_exp.getCovInv(S_inv);
+  K = P * H.transpose() * S_inv;
+  P_updated = ( I - K * H ) * P;
+  P_updated = ( P_updated + P_updated.transpose() ) / 2; // make sure covariance is symetric
   
-  m_updated = m + K_ * innovation_;
+  m_updated = m + K * z_innov;
   landmark_updated.set(m_updated, P_updated);
   
   if(zLikelihood != NULL){
-    RandomVec<Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1>, Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> > z_innov;
-    z_innov.set( z_act, S_ );
-    *zLikelihood = z_innov.evalGaussianLikelihood( z_exp_, mahalanobisDist2 );   
+    RandomVec<Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1>, Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> > innov;
+    innov.set(z_act, S);
+    *zLikelihood = innov.evalGaussianLikelihood( z_exp, mahalanobisDist2 );   
     if(*zLikelihood != *zLikelihood) // When likelihood is so small that it becomes NAN
       zLikelihood = 0;  
   }
@@ -203,19 +204,10 @@ correct(TPose &pose, TMeasurement &measurement,
 template <class ProcessModelType, class MeasurementModelType> 
 bool KalmanFilter<ProcessModelType, MeasurementModelType>::
 calculateInnovation(Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_exp, 
-		    Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_act){
-  innovation_ = z_act - z_exp;
+		    Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_act,
+		    Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_innov){
+  z_innov = z_act - z_exp;
   return true;
-}
-
-template <class ProcessModelType, class MeasurementModelType> 
-void KalmanFilter<ProcessModelType, MeasurementModelType>::
-predict(TLandmark &landmark_current, 
-	TLandmark &landmark_updated,
-	double dT){
-
-  pProcessModel_->staticStep(landmark_updated, landmark_current, dT);
-
 }
 
 
@@ -248,8 +240,8 @@ public:
   
   /**
    * Constructor
-   * \param pMeasurementModel Pointer to the measurement model
-   * \param pProcessModel Pointer to the process model
+   * \param[in] pMeasurementModel Pointer to the measurement model
+   * \param[in] pProcessModel Pointer to the process model
    */
   RangeBearingKalmanFilter(StaticProcessModel<Landmark2d> *pProcessModel,
 			   RangeBearingModel *pMeasurementModel):
@@ -260,26 +252,24 @@ public:
 
   /**
    * Function to calculate the innovation 
-   * \param prediction Prediction of the measurement 
-   * \param measurement measurement 
+   * \param[in] z_exp expected measurement predicted using the measurement model 
+   * \param[in] z_act actual measurement
+   * \param[out] z_innov innovation
    */
-  bool calculateInnovation(Vec &z_exp, Vec &z_act){
+  bool calculateInnovation(Vec &z_exp, Vec &z_act, Vec &z_innov){
     
-    innovation_ = z_act - z_exp;
+    z_innov = z_act - z_exp;
 
-    if(config.rangeInnovationThreshold_ > 0 && fabs(innovation_(0)) > config.rangeInnovationThreshold_){
+    if(config.rangeInnovationThreshold_ > 0 && fabs(z_innov(0)) > config.rangeInnovationThreshold_){
       return false;
     }
-  
-    while(innovation_(1)>PI){
-      innovation_(1)-=2*PI;
+    while(z_innov(1)>PI){
+      z_innov(1)-=2*PI;
     }
-    while(innovation_(1)<-PI){
-      innovation_(1)+=2*PI;
+    while(z_innov(1)<-PI){
+      z_innov(1)+=2*PI;
     }  
-
     return true;
-
   }
 
 };

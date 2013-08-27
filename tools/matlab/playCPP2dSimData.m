@@ -10,12 +10,18 @@ axis equal
 grid on
 set(gca, 'XLim', get(gca, 'XLim') + [-1, 1] );
 set(gca, 'YLim', get(gca, 'YLim') + [-1, 1] );
+tmp = get(gca, 'XLim');
+text_x = (tmp(2) - tmp(1)) * 9/10 + tmp(1);
+tmp = get(gca, 'YLim');
+text_y = (tmp(2) - tmp(1)) * 9.5/10 + tmp(1);
+
    
 h_robotPos = plot(gt_pose(2,1), gt_pose(3,1), 'ro', 'MarkerSize', 5, 'MarkerFaceColor', 'r');
 h_robotHdg = line([gt_pose(2,1) gt_pose(2,1)+0.5*cos(gt_pose(4,1))], [gt_pose(3,1) gt_pose(3,1)+0.5*sin(gt_pose(4,1))], 'Color', 'k');
 h_drPos = plot(dr_pose(2,1), dr_pose(3,1), 'ro', 'MarkerSize', 5, 'MarkerFaceColor', 'g');
 h_drHdg = line([dr_pose(2,1) dr_pose(2,1)+0.5*cos(dr_pose(4,1))], [dr_pose(3,1) dr_pose(3,1)+0.5*sin(dr_pose(4,1))], 'Color', 'k');
 h_particlePos = plot(x_i(1, :, 1), x_i(2, :, 1), 'm.');
+h_time = text(text_x, text_y, sprintf('%d',0));
 
 pause(0.005);
 meas_idx = 1;
@@ -28,6 +34,7 @@ for k = 1 : length(gt_pose)
     delete( h_drHdg )
     delete( h_particlePos );
     delete(findobj('Color','b'))
+    delete( h_time )
     
     t = gt_pose(1,k);
     x = gt_pose(2,k);
@@ -83,6 +90,7 @@ for k = 1 : length(gt_pose)
         end
     end
 
+    h_time = text(text_x, text_y, sprintf('%d',k));
     
     %export_fig(sprintf('results/anim/%06d.png',k), hfig);
     pause(0.05)
