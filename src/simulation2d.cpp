@@ -82,7 +82,7 @@ public:
     reportTimingInfo_ = cfg.lookup("Filter.reportTimingInfo");
     importanceWeightingEvalPointCount_ = cfg.lookup("Filter.importanceWeightingEvalPointCount");
 
-    nThreadsPropagationStep__ = cfg.lookup("Computation.nThreads");
+    nThreadsPropagationStep_ = cfg.lookup("Computation.nThreadsPropagationStep");
     logToFile_ = cfg.lookup("Computation.logToFile");
     
     return true;   
@@ -388,7 +388,7 @@ public:
     pFilter_->config.reportTimingInfo_ = reportTimingInfo_;
 
     // set multi-threading parameter
-    pFilter_->PFconfig.nThreadsPropagationStep_ = nThreadsPropagationStep__;
+    pFilter_->PFconfig.nThreadsPropagationStep_ = nThreadsPropagationStep_;
   }
 
   void run(){
@@ -545,7 +545,7 @@ private:
   int importanceWeightingEvalPointCount_;
   bool reportTimingInfo_;
 
-  unsigned int nThreadsPropagationStep__;
+  unsigned int nThreadsPropagationStep_;
   bool logToFile_;
 };
 

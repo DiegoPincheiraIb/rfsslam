@@ -142,7 +142,7 @@ protected:
    * \param[in] startIdx start of particle index range for processing (inclusive)
    * \param[in] stopIdx particle end of particle index range for processing (exclusive)
    */
-  void propagateThread(TInput &input, 
+  void propagateThread(TInput input, 
 		       double const dt,
 		       unsigned int startIdx,
 		       unsigned int stopIdx);
@@ -243,6 +243,7 @@ void ParticleFilter<ProcessModel, MeasurementModel>::propagate( TInput &input,
     unsigned int particles_per_thread = nParticles_ / PFconfig.nThreadsPropagationStep_;
     unsigned int startIdx = 0;
     unsigned int endIdx = startIdx + particles_per_thread;
+
     // Start threads
     for( unsigned int tCount = 0; tCount < PFconfig.nThreadsPropagationStep_; tCount++ ){
 
@@ -265,16 +266,22 @@ void ParticleFilter<ProcessModel, MeasurementModel>::propagate( TInput &input,
 }
 
 template< class ProcessModel, class MeasurementModel>
-void ParticleFilter<ProcessModel, MeasurementModel>::propagateThread( TInput &input, 
+void ParticleFilter<ProcessModel, MeasurementModel>::propagateThread( TInput input, 
 								      double const dt,
 								      unsigned int startIdx,
-								      unsigned int stopIdx){
+								      unsigned int stopIdx){  
   TPose x_km, x_k;
-  for( unsigned int i = startIdx ; i < stopIdx ; i++ ){
-    particleSet_[i]->getPose( x_km );
-    pProcessModel_->sample( x_k, x_km, input, dt);
-    particleSet_[i]->setPose( x_k );
+  ProcessModel model = *pProcessModel_;
+  typename TParticleSet::iterator it_start = particleSet_.begin() + startIdx;
+  typename TParticleSet::iterator it_stop = particleSet_.begin() + stopIdx;
+  typename TParticleSet::iterator it;
+
+  for( it = it_start ; it !=  it_stop ; it++ ){
+    (*it)->getPose( x_km );
+    model.sample( x_k, x_km, input, dt);
+    (*it)->setPose( x_k );
   }
+
 }
 
 template< class ProcessModel, class MeasurementModel>
