@@ -423,12 +423,16 @@ public:
       }
     }
 
-    boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Total Process Time: %ws\n");
+
+    boost::timer *stepTimer = NULL;
+    boost::timer *processTimer = new boost::timer();
 
     for(int k = 1; k < kMax_; k++){
 
-      boost::timer::auto_cpu_timer *steptimer = new boost::timer::auto_cpu_timer(6, "Step Process Time: %ws\n");
-
+      if(reportTimingInfo_){
+	stepTimer = new boost::timer();
+      }
+      
       if( k % 1 == 0)
 	printf("k = %d\n", k);
       
@@ -487,11 +491,15 @@ public:
 	fprintf( pLandmarkEstFile, "\n");
       }
 
-      delete steptimer;
+      if(reportTimingInfo_){
+	printf("Step time: %e\n", stepTimer->elapsed() );
+	delete stepTimer;
+      }
 
     }
 
-    delete timer;
+    printf("Process time: %f\n", processTimer->elapsed() );
+    delete processTimer;
 
     if(logToFile_){
       fclose(pParticlePoseFile);

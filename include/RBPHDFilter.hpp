@@ -4,7 +4,8 @@
 #ifndef RBPHDFILTER_HPP
 #define RBPHDFILTER_HPP
 
-#include <boost/timer/timer.hpp>
+//#include <boost/timer/timer.hpp>
+#include <boost/timer.hpp>
 #include <Eigen/Core>
 #include "GaussianMixture.hpp"
 #include "ParticleFilter.hpp"
@@ -307,9 +308,9 @@ LmkProcessModel* RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementMod
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::predict( TInput u,
 												 int currentTimestep){
-  boost::timer::auto_cpu_timer *timer = NULL;
+  boost::timer *timer_predict = NULL;
   if(config.reportTimingInfo_)
-    timer = new boost::timer::auto_cpu_timer(6, "Predict time: %ws\n");
+    timer_predict = new boost::timer();
 
   // Add birth Gaussians using pose before prediction
   addBirthGaussians();
@@ -327,8 +328,11 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     }
   }
 
-  if(timer != NULL)
-    delete timer;
+  if(timer_predict != NULL){
+    double time_predict = timer_predict->elapsed();
+    printf("Prediction time: %f\n", time_predict);
+    delete timer_predict;
+  }
 
 }
 
@@ -336,49 +340,42 @@ template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z,
 												int currentTimestep){
   
-  // boost::timer::auto_cpu_timer *timer_mapCheck = NULL;
-  boost::timer::auto_cpu_timer *timer_mapUpdate = NULL;
-  boost::timer::auto_cpu_timer *timer_particleWeighting = NULL;
-  boost::timer::auto_cpu_timer *timer_mapMerge = NULL;
-  boost::timer::auto_cpu_timer *timer_mapPrune = NULL;
-  boost::timer::auto_cpu_timer *timer_particleResample = NULL;
+  boost::timer *timer_mapCheck = NULL;
+  boost::timer *timer_mapUpdate = NULL;
+  boost::timer *timer_particleWeighting = NULL;
+  boost::timer *timer_mapMerge = NULL;
+  boost::timer *timer_mapPrune = NULL;
+  boost::timer *timer_particleResample = NULL;
 
   k_currentTimestep_ = currentTimestep;
 
   this->setMeasurements( Z ); // Z gets cleared after this call, measurements now stored in this->measurements_
 
-  /*if(config.reportTimingInfo_){
-    timer_mapCheck = new boost::timer::auto_cpu_timer(6, "Map check time: %ws\n");
-  }
-  if(!checkMapIntegrity())
-    std::cin.get();
-  if(timer_mapCheck != NULL)
-  delete timer_mapCheck;*/
-
   if(config.reportTimingInfo_){
-    timer_mapUpdate = new boost::timer::auto_cpu_timer(6, "Map update time: %ws\n");
+    timer_mapUpdate = new boost::timer();
   }
   updateMap();
-  if(timer_mapUpdate != NULL)
+  if(timer_mapUpdate != NULL){
+    double time_mapUpdate = timer_mapUpdate->elapsed();
+    printf("Map update time: %f\n", time_mapUpdate);
     delete timer_mapUpdate;
-
-  /*
-  if(!checkMapIntegrity())
-    std::cin.get();
-  */
+  }
 
   if(config.reportTimingInfo_){
-    timer_particleWeighting = new boost::timer::auto_cpu_timer(6, "Particle weighting time: %ws\n");
+    timer_particleWeighting = new boost::timer();
   }
   importanceWeighting();
-  if(timer_particleWeighting != NULL)
+  if(timer_particleWeighting != NULL){
+    double time_particleWeighting = timer_particleWeighting->elapsed();
+    printf("Particle weighting time: %f\n", time_particleWeighting);
     delete timer_particleWeighting;
+  }
 
   // Merge and prune
   int maxMapSize = -1;
   int i_maxMapSize = -1;
   if(config.reportTimingInfo_){
-    timer_mapMerge = new boost::timer::auto_cpu_timer(6, "Map merge time: %ws\n");
+    timer_mapMerge = new boost::timer();
   }
 
   if( config.nThreadsMapMerging_ <= 1 ){
@@ -481,24 +478,29 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     }
 
   }
-  
-
-  if(timer_mapMerge != NULL)
+ 
+  if(timer_mapMerge != NULL){
+    double time_mapMerge = timer_mapMerge->elapsed();
+    printf("Map merge time: %f\n", time_mapMerge);
     delete timer_mapMerge;
+  }
 
   if(config.reportTimingInfo_){
-    timer_mapPrune = new boost::timer::auto_cpu_timer(6, "Map prune time: %ws\n");
+    timer_mapPrune = new boost::timer();
   }
   for( int i = 0; i < maps_.size(); i++){ // maps_size is same as number of particles
    
     maps_[i]->prune( config.gaussianPruningThreshold_ );
     
   }
-  if(timer_mapPrune != NULL)
+  if(timer_mapPrune != NULL){
+    double time_mapPrune = timer_mapPrune->elapsed();
+    printf("Map prune time: %f\n", time_mapPrune);
     delete timer_mapPrune;
+  }
 
   if(config.reportTimingInfo_){
-    timer_particleResample = new boost::timer::auto_cpu_timer(6, "Particle resample time: %ws\n");
+    timer_particleResample = new boost::timer();
   }
   bool resampleOccured = false;
   if( k_currentTimestep_ - k_lastResample_ >= config.minInterSampleTimesteps_){
@@ -552,11 +554,11 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
   }
   
-  if(timer_particleResample != NULL)
+  if(timer_particleResample != NULL){
+    double time_particleResample = timer_particleResample->elapsed();
+    printf("Particle resample time: %f\n", time_particleResample);
     delete timer_particleResample;
-
-  if(!checkMapIntegrity())
-    std::cin.get();
+  }
 
 }
 

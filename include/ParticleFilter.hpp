@@ -359,7 +359,7 @@ void ParticleFilter<ProcessModel, MeasurementModel>::propagate( TInput &input,
     {
       boost::unique_lock<boost::mutex> lock( mPropagationStepThreadFinishedCount_ );
       while( propagationStepThreadFinishedCount_ != propagationStepMutices_.size() ){
-	cond_allThreadsAreWaiting_.wait( lock );
+	cond_allThreadsAreWaiting_.wait(lock);
       }
     }
     

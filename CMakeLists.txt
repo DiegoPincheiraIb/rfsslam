@@ -53,7 +53,7 @@ TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread Mea
 ADD_TEST(unitTest bin/unitTest)
 
 ADD_EXECUTABLE(sim2d src/simulation2d.cpp src/Measurement.cpp src/Pose.cpp)
-TARGET_LINK_LIBRARIES(sim2d config++ ${Boost_LIBRARIES} pthread ProcessModel MeasurementModel)
+TARGET_LINK_LIBRARIES(sim2d config++ ${Boost_LIBRARIES} ProcessModel MeasurementModel)
 
 ADD_EXECUTABLE(sim1d src/simulation1d.cpp src/Measurement.cpp src/Pose.cpp)
-TARGET_LINK_LIBRARIES(sim1d config++ ${Boost_LIBRARIES} pthread ProcessModel MeasurementModel)
+TARGET_LINK_LIBRARIES(sim1d config++ ${Boost_LIBRARIES} ProcessModel MeasurementModel)
