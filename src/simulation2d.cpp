@@ -83,6 +83,9 @@ public:
     importanceWeightingEvalPointCount_ = cfg.lookup("Filter.importanceWeightingEvalPointCount");
 
     nThreadsPropagationStep_ = cfg.lookup("Computation.nThreadsPropagationStep");
+    nThreadsMapUpdate_ = cfg.lookup("Computation.nThreadsMapUpdate");
+    nThreadsParticleWeighting_ = cfg.lookup("Computation.nThreadsParticleWeighting");
+    nThreadsMapMerging_ = cfg.lookup("Computation.nThreadsMapMerging");
     logToFile_ = cfg.lookup("Computation.logToFile");
     
     return true;   
@@ -389,6 +392,9 @@ public:
 
     // set multi-threading parameter
     pFilter_->PFconfig.nThreadsPropagationStep_ = nThreadsPropagationStep_;
+    pFilter_->config.nThreadsMapUpdate_ = nThreadsMapUpdate_;
+    pFilter_->config.nThreadsParticleWeighting_ = nThreadsParticleWeighting_;
+    pFilter_->config.nThreadsMapMerging_ = nThreadsMapMerging_;
   }
 
   void run(){
@@ -417,9 +423,11 @@ public:
       }
     }
 
-    boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Process Time: %ws\n");;
+    boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Total Process Time: %ws\n");
 
     for(int k = 1; k < kMax_; k++){
+
+      boost::timer::auto_cpu_timer *steptimer = new boost::timer::auto_cpu_timer(6, "Step Process Time: %ws\n");
 
       if( k % 1 == 0)
 	printf("k = %d\n", k);
@@ -447,7 +455,7 @@ public:
       }
 
       pFilter_->update(Z, k);
-      
+
       // Log particle poses
       if(logToFile_){
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
@@ -478,6 +486,8 @@ public:
 	}
 	fprintf( pLandmarkEstFile, "\n");
       }
+
+      delete steptimer;
 
     }
 
@@ -546,6 +556,9 @@ private:
   bool reportTimingInfo_;
 
   unsigned int nThreadsPropagationStep_;
+  unsigned int nThreadsMapUpdate_;
+  unsigned int nThreadsParticleWeighting_;
+  unsigned int nThreadsMapMerging_;
   bool logToFile_;
 };
 

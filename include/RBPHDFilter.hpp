@@ -84,6 +84,14 @@ public:
     /** If true, timing information is written to the console every update*/
     bool reportTimingInfo_;
 
+    /** Number of threads to use for map update */
+    unsigned int nThreadsMapUpdate_;
+
+    /** Number of threads to use for particle weighting */
+    unsigned int nThreadsParticleWeighting_;
+
+    /** Number of threads to use for map merging */
+    unsigned int nThreadsMapMerging_;
 
   } config;
 
@@ -161,7 +169,14 @@ private:
   std::vector< std::vector<unsigned int> > unused_measurements_; 
 
   int k_currentTimestep_; /** current time */
-  int k_lastResample_; /** last resample time *
+  int k_lastResample_; /** last resample time */
+
+  std::vector<boost::mutex*> mapMergingMutices_; 
+  std::vector<boost::thread*> mapMergingThreads_;
+  boost::condition_variable cond_mapMergingRun_, cond_mapMergingCount_;
+  int mapMergingThreadFinishedCount_;
+  boost::mutex mMapMergingThreadFinishedCount_;
+  bool terminateMapMergingThreads_;
   
   /** 
    * Add birth Gaussians for each particle's map using unused_measurements_
@@ -176,6 +191,7 @@ private:
    * a new landmark will be created. 
    */
   void updateMap();
+  void updateMapThread( unsigned int startIdx, unsigned int stopIdx);
 
   /** 
    * Importance weighting. Overrides the abstract function in ParticleFilter
@@ -205,6 +221,12 @@ private:
   double rfsMeasurementLikelihoodPermutations( std::vector< double* > &likelihoodTab, 
 					       std::vector< int > &Z_NoClutter);
 
+  void mapMergeThread(int threadNum,
+		      unsigned int startIdx,
+		      unsigned int stopIdx,
+		      double mergeThreshold,
+		      double inflationFactor);
+
   /** Checks the Gaussian mixture maps for all particles for errors
    *  \return true if there are no errors 
    */
@@ -225,7 +247,6 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   for(int i = 0; i < n; i++){
     printf("Creating map structure for particle %d\n", i);
     maps_.push_back( new GaussianMixture<TLandmark>() );
-    maps_[0]->getGaussianCount();
     unused_measurements_.push_back( std::vector<unsigned int>() );
   }
   
@@ -238,12 +259,38 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   config.newGaussianCreateInnovMDThreshold_ = 0.2;
   config.minInterSampleTimesteps_ = 5;
   config.reportTimingInfo_ = false;
+  config.nThreadsMapUpdate_ = 1;
+  config.nThreadsParticleWeighting_ = 1;
+  config.nThreadsMapMerging_ = 1;
   
   k_lastResample_ = -10;
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::~RBPHDFilter(){
+   
+
+  if(mapMergingThreads_.size() > 1){
+    // Check that all map merging threads are waiting
+    {
+      boost::unique_lock<boost::mutex> lock( mMapMergingThreadFinishedCount_ );
+      while( mapMergingThreadFinishedCount_ != mapMergingMutices_.size() ){
+	cond_mapMergingCount_.wait( lock );
+      }
+    }
+    // set flag to terminate map merging threads
+    terminateMapMergingThreads_ = true;
+    cond_mapMergingRun_.notify_all();
+  }
+
+  for( int t = 0; t < mapMergingThreads_.size(); t++ ){
+    // wait for them to actually terminate
+    mapMergingThreads_[t]->join();
+    delete mapMergingThreads_[t];
+  }
+  for( int t = 0; t < mapMergingMutices_.size(); t++ ){
+    delete mapMergingMutices_[t];
+  }
 
   for(int i = 0; i < maps_.size(); i++){
     delete maps_[i];
@@ -333,22 +380,111 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   if(config.reportTimingInfo_){
     timer_mapMerge = new boost::timer::auto_cpu_timer(6, "Map merge time: %ws\n");
   }
-  int nMergeOps = 0;
-  for( int i = 0; i < maps_.size(); i++){ // maps_size is same as number of particles
 
-    int mapSize =  maps_[i]->getGaussianCount();
-    if( mapSize > maxMapSize ){
-      maxMapSize = mapSize;
-      i_maxMapSize = i;
+  if( config.nThreadsMapMerging_ <= 1 ){
+
+    for( int i = 0; i < this->nParticles_; i++){ 
+      maps_[i]->merge( config.gaussianMergingThreshold_, 
+		       config.gaussianMergingCovarianceInflationFactor_);    
+    } 
+
+  }else{
+    
+    if( mapMergingMutices_.size() != config.nThreadsMapMerging_){ // need to create threads
+
+      if(mapMergingThreads_.size() > 0){
+	// Check that all threads are waiting
+	{
+	  boost::unique_lock<boost::mutex> lock( mMapMergingThreadFinishedCount_ );
+	  while( mapMergingThreadFinishedCount_ != mapMergingMutices_.size() ){
+	    cond_mapMergingCount_.wait( lock );
+	  }
+	}
+      
+	// set flag to terminate them
+	terminateMapMergingThreads_ = true;
+	cond_mapMergingRun_.notify_all();
+      }
+
+      for( int t = 0; t < mapMergingThreads_.size(); t++ ){
+	// wait for threads to terminate
+        mapMergingThreads_[t]->join();
+	delete mapMergingThreads_[t];
+      }
+      mapMergingThreads_.clear();
+      for( int t = 0; t < mapMergingMutices_.size(); t++ ){
+	delete mapMergingMutices_[t];
+      }
+      mapMergingMutices_.clear();
+
+      // now create new threads
+      terminateMapMergingThreads_ = false;
+      mMapMergingThreadFinishedCount_.lock();
+      mapMergingThreadFinishedCount_ = 0;
+      mMapMergingThreadFinishedCount_.unlock();
+      
+      mapMergingMutices_.reserve(config.nThreadsMapMerging_);
+      mapMergingThreads_.reserve(config.nThreadsMapMerging_);
+
+      unsigned int particles_per_thread = this->nParticles_ / config.nThreadsMapMerging_;
+      unsigned int startIdx = 0;
+      unsigned int endIdx = startIdx + particles_per_thread;
+
+      for( int t = 0; t < config.nThreadsMapMerging_; t++ ){
+	
+	mapMergingMutices_.push_back(new boost::mutex);
+	boost::thread *t_new = new boost::thread( boost::bind( &RBPHDFilter< RobotProcessModel, 
+									     LmkProcessModel, 
+									     MeasurementModel, 
+									     KalmanFilter >::
+							       mapMergeThread, this,
+							       t, startIdx, endIdx,
+							       config.gaussianMergingThreshold_, 
+							       config.gaussianMergingCovarianceInflationFactor_) );
+
+	mapMergingThreads_.push_back(t_new);
+
+	startIdx = endIdx;
+	if( t == config.nThreadsMapMerging_ - 2){
+	  endIdx = this->nParticles_;
+	}else{
+	  endIdx = startIdx + particles_per_thread;
+	}
+	
+      }
+
+    }else{ // threads have already been created
+
+      // Check that all threads are ready to go
+      {
+	boost::unique_lock<boost::mutex> lock( mMapMergingThreadFinishedCount_ );
+	while( mapMergingThreadFinishedCount_ != mapMergingMutices_.size() ){
+	  cond_mapMergingCount_.wait( lock );
+	}
+      }
+
+      // Instruct threads to go 
+      mMapMergingThreadFinishedCount_.lock();
+      mapMergingThreadFinishedCount_ = 0;
+      mMapMergingThreadFinishedCount_.unlock();
+      cond_mapMergingRun_.notify_all();
+
     }
 
-   nMergeOps +=  maps_[i]->merge( config.gaussianMergingThreshold_, 
-				  config.gaussianMergingCovarianceInflationFactor_ );
-    
+    // Wait for threads to finish cycle
+    {
+      boost::unique_lock<boost::mutex> lock( mMapMergingThreadFinishedCount_ );
+      while( mapMergingThreadFinishedCount_ != mapMergingMutices_.size() ){
+	cond_mapMergingCount_.wait( lock );
+      }
+     
+    }
+
   }
+  
+
   if(timer_mapMerge != NULL)
     delete timer_mapMerge;
-  // printf("Number of merging operations = %d\n", nMergeOps);
 
   if(config.reportTimingInfo_){
     timer_mapPrune = new boost::timer::auto_cpu_timer(6, "Map prune time: %ws\n");
@@ -360,11 +496,6 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   }
   if(timer_mapPrune != NULL)
     delete timer_mapPrune;
-
-  /*
-  if(!checkMapIntegrity())
-    std::cin.get();
-  */
 
   if(config.reportTimingInfo_){
     timer_particleResample = new boost::timer::auto_cpu_timer(6, "Particle resample time: %ws\n");
@@ -430,24 +561,101 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::mapMergeThread(int threadNum,
+												       unsigned int startIdx,
+												       unsigned int stopIdx,
+												       double mergeThreshold,
+												       double inflationFactor){
+  boost::unique_lock<boost::mutex> lock( *(mapMergingMutices_[threadNum]) );
+  typename std::vector< GaussianMixture<TLandmark>* >::iterator maps_it_begin = maps_.begin();
+  typename std::vector< GaussianMixture<TLandmark>* >::iterator maps_it;
+
+  while(!terminateMapMergingThreads_){
+    maps_it = maps_it_begin + startIdx; 
+    for( int i = startIdx; i < stopIdx; i++, maps_it++){ 
+      (*maps_it)->merge( mergeThreshold, inflationFactor);    
+    }
+
+    mMapMergingThreadFinishedCount_.lock();
+    mapMergingThreadFinishedCount_++;
+    mMapMergingThreadFinishedCount_.unlock();
+    cond_mapMergingCount_.notify_all();
+
+    cond_mapMergingRun_.wait(lock);
+  }
+}
+
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::updateMap(){
 
+  if(config.nThreadsMapUpdate_ <= 1){
+    updateMapThread(0, this->nParticles_);
+  }else{
+
+    std::vector<boost::thread*> threads;
+    threads.reserve( config.nThreadsMapUpdate_ );
+    unsigned int particles_per_thread = this->nParticles_ / config.nThreadsMapUpdate_;
+    unsigned int startIdx = 0;
+    unsigned int endIdx = startIdx + particles_per_thread;
+
+    // Start threads
+    for( unsigned int tCount = 0; tCount < config.nThreadsMapUpdate_; tCount++ ){
+
+      boost::thread *t = new boost::thread( boost::bind( &RBPHDFilter< RobotProcessModel, 
+								       LmkProcessModel, 
+								       MeasurementModel, 
+								       KalmanFilter >::
+							 updateMapThread, this,
+							 startIdx, endIdx) );
+      threads.push_back(t);
+
+      startIdx = endIdx;
+      if( tCount == config.nThreadsMapUpdate_ - 2){
+	endIdx = this->nParticles_;
+      }else{
+	endIdx = startIdx + particles_per_thread;
+      }
+
+    }
+    // Wait for all threads to finish
+    for( int t = 0; t < threads.size(); t++ ){
+      threads[t]->join();
+      delete threads[t];
+    }
+    
+
+  }
+
+}
+
+
+
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
+updateMapThread( unsigned int startIdx,
+		 unsigned int stopIdx){
 
   const unsigned int nZ = this->measurements_.size();
+  typename ParticleFilter<RobotProcessModel, MeasurementModel>::TParticleSet::iterator particles_it = this->particleSet_.begin();
+  typename std::vector< GaussianMixture<TLandmark>* >::iterator maps_it = maps_.begin();
+  std::vector< std::vector<unsigned int> >::iterator unused_measurements_it = unused_measurements_.begin();
+  const typename std::vector< TMeasurement >::iterator measurements_it_start = this->measurements_.begin();
+  typename std::vector< TMeasurement >::iterator measurements_it = measurements_it_start;
+  particles_it += startIdx;
+  maps_it += startIdx;
+  unused_measurements_it += startIdx;
 
-  for(int i = 0; i < this->nParticles_; i++){
+  for(unsigned int i = startIdx; i < stopIdx; i++, particles_it++, maps_it++, unused_measurements_it++){    
 
     //---------- 1. setup / book-keeping ----------
-    const unsigned int nM = maps_[i]->getGaussianCount();
-
-    if(nM == 0){ // No existing landmark case -> flag all measurements as unused and go to next particle
-      unused_measurements_[i].clear();
+    const unsigned int nM = (*maps_it)->getGaussianCount();
+    unused_measurements_it->clear();    
+    if(nM == 0){ // No existing landmark case -> flag all measurements as unused and go to next particles
       for(int z = 0; z < nZ; z++){
-	unused_measurements_[i].push_back( z );
+	unused_measurements_it->push_back( z );
       }
       continue;
     }
-
     double Pd[nM];
     int landmarkCloseToSensingLimit[nM];
 
@@ -465,28 +673,26 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       }
     }
 
-
-
     //----------  2. Kalman Filter map update ----------
 
     TPose *pose = new TPose;
-    this->particleSet_[i]->getPose(*pose);
+    (*particles_it)->getPose(*pose);
 
     TLandmark* lmNew = NULL;
 
     for(unsigned int m = 0; m < nM; m++){
 
-      TLandmark* lm = maps_[i]->getGaussian(m);
+      TLandmark* lm = (*maps_it)->getGaussian(m);
       bool isCloseToSensingLimit;
       Pd[m] = this->pMeasurementModel_->probabilityOfDetection( *pose, *lm, 
 								isCloseToSensingLimit); 
       landmarkCloseToSensingLimit[m] = ( isCloseToSensingLimit ) ? 1 : 0;
-      double w_km = maps_[i]->getWeight(m);
+      double w_km = (*maps_it)->getWeight(m);
       double Pd_times_w_km = Pd[m] * w_km;
 
       if(Pd[m] != 0){
-
-	for(int z = 0; z < nZ; z++){
+	int z = 0;
+	for(z = 0, measurements_it = measurements_it_start; z < nZ; z++, measurements_it++){
 
 	  if(lmNew == NULL)
 	    lmNew = new TLandmark;
@@ -500,8 +706,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	  // RUN KF, create new landmark for likely updates but do not add to map_[i] yet
 	  // because we cannot determine actual weight until the entire weighting table is
 	  // filled in
-	
-	  bool updateMade = kfPtr_->correct(*pose, this->measurements_[z], *lm, *lmNew, 
+	  bool updateMade = kfPtr_->correct(*pose, *measurements_it, *lm, *lmNew, 
 					    &innovationLikelihood, &innovationMahalanobisDist2);
 
 	  if ( !updateMade || innovationMahalanobisDist2 > threshold ){
@@ -512,9 +717,8 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	    lmNew = NULL;
 	    weightingTable[m][z] = Pd_times_w_km * innovationLikelihood;
 	  }	
-	  
-	    
-	}
+
+	} // z forloop end
 
       }else{ // Pd = 0
 
@@ -530,8 +734,10 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       delete lmNew;
     
     // Now calculate the weight of each new Gaussian
-    for(int z = 0; z < nZ; z++){
-      double clutter = this->pMeasurementModel_->clutterIntensity( this->measurements_[z], nZ );
+    int z = 0;
+    for(z = 0, measurements_it = measurements_it_start; z < nZ; z++, measurements_it++){
+
+      double clutter = this->pMeasurementModel_->clutterIntensity( *measurements_it, nZ );
       double sum = clutter;
       for(unsigned int m = 0; m < nM; m++){
 	sum += weightingTable[m][z];
@@ -547,7 +753,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     for(int m = 0; m < nM; m++){
       for(int z = 0; z < nZ; z++){
 	if(newLandmarkPointer[m][z] != NULL && weightingTable[m][z] > 0){
-	  maps_[i]->addGaussian( newLandmarkPointer[m][z], weightingTable[m][z]);  
+	  (*maps_it)->addGaussian( newLandmarkPointer[m][z], weightingTable[m][z]);  
 	}
       }
     }
@@ -555,7 +761,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     //----------  4. Determine weights for existing Gaussians (missed detection) ----------
     for(int m = 0; m < nM; m++){
       
-      double w_km = maps_[i]->getWeight(m);
+      double w_km = (*maps_it)->getWeight(m);
       double w_k = (1 - Pd[m]) * w_km;
 
       // For landmarks close to sensing limit
@@ -570,11 +776,11 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	}
       }
 
-      maps_[i]->setWeight(m, w_k);
+      (*maps_it)->setWeight(m, w_k);
     }
 
     //----------  5. Identify unused measurements for adding birth Gaussians later ----------
-    unused_measurements_[i].clear();
+    unused_measurements_it->clear();
     for(int z = 0; z < nZ; z++){
       int useCount = 0;
       for(int m = 0; m < nM; m++){
@@ -583,7 +789,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	}
       }
       if (useCount == 0)
-	unused_measurements_[i].push_back( z );
+	unused_measurements_it->push_back( z );
     }
 
     //----------  6. Cleanup - Free memory ----------
