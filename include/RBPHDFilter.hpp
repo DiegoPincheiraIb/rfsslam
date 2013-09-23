@@ -123,6 +123,8 @@ public:
     /** Number of threads to use for map merging */
     unsigned int nThreadsMapMerging_;
 
+    bool useClusterProcess_;
+
   } config;
 
   /** 
@@ -221,7 +223,6 @@ private:
    * a new landmark will be created. 
    */
   void updateMap();
-  void updateMapThread( unsigned int startIdx, unsigned int stopIdx);
 
   /** 
    * Importance weighting. Overrides the abstract function in ParticleFilter
@@ -393,7 +394,9 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   if(config.reportTimingInfo_){
     timer_particleWeighting = new boost::timer();
   }
-  importanceWeighting();
+  if(!config.useClusterProcess_){
+    importanceWeighting();
+  }
   if(timer_particleWeighting != NULL){
     double time_particleWeighting = timer_particleWeighting->elapsed();
     printf("Particle weighting time: %f\n", time_particleWeighting);
@@ -619,52 +622,9 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::updateMap(){
 
-  if(config.nThreadsMapUpdate_ <= 1){
-    updateMapThread(0, this->nParticles_);
-  }else{
+  const unsigned int startIdx = 0;
+  const unsigned int stopIdx = this->nParticles_;
 
-    std::vector<boost::thread*> threads;
-    threads.reserve( config.nThreadsMapUpdate_ );
-    unsigned int particles_per_thread = this->nParticles_ / config.nThreadsMapUpdate_;
-    unsigned int startIdx = 0;
-    unsigned int endIdx = startIdx + particles_per_thread;
-
-    // Start threads
-    for( unsigned int tCount = 0; tCount < config.nThreadsMapUpdate_; tCount++ ){
-
-      boost::thread *t = new boost::thread( boost::bind( &RBPHDFilter< RobotProcessModel, 
-								       LmkProcessModel, 
-								       MeasurementModel, 
-								       KalmanFilter >::
-							 updateMapThread, this,
-							 startIdx, endIdx) );
-      threads.push_back(t);
-
-      startIdx = endIdx;
-      if( tCount == config.nThreadsMapUpdate_ - 2){
-	endIdx = this->nParticles_;
-      }else{
-	endIdx = startIdx + particles_per_thread;
-      }
-
-    }
-    // Wait for all threads to finish
-    for( int t = 0; t < threads.size(); t++ ){
-      threads[t]->join();
-      delete threads[t];
-    }
-    
-
-  }
-
-}
-
-
-
-template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
-updateMapThread( unsigned int startIdx,
-		 unsigned int stopIdx){
 
   const unsigned int nZ = this->measurements_.size();
   typename ParticleFilter<RobotProcessModel, MeasurementModel>::TParticleSet::iterator particles_it = this->particleSet_.begin();
@@ -679,6 +639,7 @@ updateMapThread( unsigned int startIdx,
   for(unsigned int i = startIdx; i < stopIdx; i++, particles_it++, maps_it++, unused_measurements_it++){    
 
     //---------- 1. setup / book-keeping ----------
+   
     const unsigned int nM = (*maps_it)->getGaussianCount();
     unused_measurements_it->clear();    
     if(nM == 0){ // No existing landmark case -> flag all measurements as unused and go to next particles
@@ -689,6 +650,15 @@ updateMapThread( unsigned int startIdx,
     }
     double Pd[nM];
     int landmarkCloseToSensingLimit[nM];
+
+    // For cluster process particle weighting
+    double w_km_sum = std::numeric_limits<double>::denorm_min();
+    double likelihoodProd = 1;
+    if(config.useClusterProcess_){
+      for(int m = 0; m < nM; m++){
+	w_km_sum += (*maps_it)->getWeight(m);
+      }
+    }
 
     // Mn x nZ table for Gaussian weighting
     double** weightingTable = new double* [ nM ];
@@ -773,9 +743,18 @@ updateMapThread( unsigned int startIdx,
       for(unsigned int m = 0; m < nM; m++){
 	sum += weightingTable[m][z];
       }
+
+      if(config.useClusterProcess_){
+	likelihoodProd *= sum;
+      }
+
       for(unsigned int m = 0; m < nM; m++){
 	weightingTable[m][z] /= sum;
       }
+    }
+    if(config.useClusterProcess_){
+      double prev_particle_i_weight = this->particleSet_[i]->getWeight();
+      this->particleSet_[i]->setWeight( exp(w_km_sum) * likelihoodProd);
     }
 
 

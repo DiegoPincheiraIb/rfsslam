@@ -110,6 +110,7 @@ public:
     gaussianPruningThreshold_ = cfg.lookup("Filter.gaussianPruningThreshold");
     reportTimingInfo_ = cfg.lookup("Filter.reportTimingInfo");
     importanceWeightingEvalPointCount_ = cfg.lookup("Filter.importanceWeightingEvalPointCount");
+    useClusterProcess_ = cfg.lookup("Filter.useClusterProcess");
 
     nThreadsPropagationStep_ = cfg.lookup("Computation.nThreadsPropagationStep");
     nThreadsMapUpdate_ = cfg.lookup("Computation.nThreadsMapUpdate");
@@ -418,6 +419,7 @@ public:
     pFilter_->config.gaussianMergingCovarianceInflationFactor_ = gaussianMergingCovarianceInflationFactor_;
     pFilter_->config.gaussianPruningThreshold_ = gaussianPruningThreshold_;
     pFilter_->config.reportTimingInfo_ = reportTimingInfo_;
+    pFilter_->config.useClusterProcess_ = useClusterProcess_;
 
     // set multi-threading parameter
     pFilter_->PFconfig.nThreadsPropagationStep_ = nThreadsPropagationStep_;
@@ -591,6 +593,7 @@ private:
   double gaussianPruningThreshold_;
   int importanceWeightingEvalPointCount_;
   bool reportTimingInfo_;
+  bool useClusterProcess_;
 
   unsigned int nThreadsPropagationStep_;
   unsigned int nThreadsMapUpdate_;
