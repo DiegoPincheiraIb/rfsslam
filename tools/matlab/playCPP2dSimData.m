@@ -2,6 +2,7 @@ close all
 
 hfig = figure('Renderer','OpenGL');
 set(gcf, 'Color', 'w');
+set(hfig,'Position',[0,0,720,720*3/4]);
 title('Groundturth robot trajectory and landmark positions');
 plot(gt_pose(2,:), gt_pose(3,:), 'r--');
 hold on
@@ -18,8 +19,8 @@ text_y = (tmp(2) - tmp(1)) * 9.5/10 + tmp(1);
    
 h_robotPos = plot(gt_pose(2,1), gt_pose(3,1), 'ro', 'MarkerSize', 5, 'MarkerFaceColor', 'r');
 h_robotHdg = line([gt_pose(2,1) gt_pose(2,1)+0.5*cos(gt_pose(4,1))], [gt_pose(3,1) gt_pose(3,1)+0.5*sin(gt_pose(4,1))], 'Color', 'k');
-h_drPos = plot(dr_pose(2,1), dr_pose(3,1), 'ro', 'MarkerSize', 5, 'MarkerFaceColor', 'g');
-h_drHdg = line([dr_pose(2,1) dr_pose(2,1)+0.5*cos(dr_pose(4,1))], [dr_pose(3,1) dr_pose(3,1)+0.5*sin(dr_pose(4,1))], 'Color', 'k');
+%h_drPos = plot(dr_pose(2,1), dr_pose(3,1), 'ro', 'MarkerSize', 5, 'MarkerFaceColor', 'g');
+%h_drHdg = line([dr_pose(2,1) dr_pose(2,1)+0.5*cos(dr_pose(4,1))], [dr_pose(3,1) dr_pose(3,1)+0.5*sin(dr_pose(4,1))], 'Color', 'k');
 h_particlePos = plot(x_i(1, :, 1), x_i(2, :, 1), 'm.');
 h_time = text(text_x, text_y, sprintf('%d',0));
 
@@ -30,10 +31,12 @@ for k = 1 : length(gt_pose)
 
     delete( h_robotPos )
     delete( h_robotHdg )
-    delete( h_drPos )
-    delete( h_drHdg )
+    %delete( h_drPos )
+    %delete( h_drHdg )
     delete( h_particlePos );
     delete(findobj('Color','b'))
+    %delete(findobj('MarkerSize',3))
+    delete(findobj('LineWidth',0.6))
     delete( h_time )
     
     t = gt_pose(1,k);
@@ -43,11 +46,11 @@ for k = 1 : length(gt_pose)
     h_robotPos = plot(x, y, 'ro', 'MarkerSize', 5, 'MarkerFaceColor', 'r');
     h_robotHdg = line([x x+0.5*cos(z)], [y y+0.5*sin(z)], 'Color', 'k');
     
-    dr_x = dr_pose(2,k);
-    dr_y = dr_pose(3,k);
-    dr_z = dr_pose(4,k);
-    h_drPos = plot(dr_x, dr_y, 'go', 'MarkerSize', 5, 'MarkerFaceColor', 'g');
-    h_drHdg = line([dr_x dr_x+0.5*cos(dr_z)], [dr_y dr_y+0.5*sin(dr_z)], 'Color', 'k');
+    %dr_x = dr_pose(2,k);
+    %dr_y = dr_pose(3,k);
+    %dr_z = dr_pose(4,k);
+    %h_drPos = plot(dr_x, dr_y, 'go', 'MarkerSize', 5, 'MarkerFaceColor', 'g');
+    %h_drHdg = line([dr_x dr_x+0.5*cos(dr_z)], [dr_y dr_y+0.5*sin(dr_z)], 'Color', 'k');
     
     h_particlePos = plot(x_i(1, :, k), x_i(2, :, k), 'm.');
     
@@ -86,7 +89,14 @@ for k = 1 : length(gt_pose)
             else
                 angle = atan2(evec(2,2), evec(1,2));
             end
+            %h_ellipse_center = plot(u(1),u(2),'+');
+            %set(h_ellipse_center,'color',[max(0.8-w,0),max(0.8-w,0),1]);
+            %set(h_ellipse_center,'MarkerEdgeColor',[max(0.8-w,0),max(0.8-w,0),1]); 
+            %set(h_ellipse_center,'MarkerSize',3);
             h_ellipse = ellipse(axes_length(1), axes_length(2), angle, u(1), u(2));
+            set(h_ellipse,'color',[max(0.8-w,0),max(0.8-w,0),1]); 
+            set(h_ellipse,'MarkerEdgeColor',[max(0.8-w,0),max(0.8-w,0),1]); 
+            set(h_ellipse,'LineWidth',0.6);
         end
     end
 

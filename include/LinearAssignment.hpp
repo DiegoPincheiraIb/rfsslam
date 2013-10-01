@@ -33,6 +33,7 @@
 #include <cfloat>
 #include <queue> // std::queue
 #include <cmath>
+#include "Tree.hpp"
 
 /** 
  * \class HungarianMethod
@@ -118,13 +119,13 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
       }
     }
   }
-  printf("Score / Cost Matrix:\n");
+  /*printf("Score / Cost Matrix:\n");
   for(int x = 0; x < n; x++){
     for(int y = 0; y < n; y++){
       printf("%f   ", C[x][y]);
     }
     printf("\n");
-  }
+  }*/
 
   // Step 1 - initial labeling and matching M in equality graph El
   for( int x = 0; x < n; x++){
@@ -141,26 +142,26 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
     // check if y = xy[x] is matched to another x_t = yx[y] = yx[xy[x]]
     int y = xy[x];
     x_t = yx[y];
-    printf("Trying to match x[%d] to y[%d]\n", x, xy[x]); 
+    //printf("Trying to match x[%d] to y[%d]\n", x, xy[x]); 
     if(yx[y] != -1){ // matched with another x, conflict! Keep the one with the best score
-      printf("  y[%d] is already matched with x[%d]\n", y, yx[y]);
+      //printf("  y[%d] is already matched with x[%d]\n", y, yx[y]);
       if( C[x][y] > C[x_t][y] ){
 	xy[x_t] = -1; // current match is better than other match, remove other match
 	yx[y] = x;
-	printf("  x[%d] is no longer matched with y[%d]\n", x_t, xy[x]);
-	printf("  x[%d] is now matched with y[%d]\n", x, xy[x]);
+	//printf("  x[%d] is no longer matched with y[%d]\n", x_t, xy[x]);
+	//printf("  x[%d] is now matched with y[%d]\n", x, xy[x]);
       }else{
 	xy[x] = -1; // current match is worse than other match, keep the other match
-	printf("  x[%d] cannot be matched\n", x);
+	//printf("  x[%d] cannot be matched\n", x);
       }
     }else{
       yx[y] = x;
-      printf("  x[%d] is now matched with y[%d]\n", x, xy[x]);
+      //printf("  x[%d] is now matched with y[%d]\n", x, xy[x]);
     }
 
   }
 
-  printf("Initial labeling:\n");
+  /*printf("Initial labeling:\n");
   for( int x = 0, y = 0; x < n; x++, y++)
     printf("  lx[%d] = %f     ly[%d] = %f\n", x, lx[x], y, ly[y]);
   printf("Initial matching:\n");
@@ -173,7 +174,7 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
     if( yx[y] != -1)
       printf("  y[%d] ----- x[%d]\n", y, yx[y]);
     else
-      printf("  y[%d] -----      \n", y);
+    printf("  y[%d] -----      \n", y);*/
       
   while(true){
 
@@ -200,9 +201,9 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	  else
 	    *cost -= ( C[x][ xy[x] ] + offset );
 	}
-	printf("Solution found with score = %f\n", *cost);
-	for( int x = 0; x < n; x++ )
-	  printf("  x[%d] ----- y[%d]\n", x, xy[x]);
+	/*printf("Solution found with score = %f\n", *cost);
+        for( int x = 0; x < n; x++ )
+	  printf("  x[%d] ----- y[%d]\n", x, xy[x]);*/
 	return;
       }
       root = x; // root of alternating tree
@@ -212,7 +213,7 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	if(  slack[y] == 0 )
 	  NS[y] = true;
       }
-      printf("New root selected\n");  
+      /*printf("New root selected\n");  
       printf("S = { ");
       for( int x = 0; x < n; x++ ){
 	if(S[x])
@@ -228,9 +229,9 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
       printf("NS = { ");
       for( int y = 0; y < n; y++ ){
 	if(NS[y])
-	  printf("y[%d] ", y);
+	  //printf("y[%d] ", y);
       }
-      printf(" }\n");
+      printf(" }\n");*/
     }
 
     // Step 3 - Update labels (if neighbourhood N(S) == T)
@@ -251,8 +252,8 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	}
       }
 
-      printf("Update labels:\n");
-      printf("  minimum slack = %f\n",a);
+      //printf("Update labels:\n");
+      //printf("  minimum slack = %f\n",a);
     
       //update X labels
       for (x = 0; x < n; x++){            
@@ -278,13 +279,13 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	}
       }
 
-      for( int x = 0, y = 0; x < n; x++, y++)
-	printf("  lx[%d] = %f     ly[%d] = %f\n", x, lx[x], y, ly[y]);
+      /*for( int x = 0, y = 0; x < n; x++, y++)
+	printf("  lx[%d] = %f     ly[%d] = %f\n", x, lx[x], y, ly[y]);*/
 
     }//end updateLabel
 
     // Step 4 - N(S) != T, select y in N(S) but not in T
-    printf("Finding y in NS and not T\n");
+    //printf("Finding y in NS and not T\n");
     for(y = 0; y < n; y++ ){
       if( NS[y] && !T[y] )
 	break;
@@ -292,7 +293,7 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
     x_t = yx[y]; // match to y
     if(x_t == -1){ // if y is free, path root -> y is an augmenting path, goto step 2
       
-      printf("  Found free y[%d]\n", y);
+      //printf("  Found free y[%d]\n", y);
 
       // Breadth first search for path root -> y
       // We need to make distinct indices for vertices in X and in Y
@@ -313,14 +314,15 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
       while(!q.empty()){
  
 	int t = q.front();
-	if( t < n)
+	/*if( t < n){
 	  printf("Breadth first search queue front: x[%d]\n",t);
-	else
+	}else{
 	  printf("Breadth first search queue front: y[%d]\n",t-n);	  
+	  }*/
 
 	if (t == target){
 	  // path found, perform augmentation in inverse the matching along this path
-	  printf("  Augmentation path found:\n    y[%d]", t-n);
+	  //printf("  Augmentation path found:\n    y[%d]", t-n);
 	  while(t != root){
 	    if( t >= n){ // t is in Y, p[t]--t should be a match
 	      x_t = p[t];
@@ -329,24 +331,26 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	    }
 	    t = p[t];
 
-	    if( t < n )
+	    /*if( t < n ){
 	      printf(" --- x[%d]", t);
-	    else
+	    }else{
 	      printf(" --- y[%d]", t-n);
+	      }*/
 	  }
-	  printf("\n");
+	  //printf("\n");
 	  
-	  for( int x = 0; x < n; x++ )
-	    if( xy[x] != -1)
+	  /*for( int x = 0; x < n; x++ )
+	    if( xy[x] != -1){
 	      printf("  x[%d] ----- y[%d]\n", x, xy[x]);
-	    else
+	    }else{
 	      printf("  x[%d] -----      \n", x);
+	    }
 	  for( int y = 0; y < n; y++ )
-	    if( yx[y] != -1)
+	    if( yx[y] != -1){
 	      printf("  y[%d] ----- x[%d]\n", y, yx[y]);
-	    else
+	    }else{
 	      printf("  y[%d] -----      \n", y);
-	  
+	      }*/
 	  break;
 	}
 	q.pop();
@@ -355,7 +359,7 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	  for(y = 0; y < n; y++){ // look through children of t
 	    // check if y is in equality graph and not already queued
 	    if(lx[t] + ly[y] - C[t][y] == 0 && !y_q[y]){
-	      printf("Breadth first search inserting y[%d] in queue with parent x[%d]\n", y, t); 
+	      //printf("Breadth first search inserting y[%d] in queue with parent x[%d]\n", y, t); 
 	      y_q[y] = true;
 	      p[y+n] = t;
 	      q.push( y+n );
@@ -366,7 +370,7 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	  for(x = 0; x < n; x++){ // look through children of t
 	    // check if x is in equality graph and in set S and not already queued
 	    if(lx[x] + ly[t] - C[x][t] == 0 && S[x] && !x_q[x]){
-	      printf("Breadth first search inserting x[%d] in queue with parent y[%d]\n", x, t);
+	      //printf("Breadth first search inserting x[%d] in queue with parent y[%d]\n", x, t);
 	      x_q[x] = true;
 	      p[x] = t+n;
 	      q.push( x );
@@ -380,7 +384,7 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 
     }else{ // y is matched to x_t, add to alternating tree, go to step 3
 
-      printf("  Found y[%d] matched with x[%d]\n", y, x_t);
+      //printf("  Found y[%d] matched with x[%d]\n", y, x_t);
 
       S[x_t] = true;
       T[y] = true;
@@ -389,24 +393,27 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	  NS[y] = true;
       }
       
-      printf("  S = { ");
+      /*printf("  S = { ");
       for( int x = 0; x < n; x++ ){
-	if(S[x])
+	if(S[x]){
 	  printf("x[%d] ", x);
+	}
       }
       printf(" }\n");
       printf("  T = { ");
       for( int y = 0; y < n; y++ ){
-	if(T[y])
+	if(T[y]){
 	  printf("y[%d] ", y);
+	}
       }
       printf(" }\n");
       printf("  NS = { ");
       for( int y = 0; y < n; y++ ){
-	if(NS[y])
+	if(NS[y]){
 	  printf("y[%d] ", y);
+	}
       }
-      printf(" }\n");
+      printf(" }\n");*/
 
       // It is necessary to update the slack variables here since S now includes x_t
       for(int y = 0; y < n; y++ ){
@@ -416,10 +423,10 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	}
       }
 
-      printf("  Update slack variables:\n");
+      /*printf("  Update slack variables:\n");
       for( int y = 0; y < n; y++ )
 	if(!T[y])
-	  printf("    s[%d] = %f\n", y, slack[y]);
+	printf("    s[%d] = %f\n", y, slack[y]);*/
       
       pickFreeVertex = false; // go back to step 3
 
@@ -442,3 +449,401 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 }
 
 #endif
+
+/**
+ * \class MurtyNode
+ * A node used in the Murty class for k-best linear assignment
+ */
+class MurtyNode : public Node
+{
+public:
+
+  /** Constructor 
+   * \param[in] id The id number for this node. Default is -1
+   * \param[in] n_children_exp the number of children this node is expected to have,
+   * used for more efficient memory allocation. Not mandatory.
+   */
+  MurtyNode(int id = -1, int n_children_exp = -1) : Node(n_children_exp),
+						    id_(id),
+						    assignment_(NULL), 
+						    score_(0){}
+
+  /** Destructor */
+  ~MurtyNode(){}
+
+  /** Comparison operator for sorting */
+  bool operator< (const MurtyNode& other){
+    if( score_ < other.score_ )
+      return true;
+    return false;
+  }
+
+  /**
+   * Set the assignment and score presented by this node 
+   * \param[in] a assignment, where b = a[i] implies b is assigned to a_i. This
+   * will be deallocated when this node is destroyed.
+   * \param[in] s total score from all assignments;
+   */
+  void setAssignment(int* a, double s){
+    if(assignment_ != NULL)
+      delete[] assignment_;
+    assignment_ = a;
+    score_ = s;
+  }
+
+  /**
+   * Get the score of this node
+   * \return score
+   */
+  double getScore(){
+    return score_;
+  }
+
+  /**
+   * Get the assignment represented by this node 
+   * \return pointer to assignment array 
+   */
+  int* getAssignment(){
+    return assignment_;
+  }
+
+  /** 
+   * Get the ID number of the node 
+   */
+  int getID(){
+    return id_;
+  }
+
+
+private:
+
+  int id_; 
+  int* assignment_;
+  double score_;
+
+};
+
+/**
+ * \class MurtyNodeCompare
+ * A comparison class used for the priorty queue in Murty
+ */
+class MurtyNodeCompare{
+public:
+  bool operator()(MurtyNode* p1, MurtyNode* p2){
+    if( p1->getScore() < p2->getScore() )
+      return true;
+    return false;
+  }
+};
+
+/**
+ * \class Murty
+ * Murty's k-best linear assignment algorithm
+ * Given the partitioning of a linear assignment problem, and the
+ * current best possible assignment,  Murty's algorithm will find 
+ * the next best assignment
+ */ 
+class Murty{
+
+public:
+   
+  /** constructor 
+   *  \param[in] C square score matrix from which we will find the best assignments
+   *  \param[in] n dimension of C
+   */ 
+  Murty(double** C, int n) : k_(0), n_(n){
+    C_ = C;
+    C_t_ = new double* [n_];
+    for( int i = 0; i < n_; i++){
+      C_t_[i] = new double [n_];
+    }
+    root_ = new MurtyNode(0, n_);
+  }
+  
+  /** destructor */
+  ~Murty(){
+    for(int i = 0; i < n_; i++)
+      delete[] C_t_[i];
+    delete[] C_t_;
+    delete root_;
+  }
+
+  /** Find the next best assignment 
+   *  \param[out] assignment pointer to array of assignment (no need to allocate/deallocate )
+   *  \param[out] score the assignment score 
+   *  \return k, the k-best solution index
+   */
+  int findNextBest( int* &assignment, double* score){
+    
+    if( k_ == 0 ){
+      int* a = new int[n_];
+      double s; 
+      lam_.run(C_, n_, a, &s);
+      root_->setAssignment(a, s);
+      k_++;
+      pq.push(root_);
+      assignment = a;
+      *score = s;
+
+      return k_;
+    }
+
+    // pop the highest-score node
+    MurtyNode* node_hi = pq.top();
+    pq.pop();
+
+    // partition this node (into n partitions) -- make children nodes
+    for(int n = 0; n < n_; n++ ){
+      
+      int label = n;
+      MurtyNode* p = new MurtyNode(label, n_);
+      node_hi->addChild(p);
+
+      for(int i = 0; i < n_; i++){
+	for(int j = 0; j < n_; j++){
+	  C_t_[i][j] = C_[i][j];
+	}
+      }
+
+      for(int i = 0; i < n_; i++ ){
+	for(int j = 0; j < n_; j++ ){
+	  printf("%f   ", C_t_[i][j]);
+	}
+	printf("\n");
+      }
+      printf("\n");
+      
+      // For this partition, assignment a[k], s.t. k < label has to be included and
+      // assignment a[label] has to be excluded. We have to do the same for the
+      // all parents, up to the root
+      MurtyNode* current = p;
+      MurtyNode* parent;
+      do{
+	
+	int partition = current->getID();
+	parent = static_cast<MurtyNode*>( current->getParent() );
+	int* a = parent->getAssignment();
+
+	printf("Must have: ");
+	for(int k = 0; k < partition; k++){  // These assignments must be used
+	  printf("(%d,%d), ",k,a[k]);
+	  double tmp = C_t_[k][a[k]];
+	  for(int c = 0; c < n_; c++)
+	    C_t_[k][c] = 0;
+	  for(int r = 0; r < n_; r++)
+	    C_t_[r][a[k]] = 0;
+	  C_t_[k][a[k]] = tmp;
+	}
+	printf("\n");
+	printf("Must not have: (%d,%d)\n", partition, a[partition]);
+	C_t_[partition][a[partition]] = 0; // This assignment must not be used
+	
+	current = parent;
+
+      }while(current != root_);
+
+      // Solve best-linear assignment for the n particles
+      int* a = new int[n_];
+      double s = 0;
+      for(int i = 0; i < n_; i++ ){
+	for(int j = 0; j < n_; j++ ){
+	  printf("%f   ", C_t_[i][j]);
+	}
+	printf("\n");
+      }
+      printf("\n");
+      lam_.run(C_t_, n_, a, &s);
+      
+      // Insert the solution in the priority queue and set it as a child of the highest-score node
+      p->setAssignment(a, s);
+      pq.push(p);
+      
+
+    } // end for all partitions
+
+    // All new partitions have been inserted, now look for the highest score
+    node_hi = pq.top();
+    assignment = node_hi->getAssignment();
+    *score = node_hi->getScore();
+    k_++;
+    return k_;
+  }
+
+private:
+  
+  MurtyNode* root_; /**< The best linear assignment */
+  int k_; /**< number of solutions found */
+  double** C_; /**< the nxn score matrix */
+  double** C_t_; /**< temporary score matrix */
+  int n_; /**< dimension of C_ and C_t_*/
+  HungarianMethod lam_; /**< Linear assignment method */
+  std::priority_queue<MurtyNode*, std::vector<MurtyNode*>, MurtyNodeCompare> pq; /**< Priority queue for easy retrieval of node with highest score */
+  
+
+};
+
+/**
+ * /class BruteForceLinearAssignment
+ * This function finds all the linear assignments and orders them from best to worst.
+ * It is intended for testing and checking the Hungarian method and Murty's k-best algorithm.
+ */
+class BruteForceLinearAssignment
+{
+
+public:
+
+  BruteForceLinearAssignment() : a_(NULL), s_(NULL), nAssignments(0){}
+  ~BruteForceLinearAssignment(){
+    if(a_ != NULL ){
+      for( unsigned int m = 0; m < nAssignments; m++ ){
+	delete[] a_[m];
+      }
+      delete[] a_;
+    }
+    if(s_ != NULL ){
+      delete[] s_;
+    }
+    s_ = new double [nAssignments];
+  }
+
+  /**
+   *  Run brute-force linear assignment by finding the cost of all possible linear assignments
+   *  in a lexicographical order, and then returning the results in an ordered format with 
+   *  respect to the cost / score.
+   *  \param[in] C square cost / score matrix
+   *  \param[in] n dimension of C
+   *  \param[out] a ordered assignments a[k][n], where k is the assignment order
+   *  \param[out] s ordered assignment scores
+   *  \param[in] maxToMin ordering of results
+   *  \return number of assignments
+   */
+   unsigned int run(double** C, int n, int** &a, double* &s, bool maxToMin = true){
+
+     double offset = 0;
+     if(!maxToMin){
+       for(int x = 0; x < n; x++){
+	 for(int y = 0; y < n; y++){
+	   C[x][y] *= -1;
+	   if(C[x][y] < offset)
+	     offset = C[x][y];
+	 }
+       }
+       for(int x = 0; x < n; x++){
+	 for(int y = 0; y < n; y++){
+	   C[x][y] -= offset;
+	 }
+       }
+     }
+
+
+     unsigned int nAssignments = 0;
+     bool lastPermutationSequence = false;
+     std::vector<int> currentPermutation(n);
+     for(int m = 0; m < n; m++){
+       currentPermutation[m] = m;
+     }
+
+     while( !lastPermutationSequence ){
+    
+       assignment as;
+       as.score = 0;
+       as.a = new int[n];
+       for(int z = 0; z < n; z++){
+	 int m = currentPermutation[ z ];
+	 as.a[z] = m;
+	 if( maxToMin )
+	   as.score += C[m][z];
+	 else
+	   as.score -= ( C[m][z] + offset );
+       }
+       pq.push(as);
+       nAssignments++;
+
+       // Generate the next permutation sequence
+       for(int m = n - 2; m >= -1; m--){
+
+	 if( m == -1){
+	   lastPermutationSequence = true;
+	   break;
+	 }
+      
+	 // Find the highest index m such that currentPermutation[m] < currentPermutation[m+1]
+	 if(currentPermutation[m] < currentPermutation[ m + 1 ]){
+
+	   // Find highest index i such that currentPermutation[i] > currentPermutation[m] 
+	   // then swap the elements
+	   for(int i = n - 1; i >= 0; i--){
+	     if( currentPermutation[i] > currentPermutation[m] ){
+	       int temp = currentPermutation[i];
+	       currentPermutation[i] = currentPermutation[m];
+	       currentPermutation[m] = temp;
+	       break;
+	     }
+	   }
+
+	   // reverse order of elements after currentPermutation[m]
+	   int nElementsToSwap = n - (m + 1);
+	   int elementsToSwapMidPt = nElementsToSwap / 2;
+	   int idx1 = m + 1;
+	   int idx2 = n - 1;
+	   for(int i = 1; i <= elementsToSwapMidPt; i++){
+	     int temp = currentPermutation[idx1];
+	     currentPermutation[idx1] = currentPermutation[idx2];
+	     currentPermutation[idx2] = temp;
+	     idx1++;
+	     idx2--;
+	   }
+
+	   break;
+	 }
+
+       }
+
+       // now we should have the next permutation sequence
+     }
+
+
+     if(a_ != NULL ){
+       for( unsigned int m = 0; m < nAssignments; m++ ){
+	 delete[] a_[m];
+       }
+       delete[] a_;
+     }
+     a_ = new int* [nAssignments];
+     if(s_ != NULL ){
+       delete[] s_;
+     }
+     s_ = new double [nAssignments];
+
+     for(int m = 0; m < nAssignments; m++){
+       assignment as = pq.top();
+       pq.pop();
+       a_[m] = as.a;
+       s_[m] = as.score;
+     }
+     
+     a = a_;
+     s = s_;
+     return nAssignments;
+   }
+
+private:
+
+  struct assignment{
+    int* a;
+    double score;
+    
+    bool operator<(const assignment& rhs) const{
+      if(score < rhs.score)
+	return true;
+      return false;
+    }
+
+  };
+
+  std::priority_queue<assignment> pq;
+  unsigned int nAssignments;
+  int** a_;
+  double* s_;
+
+};
