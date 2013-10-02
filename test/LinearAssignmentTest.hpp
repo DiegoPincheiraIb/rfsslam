@@ -52,17 +52,17 @@ TEST_F(LinearAssignmentTest, hungarianMethodTest){
   C[2][2] = 0;
   */
 
-  C[0][0] = 10; C[0][1] = 19; C[0][2] =  8; C[0][3] = 15; C[0][4] = 19;
-  C[1][0] = 10; C[1][1] = 18; C[1][2] =  7; C[1][3] = 17; C[1][4] = 19;
-  C[2][0] = 13; C[2][1] = 16; C[2][2] =  9; C[2][3] = 14; C[2][4] = 19;
-  C[3][0] = 12; C[3][1] = 19; C[3][2] =  8; C[3][3] = 18; C[3][4] = 19;
-  C[4][0] = 14; C[4][1] = 17; C[4][2] = 10; C[4][3] = 19; C[4][4] = 19;
+  C[0][0] = 10; C[0][1] = 0; C[0][2] =  8; C[0][3] = 15; C[0][4] = 0;
+  C[1][0] = 10; C[1][1] = 18; C[1][2] =  7; C[1][3] = 17; C[1][4] = 24;
+  C[2][0] = 13; C[2][1] = 16; C[2][2] =  9; C[2][3] = 14; C[2][4] = 15;
+  C[3][0] = 12; C[3][1] = 12; C[3][2] =  8; C[3][3] = 18; C[3][4] = 6;
+  C[4][0] = 14; C[4][1] = 17; C[4][2] = 10; C[4][3] = 19; C[4][4] = 8;
 
   int* s = new int[n];
   double c;
-  hm.run(C, n, s, &c, false); 
+  hm.run(C, n, s, &c, true); 
   
-  printf("Minimal Cost Solution:\n");
+  printf("Best Solution:\n");
   for(int i = 0; i < n; i++){
     printf("x[%d] ----- y[%d]\n", i, s[i]);
   }
@@ -77,18 +77,21 @@ TEST_F(LinearAssignmentTest, hungarianMethodTest){
 
 }
 
+
 TEST_F(LinearAssignmentTest, Test){
 
-  int n = 4;
+  int n = 5;
   double** C = new double*[n];
   for(int i = 0; i < n; i++){
     C[i] = new double[n];
   }
 
-  C[0][0] = 10; C[0][1] = 19; C[0][2] =  8; C[0][3] = 15; 
-  C[1][0] = 10; C[1][1] = 18; C[1][2] =  7; C[1][3] = 17; 
-  C[2][0] = 13; C[2][1] = 16; C[2][2] =  9; C[2][3] = 14;
-  C[3][0] = 12; C[3][1] = 19; C[3][2] =  8; C[3][3] = 18; 
+
+  C[0][0] = 10; C[0][1] = 19; C[0][2] =  8; C[0][3] = 15; C[0][4] = 21;
+  C[1][0] = 10; C[1][1] = 18; C[1][2] =  7; C[1][3] = 17; C[1][4] = 24;
+  C[2][0] = 13; C[2][1] = 16; C[2][2] =  9; C[2][3] = 14; C[2][4] = 15;
+  C[3][0] = 12; C[3][1] = 12; C[3][2] =  8; C[3][3] = 18; C[3][4] = 6;
+  C[4][0] = 14; C[4][1] = 17; C[4][2] = 10; C[4][3] = 19; C[4][4] = 8;
  
 
   BruteForceLinearAssignment bf;
@@ -115,15 +118,14 @@ TEST_F(LinearAssignmentTest, Test){
   do
   {
     k = murty.findNextBest(a, &score); 
-    printf("The %d-best solution:\n", k);
+    printf("\nThe %d-best solution:\n", k);
     for(int i = 0; i < n; i++){
       printf("x[%d] ----- y[%d]\n", i, a[i]);
     }
     printf("Score: %f\n", score);
-    EXPECT_EQ(score, bfs[k-1]);
+    ASSERT_EQ(score, bfs[k-1]);
   }while(k < nbfa);
 
   
 
 }
-
