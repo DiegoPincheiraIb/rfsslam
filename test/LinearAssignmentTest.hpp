@@ -78,7 +78,7 @@ TEST_F(LinearAssignmentTest, hungarianMethodTest){
 }
 
 
-TEST_F(LinearAssignmentTest, Test){
+TEST_F(LinearAssignmentTest, MurtyAlgorithmTest){
 
   int n = 5;
   double** C = new double*[n];
@@ -86,13 +86,19 @@ TEST_F(LinearAssignmentTest, Test){
     C[i] = new double[n];
   }
 
+  C[0][0] = 10; C[0][1] = 21; C[0][2] = 11; C[0][3] = 15; C[0][4] = 21;
+  C[1][0] = 10; C[1][1] = 18; C[1][2] =  7; C[1][3] = 16; C[1][4] = 5;
+  C[2][0] = 17; C[2][1] = 15; C[2][2] = 20; C[2][3] = 14; C[2][4] = 15;
+  C[3][0] = 12; C[3][1] = 12; C[3][2] =  8; C[3][3] =  9; C[3][4] = 6;
+  C[4][0] = 14; C[4][1] = 17; C[4][2] = 10; C[4][3] = 19; C[4][4] = 8;
 
+  /*  
   C[0][0] = 10; C[0][1] = 19; C[0][2] =  8; C[0][3] = 15; C[0][4] = 21;
   C[1][0] = 10; C[1][1] = 18; C[1][2] =  7; C[1][3] = 17; C[1][4] = 24;
   C[2][0] = 13; C[2][1] = 16; C[2][2] =  9; C[2][3] = 14; C[2][4] = 15;
   C[3][0] = 12; C[3][1] = 12; C[3][2] =  8; C[3][3] = 18; C[3][4] = 6;
   C[4][0] = 14; C[4][1] = 17; C[4][2] = 10; C[4][3] = 19; C[4][4] = 8;
- 
+  */
 
   BruteForceLinearAssignment bf;
   int** bfa;
@@ -126,6 +132,10 @@ TEST_F(LinearAssignmentTest, Test){
     ASSERT_EQ(score, bfs[k-1]);
   }while(k < nbfa);
 
-  
-
+  for(int i = 0; i < 2; i++){
+    k = murty.findNextBest(a, &score); 
+    EXPECT_EQ(score, 0);
+    EXPECT_TRUE(a == NULL);
+    EXPECT_EQ(k, -1);
+  }
 }
