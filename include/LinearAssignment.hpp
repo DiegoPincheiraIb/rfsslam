@@ -33,6 +33,7 @@
 #include <cfloat>
 #include <queue> // std::queue
 #include <cmath>
+#include <stdio.h>
 #include "Tree.hpp"
 
 /** 
@@ -611,6 +612,9 @@ public:
       parent->addChild(p);
       int* a = new int[n_];
       bool freeCol[n_];
+      for(int i = 0; i < n_; i++){
+	freeCol[i] = true;
+      }
       double assignmentFixedScore = 0;
 
       // Copy all the fixed assignments from the parent node

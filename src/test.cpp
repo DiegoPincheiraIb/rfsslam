@@ -27,44 +27,53 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "GaussianMixture.hpp"
-#include "ParticleFilter.hpp"
-#include "MeasurementModel.hpp"
-#include "RBPHDFilter.hpp"
+#include "LinearAssignment.hpp"
 #include <iostream>
 
 
 int main(int argc, char* argv[]){
   
-  RangeBearingModel measurementModel;
-  Eigen::Matrix2d cov;
-  cov << 1,0,0,3;
-  measurementModel.setNoise(cov);
+  int n = 5;
+  double** C = new double*[n];
+  for(int i = 0; i < n; i++){
+    C[i] = new double[n];
+  }
 
-  
-  Particle<Pose2d> p;
+  C[0][0] = 10; C[0][1] = 21; C[0][2] = 11; C[0][3] = 15; C[0][4] = 21;
+  C[1][0] = 10; C[1][1] = 18; C[1][2] =  7; C[1][3] = 16; C[1][4] = 5;
+  C[2][0] = 17; C[2][1] = 15; C[2][2] = 20; C[2][3] = 14; C[2][4] = 15;
+  C[3][0] = 12; C[3][1] = 12; C[3][2] =  8; C[3][3] =  9; C[3][4] = 6;
+  C[4][0] = 14; C[4][1] = 17; C[4][2] = 10; C[4][3] = 19; C[4][4] = 8;
 
-  int nParticles = 10;
-  Pose2d x_0(2, 1, 0);
-  Pose2d x_1;
-  Odometry2d::Vec u;
-  u << 0, 0, 0;
-  Odometry2d odo;
-  odo.set(u);
+  BruteForceLinearAssignment bf;
+  int** bfa;
+  double* bfs;
+  int nbfa = bf.run(C, n, bfa, bfs);
+  printf("Brute force approach looked through %d assignments\n", nbfa);
+  printf("Best assignment:\n");
+  for(int j = 0; j < n; j++){
+    printf("x[%d] ----- y[%d]\n", j, bfa[0][j]);
+  }
+  printf("Score: %f\n", bfs[0]);
+  printf("Worst assignment:\n");
+  for(int j = 0; j < n; j++){
+    printf("x[%d] ----- y[%d]\n", j, bfa[nbfa-1][j]);
+  }
+  printf("Score: %f\n\n\n", bfs[nbfa-1]);
 
-  Pose2d::Mat ProcessNoise;
-   
-  ProcessNoise << 3, 2, 1, 2, 4, -1, 1, -1, 5;
+  int* a;
+  double score;
+  int k;
+  Murty murty(C, n);
 
-  OdometryMotionModel2d motionModel(ProcessNoise);
-  motionModel.sample(x_1, x_0, odo);
+  do
+  {
+    k = murty.findNextBest(a, &score); 
+    printf("\nThe %d-best solution:\n", k);
+    for(int i = 0; i < n; i++){
+      printf("x[%d] ----- y[%d]\n", i, a[i]);
+    }
+    printf("Score: %f\n", score);
+  }while(k < nbfa);
 
-  //ParticleFilter<OdometryMotionModel2d, RangeBearingModel> pf(nParticles, x_0, &motionModel, &measurementModel); 
-
-  GaussianMixture<Landmark2d> map;
-
-  // RBPHDFilter<OdometryMotionModel2d, RangeBearingModel> phdFilter(nParticles, x_0, &motionModel, &measurementModel);
-
-
-  return 0;
 }

@@ -4,8 +4,8 @@
 # cmake -D CMAKE_C_COMPILER=gcc CMAKE_CXX_COMPILER=c++ .
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-SET(CMAKE_BUILD_TYPE Debug)
-#SET(CMAKE_BUILD_TYPE Release)
+#SET(CMAKE_BUILD_TYPE Debug)
+SET(CMAKE_BUILD_TYPE Release)
 PROJECT(RB_PHD_FILTER)
 
 # Explicitly set for colorgcc. By default, they point to gcc and c++ with absolute path
@@ -50,6 +50,8 @@ INCLUDE_DIRECTORIES(${Eigen_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
 #LINK_DIRECTORIES()
 
+ADD_EXECUTABLE(laTest src/test.cpp)
+
 ADD_LIBRARY(ProcessModel src/ProcessModel.cpp)
 ADD_LIBRARY(MeasurementModel src/MeasurementModel.cpp)
 
@@ -62,3 +64,4 @@ TARGET_LINK_LIBRARIES(sim2d config++ ${Boost_LIBRARIES} ProcessModel Measurement
 
 ADD_EXECUTABLE(sim1d src/simulation1d.cpp src/Measurement.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(sim1d config++ ${Boost_LIBRARIES} ProcessModel MeasurementModel)
+
