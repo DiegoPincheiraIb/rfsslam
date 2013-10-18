@@ -11,30 +11,27 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the owner nor the names of its contributors may be 
+ *     * Neither the name of the Advanced Mining Technology Center (AMTC), the
+ *       Universidad de Chile, nor the names of its contributors may be 
  *       used to endorse or promote products derived from this software without 
  *       specific prior written permission.
  * 
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * DISCLAIMED. IN NO EVENT SHALL THE AMTC, UNIVERSIDAD DE CHILE, OR THE COPYRIGHT 
+ * HOLDERS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE 
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
+ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-// RB-PHD-Filter Class
-// Keith Leung 2013
 
 #ifndef RBPHDFILTER_HPP
 #define RBPHDFILTER_HPP
 
-//#include <boost/timer/timer.hpp>
-#include <boost/timer.hpp>
+#include <boost/timer/timer.hpp>
 #include <Eigen/Core>
 #include "GaussianMixture.hpp"
 #include "ParticleFilter.hpp"
@@ -59,7 +56,6 @@
  *  \tparam MeasurementModel A sensor model derived from MeasurementModel
  *  \tparam KalmanFilter A Kalman filter that uses LmkProcessModel and MeasurementModel
  *  \author Keith Leung, Felipe Inostroza
- *  \version 0.1 
  */
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter>
@@ -114,15 +110,7 @@ public:
     /** If true, timing information is written to the console every update*/
     bool reportTimingInfo_;
 
-    /** Number of threads to use for map update */
-    unsigned int nThreadsMapUpdate_;
-
-    /** Number of threads to use for particle weighting */
-    unsigned int nThreadsParticleWeighting_;
-
-    /** Number of threads to use for map merging */
-    unsigned int nThreadsMapMerging_;
-
+    /** Use the particle weighting strategty from Single-cluster PHD Filtering by Lee, et. al. */
     bool useClusterProcess_;
 
   } config;
@@ -186,7 +174,7 @@ public:
    */
   KalmanFilter* getKalmanFilter();
 
-  /** Function for testing */
+  /** Function for testing purposes only */
   void setParticlePose(int i, TPose &p);
 
 
@@ -200,15 +188,8 @@ private:
   /** indices of unused measurement for each particle for creating birth Gaussians */
   std::vector< std::vector<unsigned int> > unused_measurements_; 
 
-  int k_currentTimestep_; /** current time */
-  int k_lastResample_; /** last resample time */
-
-  std::vector<boost::mutex*> mapMergingMutices_; 
-  std::vector<boost::thread*> mapMergingThreads_;
-  boost::condition_variable cond_mapMergingRun_, cond_mapMergingCount_;
-  int mapMergingThreadFinishedCount_;
-  boost::mutex mMapMergingThreadFinishedCount_;
-  bool terminateMapMergingThreads_;
+  int k_currentTimestep_; /**< current time */
+  int k_lastResample_; /**< last resample time */
   
   /** 
    * Add birth Gaussians for each particle's map using unused_measurements_
@@ -252,12 +233,6 @@ private:
   double rfsMeasurementLikelihoodPermutations( std::vector< double* > &likelihoodTab, 
 					       std::vector< int > &Z_NoClutter);
 
-  void mapMergeThread(int threadNum,
-		      unsigned int startIdx,
-		      unsigned int stopIdx,
-		      double mergeThreshold,
-		      double inflationFactor);
-
   /** Checks the Gaussian mixture maps for all particles for errors
    *  \return true if there are no errors 
    */
@@ -290,38 +265,12 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   config.newGaussianCreateInnovMDThreshold_ = 0.2;
   config.minInterSampleTimesteps_ = 5;
   config.reportTimingInfo_ = false;
-  config.nThreadsMapUpdate_ = 1;
-  config.nThreadsParticleWeighting_ = 1;
-  config.nThreadsMapMerging_ = 1;
   
   k_lastResample_ = -10;
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::~RBPHDFilter(){
-   
-
-  if(mapMergingThreads_.size() > 1){
-    // Check that all map merging threads are waiting
-    {
-      boost::unique_lock<boost::mutex> lock( mMapMergingThreadFinishedCount_ );
-      while( mapMergingThreadFinishedCount_ != mapMergingMutices_.size() ){
-	cond_mapMergingCount_.wait( lock );
-      }
-    }
-    // set flag to terminate map merging threads
-    terminateMapMergingThreads_ = true;
-    cond_mapMergingRun_.notify_all();
-  }
-
-  for( int t = 0; t < mapMergingThreads_.size(); t++ ){
-    // wait for them to actually terminate
-    mapMergingThreads_[t]->join();
-    delete mapMergingThreads_[t];
-  }
-  for( int t = 0; t < mapMergingMutices_.size(); t++ ){
-    delete mapMergingMutices_[t];
-  }
 
   for(int i = 0; i < maps_.size(); i++){
     delete maps_[i];
@@ -338,9 +287,11 @@ LmkProcessModel* RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementMod
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::predict( TInput u,
 												 int currentTimestep){
-  boost::timer *timer_predict = NULL;
+
+  boost::timer::auto_cpu_timer *timer = NULL;
   if(config.reportTimingInfo_)
-    timer_predict = new boost::timer();
+    timer = new boost::timer::auto_cpu_timer(6, "Predict time: %ws\n");
+
 
   // Add birth Gaussians using pose before prediction
   addBirthGaussians();
@@ -358,181 +309,67 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     }
   }
 
-  if(timer_predict != NULL){
-    double time_predict = timer_predict->elapsed();
-    printf("Prediction time: %f\n", time_predict);
-    delete timer_predict;
-  }
-
+  if(timer != NULL)
+    delete timer;
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z,
 												int currentTimestep){
-  
-  boost::timer *timer_mapCheck = NULL;
-  boost::timer *timer_mapUpdate = NULL;
-  boost::timer *timer_particleWeighting = NULL;
-  boost::timer *timer_mapMerge = NULL;
-  boost::timer *timer_mapPrune = NULL;
-  boost::timer *timer_particleResample = NULL;
+
+  boost::timer::auto_cpu_timer *timer_mapUpdate = NULL;
+  boost::timer::auto_cpu_timer *timer_particleWeighting = NULL;
+  boost::timer::auto_cpu_timer *timer_mapMerge = NULL;
+  boost::timer::auto_cpu_timer *timer_mapPrune = NULL;
+  boost::timer::auto_cpu_timer *timer_particleResample = NULL;
 
   k_currentTimestep_ = currentTimestep;
 
   this->setMeasurements( Z ); // Z gets cleared after this call, measurements now stored in this->measurements_
 
+  ////////// Map Update //////////
   if(config.reportTimingInfo_){
-    timer_mapUpdate = new boost::timer();
+    timer_mapUpdate = new boost::timer::auto_cpu_timer(6, "Map update time: %ws\n");
   }
   updateMap();
-  if(timer_mapUpdate != NULL){
-    double time_mapUpdate = timer_mapUpdate->elapsed();
-    printf("Map update time: %f\n", time_mapUpdate);
+  if(timer_mapUpdate != NULL)
     delete timer_mapUpdate;
-  }
 
+  ////////// Particle Weighintg //////////
   if(config.reportTimingInfo_){
-    timer_particleWeighting = new boost::timer();
+    timer_particleWeighting = new boost::timer::auto_cpu_timer(6, "Particle weighting time: %ws\n");
   }
   if(!config.useClusterProcess_){
     importanceWeighting();
   }
-  if(timer_particleWeighting != NULL){
-    double time_particleWeighting = timer_particleWeighting->elapsed();
-    printf("Particle weighting time: %f\n", time_particleWeighting);
+  if(timer_particleWeighting != NULL)
     delete timer_particleWeighting;
-  }
 
-  // Merge and prune
+  //////////// Merge and prune //////////
   int maxMapSize = -1;
   int i_maxMapSize = -1;
   if(config.reportTimingInfo_){
-    timer_mapMerge = new boost::timer();
+    timer_mapMerge = new boost::timer::auto_cpu_timer(6, "Map merge time: %ws\n");
   }
-
-  if( config.nThreadsMapMerging_ <= 1 ){
-
-    for( int i = 0; i < this->nParticles_; i++){ 
-      maps_[i]->merge( config.gaussianMergingThreshold_, 
-		       config.gaussianMergingCovarianceInflationFactor_);    
-    } 
-
-  }else{
-    
-    if( mapMergingMutices_.size() != config.nThreadsMapMerging_){ // need to create threads
-
-      if(mapMergingThreads_.size() > 0){
-	// Check that all threads are waiting
-	{
-	  boost::unique_lock<boost::mutex> lock( mMapMergingThreadFinishedCount_ );
-	  while( mapMergingThreadFinishedCount_ != mapMergingMutices_.size() ){
-	    cond_mapMergingCount_.wait( lock );
-	  }
-	}
-      
-	// set flag to terminate them
-	terminateMapMergingThreads_ = true;
-	cond_mapMergingRun_.notify_all();
-      }
-
-      for( int t = 0; t < mapMergingThreads_.size(); t++ ){
-	// wait for threads to terminate
-        mapMergingThreads_[t]->join();
-	delete mapMergingThreads_[t];
-      }
-      mapMergingThreads_.clear();
-      for( int t = 0; t < mapMergingMutices_.size(); t++ ){
-	delete mapMergingMutices_[t];
-      }
-      mapMergingMutices_.clear();
-
-      // now create new threads
-      terminateMapMergingThreads_ = false;
-      mMapMergingThreadFinishedCount_.lock();
-      mapMergingThreadFinishedCount_ = 0;
-      mMapMergingThreadFinishedCount_.unlock();
-      
-      mapMergingMutices_.reserve(config.nThreadsMapMerging_);
-      mapMergingThreads_.reserve(config.nThreadsMapMerging_);
-
-      unsigned int particles_per_thread = this->nParticles_ / config.nThreadsMapMerging_;
-      unsigned int startIdx = 0;
-      unsigned int endIdx = startIdx + particles_per_thread;
-
-      for( int t = 0; t < config.nThreadsMapMerging_; t++ ){
-	
-	mapMergingMutices_.push_back(new boost::mutex);
-	boost::thread *t_new = new boost::thread( boost::bind( &RBPHDFilter< RobotProcessModel, 
-									     LmkProcessModel, 
-									     MeasurementModel, 
-									     KalmanFilter >::
-							       mapMergeThread, this,
-							       t, startIdx, endIdx,
-							       config.gaussianMergingThreshold_, 
-							       config.gaussianMergingCovarianceInflationFactor_) );
-
-	mapMergingThreads_.push_back(t_new);
-
-	startIdx = endIdx;
-	if( t == config.nThreadsMapMerging_ - 2){
-	  endIdx = this->nParticles_;
-	}else{
-	  endIdx = startIdx + particles_per_thread;
-	}
-	
-      }
-
-    }else{ // threads have already been created
-
-      // Check that all threads are ready to go
-      {
-	boost::unique_lock<boost::mutex> lock( mMapMergingThreadFinishedCount_ );
-	while( mapMergingThreadFinishedCount_ != mapMergingMutices_.size() ){
-	  cond_mapMergingCount_.wait( lock );
-	}
-      }
-
-      // Instruct threads to go 
-      mMapMergingThreadFinishedCount_.lock();
-      mapMergingThreadFinishedCount_ = 0;
-      mMapMergingThreadFinishedCount_.unlock();
-      cond_mapMergingRun_.notify_all();
-
-    }
-
-    // Wait for threads to finish cycle
-    {
-      boost::unique_lock<boost::mutex> lock( mMapMergingThreadFinishedCount_ );
-      while( mapMergingThreadFinishedCount_ != mapMergingMutices_.size() ){
-	cond_mapMergingCount_.wait( lock );
-      }
-     
-    }
-
-  }
- 
-  if(timer_mapMerge != NULL){
-    double time_mapMerge = timer_mapMerge->elapsed();
-    printf("Map merge time: %f\n", time_mapMerge);
+  for( int i = 0; i < this->nParticles_; i++){ 
+    maps_[i]->merge( config.gaussianMergingThreshold_, 
+		     config.gaussianMergingCovarianceInflationFactor_);    
+  } 
+  if(timer_mapMerge != NULL)
     delete timer_mapMerge;
-  }
-
+  
   if(config.reportTimingInfo_){
-    timer_mapPrune = new boost::timer();
+    timer_mapPrune = new boost::timer::auto_cpu_timer(6, "Map prune time: %ws\n");
   }
   for( int i = 0; i < maps_.size(); i++){ // maps_size is same as number of particles
-   
-    maps_[i]->prune( config.gaussianPruningThreshold_ );
-    
+    maps_[i]->prune( config.gaussianPruningThreshold_ );    
   }
-  if(timer_mapPrune != NULL){
-    double time_mapPrune = timer_mapPrune->elapsed();
-    printf("Map prune time: %f\n", time_mapPrune);
+  if(timer_mapPrune != NULL)
     delete timer_mapPrune;
-  }
 
+  //////////// Particle resampling //////////
   if(config.reportTimingInfo_){
-    timer_particleResample = new boost::timer();
+    timer_particleResample = new boost::timer::auto_cpu_timer(6, "Particle resample time: %ws\n");
   }
   bool resampleOccured = false;
   if( k_currentTimestep_ - k_lastResample_ >= config.minInterSampleTimesteps_){
@@ -545,8 +382,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     this->normalizeWeights();
   }
 
-  // reassign maps as well according to resampling of particles
-  if( resampleOccured){
+  if( resampleOccured){   // reassign maps as well according to resampling of particles
 
     std::vector< GaussianMixture<TLandmark>* > maps_temp( maps_.size(), NULL );
     std::vector< int > useCount ( maps_.size(), 0);
@@ -584,39 +420,10 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       useCount[j]--;
     }
 
-  }
-  
-  if(timer_particleResample != NULL){
-    double time_particleResample = timer_particleResample->elapsed();
-    printf("Particle resample time: %f\n", time_particleResample);
+  }  
+  if(timer_particleResample != NULL)
     delete timer_particleResample;
-  }
 
-}
-
-template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::mapMergeThread(int threadNum,
-												       unsigned int startIdx,
-												       unsigned int stopIdx,
-												       double mergeThreshold,
-												       double inflationFactor){
-  boost::unique_lock<boost::mutex> lock( *(mapMergingMutices_[threadNum]) );
-  typename std::vector< GaussianMixture<TLandmark>* >::iterator maps_it_begin = maps_.begin();
-  typename std::vector< GaussianMixture<TLandmark>* >::iterator maps_it;
-
-  while(!terminateMapMergingThreads_){
-    maps_it = maps_it_begin + startIdx; 
-    for( int i = startIdx; i < stopIdx; i++, maps_it++){ 
-      (*maps_it)->merge( mergeThreshold, inflationFactor);    
-    }
-
-    mMapMergingThreadFinishedCount_.lock();
-    mapMergingThreadFinishedCount_++;
-    mMapMergingThreadFinishedCount_.unlock();
-    cond_mapMergingCount_.notify_all();
-
-    cond_mapMergingRun_.wait(lock);
-  }
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
@@ -891,7 +698,6 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	maps_[i]->getGaussian(m, plm, w, w_prev);
 	// New Gaussians from update will have w_prev = 0
 	// Out Gaussians (missed-detection) will not have been updated, but weights will have changed
-	//double likelihood = RandomVecMathTools< TLandmark >::evalGaussianLikelihood( *plm, *lm_evalPt);
 	double likelihood = plm->evalGaussianLikelihood( *lm_evalPt );
 	intensity_at_evalPt_beforeUpdate += w_prev * likelihood; // w_prev for newly created Gaussians are 0
 	intensity_at_evalPt_afterUpdate += w * likelihood;
@@ -918,7 +724,6 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
     // 4. calculate measurement likelihood at eval points
     // note that rfsMeasurementLikelihood uses maps_[i] which is already sorted by weight
-    // double measurementLikelihood = rfsMeasurementLikelihood( i, nEvalPoints );
     double measurementLikelihood = rfsMeasurementLikelihood( i, evalPointIdx, evalPointPd );
     //printf("Particle %d measurement likelihood = %f\n", i, measurementLikelihood);
 

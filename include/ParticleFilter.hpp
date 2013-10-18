@@ -11,24 +11,22 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the owner nor the names of its contributors may be 
+ *     * Neither the name of the Advanced Mining Technology Center (AMTC), the
+ *       Universidad de Chile, nor the names of its contributors may be 
  *       used to endorse or promote products derived from this software without 
  *       specific prior written permission.
  * 
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * DISCLAIMED. IN NO EVENT SHALL THE AMTC, UNIVERSIDAD DE CHILE, OR THE COPYRIGHT 
+ * HOLDERS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE 
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
+ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-// Particle filter class
-// Keith Leung 2013
 
 #ifndef PARTICLE_FILTER_HPP
 #define PARTICLE_FILTER_HPP
@@ -165,31 +163,10 @@ protected:
 
   std::vector<TMeasure> measurements_; /**< Container for measurements to use for update of particle weight */
 
-  // Variables for multi-threading
-  TInput *ptr_input_;
-  double const *ptr_dt_;
-  std::vector<boost::mutex*> propagationStepMutices_;
-  std::vector<boost::thread*> propagationStepThreads_;
-  boost::condition_variable cond_, cond_allThreadsAreWaiting_;
-  int propagationStepThreadFinishedCount_;
-  boost::mutex mPropagationStepThreadFinishedCount_;
-  bool terminatePropagationStepThreads_;
-
   /** 
    * Normalize particle weights so that they sum to 1
    */
   void normalizeWeights();
-
-  /**
-   * Worker thread for particle propagation, processing particles startIdx to stopIdx - 1
-   * \param[in] input to the process model
-   * \param[in] dT time-step of input (not used by all process models)
-   * \param[in] startIdx start of particle index range for processing (inclusive)
-   * \param[in] stopIdx particle end of particle index range for processing (exclusive)
-   */
-  void propagateThread(int threadNum,
-		       unsigned int startIdx,
-		       unsigned int stopIdx);
   
 };
 
@@ -201,7 +178,6 @@ ParticleFilter(){
   nParticles_ = 0;
   pProcessModel_ =  new ProcessModel;
   pMeasurementModel_ =  new MeasurementModel;
-  PFconfig.nThreadsPropagationStep_ = 1;
 }
 
 
@@ -238,37 +214,11 @@ ParticleFilter(int n, TPose* initState){
   if( noInitState ){
     delete initState;
   }
-
-  PFconfig.nThreadsPropagationStep_ = 1;
-  
 }
 
 
 template< class ProcessModel, class MeasurementModel>
 ParticleFilter<ProcessModel, MeasurementModel>::~ParticleFilter(){
-
-  if(propagationStepThreads_.size() > 0){
-
-    // Check that all threads are waiting
-    {
-      boost::unique_lock<boost::mutex> lock( mPropagationStepThreadFinishedCount_ );
-      while( propagationStepThreadFinishedCount_ != propagationStepMutices_.size() ){
-	cond_allThreadsAreWaiting_.wait( lock );
-      }
-    }
-
-    terminatePropagationStepThreads_ = true;
-    cond_.notify_all();
-  }
-
-  for( int t = 0; t < propagationStepThreads_.size(); t++ ){
-    // wait for threads to terminate
-    propagationStepThreads_[t]->join();
-    delete propagationStepThreads_[t];
-  }
-  for( int t = 0; t < propagationStepMutices_.size(); t++ ){
-    delete propagationStepMutices_[t];
-  }
   
   for( int i = 0 ; i < nParticles_ ; i++ ){
     delete particleSet_[i];
@@ -298,139 +248,12 @@ void ParticleFilter<ProcessModel, MeasurementModel>::setMeasurements(std::vector
 template< class ProcessModel, class MeasurementModel>
 void ParticleFilter<ProcessModel, MeasurementModel>::propagate( TInput &input, 
 								double const dt){
-  if( PFconfig.nThreadsPropagationStep_ <= 1){ // single thread
-    TPose x_km, x_k;
-    for( int i = 0 ; i < nParticles_ ; i++ ){
-      particleSet_[i]->getPose( x_km );
-      pProcessModel_->sample( x_k, x_km, input, dt);
-      particleSet_[i]->setPose( x_k );
-    } 
-  }else{ // multithread
-
-    ptr_input_ = &input; 
-    ptr_dt_ = &dt;
-
-    if( propagationStepMutices_.size() != PFconfig.nThreadsPropagationStep_ ){ // need to create threads
-
-      if(propagationStepThreads_.size() > 0){
-
-	// Check that all threads are waiting
-	{
-	  boost::unique_lock<boost::mutex> lock( mPropagationStepThreadFinishedCount_ );
-	  while( propagationStepThreadFinishedCount_ != propagationStepMutices_.size() ){
-	    cond_allThreadsAreWaiting_.wait( lock );
-	  }
-	}
-
-	terminatePropagationStepThreads_ = true;
-	cond_.notify_all();
-      }
-
-      for( int t = 0; t < propagationStepThreads_.size(); t++ ){
-	// wait for threads to terminate
-	propagationStepThreads_[t]->join();
-	delete propagationStepThreads_[t];
-      }
-      propagationStepThreads_.clear();
-      for( int t = 0; t < propagationStepMutices_.size(); t++ ){
-	delete propagationStepMutices_[t];
-      }
-      propagationStepMutices_.clear();
-
-      // Create new threads
-      terminatePropagationStepThreads_ = false;
-      mPropagationStepThreadFinishedCount_.lock();
-      propagationStepThreadFinishedCount_ = 0;
-      mPropagationStepThreadFinishedCount_.unlock();
-      
-      propagationStepMutices_.reserve(PFconfig.nThreadsPropagationStep_);
-      propagationStepThreads_.reserve(PFconfig.nThreadsPropagationStep_);
-      
-      unsigned int particles_per_thread = nParticles_ / PFconfig.nThreadsPropagationStep_;
-      unsigned int startIdx = 0;
-      unsigned int endIdx = startIdx + particles_per_thread;
-
-      for( int t = 0; t < PFconfig.nThreadsPropagationStep_; t++ ){
-	
-	propagationStepMutices_.push_back(new boost::mutex);
-	propagationStepThreads_.push_back(new boost::thread( boost::bind( &ParticleFilter<ProcessModel, 
-											  MeasurementModel>::
-									  propagateThread, this,
-									  t, startIdx, endIdx) ) );	  
-	startIdx = endIdx;
-	if( t == PFconfig.nThreadsPropagationStep_ - 2){
-	  endIdx = nParticles_;
-	}else{
-	  endIdx = startIdx + particles_per_thread;
-	}
-	
-      }
-
-    }else{ // threads have already been created
-
-      // Check that all threads are ready to go
-      {
-	boost::unique_lock<boost::mutex> lock( mPropagationStepThreadFinishedCount_ );
-	while( propagationStepThreadFinishedCount_ != propagationStepMutices_.size() ){
-	  cond_allThreadsAreWaiting_.wait( lock );
-	}
-      }
-
-      // Instruct threads to go 
-      mPropagationStepThreadFinishedCount_.lock();
-      propagationStepThreadFinishedCount_ = 0;
-      mPropagationStepThreadFinishedCount_.unlock();
-      cond_.notify_all();
-
-    }
-
-    // Wait for threads to finish cycle
-    {
-      boost::unique_lock<boost::mutex> lock( mPropagationStepThreadFinishedCount_ );
-      while( propagationStepThreadFinishedCount_ != propagationStepMutices_.size() ){
-	cond_allThreadsAreWaiting_.wait(lock);
-      }
-    }
-    
-  } // End multiThread
-}
-
-template< class ProcessModel, class MeasurementModel>
-void ParticleFilter<ProcessModel, MeasurementModel>::propagateThread( int threadNum,
-								      unsigned int startIdx,
-								      unsigned int stopIdx){  
-
-  boost::unique_lock<boost::mutex> lock( *(propagationStepMutices_[threadNum]) );
-
   TPose x_km, x_k;
-  ProcessModel model = *pProcessModel_;
-  TInput input;
-  double dt;
-  typename TParticleSet::iterator it_start = particleSet_.begin() + startIdx;
-  typename TParticleSet::iterator it_stop = particleSet_.begin() + stopIdx;
-  typename TParticleSet::iterator it;
-  
-  while(!terminatePropagationStepThreads_){
-
-    input = *ptr_input_;
-    dt = *ptr_dt_;
-    
-    for( it = it_start ; it !=  it_stop ; it++ ){
-      (*it)->getPose( x_km );
-      model.sample( x_k, x_km, input, dt);
-      (*it)->setPose( x_k );
-    }
-
-
-    mPropagationStepThreadFinishedCount_.lock();
-    propagationStepThreadFinishedCount_++;
-    mPropagationStepThreadFinishedCount_.unlock();
-    cond_allThreadsAreWaiting_.notify_all();
-
-    cond_.wait(lock);
- 
-  }
-
+  for( int i = 0 ; i < nParticles_ ; i++ ){
+    particleSet_[i]->getPose( x_km );
+    pProcessModel_->sample( x_k, x_km, input, dt);
+    particleSet_[i]->setPose( x_k );
+  } 
 }
 
 template< class ProcessModel, class MeasurementModel>

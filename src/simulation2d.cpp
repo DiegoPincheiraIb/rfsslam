@@ -28,15 +28,16 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// Simulator for testing the RBPHDFilter
-// Keith Leung 2013
-// Requires libconfig to be installed
-
 #include <boost/lexical_cast.hpp>
 #include <libconfig.h++>
 #include "RBPHDFilter.hpp"
 #include <stdio.h>
 
+/**
+ * \class Simulator2d
+ * \brief A 2d SLAM Simulator using the RB-PHD Filter
+ * \author Keith Leung
+ */
 class Simulator2d{
 
 public:
@@ -44,9 +45,7 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
   Simulator2d(){
-    
     pFilter_ = NULL;
-   
   }
   
   ~Simulator2d(){
@@ -113,10 +112,6 @@ public:
     importanceWeightingEvalPointCount_ = cfg.lookup("Filter.importanceWeightingEvalPointCount");
     useClusterProcess_ = cfg.lookup("Filter.useClusterProcess");
 
-    nThreadsPropagationStep_ = cfg.lookup("Computation.nThreadsPropagationStep");
-    nThreadsMapUpdate_ = cfg.lookup("Computation.nThreadsMapUpdate");
-    nThreadsParticleWeighting_ = cfg.lookup("Computation.nThreadsParticleWeighting");
-    nThreadsMapMerging_ = cfg.lookup("Computation.nThreadsMapMerging");
     logToFile_ = cfg.lookup("Computation.logToFile");
     
     return true;   
@@ -132,7 +127,6 @@ public:
     OdometryMotionModel2d::TState::Mat Q;
     Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
     Q = dT_ * Q * dT_;
-    // std::cout << "\n\n" << Q << "\n\n";
     OdometryMotionModel2d motionModel(Q);
     OdometryMotionModel2d::TInput input_k(0, 0, 0, 0, 0, 0, 0);
     OdometryMotionModel2d::TState pose_k(0, 0, 0, 0, 0, 0, 0);
@@ -169,19 +163,12 @@ public:
       motionModel.step(x_k, groundtruth_pose_[k-1], input_k);
       groundtruth_pose_.push_back( x_k );
       groundtruth_pose_.back().setTime(k);
-      
-      /*OdometryMotionModel2d::TState::Vec x;
-      OdometryMotionModel2d::TInput::Vec u;
-      double t;
-      groundtruth_pose_[k].get(x);
-      groundtruth_displacement_[k].get(u, t);
-      printf("x[%d] = [%f %f %f]  u[%f] = [%f %f %f]\n", 
-           k, x(0), x(1), x(2), t, u(0), u(1), u(2)); */
 
     }
 
   }
   
+  /** Generate odometry measurements */
   void generateOdometry(){
 
     odometry_.reserve( kMax_ );
@@ -204,9 +191,6 @@ public:
       in.setCov(Q);
       OdometryMotionModel2d::TInput out;
       RandomVecMathTools<OdometryMotionModel2d::TInput>::sample(in, out);
-      /*printf("u[%d] = [%f %f %f]  u_[%d] = [%f %f %f]\n", 
-	     k, in.get(0),  in.get(1),  in.get(2), 
-	     k, out.get(0), out.get(1), out.get(2) );*/
       
       odometry_.push_back( out );
 
@@ -218,6 +202,7 @@ public:
 
   }
 
+  /** Generate landmarks */
   void generateLandmarks(){
 
     RangeBearingModel measurementModel( varzr_, varzb_);
@@ -253,8 +238,8 @@ public:
 
   }
 
+  /** Generate landmark measurements */
   void generateMeasurements(){
-
 
     RangeBearingModel measurementModel( varzr_, varzb_ );
     RangeBearingModel::TMeasurement::Mat R;
@@ -326,6 +311,7 @@ public:
     
   }
 
+  /** Data Logging */
   void exportSimData(){
 
     double t;
@@ -377,6 +363,7 @@ public:
 
   }
 
+  /** RB-PHD Filter Setup */
   void setupRBPHDFilter(){
     
     pFilter_ = new RBPHDFilter<OdometryMotionModel2d,
@@ -421,18 +408,15 @@ public:
     pFilter_->config.gaussianPruningThreshold_ = gaussianPruningThreshold_;
     pFilter_->config.reportTimingInfo_ = reportTimingInfo_;
     pFilter_->config.useClusterProcess_ = useClusterProcess_;
-
-    // set multi-threading parameter
-    pFilter_->PFconfig.nThreadsPropagationStep_ = nThreadsPropagationStep_;
-    pFilter_->config.nThreadsMapUpdate_ = nThreadsMapUpdate_;
-    pFilter_->config.nThreadsParticleWeighting_ = nThreadsParticleWeighting_;
-    pFilter_->config.nThreadsMapMerging_ = nThreadsMapMerging_;
   }
 
+  /** Run the simulator */
   void run(){
-
-    printf("Running simulation\n\n");
     
+    printf("Running simulation\n\n");
+
+    //////// Initialization at first timestep //////////
+
     FILE* pParticlePoseFile;
     if(logToFile_){
       pParticlePoseFile = fopen("data/particlePose.dat", "w");
@@ -459,13 +443,15 @@ public:
       }      
     }
 
-    boost::timer *stepTimer = NULL;
-    boost::timer *processTimer = new boost::timer();
+    boost::timer::auto_cpu_timer *stepTimer = NULL;
+    boost::timer::auto_cpu_timer *processTimer = new boost::timer::auto_cpu_timer(6, "Total run time: %ws\n");
+
+    /////////// Run simulator from k = 1 to kMax_ /////////
 
     for(int k = 1; k < kMax_; k++){
 
       if(reportTimingInfo_){
-	stepTimer = new boost::timer();
+	stepTimer = new boost::timer::auto_cpu_timer(6, "Step time: %ws\n");
       }
       
       if( k % 1 == 0)
@@ -475,6 +461,7 @@ public:
 	fprintf( pParticlePoseFile, "k = %d\n", k);
       }
       
+      ////////// Prediction Step //////////
       pFilter_->predict( odometry_[k], k );
       
       if( k <= 100){
@@ -493,6 +480,7 @@ public:
 	kz = measurements_[ zIdx ].getTime();
       }
 
+      ////////// Update Step //////////
       pFilter_->update(Z, k);
 
       // Log particle poses
@@ -527,14 +515,16 @@ public:
       }
 
       if(reportTimingInfo_){
-	printf("Step time: %e\n", stepTimer->elapsed() );
 	delete stepTimer;
+	stepTimer = NULL;
       }
 
     }
 
-    printf("Process time: %f\n", processTimer->elapsed() );
-    delete processTimer;
+    if(reportTimingInfo_){
+      delete processTimer;
+      processTimer = NULL;
+    }
 
     if(logToFile_){
       fclose(pParticlePoseFile);
@@ -599,12 +589,18 @@ private:
   bool reportTimingInfo_;
   bool useClusterProcess_;
 
-  unsigned int nThreadsPropagationStep_;
-  unsigned int nThreadsMapUpdate_;
-  unsigned int nThreadsParticleWeighting_;
-  unsigned int nThreadsMapMerging_;
   bool logToFile_;
 };
+
+
+
+
+
+
+
+
+
+
 
 int main(int argc, char* argv[]){
 
@@ -612,9 +608,6 @@ int main(int argc, char* argv[]){
   if( argc == 2 ){
     initRandSeed = boost::lexical_cast<int>(argv[1]);
   }
-
-  OdometryMotionModel2d g;
-  RangeBearingModel h;
 
   Simulator2d sim;
   if( !sim.readConfigFile() ){
