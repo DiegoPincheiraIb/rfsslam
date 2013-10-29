@@ -3,13 +3,13 @@
 
 #include <gtest/gtest.h>
 
-/*#include "PoseTest.hpp"
+#include "PoseTest.hpp"
 #include "MeasurementTest.hpp"
 #include "ProcessModelTest.hpp"
 #include "MeasurementModelTest.hpp"
 #include "GaussianMixtureTest.hpp"
 #include "ParticleFilterTest.hpp"
-#include "KalmanFilterTest.hpp"*/
+#include "KalmanFilterTest.hpp"
 #include "LinearAssignmentTest.hpp"
 
 int main(int argc, char **argv) {

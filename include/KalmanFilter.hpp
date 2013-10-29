@@ -93,7 +93,7 @@ public:
    * Kalman filter prediction step
    * This funtion uses the ProcessModel to propagate the Landmark estimate forward in time
    * \param[in] lanmark_current The landmark before the prediction
-   * \param[out] landmark_updated The landmark after the prediction step
+   * \param[out] landmark_updated The landmark after the prediction step (this can be the same as landmark_current to update in place)
    * \param[in] dT time step size, if required by motion model
    */
   void predict(TLandmark &landmark_current, TLandmark &landmark_updated,
