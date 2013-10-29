@@ -85,9 +85,6 @@ public:
    */
   struct Config{
 
-    /** Gaussian pruning weight threshold, below which Gaussians are eliminated from a Gaussian mixture */
-    double gaussianPruningThreshold_;
-
     /** Minimum timeteps betwen resampling of particles*/
     double minInterSampleTimesteps_;
 
@@ -147,17 +144,25 @@ public:
    * \param[in] m Gaussian index
    * \param[out] u mean
    * \param[out] S covariance
+   * \param[out] w log-odds of existence
    * \return false if the indices specified are invalid 
    */ 
   bool getLandmark(const int i, const int m, 
 		   typename TLandmark::Vec &u,
-		   typename TLandmark::Mat &S);
+		   typename TLandmark::Mat &S,
+		   double &w);
   
   /**
    * Get the pointer to the Kalman Filter used for updating the map
    * \return pointer to the Kalman Filter
    */
   KalmanFilter* getKalmanFilter();
+
+  /** Function for initiating particles during startup 
+   *  \param[in] i particle index
+   *  \param[in] p particle pose
+   */
+  void setParticlePose(int i, TPose &p);
 
 
 private:
@@ -191,12 +196,15 @@ private:
    * Resample the particles, along with their individual maps,  according to their 
    * importance weightings.
    */
-  void resample();
+  void resampleWithMapCopy();
 
   /** 
    * Importance weighting. Overrides the abstract function in ParticleFilter
+   * \note For this FastSLAM algorithm, we perform weighting as part of 
+   * mapUpdate() to be a little more efficient. Therefore, this function is 
+   * not called at all. However, we still need to overwrite the virtual function.
    */
-  void importanceWeighting();
+  void importanceWeighting(){}
 
   /**
    * Random Finite Set measurement likelihood evaluation
@@ -243,7 +251,6 @@ FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
     maps_.push_back( new GaussianMixture<TLandmark>() );
   }
   
-  config.gaussianPruningThreshold_ = 0.2;
   config.minInterSampleTimesteps_ = 5;
   config.reportTimingInfo_ = false;
   config.landmarkExistencePrior_ = 0.5;
@@ -317,7 +324,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
   if(config.reportTimingInfo_){
     timer_particleResample = new boost::timer::auto_cpu_timer(6, "Particle resample time: %ws\n");
   }
-  resample();
+  resampleWithMapCopy();
   if(timer_particleResample != NULL)
     delete timer_particleResample;
 
@@ -331,17 +338,18 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
   const unsigned int nZ = this->measurements_.size();
 
-  HungarianMethod hm(); // for data association
+  HungarianMethod hm; // for data association
 
   for(unsigned int i = startIdx; i < stopIdx; i++){    
 
     //----------  1. Data Association --------------------
 
     // Loglikelihood table for Data Association
-    const unsigned int nM = maps_[i]->getGaussianCount();
-    const unsigned int nMZ = nM;
-    if(nZ > nM)
+    unsigned int nM = maps_[i]->getGaussianCount();
+    unsigned int nMZ = nM;
+    if(nZ > nM){
       nMZ = nZ;
+    }
     double** likelihoodTable = new double* [ nMZ ];
     for( int m = 0; m < nMZ; m++ ){
       likelihoodTable[m] = new double [ nMZ ];
@@ -357,7 +365,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
       TLandmark* lm = maps_[i]->getGaussian(m); // landmark position estimate
       TMeasurement measurement_exp; // expected measurement      
-      bool isValidExpectedMeasurement = this->pMeasurementModel_->measure( pose , lm , measurement_exp);
+      bool isValidExpectedMeasurement = this->pMeasurementModel_->measure( *pose , *lm , measurement_exp);
 
       int z = 0;
       for(z = 0; z < nZ; z++){
@@ -380,7 +388,6 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     for(unsigned int z = 0; z < nZ; z++){
       zUsed[z] = false;
     }
-    double DA_THRESHOLD = -1;
     
     double nExpectedClutter = this->pMeasurementModel_->clutterIntensityIntegral(nZ);
     double probFalseAlarm = nExpectedClutter / nZ;
@@ -396,23 +403,23 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
       // Update landmark estimate m with the associated measurement
       int z = da[m];
-      if( z < nZ && likelihoodTable[m][z] > DA_THRESHOLD){
-
+      bool isUpdatePerformed = false;
+      if(z < nZ){
+      
 	zUsed[z] = true; // This flag is for new landmark creation
 
 	// EKF Update
-	kfPtr_->correct(*pose, this->measurements_[z], *lm, *lm);
+	isUpdatePerformed = kfPtr_->correct(*pose, this->measurements_[z], *lm, *lm);
+      }
+      
+      // calculate change to existence probability      
+      if(isUpdatePerformed){
 
-	// Particle weighting
-	// logLikelihoodSum += likelihoodTable[m][z];
-
-	// calculate change to existence probability
-	p_exist_given_Z = ((1 - probDetect) * probFalseAlarm * config.landmarkExistencePrior_ + probDetect * config.landmarkExistencePrior_)/
+	p_exist_given_Z = ((1 - probDetect) * probFalseAlarm * config.landmarkExistencePrior_ + probDetect * config.landmarkExistencePrior_) /
 	  (probFalseAlarm + (1 - probFalseAlarm) * probDetect * config.landmarkExistencePrior_); // 
 
       }else{ // landmark estimate m not updated
 
-	// calculate change to existence probability
 	p_exist_given_Z = ((1 - probDetect) * config.landmarkExistencePrior_) /
 	  ((1 - config.landmarkExistencePrior_) + (1 - probDetect) * config.landmarkExistencePrior_);
 
@@ -420,7 +427,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
       double w = maps_[i]->getWeight(m); // this is the log-odds of existence given previous measurements
       w += log( (p_exist_given_Z) / (1 - p_exist_given_Z) );
-      maps_[i]->setWeight(w);
+      maps_[i]->setWeight(m, w);
       
     }
 
@@ -458,7 +465,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::resample(){
+void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::resampleWithMapCopy(){
 
   bool resampleOccured = false;
   if( k_currentTimestep_ - k_lastResample_ >= config.minInterSampleTimesteps_){
@@ -526,7 +533,8 @@ template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel
 bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
 getLandmark(const int i, const int m, 
 	    typename TLandmark::Vec &u,
-	    typename TLandmark::Mat &S)
+	    typename TLandmark::Mat &S,
+	    double &w)
 {
 
   int sz = getGMSize(i);
@@ -538,6 +546,14 @@ getLandmark(const int i, const int m,
     maps_[i]->getGaussian(m, plm);
     plm->get(u, S);
     return true;
+}
+
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
+setParticlePose(int i, TPose &p){
+  
+  this->particleSet_[i]->setPose(p);
+
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >

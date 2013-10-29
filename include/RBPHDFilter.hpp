@@ -174,7 +174,10 @@ public:
    */
   KalmanFilter* getKalmanFilter();
 
-  /** Function for testing purposes only */
+  /** Function for initiating particles during startup 
+   *  \param[in] i particle index
+   *  \param[in] p particle pose
+   */
   void setParticlePose(int i, TPose &p);
 
 

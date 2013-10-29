@@ -57,6 +57,9 @@ ADD_LIBRARY(MeasurementModel src/MeasurementModel.cpp)
 ADD_EXECUTABLE(sim2d src/simulation2d.cpp src/Measurement.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(sim2d config++ ${Boost_LIBRARIES} ProcessModel MeasurementModel)
 
+ADD_EXECUTABLE(fastslam2dSim src/fastslam2dSim.cpp src/Measurement.cpp src/Pose.cpp)
+TARGET_LINK_LIBRARIES(fastslam2dSim config++ ${Boost_LIBRARIES} ProcessModel MeasurementModel)
+
 #ADD_EXECUTABLE(sim1d src/simulation1d.cpp src/Measurement.cpp src/Pose.cpp)
 #TARGET_LINK_LIBRARIES(sim1d config++ ${Boost_LIBRARIES} ProcessModel MeasurementModel)
 
