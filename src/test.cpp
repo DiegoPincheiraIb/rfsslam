@@ -34,17 +34,29 @@
 
 int main(int argc, char* argv[]){
   
-  int n = 5;
+  int n = 9;
   double** C = new double*[n];
   for(int i = 0; i < n; i++){
     C[i] = new double[n];
   }
 
+  for(int i = 0; i < n; i++){
+    for(int j = 0; j < n; j++){
+      C[i][j] = 0.0;
+    }
+  }
+  C[1][2] = 13.166439;
+  C[2][4] = 10.711177;
+  C[3][1] = 3.686331;
+  C[3][4] = 13.426078;
+
+  /*
   C[0][0] = 10; C[0][1] = 21; C[0][2] = 11; C[0][3] = 15; C[0][4] = 21;
   C[1][0] = 10; C[1][1] = 18; C[1][2] =  7; C[1][3] = 16; C[1][4] = 5;
   C[2][0] = 17; C[2][1] = 15; C[2][2] = 20; C[2][3] = 14; C[2][4] = 15;
   C[3][0] = 12; C[3][1] = 12; C[3][2] =  8; C[3][3] =  9; C[3][4] = 6;
   C[4][0] = 14; C[4][1] = 17; C[4][2] = 10; C[4][3] = 19; C[4][4] = 8;
+  */
 
   BruteForceLinearAssignment bf;
   int** bfa;
@@ -76,5 +88,6 @@ int main(int argc, char* argv[]){
     }
     printf("Score: %f\n", score);
   }while(k < nbfa);
+  
 
 }

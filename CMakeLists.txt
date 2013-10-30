@@ -4,8 +4,8 @@
 # cmake -D CMAKE_C_COMPILER=gcc CMAKE_CXX_COMPILER=c++ .
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-#SET(CMAKE_BUILD_TYPE Debug)
-SET(CMAKE_BUILD_TYPE Release)
+SET(CMAKE_BUILD_TYPE Debug)
+#SET(CMAKE_BUILD_TYPE Release)
 PROJECT(RFS_SLAM)
 
 # Explicitly set for colorgcc. By default, they point to gcc and c++ with absolute path
@@ -66,6 +66,8 @@ TARGET_LINK_LIBRARIES(fastslam2dSim config++ ${Boost_LIBRARIES} ProcessModel Mea
 ADD_EXECUTABLE(unitTest test/test.cpp src/Measurement.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread MeasurementModel ProcessModel)
 ADD_TEST(unitTest bin/unitTest)
+
+ADD_EXECUTABLE(hmTest src/test.cpp)
 
 
 

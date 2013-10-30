@@ -65,8 +65,9 @@ public:
    * \param[out] soln assignment solution
    * \param[out] cost assignment solution cost
    * \param[in] maximize true if we want to find maximum score, false for minimum score
+   * \return whether a solution has been found
    */
-  void run(double** C, int n, int* soln, double* cost, bool maximize = true );
+  bool run(double** C, int n, int* soln, double* cost, bool maximize = true, bool debug = false );
 
 
 };
@@ -75,7 +76,7 @@ HungarianMethod::HungarianMethod(){}
 
 HungarianMethod::~HungarianMethod(){}
 
-void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maximize){
+bool HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maximize, bool debug){
 
   // Initialize
   double* lx = new double[n]; // label for X
@@ -120,22 +121,39 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	C[x][y] -= offset;
       }
     }
-  }
-  /*printf("Score / Cost Matrix:\n");
-  for(int x = 0; x < n; x++){
-    for(int y = 0; y < n; y++){
-      printf("%f   ", C[x][y]);
+  }else{
+    for(int x = 0; x < n; x++){
+      for(int y = 0; y < n; y++){
+	if(C[x][y] < offset){
+	  offset = C[x][y];
+	}
+      }
     }
-    printf("\n");
-    }*/
+    for(int x = 0; x < n; x++){
+      for(int y = 0; y < n; y++){
+	C[x][y] -= offset;
+      }
+    }
+  }
+  
+  if(debug){
+    printf("Score / Cost Matrix:\n");
+    for(int x = 0; x < n; x++){
+      for(int y = 0; y < n; y++){
+	printf("%f   ", C[x][y]);
+      }
+      printf("\n");
+    }
+  }
+  
 
   // Step 1 - initial labeling and matching M in equality graph El
   for( int x = 0; x < n; x++){
 
-    lx[x] = 0;
-    ly[x] = 0;
+    lx[x] = 0.0;
+    ly[x] = 0.0;
     for( int y = 0; y < n; y++){
-      if( C[x][y] > lx[x] ){
+      if( C[x][y] >= lx[x] ){
 	lx[x] = C[x][y];
 	xy[x] = y; // temporary matching of x to y, but there may be conflicts
       }
@@ -163,29 +181,40 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 
   }
 
-  /*
-  printf("Initial labeling:\n");
-  for( int x = 0, y = 0; x < n; x++, y++){
-    printf("  lx[%d] = %f     ly[%d] = %f\n", x, lx[x], y, ly[y]);
+  if(debug){
+    printf("Initial labeling:\n");
+    for( int x = 0, y = 0; x < n; x++, y++){
+      printf("  lx[%d] = %f     ly[%d] = %f\n", x, lx[x], y, ly[y]);
+    }
+
+    printf("Initial matching:\n");
+    for( int x = 0; x < n; x++ )
+      if( xy[x] != -1)
+	printf("  x[%d] ----- y[%d]\n", x, xy[x]);
+      else
+	printf("  x[%d] -----      \n", x);
+    for( int y = 0; y < n; y++ )
+      if( yx[y] != -1)
+	printf("  y[%d] ----- x[%d]\n", y, yx[y]);
+      else
+	printf("  y[%d] -----      \n", y);
+
+    printf("Initial Slack Table:\n");
+    for(int x = 0; x < n; x++){
+      for(int y = 0; y < n; y++){
+	printf("%e   ", lx[x] + ly[y] - C[x][y]);
+      }
+      printf("\n");
+    }
+  
   }
 
-  printf("Initial matching:\n");
-  for( int x = 0; x < n; x++ )
-    if( xy[x] != -1)
-      printf("  x[%d] ----- y[%d]\n", x, xy[x]);
-    else
-      printf("  x[%d] -----      \n", x);
- for( int y = 0; y < n; y++ )
-    if( yx[y] != -1)
-      printf("  y[%d] ----- x[%d]\n", y, yx[y]);
-    else
-    printf("  y[%d] -----      \n", y);
-  */  
   while(true){
 
     // Step 2 - Check if we have perfect matching, if not, pick a new root
-    if(pickFreeVertex){
     
+    if(pickFreeVertex){
+
       for(x = 0; x < n; x++){
 	S[x] = false;
       }
@@ -202,41 +231,64 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	for(x = 0; x < n; x++){
 	  soln[x] = xy[x];
 	  if(maximize)
-	    *cost += C[x][ xy[x] ];
+	    *cost += C[x][ xy[x] ] + offset;
 	  else
 	    *cost -= ( C[x][ xy[x] ] + offset );
 	}
 	/*printf("Solution found with score = %f\n", *cost);
         for( int x = 0; x < n; x++ )
 	printf("  x[%d] ----- y[%d]\n", x, xy[x]);*/
-	return;
+
+	// Cleanup
+	delete[] lx;
+	delete[] ly;
+	delete[] xy;
+	delete[] yx;
+	delete[] S;
+	delete[] T;
+	delete[] NS;
+	delete[] slack; 
+	delete[] x_q;
+	delete[] y_q;
+	delete[] p;
+
+	return true;
       }
       root = x; // root of alternating tree
       S[x] = true; // put the free vertex in S
+      if(debug)
+	printf("Slack:\n");
       for(y = 0; y < n; y++ ){
 	slack[y] = lx[x] + ly[y] - C[x][y];
-	if(  slack[y] == 0 )
+	if(debug)
+	  printf("    s[%d] = %f\n", y, slack[y]);
+	if(  fabs(slack[y]) < 1e-14 ){
+	  slack[y] = 0;
 	  NS[y] = true;
+	}
       }
-      /*printf("New root selected\n");  
-      printf("S = { ");
-      for( int x = 0; x < n; x++ ){
-	if(S[x])
-	  printf("x[%d] ", x);
+
+      if(debug){
+	printf("New root selected\n");  
+	printf("S = { ");
+	for( int x = 0; x < n; x++ ){
+	  if(S[x])
+	    printf("x[%d] ", x);
+	}
+	printf(" }\n");
+	printf("T = { ");
+	for( int y = 0; y < n; y++ ){
+	  if(T[y])
+	    printf("y[%d] ", y);
+	}
+	printf(" }\n");
+	printf("NS = { ");
+	for( int y = 0; y < n; y++ ){
+	  if(NS[y])
+	    printf("y[%d] ", y);
+	}
+	printf(" }\n");
       }
-      printf(" }\n");
-      printf("T = { ");
-      for( int y = 0; y < n; y++ ){
-	if(T[y])
-	  printf("y[%d] ", y);
-      }
-      printf(" }\n");
-      printf("NS = { ");
-      for( int y = 0; y < n; y++ ){
-	if(NS[y])
-	  printf("y[%d] ", y);
-      }
-      printf(" }\n");*/
     }
 
     // Step 3 - Update labels (if neighbourhood N(S) == T)
@@ -249,6 +301,17 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
     }
     if(updateLabel){ // After updating label, N(S) != T
 
+
+      if(debug){
+	printf("Slack Table:\n");
+	for(int x = 0; x < n; x++){
+	  for(int y = 0; y < n; y++){
+	    printf("%e   ", lx[x] + ly[y] - C[x][y]);
+	  }
+	  printf("\n");
+	}
+      }
+
       double a = DBL_MAX;
       //calculate delta using slack    
       for (y = 0; y < n; y++){   	     
@@ -257,8 +320,10 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	}
       }
 
-      //printf("Update labels:\n");
-      //printf("  minimum slack = %f\n",a);
+      if(debug){
+	printf("Update labels:\n");
+	printf("  minimum slack of !T = %f\n",a);
+      }
     
       //update X labels
       for (x = 0; x < n; x++){            
@@ -284,8 +349,21 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	}
       }
 
-      /*for( int x = 0, y = 0; x < n; x++, y++)
-	printf("  lx[%d] = %f     ly[%d] = %f\n", x, lx[x], y, ly[y]);*/
+      if(debug){
+	for( int x = 0, y = 0; x < n; x++, y++)
+	printf("  lx[%d] = %f     ly[%d] = %f\n", x, lx[x], y, ly[y]);
+	printf("  Update slack variables:\n");
+	for( int y = 0; y < n; y++ )
+	  printf("    s[%d] = %f\n", y, slack[y]);
+
+	printf("Slack Table:\n");
+	for(int x = 0; x < n; x++){
+	  for(int y = 0; y < n; y++){
+	    printf("%e   ", lx[x] + ly[y] - C[x][y]);
+	  }
+	  printf("\n");
+	}
+      }
 
     }//end updateLabel
 
@@ -297,8 +375,12 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
     }
     x_t = yx[y]; // match to y
     if(x_t == -1){ // if y is free, path root -> y is an augmenting path, goto step 2
+
+      bool augmentingPathFound = false;
       
-      //printf("  Found free y[%d]\n", y);
+      if(debug){
+	printf("  Found free y[%d]\n", y);
+      }
 
       // Breadth first search for path root -> y
       // We need to make distinct indices for vertices in X and in Y
@@ -316,18 +398,23 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
       for(x = 0; x < 2*n; x++){
 	p[x] = -1;
       }
+      int t = q.front();
       while(!q.empty()){
  
-	int t = q.front();
-	/*if( t < n){
-	  printf("Breadth first search queue front: x[%d]\n",t);
-	}else{
-	  printf("Breadth first search queue front: y[%d]\n",t-n);	  
-	  }*/
+	t = q.front();
+	if(debug){
+	  if( t < n){
+	    printf("Breadth first search queue front: x[%d]\n",t);
+	  }else{
+	    printf("Breadth first search queue front: y[%d]\n",t-n);	  
+	  }
+	}
 
 	if (t == target){
 	  // path found, perform augmentation in inverse the matching along this path
-	  //printf("  Augmentation path found:\n    y[%d]", t-n);
+	  if(debug){
+	    printf("  Augmentation path found:\n    y[%d]", t-n);
+	  }
 	  while(t != root){
 	    if( t >= n){ // t is in Y, p[t]--t should be a match
 	      x_t = p[t];
@@ -336,26 +423,32 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	    }
 	    t = p[t];
 
-	    /*if( t < n ){
-	      printf(" --- x[%d]", t);
-	    }else{
-	      printf(" --- y[%d]", t-n);
-	      }*/
-	  }
-	  //printf("\n");
-	  
-	  /*for( int x = 0; x < n; x++ )
-	    if( xy[x] != -1){
-	      printf("  x[%d] ----- y[%d]\n", x, xy[x]);
-	    }else{
-	      printf("  x[%d] -----      \n", x);
+	    if(debug){
+	      if( t < n ){
+		printf(" --- x[%d]", t);
+	      }else{
+		printf(" --- y[%d]", t-n);
+	      }
 	    }
-	  for( int y = 0; y < n; y++ )
-	    if( yx[y] != -1){
-	      printf("  y[%d] ----- x[%d]\n", y, yx[y]);
-	    }else{
-	      printf("  y[%d] -----      \n", y);
-	      }*/
+	  }
+
+	  if(debug){
+	    printf("\nCurrent pairing\n");
+	  
+	    for( int x = 0; x < n; x++ )
+	      if( xy[x] != -1){
+		printf("  x[%d] ----- y[%d]\n", x, xy[x]);
+	      }else{
+		printf("  x[%d] -----      \n", x);
+	      }
+	    for( int y = 0; y < n; y++ )
+	      if( yx[y] != -1){
+		printf("  y[%d] ----- x[%d]\n", y, yx[y]);
+	      }else{
+		printf("  y[%d] -----      \n", y);
+	      }
+	  }
+	  augmentingPathFound = true;
 	  break;
 	}
 	q.pop();
@@ -363,8 +456,10 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	if( t < n){ // t is a vertex in X 
 	  for(y = 0; y < n; y++){ // look through children of t
 	    // check if y is in equality graph and not already queued and unmatched
-	    if(lx[t] + ly[y] - C[t][y] == 0 && !y_q[y] && xy[t] != y){
-	      //printf("Breadth first search inserting y[%d] in queue with parent x[%d]\n", y, t); 
+	    if(fabs(lx[t] + ly[y] - C[t][y]) < 1e-14 && !y_q[y] && xy[t] != y){
+	      if(debug){
+		printf("Breadth first search inserting y[%d] in queue with parent x[%d]\n", y, t); 
+	      }
 	      y_q[y] = true;
 	      p[y+n] = t;
 	      q.push( y+n );
@@ -374,8 +469,10 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	  t -= n; // fix the index back to original
 	  for(x = 0; x < n; x++){ // look through children of t
 	    // check if x is in equality graph and in set S and not already queued and matched
-	    if(lx[x] + ly[t] - C[x][t] == 0 && S[x] && !x_q[x] && yx[t] == x){
-	      //printf("Breadth first search inserting x[%d] in queue with parent y[%d]\n", x, t);
+	    if(fabs(lx[x] + ly[t] - C[x][t]) < 1e-14 && S[x] && !x_q[x] && yx[t] == x){
+	      if(debug){
+		printf("Breadth first search inserting x[%d] in queue with parent y[%d]\n", x, t);
+	      }
 	      x_q[x] = true;
 	      p[x] = t+n;
 	      q.push( x );
@@ -385,40 +482,58 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 
       } // end while
 
+      if(!augmentingPathFound){
+	printf("Cannot find alternating path\n");
+	printf("Slack table:\n");
+	for(int x = 0; x < n; x++){
+	  for(int y = 0; y < n; y++){
+	    printf("%e   ", lx[x] + ly[y] - C[x][y]);
+	  }
+	  printf("\n");
+	}
+	return false;
+      }
+
       pickFreeVertex = true; // go back to step 2
 
     }else{ // y is matched to x_t, add to alternating tree, go to step 3
 
-      //printf("  Found y[%d] matched with x[%d]\n", y, x_t);
-
+      if(debug){
+	printf("  Found y[%d] matched with x[%d]\n", y, x_t);
+	printf("  Examine slack for x[%d]:\n", x_t);
+      }
       S[x_t] = true;
       T[y] = true;
-      for(int y = 0; y < n; y++ ){
-	if( lx[x_t] + ly[y] - C[x_t][y] == 0 )
-	  NS[y] = true;
+      for(int y_t = 0; y_t < n; y_t++ ){
+	if(debug)
+	  printf("    s[%d -- %d] = %f\n", x_t, y_t, lx[x_t] + ly[y_t] - C[x_t][y_t]);
+	if( fabs(lx[x_t] + ly[y_t] - C[x_t][y_t]) < 1e-14 )
+	  NS[y_t] = true;
       }
       
-      /*printf("  S = { ");
-      for( int x = 0; x < n; x++ ){
-	if(S[x]){
-	  printf("x[%d] ", x);
+      if(debug){
+	printf("  S = { ");
+	for( int x = 0; x < n; x++ ){
+	  if(S[x]){
+	    printf("x[%d] ", x);
+	  }
 	}
-      }
-      printf(" }\n");
-      printf("  T = { ");
-      for( int y = 0; y < n; y++ ){
-	if(T[y]){
-	  printf("y[%d] ", y);
+	printf(" }\n");
+	printf("  T = { ");
+	for( int y = 0; y < n; y++ ){
+	  if(T[y]){
+	    printf("y[%d] ", y);
+	  }
 	}
-      }
-      printf(" }\n");
-      printf("  NS = { ");
-      for( int y = 0; y < n; y++ ){
-	if(NS[y]){
-	  printf("y[%d] ", y);
+	printf(" }\n");
+	printf("  NS = { ");
+	for( int y = 0; y < n; y++ ){
+	  if(NS[y]){
+	    printf("y[%d] ", y);
+	  }
 	}
+	printf(" }\n");
       }
-      printf(" }\n");*/
 
       // It is necessary to update the slack variables here since S now includes x_t
       for(int y = 0; y < n; y++ ){
@@ -428,29 +543,19 @@ void HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	}
       }
 
-      /*printf("  Update slack variables:\n");
-      for( int y = 0; y < n; y++ )
-	if(!T[y])
-	printf("    s[%d] = %f\n", y, slack[y]);*/
-      
+      if(debug){
+	printf("  Update slack variables for !T:\n");
+	for( int y = 0; y < n; y++ )
+	  if(!T[y])
+	    printf("    s[%d] = %f\n", y, slack[y]);
+      }      
+
       pickFreeVertex = false; // go back to step 3
 
     }
 
   }
 
-  // Cleanup
-  delete[] lx;
-  delete[] ly;
-  delete[] xy;
-  delete[] yx;
-  delete[] S;
-  delete[] T;
-  delete[] NS;
-  delete[] slack; 
-  delete[] x_q;
-  delete[] y_q;
-  delete[] p;
 }
 
 #endif

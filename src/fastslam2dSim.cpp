@@ -60,7 +60,7 @@ public:
   bool readConfigFile(){
     
     libconfig::Config cfg;
-    const char* fileName= "cfg/fastslamSim2d.cfg";
+    const char* fileName= "cfg/fastslam2dSim.cfg";
     try{
       cfg.readFile( fileName );
     }catch( libconfig::FileIOException &ex){

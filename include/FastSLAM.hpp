@@ -189,8 +189,9 @@ private:
    * mixture weight reduced to account for missed detection.
    * For every landmark-measurement pair with probability of detection > 0,
    * a new landmark will be created. 
+   * /return whether the update was successful
    */
-  void updateMap();
+  bool updateMap();
 
   /**
    * Resample the particles, along with their individual maps,  according to their 
@@ -316,7 +317,8 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
   if(config.reportTimingInfo_){
     timer_mapUpdate = new boost::timer::auto_cpu_timer(6, "Map update time: %ws\n");
   }
-  updateMap();
+  if(!updateMap())
+    printf("k = %d     Update Failed!\n", k_currentTimestep_);
   if(timer_mapUpdate != NULL)
     delete timer_mapUpdate;
 
@@ -331,7 +333,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::updateMap(){
+bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::updateMap(){
 
   const unsigned int startIdx = 0;
   const unsigned int stopIdx = this->nParticles_;
@@ -343,7 +345,6 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
   for(unsigned int i = startIdx; i < stopIdx; i++){    
 
     //----------  1. Data Association --------------------
-
     // Loglikelihood table for Data Association
     unsigned int nM = maps_[i]->getGaussianCount();
     unsigned int nMZ = nM;
@@ -354,7 +355,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     for( int m = 0; m < nMZ; m++ ){
       likelihoodTable[m] = new double [ nMZ ];
       for(int z = 0; z < nMZ; z++){
-	likelihoodTable[m][z] = -10;
+	likelihoodTable[m][z] = -10; // TODO config
       }
     }
 
@@ -371,7 +372,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       for(z = 0; z < nZ; z++){
 
 	if( isValidExpectedMeasurement ){
-	  likelihoodTable[m][z] = log(measurement_exp.evalGaussianLikelihood(this->measurements_[z])); 
+	  likelihoodTable[m][z] = fmax(-10, log(measurement_exp.evalGaussianLikelihood(this->measurements_[z]))); //TODO config 
 	}
       }
 
@@ -379,8 +380,11 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
     int da[nMZ]; // data association result
     double logLikelihoodSum = 0; // used for particle weighting
-    hm.run(likelihoodTable, nMZ, da, &logLikelihoodSum);
-    
+    if(!hm.run(likelihoodTable, nMZ, da, &logLikelihoodSum)){
+      printf("Update failed\n");
+      hm.run(likelihoodTable, nMZ, da, &logLikelihoodSum,true,true);
+      return false;
+    }
 
     //----------  2. Kalman Filter map update ----------
 
@@ -416,7 +420,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       if(isUpdatePerformed){
 
 	p_exist_given_Z = ((1 - probDetect) * probFalseAlarm * config.landmarkExistencePrior_ + probDetect * config.landmarkExistencePrior_) /
-	  (probFalseAlarm + (1 - probFalseAlarm) * probDetect * config.landmarkExistencePrior_); // 
+	  (probFalseAlarm + (1 - probFalseAlarm) * probDetect * config.landmarkExistencePrior_); 
 
       }else{ // landmark estimate m not updated
 
@@ -426,13 +430,12 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       }
 
       double w = maps_[i]->getWeight(m); // this is the log-odds of existence given previous measurements
-      w += log( (p_exist_given_Z) / (1 - p_exist_given_Z) );
+      w += log( (p_exist_given_Z) / (1 - p_exist_given_Z) ); 
       maps_[i]->setWeight(m, w);
       
     }
 
     //---------- 3. Map Management (Add and remove landmarks)  ------------
-
     maps_[i]->prune(config.mapExistencePruneThreshold_); 
 
     for(unsigned int z = 0; z < nZ; z++){
@@ -448,12 +451,10 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
     //---------- 4. Importance Weighting --------------
     // Some of the work has already been done in the map update step
-
     this->particleSet_[i]->setWeight( exp(logLikelihoodSum) );
 
 
-    //---------- 5. Cleanup - Free memory ----------
-
+    //---------- 5. Cleanup - Free memory ---------
     delete pose;
     for( int n = 0; n < nMZ; n++ ){
       delete[] likelihoodTable[n];
@@ -461,6 +462,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     delete[] likelihoodTable;
 
   } // particle i loop end
+  return true;
 
 }
 
