@@ -469,8 +469,10 @@ unsigned int GaussianMixture<Landmark>::prune( const double t ){
     idx = (unsigned int)( (max_idx + min_idx) / 2 );
     w = gList_[idx].weight;
   }
-  while( w >= t && idx < gList_.size() - 1 ){
+  while( w >= t ){
     idx++;
+    if(idx >= gList_.size())
+      break;
     w = gList_[idx].weight;
   }
   idx_old = idx; 
@@ -479,7 +481,7 @@ unsigned int GaussianMixture<Landmark>::prune( const double t ){
     idx++;
     nPruned++;
   }
-  gList_.resize(idx_old); 
+  gList_.resize( gList_.size() - nPruned); 
 
   return nPruned;
 }
