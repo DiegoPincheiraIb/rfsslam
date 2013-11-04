@@ -60,7 +60,7 @@ public:
 
   /**
    * Run the Hungarian method
-   * \param[in] C square score / cost matrix
+   * \param[in] C costMat square score / cost matrix.
    * \param[in] n size of cost matrix
    * \param[out] soln assignment solution
    * \param[out] cost assignment solution cost
@@ -227,13 +227,29 @@ bool HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	  break; // x is not matched and therefore a free vertex
       }
       if(x == n){ // no more free / unmatched x, we have found a solution
+
+	// undo offset if necessary
+	if(offset != 0){
+	  for(x = 0; x < n; x++){
+	    for(y = 0; y < n; y++){
+	      C[x][y] = C[x][y] + offset;
+	    }
+	  }
+	}
+
+	// undo negative if necessary
+	if(!maximize){
+	  for(x = 0; x < n; x++){
+	    for(y = 0; y < n; y++){
+	      C[x][y] *= -1;
+	    }
+	  }
+	}
+
 	*cost = 0;
 	for(x = 0; x < n; x++){
 	  soln[x] = xy[x];
-	  if(maximize)
-	    *cost += C[x][ xy[x] ] + offset;
-	  else
-	    *cost -= ( C[x][ xy[x] ] + offset );
+	  *cost += C[x][ xy[x] ];
 	}
 	/*printf("Solution found with score = %f\n", *cost);
         for( int x = 0; x < n; x++ )

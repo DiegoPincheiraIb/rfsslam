@@ -453,7 +453,7 @@ public:
       
       if( k <= 100){ // hold still for the first 100 timesteps
 	for( int i = 0; i < nParticles_; i++)
-	  pFilter_->setParticlePose(0, groundtruth_pose_[k]);
+	  pFilter_->setParticlePose(i, groundtruth_pose_[k]);
       }
 
       // Prepare measurement vector for update
@@ -494,7 +494,7 @@ public:
 	    fprintf( pLandmarkEstFile, "%f   %f      ", u(0), u(1));
 	    fprintf( pLandmarkEstFile, "%f   %f   ", S(0,0), S(0,1));
 	    fprintf( pLandmarkEstFile, "%f   %f   ", S(1,0), S(1,1));
-	    fprintf( pLandmarkEstFile, "   %f\n", w );
+	    fprintf( pLandmarkEstFile, "   %f\n", 1 - 1/(1 + exp(w)) );
 	  }
 	  fprintf( pLandmarkEstFile, "\n");
 	}

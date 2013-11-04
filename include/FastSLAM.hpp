@@ -351,6 +351,7 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     if(nZ > nM){
       nMZ = nZ;
     }
+
     double** likelihoodTable = new double* [ nMZ ];
     for( int m = 0; m < nMZ; m++ ){
       likelihoodTable[m] = new double [ nMZ ];
@@ -370,7 +371,6 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
       int z = 0;
       for(z = 0; z < nZ; z++){
-
 	if( isValidExpectedMeasurement ){
 	  likelihoodTable[m][z] = fmax(-10, log(measurement_exp.evalGaussianLikelihood(this->measurements_[z]))); //TODO config 
 	}
@@ -382,8 +382,22 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     double logLikelihoodSum = 0; // used for particle weighting
     if(!hm.run(likelihoodTable, nMZ, da, &logLikelihoodSum)){
       printf("Update failed\n");
-      hm.run(likelihoodTable, nMZ, da, &logLikelihoodSum,true,true);
+      hm.run(likelihoodTable, nMZ, da, &logLikelihoodSum, true, true); // true flag at the end is for debug
       return false;
+    }
+
+    if( i == 0 ){
+      printf("Likelihood table nM=%d nZ=%d nMZ=%d\n", nM, nZ, nMZ);
+      for(unsigned int m = 0; m < nMZ; m++){
+	for(unsigned int z = 0; z < nMZ; z++){
+	  printf("%e   ", likelihoodTable[m][z]);
+	}
+	printf("\n");
+      }
+      printf("\nData Associations (%e)\n", logLikelihoodSum);
+      for(unsigned int m = 0; m < nMZ; m++){
+	printf("%d --- %d\n", m, da[m]);
+      }
     }
 
     //----------  2. Kalman Filter map update ----------
@@ -396,6 +410,7 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     double nExpectedClutter = this->pMeasurementModel_->clutterIntensityIntegral(nZ);
     double probFalseAlarm = nExpectedClutter / nZ;
     double p_exist_given_Z = 0;
+    double logParticleWeight = 0;
 
     for(unsigned int m = 0; m < nM; m++){
       
@@ -409,8 +424,6 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       int z = da[m];
       bool isUpdatePerformed = false;
       if(z < nZ){
-      
-	zUsed[z] = true; // This flag is for new landmark creation
 
 	// EKF Update
 	isUpdatePerformed = kfPtr_->correct(*pose, this->measurements_[z], *lm, *lm);
@@ -418,6 +431,10 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       
       // calculate change to existence probability      
       if(isUpdatePerformed){
+
+	zUsed[z] = true; // This flag is for new landmark creation
+	
+	logParticleWeight += likelihoodTable[m][z];
 
 	p_exist_given_Z = ((1 - probDetect) * probFalseAlarm * config.landmarkExistencePrior_ + probDetect * config.landmarkExistencePrior_) /
 	  (probFalseAlarm + (1 - probFalseAlarm) * probDetect * config.landmarkExistencePrior_); 
@@ -432,18 +449,24 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       double w = maps_[i]->getWeight(m); // this is the log-odds of existence given previous measurements
       w += log( (p_exist_given_Z) / (1 - p_exist_given_Z) ); 
       maps_[i]->setWeight(m, w);
+
+      if( i == 0){
+	printf("w[%d] = %f\n", m, maps_[i]->getWeight(m));
+      }
       
     }
 
     //---------- 3. Map Management (Add and remove landmarks)  ------------
-    maps_[i]->prune(config.mapExistencePruneThreshold_); 
+    int nRemoved = maps_[i]->prune(config.mapExistencePruneThreshold_); 
+    if( i == 0)
+      printf("%d Gaussians pruned\n", nRemoved);
 
     for(unsigned int z = 0; z < nZ; z++){
       if(!zUsed[z]){ // Create new landmarks with inverse measurement model with unused measurements
 
 	TLandmark landmark_pos;
 	this->pMeasurementModel_->inverseMeasure( *pose, this->measurements_[z] , landmark_pos );
-	double newLandmarkWeight = config.landmarkExistencePrior_;
+	double newLandmarkWeight = log(config.landmarkExistencePrior_ / (1 - config.landmarkExistencePrior_));
 	maps_[i]->addGaussian( &landmark_pos, newLandmarkWeight, true);
 
       }
@@ -451,7 +474,7 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
     //---------- 4. Importance Weighting --------------
     // Some of the work has already been done in the map update step
-    this->particleSet_[i]->setWeight( exp(logLikelihoodSum) );
+    this->particleSet_[i]->setWeight( exp(logParticleWeight) );
 
 
     //---------- 5. Cleanup - Free memory ---------
