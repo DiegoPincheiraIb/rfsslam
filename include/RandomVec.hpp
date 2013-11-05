@@ -233,13 +233,13 @@ public:
    * Get the vector
    * \param[out] x vector
    */
-  void get( VecType &x ){x = x_;}
+  void get( VecType &x ) const {x = x_;}
 
   /** 
    * Get the covariance matrix
    * \param[out] Sx uncertainty 
    */
-  void getCov( MatType &Sx){
+  void getCov( MatType &Sx) const {
     Sx = Sx_;
   }
 
@@ -286,7 +286,7 @@ public:
    * \param[out] x vector
    * \param[out] Sx uncertainty
    */
-  void get( VecType &x, MatType &Sx){
+  void get( VecType &x, MatType &Sx) const {
     get(x);
     getCov(Sx);
   }
@@ -296,7 +296,7 @@ public:
    * \param[out] x vector
    * \param[out] t time
    */
-  void get( VecType &x, double &t){
+  void get( VecType &x, double &t) const {
     get(x);
     t = t_;
   }
@@ -307,7 +307,7 @@ public:
    * \param[out] Sx uncertainty
    * \param[out] t time
    */
-  void get( VecType &x, MatType &Sx, double &t){
+  void get( VecType &x, MatType &Sx, double &t) const {
     get(x);
     getCov(Sx);
     t = t_;
@@ -318,13 +318,13 @@ public:
    * \param[in] n element index
    * \return element n
    */
-  double get( int n ){ return x_(n);}
+  double get( int n ) const { return x_(n);}
 
   /**
    * Get the time
    * \return time
    */
-  double getTime(){
+  double getTime() const {
     return t_;
   }
 
@@ -332,7 +332,7 @@ public:
    * Get the dimension
    * \return dimension
    */ 
-  unsigned int getNDim(){ return nDim_; }
+  unsigned int getNDim() const { return nDim_; }
 
   /**
    * Calculate the squared Mahalanobis distance to another random vector of the same type

@@ -73,13 +73,13 @@ public:
    *  Get particle pose
    *  \param[out] x_k_i pose
    */
-  void getPose( PoseType &x_k_i );
+  void getPose( PoseType &x_k_i ) const;
 
   /**
    *  Get particle pose
    *  \return pointer to pose
    */
-  const PoseType* getPose();
+  const PoseType* getPose() const;
 
   /**
    *  Set particle importance weight
@@ -91,20 +91,20 @@ public:
    *  Get particle importance weight
    *  \return particle weight
    */
-  double getWeight();
+  double getWeight() const;
 
   /**
    * Get the particle id
    * \return particle id
    */
-  unsigned int getId();
+  unsigned int getId() const;
 
   /**
    * Get the particle id of the particle which spawned 
    * the current one after resampling
    * \return parent particle id
    */
-  unsigned int getParentId();
+  unsigned int getParentId() const ;
 
   /** 
    * Set the particle id
@@ -160,12 +160,12 @@ void Particle<PoseType>::setPose( PoseType &x_k_i ){
 }
 
 template< class PoseType >
-void Particle<PoseType>::getPose( PoseType &x_k_i ){
+void Particle<PoseType>::getPose( PoseType &x_k_i ) const{
   x_k_i = x_k_i_;
 }
 
 template< class PoseType >
-const PoseType* Particle<PoseType>::getPose(){
+const PoseType* Particle<PoseType>::getPose() const{
   return &x_k_i_;
 }
 
@@ -175,17 +175,17 @@ void Particle<PoseType>::setWeight( double w ){
 }
 
 template< class PoseType >
-double Particle<PoseType>::getWeight(){ 
+double Particle<PoseType>::getWeight() const{ 
   return w_; 
 }
 
 template< class PoseType >
-unsigned int Particle<PoseType>::getId(){ 
+unsigned int Particle<PoseType>::getId() const{ 
   return id_; 
 }
 
 template< class PoseType >
-unsigned int Particle<PoseType>::getParentId(){ 
+unsigned int Particle<PoseType>::getParentId() const{ 
   return idParent_; 
 } 
 

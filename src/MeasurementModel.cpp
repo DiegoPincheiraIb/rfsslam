@@ -68,7 +68,8 @@ RangeBearingModel::RangeBearingModel(double Sr, double Sb){
 
 RangeBearingModel::~RangeBearingModel(){}
 
-bool RangeBearingModel::measure(Pose2d  &pose, Landmark2d &landmark, 
+bool RangeBearingModel::measure(const Pose2d &pose, 
+				const Landmark2d &landmark, 
 				Measurement2d &measurement, 
 				Eigen::Matrix2d *jacobian){
 
@@ -105,7 +106,8 @@ bool RangeBearingModel::measure(Pose2d  &pose, Landmark2d &landmark,
     return true;
 }
 
-void RangeBearingModel::inverseMeasure(Pose2d &pose, Measurement2d &measurement, 
+void RangeBearingModel::inverseMeasure(const Pose2d &pose, 
+				       const Measurement2d &measurement, 
 				       Landmark2d &landmark){
   Eigen::Vector3d poseState;
   Eigen::Vector2d measurementState, mean;
@@ -126,8 +128,8 @@ void RangeBearingModel::inverseMeasure(Pose2d &pose, Measurement2d &measurement,
 
 }
 
-double RangeBearingModel::probabilityOfDetection( Pose2d &pose,
-						  Landmark2d &landmark,
+double RangeBearingModel::probabilityOfDetection( const Pose2d &pose,
+						  const Landmark2d &landmark,
 						  bool &isCloseToSensingLimit ){
 
   Pose2d::Vec robotPose;
@@ -149,7 +151,7 @@ double RangeBearingModel::probabilityOfDetection( Pose2d &pose,
       isCloseToSensingLimit = true;
   }else{
     Pd = 0;
-    if( range <= (config.rangeLimMax_ + config.rangeLimBuffer_ ) || 
+    if( range <= (config.rangeLimMax_ + config.rangeLimBuffer_ ) &&
 	range >= (config.rangeLimMin_ - config.rangeLimBuffer_ ) )
       isCloseToSensingLimit = true;
   } 
@@ -201,7 +203,8 @@ MeasurementModel1d::MeasurementModel1d(double Sr){
 
 MeasurementModel1d::~MeasurementModel1d(){}
 
-bool MeasurementModel1d::measure(Pose1d &pose, Landmark1d &landmark, 
+bool MeasurementModel1d::measure(const Pose1d &pose, 
+				 const Landmark1d &landmark, 
 				 Measurement1d &measurement, 
 				 Eigen::Matrix<double, 1, 1> *jacobian){
 
@@ -230,7 +233,8 @@ bool MeasurementModel1d::measure(Pose1d &pose, Landmark1d &landmark,
 
 }
 
-void MeasurementModel1d::inverseMeasure(Pose1d &pose, Measurement1d &measurement, 
+void MeasurementModel1d::inverseMeasure(const Pose1d &pose, 
+					const Measurement1d &measurement, 
 					Landmark1d &landmark){
 
   Pose1d::Vec x;
@@ -246,8 +250,8 @@ void MeasurementModel1d::inverseMeasure(Pose1d &pose, Measurement1d &measurement
 
 }
 
-double MeasurementModel1d::probabilityOfDetection( Pose1d &pose,
-						   Landmark1d &landmark,
+double MeasurementModel1d::probabilityOfDetection( const Pose1d &pose,
+						   const Landmark1d &landmark,
 						   bool &isCloseToSensingLimit ){
 
   Pose1d::Vec robotPose;

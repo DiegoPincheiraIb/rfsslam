@@ -102,6 +102,7 @@ public:
     innovationRangeThreshold_ = cfg.lookup("Filter.innovationRangeThreshold");
     effNParticleThreshold_ = cfg.lookup("Filter.effectiveNumberOfParticlesThreshold");
     minInterSampleTimesteps_ = cfg.lookup("Filter.minInterSampleTimesteps");
+    minLogMeasurementLikelihood_ = cfg.lookup("Filter.minLogMeasurementLikelihood");
     landmarkExistencePruningThreshold_ = cfg.lookup("Filter.landmarkExistencePruningThreshold");
     reportTimingInfo_ = cfg.lookup("Filter.reportTimingInfo");
 
@@ -392,6 +393,7 @@ public:
     // configure the filter
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
     pFilter_->config.minInterSampleTimesteps_ = minInterSampleTimesteps_;
+    pFilter_->config.minLogMeasurementLikelihood_ = minLogMeasurementLikelihood_;
     pFilter_->config.mapExistencePruneThreshold_ = landmarkExistencePruningThreshold_;
     pFilter_->config.landmarkExistencePrior_ = 0.5;
     pFilter_->config.reportTimingInfo_ = reportTimingInfo_;
@@ -566,6 +568,7 @@ private:
   double innovationRangeThreshold_;
   double effNParticleThreshold_;
   int minInterSampleTimesteps_;
+  double minLogMeasurementLikelihood_;
   double landmarkExistencePruningThreshold_;
   bool reportTimingInfo_;
   bool logToFile_;

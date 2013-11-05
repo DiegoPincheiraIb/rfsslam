@@ -94,7 +94,8 @@ public:
    * by the Jacobian of the measurement model, \f$\mathbf{H}\f$, evaluated at \f$\mathbf{x}\f$ and \f$\mathbf{m}\f$
    * \return true if a valid measurement is produced
    */
-  virtual bool measure( PoseType &pose, LandmarkType &landmark, 
+  virtual bool measure( const PoseType &pose, 
+			const LandmarkType &landmark, 
 			MeasurementType &meaurement, 
 			Eigen::Matrix<double , 
 				      MeasurementType::Vec::RowsAtCompileTime ,
@@ -170,8 +171,8 @@ public:
    * \param[in] measurement  \f$\mathbf{z}\f$ measurement, for which the uncertainty is \f$\mathbf{R}\f$
    * \param[out] landmark  \f$\mathbf{m}\f$, predicted landmark position with uncertainty
    */
-  virtual void inverseMeasure( PoseType &pose,
-			       MeasurementType &measurement, 
+  virtual void inverseMeasure( const PoseType &pose,
+			       const MeasurementType &measurement, 
 			       LandmarkType &landmark ) = 0;
 
   /**
@@ -187,8 +188,8 @@ public:
    * \param[out] isCloseToSensingLimit true if landmark is close to the sensing limit
    * \return probability of detection
    */
-  virtual double probabilityOfDetection( PoseType &pose,
-					 LandmarkType &landmark,
+  virtual double probabilityOfDetection( const PoseType &pose,
+					 const LandmarkType &landmark,
 					 bool &isCloseToSensingLimit){
     isCloseToSensingLimit = false;
     return 1;
@@ -290,7 +291,7 @@ public:
    * by the Jacobian of the measurement model, \f$\mathbf{H}\f$, evaluated at \f$\mathbf{x}\f$ and \f$\mathbf{m}\f$
    * \return true if a valid measurement is produced
    */
-  bool measure( Pose2d &pose, Landmark2d &landmark, 
+  bool measure( const Pose2d &pose, const Landmark2d &landmark, 
 		Measurement2d &measurement, Eigen::Matrix2d *jacobian = NULL);
 
   /** 
@@ -301,7 +302,7 @@ public:
    * \param[in] measurement  \f$\mathbf{z}\f$ measurement, for which the uncertainty is \f$\mathbf{R}\f$
    * \param[out] landmark  \f$\mathbf{m}\f$, predicted landmark position with uncertainty
    */
-  void inverseMeasure(Pose2d &pose, Measurement2d &measurement, Landmark2d &landmark);
+  void inverseMeasure(const Pose2d &pose, const Measurement2d &measurement, Landmark2d &landmark);
 
   /**
    * Abstract function of determining a landmark's probability of detection, and if the landmark is close to the sensing limit.
@@ -314,8 +315,8 @@ public:
    * \param[out] isCloseToSensingLimit true if landmark is close to the sensing limit
    * \return probability of detection
    */
-  double probabilityOfDetection( Pose2d &pose,
-				 Landmark2d &landmark,
+  double probabilityOfDetection( const Pose2d &pose,
+				 const Landmark2d &landmark,
 				 bool &isCloseToSensingLimit);
 
   /**
@@ -399,7 +400,7 @@ public:
    * by the derivative of the measurement model, \f$\mathbf{H}\f$, evaluated at \f$x\f$ and \f$m\f$
    * \return true if a valid measurement is produced
    */
-  bool measure( Pose1d &pose, Landmark1d &landmark, 
+  bool measure( const Pose1d &pose, const Landmark1d &landmark, 
 		Measurement1d &measurement, Eigen::Matrix<double, 1, 1> *jacobian = NULL);
 
   /** 
@@ -410,7 +411,7 @@ public:
    * \param[in] measurement  \f$z\f$ measurement, for which the uncertainty is \f$\sigma^2\f$
    * \param[out] landmark  \f$m\f$, predicted landmark position with uncertainty
    */
-  void inverseMeasure(Pose1d &pose, Measurement1d &measurement, Landmark1d &landmark);
+  void inverseMeasure(const Pose1d &pose, const Measurement1d &measurement, Landmark1d &landmark);
 
   /**
    * Abstract function of determining a landmark's probability of detection, and if the landmark is close to the sensing limit.
@@ -423,8 +424,8 @@ public:
    * \param[out] isCloseToSensingLimit true if landmark is close to the sensing limit
    * \return probability of detection
    */
-  double probabilityOfDetection( Pose1d &pose,
-				 Landmark1d &landmark,
+  double probabilityOfDetection( const Pose1d &pose,
+				 const Landmark1d &landmark,
 				 bool &isCloseToSensingLimit);
 
   /**

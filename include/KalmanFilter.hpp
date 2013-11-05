@@ -112,7 +112,7 @@ public:
    * used to calculate zlikelihood (required by the RBPHDFilter)
    * \return true if the correction was performed. This could be false if calculateInnovation returns false
    */
-  virtual bool correct(TPose &pose, TMeasurement &measurement, 
+  virtual bool correct(const TPose &pose, const TMeasurement &measurement, 
 		       TLandmark &landmark_current, TLandmark &landmark_updated,
 		       double* zLikelihood = NULL, 
 		       double* mahalanobisDist2 = NULL);
@@ -183,7 +183,7 @@ predict(TLandmark &landmark_current,
 
 template <class ProcessModelType, class MeasurementModelType> 
 bool KalmanFilter<ProcessModelType, MeasurementModelType>::
-correct(TPose &pose, TMeasurement &measurement, 
+correct(const TPose &pose, const TMeasurement &measurement, 
 	TLandmark &landmark_current, TLandmark &landmark_updated,
 	double* zLikelihood, double* mahalanobisDist2 ){
 

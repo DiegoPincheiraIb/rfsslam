@@ -97,6 +97,9 @@ public:
     /** The log odds threshold for eliminating a landmark from the map*/
     double mapExistencePruneThreshold_;
 
+    /** Minimum log measurement likelihood for numerical stability */
+    double minLogMeasurementLikelihood_;
+
 
   } config;
 
@@ -256,6 +259,7 @@ FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
   config.reportTimingInfo_ = false;
   config.landmarkExistencePrior_ = 0.5;
   config.mapExistencePruneThreshold_ = -3.0;
+  config.minLogMeasurementLikelihood_ = -10.0;
   
   k_lastResample_ = -10;
 }
@@ -345,59 +349,59 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
   for(unsigned int i = startIdx; i < stopIdx; i++){    
 
     //----------  1. Data Association --------------------
-    // Loglikelihood table for Data Association
+    
+    // Look for landmarks within sensor range
+    const TPose *pose = this->particleSet_[i]->getPose();
     unsigned int nM = maps_[i]->getGaussianCount();
+    std::vector<int> idx_inRange;
+    std::vector<double> pd_inRange;
+    std::vector<TLandmark*> lm_inRange;
+    for( int m = 0; m < nM; m++ ){
+      TLandmark* lm = maps_[i]->getGaussian(m);
+      bool closeToLimit = false;
+      double pd = this->pMeasurementModel_->probabilityOfDetection(*pose, *lm, closeToLimit); 
+      if( pd != 0 || closeToLimit ){
+	idx_inRange.push_back(m);
+	lm_inRange.push_back(lm);
+	pd_inRange.push_back(pd);
+      }
+    }
+    nM = lm_inRange.size();
+
+    // Loglikelihood table for Data Association
     unsigned int nMZ = nM;
     if(nZ > nM){
       nMZ = nZ;
     }
-
     double** likelihoodTable = new double* [ nMZ ];
     for( int m = 0; m < nMZ; m++ ){
       likelihoodTable[m] = new double [ nMZ ];
       for(int z = 0; z < nMZ; z++){
-	likelihoodTable[m][z] = -10; // TODO config
+	likelihoodTable[m][z] = config.minLogMeasurementLikelihood_;
       }
     }
 
-    TPose *pose = new TPose;
-    this->particleSet_[i]->getPose(*pose);
-
+    // Fill in table for landmarks within range
     for(unsigned int m = 0; m < nM; m++){
 
-      TLandmark* lm = maps_[i]->getGaussian(m); // landmark position estimate
+      TLandmark* lm = lm_inRange[m]; // landmark position estimate
       TMeasurement measurement_exp; // expected measurement      
       bool isValidExpectedMeasurement = this->pMeasurementModel_->measure( *pose , *lm , measurement_exp);
-
-      int z = 0;
-      for(z = 0; z < nZ; z++){
+      for(int z = 0; z < nZ; z++){
 	if( isValidExpectedMeasurement ){
-	  likelihoodTable[m][z] = fmax(-10, log(measurement_exp.evalGaussianLikelihood(this->measurements_[z]))); //TODO config 
+	  likelihoodTable[m][z] = fmax(config.minLogMeasurementLikelihood_, 
+				       log(measurement_exp.evalGaussianLikelihood(this->measurements_[z])));
 	}
       }
-
     }
 
+    // Use Hungaian Method for data association
     int da[nMZ]; // data association result
     double logLikelihoodSum = 0; // used for particle weighting
     if(!hm.run(likelihoodTable, nMZ, da, &logLikelihoodSum)){
       printf("Update failed\n");
       hm.run(likelihoodTable, nMZ, da, &logLikelihoodSum, true, true); // true flag at the end is for debug
       return false;
-    }
-
-    if( i == 0 ){
-      printf("Likelihood table nM=%d nZ=%d nMZ=%d\n", nM, nZ, nMZ);
-      for(unsigned int m = 0; m < nMZ; m++){
-	for(unsigned int z = 0; z < nMZ; z++){
-	  printf("%e   ", likelihoodTable[m][z]);
-	}
-	printf("\n");
-      }
-      printf("\nData Associations (%e)\n", logLikelihoodSum);
-      for(unsigned int m = 0; m < nMZ; m++){
-	printf("%d --- %d\n", m, da[m]);
-      }
     }
 
     //----------  2. Kalman Filter map update ----------
@@ -414,52 +418,38 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
     for(unsigned int m = 0; m < nM; m++){
       
-      TLandmark* lm = maps_[i]->getGaussian(m); // landmark position estimate before update
-
-      // Get the probability of detection, for map management caluclations
-      bool temp;
-      double probDetect = this->pMeasurementModel_->probabilityOfDetection(*pose, *lm, temp); 
+      TLandmark* lm = lm_inRange[m]; // landmark position estimate before update
 
       // Update landmark estimate m with the associated measurement
       int z = da[m];
       bool isUpdatePerformed = false;
       if(z < nZ){
-
-	// EKF Update
 	isUpdatePerformed = kfPtr_->correct(*pose, this->measurements_[z], *lm, *lm);
       }
       
       // calculate change to existence probability      
       if(isUpdatePerformed){
 
-	zUsed[z] = true; // This flag is for new landmark creation
-	
+	zUsed[z] = true; // This flag is for new landmark creation	
 	logParticleWeight += likelihoodTable[m][z];
-
-	p_exist_given_Z = ((1 - probDetect) * probFalseAlarm * config.landmarkExistencePrior_ + probDetect * config.landmarkExistencePrior_) /
-	  (probFalseAlarm + (1 - probFalseAlarm) * probDetect * config.landmarkExistencePrior_); 
+	p_exist_given_Z = ((1 - pd_inRange[m]) * probFalseAlarm * config.landmarkExistencePrior_ + pd_inRange[m] * config.landmarkExistencePrior_) /
+	  (probFalseAlarm + (1 - probFalseAlarm) * pd_inRange[m] * config.landmarkExistencePrior_); 
 
       }else{ // landmark estimate m not updated
 
-	p_exist_given_Z = ((1 - probDetect) * config.landmarkExistencePrior_) /
-	  ((1 - config.landmarkExistencePrior_) + (1 - probDetect) * config.landmarkExistencePrior_);
+	p_exist_given_Z = ((1 - pd_inRange[m]) * config.landmarkExistencePrior_) /
+	  ((1 - config.landmarkExistencePrior_) + (1 - pd_inRange[m]) * config.landmarkExistencePrior_);
 
       }
 
-      double w = maps_[i]->getWeight(m); // this is the log-odds of existence given previous measurements
+      double w = maps_[i]->getWeight( idx_inRange[m] ); // this is the log-odds of existence given previous measurements
       w += log( (p_exist_given_Z) / (1 - p_exist_given_Z) ); 
-      maps_[i]->setWeight(m, w);
-
-      if( i == 0){
-	printf("w[%d] = %f\n", m, maps_[i]->getWeight(m));
-      }
+      maps_[i]->setWeight(idx_inRange[m], w);
       
     }
 
     //---------- 3. Map Management (Add and remove landmarks)  ------------
     int nRemoved = maps_[i]->prune(config.mapExistencePruneThreshold_); 
-    if( i == 0)
-      printf("%d Gaussians pruned\n", nRemoved);
 
     for(unsigned int z = 0; z < nZ; z++){
       if(!zUsed[z]){ // Create new landmarks with inverse measurement model with unused measurements
@@ -478,7 +468,6 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
 
     //---------- 5. Cleanup - Free memory ---------
-    delete pose;
     for( int n = 0; n < nMZ; n++ ){
       delete[] likelihoodTable[n];
     }
@@ -568,7 +557,7 @@ getLandmark(const int i, const int m,
       return false;
     }
     TLandmark *plm;
-    maps_[i]->getGaussian(m, plm);
+    maps_[i]->getGaussian(m, plm, w);
     plm->get(u, S);
     return true;
 }

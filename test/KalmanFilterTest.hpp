@@ -84,7 +84,7 @@ public:
    * \param[out] jacobian If not NULL, the pointed-to matrix will be overwritten 
    * by the Jacobian of the measurement model at the point where the prediction is made
    */
-  bool measure( Pose2d &pose, LandmarkType &landmark, 
+  bool measure( const Pose2d &pose, const LandmarkType &landmark, 
 		MeasurementType &measurement, Eigen::Matrix<double, 
 		MeasurementType::Vec::RowsAtCompileTime, 
 		LandmarkType::Vec::RowsAtCompileTime> *jacobian = NULL){
@@ -109,7 +109,7 @@ public:
    * \param[in] measurement measurement
    * \param[out] landmark position
    */
-  void inverseMeasure(Pose2d &pose, MeasurementType &measurement, LandmarkType &landmark){
+  void inverseMeasure(const Pose2d &pose, const MeasurementType &measurement, LandmarkType &landmark){
     typename MeasurementType::Vec z;
     typename MeasurementType::Mat Sz;  
     typename LandmarkType::Mat S_land;
@@ -132,8 +132,8 @@ public:
    * \param[out] Pd_lower
    * \return probability of detection
    */
-  double probabilityOfDetection( Pose2d &pose,
-				 LandmarkType &landmark,
+  double probabilityOfDetection( const Pose2d &pose,
+				 const LandmarkType &landmark,
 				 bool &isCloseToSensingLimit){
     return config.probabilityOfDetection_;
   };
@@ -267,9 +267,6 @@ TEST_F(KalmanFilterTest, TestKalmanFilter2d_example){
 
 TEST_F(KalmanFilterTest, TestKalmanFilterExample2){
 
-
-  
-  
   Pose2d::Vec robot_x = Pose2d::Vec::Zero();
   Pose2d::Mat robot_Sx = Pose2d::Mat::Zero();
     
