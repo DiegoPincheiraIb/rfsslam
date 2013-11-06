@@ -256,7 +256,7 @@ public:
   OdometryMotionModel2d();
 
   /** Constructor with process noise input 
-   * \param S additive zero-mean white Gaussian noise covariance matrix
+   * \param Q additive zero-mean white Gaussian noise covariance matrix
    */
   OdometryMotionModel2d( Pose2d::Mat &Q );
 

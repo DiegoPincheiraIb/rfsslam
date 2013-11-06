@@ -65,6 +65,7 @@ public:
    * \param[out] soln assignment solution
    * \param[out] cost assignment solution cost
    * \param[in] maximize true if we want to find maximum score, false for minimum score
+   * \param[in] debug creates debug printouts if true
    * \return whether a solution has been found
    */
   bool run(double** C, int n, int* soln, double* cost, bool maximize = true, bool debug = false );

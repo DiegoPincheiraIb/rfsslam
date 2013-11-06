@@ -119,7 +119,6 @@ public:
   /** 
    * Constructor 
    * \param n number of particles
-   * \param initState initial state of particles
    */
   RBPHDFilter(int n);
 
@@ -134,7 +133,7 @@ public:
 
   /**
    * Predict the robot trajectory using the lastest odometry data
-   * \param[in] input 
+   * \param[in] u input 
    * \param[in] currentTimestep current timestep;
    */
   void predict( TInput u, int currentTimestep );
@@ -217,8 +216,8 @@ private:
    * \brief The current measurements in measurements_ are used to determine the
    * RFS measurement likelihood given a set of landmarks 
    * \param[in] particleIdx particle for which the likelihood is calcuated
-   * \param[in] indices of evaluation points in maps_[particleIdx]
-   * \param[in] probability of detection of evaluation point 
+   * \param[in] evalPtIdx indices of evaluation points in maps_[particleIdx]
+   * \param[in] evalPtPd probability of detection of evaluation point 
    * \return measurement likelihood
    */
   double rfsMeasurementLikelihood( const int particleIdx, 
@@ -229,7 +228,7 @@ private:
    * Calculate the sum of all permutations of measurement likelihood from a likelihood
    * table generated from within rfsMeasurementLikelihood
    * \param[in] likelihoodTab likelihood table generated within rfsMeasurementLikelihood
-   * \para,[in] A vector of measurement indices (columns) to consider in the likelihoodTab 
+   * \param[in] Z_NoClutter A vector of measurement indices (columns) to consider in the likelihoodTab 
    * \return sum of all permutations from the given likelihood table
    */
   double rfsMeasurementLikelihoodPermutations( std::vector< double* > &likelihoodTab, 

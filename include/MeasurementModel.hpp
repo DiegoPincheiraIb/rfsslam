@@ -96,7 +96,7 @@ public:
    */
   virtual bool measure( const PoseType &pose, 
 			const LandmarkType &landmark, 
-			MeasurementType &meaurement, 
+			MeasurementType &measurement, 
 			Eigen::Matrix<double , 
 				      MeasurementType::Vec::RowsAtCompileTime ,
 				      LandmarkType::Vec::RowsAtCompileTime > 

@@ -94,7 +94,7 @@ public:
    * \param[in] dtheta_k_km rotational displacement from frame k-1
    * \param[in] vardx_k_km variance in dx_k_km
    * \param[in] vardy_k_km variance in dy_k_km
-   * \param[in] vardtheta_k_km variance in dtheta_k_km
+   * \param[in] vartheta_k_km variance in dtheta_k_km
    * \param[in] t time of odometry reading
    */
   Odometry2d(double dx_k_km, double dy_k_km, double dtheta_k_km,

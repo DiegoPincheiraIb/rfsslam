@@ -124,7 +124,7 @@ public:
 
   /** 
    * Copy the extra data from this particle to another particle
-   * \warn DataType may need a non-default copy constructor
+   * \warning DataType may need a non-default copy constructor
    * \param[out] p particle to which data is copied to
    */
   void copyDataTo( Particle<PoseType, DataType>* p);
@@ -137,7 +137,7 @@ public:
 
   /**
    * Set the extra data pointer
-   * \param[in] pointer to the data
+   * \param[in] dataPtr pointer to the data
    */
   void setData(DataType* dataPtr);
 

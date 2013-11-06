@@ -89,7 +89,7 @@ public:
    * Add particles to the particle set
    * \param[in] n the number of particles to add
    * \param[in] initState the initial state of the particles to copy to the new particles
-   * \param[in[ initWeight the initial importance weighting to assign to the new particles
+   * \param[in] initWeight the initial importance weighting to assign to the new particles
    * \return the number of particles currently used by the filter after adding
    */
   unsigned int addParticles(int n, TPose* initState = NULL, double initWeight = 1);
@@ -125,7 +125,7 @@ public:
   /** 
    * Propagate particles using the process model
    * \param[in] input to the process model
-   * \param[in] dT time-step of input (not used by all process models)
+   * \param[in] dt time-step of input (not used by all process models)
    */
   void propagate( TInput &input, double const dt = 0);
 
@@ -143,7 +143,7 @@ public:
 
   /** 
    * Get the pointer to the particle container
-   * \retrun a pointer
+   * \return a pointer
    */
   TParticleSet* getParticleSet(){return &particleSet_;}
 

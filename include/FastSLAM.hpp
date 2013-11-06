@@ -48,7 +48,7 @@
  *  
  *  This is an implementation of the FastSLAM v1.0 algorithm. 
  *
- *  @INPROCEEDINGS{Montemerlo02a,
+ *  INPROCEEDINGS{Montemerlo02a,
  *  AUTHOR         = {Montemerlo, M. and Thrun, S. and Koller, D. and 
  *                   Wegbreit, B.},
  *  TITLE          = {{FastSLAM}: {A} Factored Solution to the Simultaneous 
@@ -107,7 +107,6 @@ public:
   /** 
    * Constructor 
    * \param n number of particles
-   * \param initState initial state of particles
    */
   FastSLAM(int n);
 
@@ -122,7 +121,7 @@ public:
 
   /**
    * Predict the robot trajectory using the lastest odometry data
-   * \param[in] input 
+   * \param[in] u input 
    * \param[in] currentTimestep current timestep;
    */
   void predict( TInput u, int currentTimestep );

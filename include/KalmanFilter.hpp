@@ -92,7 +92,7 @@ public:
   /**
    * Kalman filter prediction step
    * This funtion uses the ProcessModel to propagate the Landmark estimate forward in time
-   * \param[in] lanmark_current The landmark before the prediction
+   * \param[in] landmark_current The landmark before the prediction
    * \param[out] landmark_updated The landmark after the prediction step (this can be the same as landmark_current to update in place)
    * \param[in] dT time step size, if required by motion model
    */
@@ -104,7 +104,7 @@ public:
    * \note This function may be reimplemented in a derived class
    * \param[in] pose the sensor pose
    * \param[in] measurement the measurement to use for updating the landmark state
-   * \param[in]  landmark_current the current landmark state
+   * \param[in] landmark_current the current landmark state
    * \param[out] landmark_updated the updated landmark state
    * \param[out] zLikelihood if supplied, this stores the measurement likelihood 
    * (required by the RBPHDFilter)

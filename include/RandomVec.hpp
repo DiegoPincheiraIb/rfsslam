@@ -363,7 +363,7 @@ public:
   /**
    * Calculate the Gaussian likelihood of a given evaluation point
    * \param[in] x_eval the evaluation point
-   * \param[out] if not NULL, the pointed to variable will be overwritten by the 
+   * \param[out] mDist2 if not NULL, the pointed to variable will be overwritten by the 
    * squared mahalanobis distance used to calculate the likelihood
    */ 
   double evalGaussianLikelihood( RandomVec<VecType, MatType> &x_eval,
@@ -384,7 +384,7 @@ public:
   /**
    * Calculate likelihood
    * \param[in] x_eval the evaluation point
-   * \param[out] if not NULL, the pointed to variable will be overwritten by the 
+   * \param[out] mDist2 if not NULL, the pointed to variable will be overwritten by the 
    * squared mahalanobis distance used to calculate the likelihood
    */ 
   double evalGaussianLikelihood( typename RandomVec<VecType, MatType>::Vec &x_eval,

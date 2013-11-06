@@ -130,9 +130,9 @@ public:
    * \param[in] x x-position
    * \param[in] y y-position
    * \param[in] theta orientation
-   * \param[in] va_x x-position variance
-   * \param[in] va_y y-position variance
-   * \param[in] va_theta theta orientation variance
+   * \param[in] var_x x-position variance
+   * \param[in] var_y y-position variance
+   * \param[in] var_theta theta orientation variance
    * \param[in] t time
    */
   Pose2d( double x, double y, double theta, 

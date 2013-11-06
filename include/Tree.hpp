@@ -44,7 +44,6 @@ class Node{
 public:
 
   /** Constructor 
-   * \param[in] id The id number for this node. Default is -1
    * \param[in] n_children_exp the number of children this node is expected to have,
    * used for more efficient memory allocation. Not mandatory.
    */
