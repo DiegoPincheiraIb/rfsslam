@@ -579,6 +579,7 @@ bool HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 /**
  * \class MurtyNode
  * A node used in the Murty class for k-best linear assignment
+ * \brief A node used in the Murty class for k-best linear assignment
  */
 class MurtyNode : public Node
 {
@@ -652,6 +653,7 @@ private:
 /**
  * \class MurtyNodeCompare
  * A comparison class used for the priorty queue in Murty
+ * \brief A comparison class used for the priorty queue in Murty
  */
 class MurtyNodeCompare{
 public:
@@ -668,6 +670,7 @@ public:
  * Given the partitioning of a linear assignment problem, and the
  * current best possible assignment,  Murty's algorithm will find 
  * the next best assignment
+ * \brief Murty's k-best linear assignment algorithm
  */ 
 class Murty{
 
@@ -882,9 +885,10 @@ private:
 };
 
 /**
- * /class BruteForceLinearAssignment
+ * \class BruteForceLinearAssignment
  * This function finds all the linear assignments and orders them from best to worst.
  * It is intended for testing and checking the Hungarian method and Murty's k-best algorithm.
+ * \brief Brute-force linear assignment 
  */
 class BruteForceLinearAssignment
 {
@@ -1028,6 +1032,7 @@ public:
 
 private:
 
+  /** \brief A linear assignment */
   struct assignment{
     int* a;
     double score;

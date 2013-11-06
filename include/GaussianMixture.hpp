@@ -64,6 +64,9 @@ public:
   
   /** Default constructor */
   GaussianMixture();
+
+  /** Copy constructor */
+  GaussianMixture(const GaussianMixture& other);
   
   /** Destructor */
   ~GaussianMixture();
@@ -219,6 +222,18 @@ template< class Landmark >
 GaussianMixture<Landmark>::GaussianMixture(){
   n_ = 0;
   isSorted_ = false;
+}
+
+template< class Landmark >
+GaussianMixture<Landmark>::GaussianMixture(const GaussianMixture& other):
+n_(other.n_), isSorted_(other.isSorted_)
+{
+  gList_ = other.gList_;
+  for(int i = 0; i < gList_.size(); i++){
+    Landmark* lmkCopy = new Landmark;
+    *lmkCopy = *(other.gList_[i].landmark);
+    gList_[i].landmark = lmkCopy; 
+  }
 }
 
 template< class Landmark >

@@ -433,8 +433,10 @@ public:
     }
 
     boost::timer::auto_cpu_timer *stepTimer = NULL;
-    boost::timer::auto_cpu_timer *processTimer = new boost::timer::auto_cpu_timer(6, "Total run time: %ws\n");
-
+    boost::timer::auto_cpu_timer *processTimer = NULL;
+    if(reportTimingInfo_){
+      boost::timer::auto_cpu_timer *processTimer = new boost::timer::auto_cpu_timer(6, "Total run time: %ws\n");
+    }
     /////////// Run simulator from k = 1 to kMax_ /////////
 
     for(int k = 1; k < kMax_; k++){

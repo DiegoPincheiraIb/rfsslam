@@ -34,6 +34,11 @@
 #include <cstddef>
 #include <list>
 
+/** 
+ * \class Node
+ * A generic tree node
+ * \brief A generic tree node
+ */
 class Node{
 
 public:

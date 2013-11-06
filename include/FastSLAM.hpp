@@ -68,7 +68,8 @@
  */
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter>
-class FastSLAM : public ParticleFilter<RobotProcessModel, MeasurementModel>
+class FastSLAM : public ParticleFilter<RobotProcessModel, MeasurementModel, 
+				       GaussianMixture< typename MeasurementModel::TLandmark > >
 {
 public:
 
@@ -173,7 +174,7 @@ private:
   KalmanFilter *kfPtr_; /**< pointer to the Kalman filter */
   LmkProcessModel *lmkModelPtr_; /**< pointer to landmark process model */
 
-  std::vector< GaussianMixture<TLandmark>* > maps_; /**< Particle dependent maps */
+  // std::vector< GaussianMixture<TLandmark>* > maps_; /**< Particle dependent maps */
 
   /** indices of unused measurement for each particle for creating birth Gaussians */
   std::vector< std::vector<unsigned int> > unused_measurements_; 
@@ -210,41 +211,14 @@ private:
    */
   void importanceWeighting(){}
 
-  /**
-   * Random Finite Set measurement likelihood evaluation
-   * \brief The current measurements in measurements_ are used to determine the
-   * RFS measurement likelihood given a set of landmarks 
-   * \param[in] particleIdx particle for which the likelihood is calcuated
-   * \param[in] indices of evaluation points in maps_[particleIdx]
-   * \param[in] probability of detection of evaluation point 
-   * \return measurement likelihood
-   */
-  double rfsMeasurementLikelihood( const int particleIdx, 
-				   std::vector<unsigned int> &evalPtIdx,
-				   std::vector<double> &evalPtPd );
-
-  /**
-   * Calculate the sum of all permutations of measurement likelihood from a likelihood
-   * table generated from within rfsMeasurementLikelihood
-   * \param[in] likelihoodTab likelihood table generated within rfsMeasurementLikelihood
-   * \para,[in] A vector of measurement indices (columns) to consider in the likelihoodTab 
-   * \return sum of all permutations from the given likelihood table
-   */
-  double rfsMeasurementLikelihoodPermutations( std::vector< double* > &likelihoodTab, 
-					       std::vector< int > &Z_NoClutter);
-
-  /** Checks the Gaussian mixture maps for all particles for errors
-   *  \return true if there are no errors 
-   */
-  bool checkMapIntegrity();
-
 };
 
 ////////// Implementation //////////
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::FastSLAM(int n)
-  : ParticleFilter<RobotProcessModel, MeasurementModel>(n)
+: ParticleFilter<RobotProcessModel, MeasurementModel, 
+		 GaussianMixture< typename MeasurementModel::TLandmark > >(n)
 {
 
   lmkModelPtr_ = new LmkProcessModel;
@@ -252,7 +226,8 @@ FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
   
   for(int i = 0; i < n; i++){
     // printf("Creating map structure for particle %d\n", i);
-    maps_.push_back( new GaussianMixture<TLandmark>() );
+    //maps_.push_back( new GaussianMixture<TLandmark>() );
+    this->particleSet_[i]->setData( new GaussianMixture<TLandmark>() );
   }
   
   config.minInterSampleTimesteps_ = 5;
@@ -266,8 +241,9 @@ FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::~FastSLAM(){
-  for(int i = 0; i < maps_.size(); i++){
-    delete maps_[i];
+  for(int i = 0; i < this->nParticles_; i++){
+    //delete maps_[i];
+    this->particleSet_[i]->deleteData();
   }
   delete kfPtr_;
   delete lmkModelPtr_;
@@ -292,9 +268,11 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
   // propagate landmarks
   for( int i = 0; i < this->nParticles_; i++ ){
-    for( int m = 0; m < maps_[i]->getGaussianCount(); m++){
+    //for( int m = 0; m < maps_[i]->getGaussianCount(); m++){
+    for( int m = 0; m < this->particleSet_[i]->getData()->getGaussianCount(); m++){
       TLandmark *plm;
-      maps_[i]->getGaussian(m, plm);
+      //maps_[i]->getGaussian(m, plm);
+      this->particleSet_[i]->getData()->getGaussian(m, plm);
       lmkModelPtr_->staticStep(*plm, *plm);
     }
   }
@@ -352,12 +330,14 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     
     // Look for landmarks within sensor range
     const TPose *pose = this->particleSet_[i]->getPose();
-    unsigned int nM = maps_[i]->getGaussianCount();
+    //unsigned int nM = maps_[i]->getGaussianCount();
+    unsigned int nM = this->particleSet_[i]->getData()->getGaussianCount();
     std::vector<int> idx_inRange;
     std::vector<double> pd_inRange;
     std::vector<TLandmark*> lm_inRange;
     for( int m = 0; m < nM; m++ ){
-      TLandmark* lm = maps_[i]->getGaussian(m);
+      //TLandmark* lm = maps_[i]->getGaussian(m);
+      TLandmark* lm = this->particleSet_[i]->getData()->getGaussian(m);
       bool closeToLimit = false;
       double pd = this->pMeasurementModel_->probabilityOfDetection(*pose, *lm, closeToLimit); 
       if( pd != 0 || closeToLimit ){
@@ -442,14 +422,16 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
       }
 
-      double w = maps_[i]->getWeight( idx_inRange[m] ); // this is the log-odds of existence given previous measurements
+      //double w = maps_[i]->getWeight( idx_inRange[m] ); // this is the log-odds of existence given previous measurements
+      double w = this->particleSet_[i]->getData()->getWeight( idx_inRange[m] );
       w += log( (p_exist_given_Z) / (1 - p_exist_given_Z) ); 
-      maps_[i]->setWeight(idx_inRange[m], w);
-      
+      //maps_[i]->setWeight(idx_inRange[m], w);
+      this->particleSet_[i]->getData()->setWeight(idx_inRange[m], w);
     }
 
     //---------- 3. Map Management (Add and remove landmarks)  ------------
-    int nRemoved = maps_[i]->prune(config.mapExistencePruneThreshold_); 
+    //int nRemoved = maps_[i]->prune(config.mapExistencePruneThreshold_); 
+    int nRemoved = this->particleSet_[i]->getData()->prune(config.mapExistencePruneThreshold_); 
 
     for(unsigned int z = 0; z < nZ; z++){
       if(!zUsed[z]){ // Create new landmarks with inverse measurement model with unused measurements
@@ -457,8 +439,8 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 	TLandmark landmark_pos;
 	this->pMeasurementModel_->inverseMeasure( *pose, this->measurements_[z] , landmark_pos );
 	double newLandmarkWeight = log(config.landmarkExistencePrior_ / (1 - config.landmarkExistencePrior_));
-	maps_[i]->addGaussian( &landmark_pos, newLandmarkWeight, true);
-
+	//maps_[i]->addGaussian( &landmark_pos, newLandmarkWeight, true);
+	this->particleSet_[i]->getData()->addGaussian( &landmark_pos, newLandmarkWeight, true);
       }
     }
 
@@ -482,6 +464,7 @@ template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel
 void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::resampleWithMapCopy(){
 
   bool resampleOccured = false;
+
   if( k_currentTimestep_ - k_lastResample_ >= config.minInterSampleTimesteps_){
     resampleOccured = this->resample();
   }
@@ -491,11 +474,12 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     this->normalizeWeights();
   }
 
+  /*
   // At this point, the resampled particles do not have updated maps
   if( resampleOccured ){   // reassign maps as well according to resampling of particles
 
     std::vector< GaussianMixture<TLandmark>* > maps_temp( maps_.size(), NULL );
-    std::vector< int > useCount ( maps_.size(), 0);
+    std::vector< int > useCount ( maps_.size(), 0); // maps_.size() = size of particle set before resamling
 
     // Note which GMs get used and how many times
     for(int i = 0; i < this->nParticles_; i++){
@@ -505,13 +489,14 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
     // for maps that get used, make a (pointer) copy before doing any overwriting
     // Also rid of the maps that die along with particles
-    for(int i = 0; i < this->nParticles_; i++){
+    for(int i = 0; i < maps_.size(); i++){
       if( useCount[i] > 0){
 	maps_temp[i] = maps_[i];
       }else{
 	delete maps_[i];
       }
     }
+    // At this point all unused maps have been deleted
     
     // Copy Gaussians
     for(int i = 0; i < this->nParticles_; i++){
@@ -531,14 +516,16 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     }
 
   }  
+  */
 
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 int FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::getGMSize(int i){
 
-  if( i >= 0 && i < maps_.size() )
-    return ( maps_[i]->getGaussianCount() );
+  if( i >= 0 && i < this->nParticles_ )
+    //return ( maps_[i]->getGaussianCount() );
+    return ( this->particleSet_[i]->getData()->getGaussianCount() );
   else
     return -1;
 }
@@ -556,10 +543,11 @@ getLandmark(const int i, const int m,
     {
       return false;
     }
-    TLandmark *plm;
-    maps_[i]->getGaussian(m, plm, w);
-    plm->get(u, S);
-    return true;
+  TLandmark *plm;
+  //maps_[i]->getGaussian(m, plm, w);
+  this->particleSet_[i]->getData()->getGaussian(m, plm, w);
+  plm->get(u, S);
+  return true;
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >

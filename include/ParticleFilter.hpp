@@ -46,7 +46,7 @@
  * \tparam MeasurementModel class for the measurement model for updateing particles
  * \author Keith Leung
  */
-template< class ProcessModel, class MeasurementModel>
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData = int>
 class ParticleFilter
 {
 public:
@@ -56,7 +56,7 @@ public:
   typedef typename ProcessModel::TState TPose;
   typedef typename ProcessModel::TInput TInput;
   typedef typename MeasurementModel::TMeasurement TMeasure;
-  typedef Particle<TPose>* pParticle;
+  typedef Particle<TPose, ParticleExtraData>* pParticle;
   typedef std::vector<pParticle> TParticleSet;
 
 
@@ -84,6 +84,24 @@ public:
 
   /** Default destructor */
   ~ParticleFilter();
+
+  /**
+   * Add particles to the particle set
+   * \param[in] n the number of particles to add
+   * \param[in] initState the initial state of the particles to copy to the new particles
+   * \param[in[ initWeight the initial importance weighting to assign to the new particles
+   * \return the number of particles currently used by the filter after adding
+   */
+  unsigned int addParticles(int n, TPose* initState = NULL, double initWeight = 1);
+
+  /**
+   * Make copies of a particle
+   * \param[in] idx the index of the particle to copy
+   * \param[in] n the number of copies to make
+   * \param[in] weight if non-negative, this weight is assigned to the origin and newly copied particles
+   * \return the number of particles currently used by the filter after adding
+   */
+  unsigned int copyParticle(int idx, int n, double weight = -1);
 
   /** 
    * Get the process model pointer
@@ -144,12 +162,13 @@ public:
   /**
    * Particle resampling using a low variance sampling. 
    * Sampling will not occur if number of effective particles is above effNParticles_t_.
-   * \param[in] n number of particles in the resampled set.
-   *        The default value of 0 will keep the same number of particles 
+   * \param[in] n number of particles in the resampled set. This must be less than or equal to the nu,ber of particles.
+   *        The default value of 0 will keep the same number of particles.
    * \return true if resampling occured
    */
   bool resample( unsigned int n = 0 );
-  
+
+ 
 
 protected:
 
@@ -172,8 +191,8 @@ protected:
 
 ////////// Implementation //////////
 
-template< class ProcessModel, class MeasurementModel>
-ParticleFilter<ProcessModel, MeasurementModel>::
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::
 ParticleFilter(){
   nParticles_ = 0;
   pProcessModel_ =  new ProcessModel;
@@ -181,13 +200,31 @@ ParticleFilter(){
 }
 
 
-template< class ProcessModel, class MeasurementModel>
-ParticleFilter<ProcessModel, MeasurementModel>::
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::
 ParticleFilter(int n, TPose* initState){
   
   // initiate particles
-  nParticles_ = n;
-  particleSet_.resize(nParticles_);
+  nParticles_ = 0;
+  addParticles(n, initState, 1);
+
+  pProcessModel_ =  new ProcessModel;
+  pMeasurementModel_ =  new MeasurementModel;
+
+  effNParticles_t_ = double(nParticles_)/4.0; // default is 1/4 of n
+
+  // set random seed for particle resampling
+  srand48((unsigned int)time(NULL));
+
+}
+
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+unsigned int ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::
+addParticles(int n, TPose* initState, double initWeight){
+  
+  // initiate particles
+  nParticles_ += n;
+  particleSet_.reserve(nParticles_);
  
   bool noInitState = true; 
   if(initState == NULL){
@@ -198,27 +235,43 @@ ParticleFilter(int n, TPose* initState){
     noInitState = false;
   }
 
-  double newParticleWeight = 1;
-  for( int i = 0 ; i < nParticles_ ; i++ ){
-    particleSet_[i] = new Particle<TPose>(i, *initState, newParticleWeight);
+  if(initWeight < 0)
+    initWeight = 0;
+  for( int i = 0 ; i < n ; i++ ){
+    particleSet_.push_back( new Particle<TPose, ParticleExtraData>(i, *initState, initWeight) );
   }
-
-  pProcessModel_ =  new ProcessModel;
-  pMeasurementModel_ =  new MeasurementModel;
-
-  effNParticles_t_ = double(nParticles_)/4.0; // default is 1/4 of n
-
-  // set random seed for particle resampling
-  srand48((unsigned int)time(NULL));
 
   if( noInitState ){
     delete initState;
   }
+
+  return nParticles_;
+}
+
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+unsigned int ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::
+copyParticle(int idx, int n, double weight){
+  
+  // initiate particles
+  nParticles_ += n;
+  particleSet_.resize(nParticles_);
+
+  if( weight < 0 )
+    weight = particleSet_[idx].getWeight();
+  else
+    particleSet_[idx].setWeight(weight);
+  for( int i = 0 ; i < n ; i++ ){
+    particleSet_[nParticles_ + n]->setParentId( particleSet_[idx]->getParentId() );
+    particleSet_[idx]->copyStateTo( particleSet_[nParticles_ + n] );
+    particleSet_[idx]->copyDataTo( particleSet_[nParticles_ + n] );
+    particleSet_[nParticles_ + n]->setWeight(weight);
+  } 
+  return nParticles_;
 }
 
 
-template< class ProcessModel, class MeasurementModel>
-ParticleFilter<ProcessModel, MeasurementModel>::~ParticleFilter(){
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::~ParticleFilter(){
   
   for( int i = 0 ; i < nParticles_ ; i++ ){
     delete particleSet_[i];
@@ -227,26 +280,26 @@ ParticleFilter<ProcessModel, MeasurementModel>::~ParticleFilter(){
   delete pMeasurementModel_;
 }
 
-template< class ProcessModel, class MeasurementModel>
-ProcessModel* ParticleFilter<ProcessModel, MeasurementModel>::
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+ProcessModel* ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::
 getProcessModel(){
   return pProcessModel_; 
 }
 
-template< class ProcessModel, class MeasurementModel>
-MeasurementModel* ParticleFilter<ProcessModel, MeasurementModel>::
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+MeasurementModel* ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::
 getMeasurementModel(){
   return pMeasurementModel_; 
 }
 
-template< class ProcessModel, class MeasurementModel>
-void ParticleFilter<ProcessModel, MeasurementModel>::setMeasurements(std::vector<TMeasure> &Z){
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+void ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::setMeasurements(std::vector<TMeasure> &Z){
   measurements_.swap(Z);
   Z.clear();
 }
 
-template< class ProcessModel, class MeasurementModel>
-void ParticleFilter<ProcessModel, MeasurementModel>::propagate( TInput &input, 
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+void ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::propagate( TInput &input, 
 								double const dt){
   TPose x_km, x_k;
   for( int i = 0 ; i < nParticles_ ; i++ ){
@@ -256,13 +309,13 @@ void ParticleFilter<ProcessModel, MeasurementModel>::propagate( TInput &input,
   } 
 }
 
-template< class ProcessModel, class MeasurementModel>
-void ParticleFilter<ProcessModel, MeasurementModel>::importanceWeighting(){
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+void ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::importanceWeighting(){
   return;
 }
 
-template< class ProcessModel, class MeasurementModel>
-void ParticleFilter<ProcessModel, MeasurementModel>::normalizeWeights(){
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+void ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::normalizeWeights(){
   
   double sum = 0;
   for( int i = 0; i < nParticles_; i++ ){
@@ -275,25 +328,25 @@ void ParticleFilter<ProcessModel, MeasurementModel>::normalizeWeights(){
 }
 
 
-template< class ProcessModel, class MeasurementModel>
-int ParticleFilter<ProcessModel, MeasurementModel>::getParticleCount(){
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+int ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::getParticleCount(){
   return nParticles_;
 }
 
-template< class ProcessModel, class MeasurementModel>
-void ParticleFilter<ProcessModel, MeasurementModel>::
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+void ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::
 setEffectiveParticleCountThreshold(double t){
   effNParticles_t_ = t;
 }
 
-template< class ProcessModel, class MeasurementModel>
-double ParticleFilter<ProcessModel, MeasurementModel>::
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+double ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::
 getEffectiveParticleCountThreshold(){
   return effNParticles_t_;
 }
 
-template< class ProcessModel, class MeasurementModel>
-bool ParticleFilter<ProcessModel, MeasurementModel>::resample( unsigned int n ){
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+bool ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::resample( unsigned int n ){
 
   // Check effective number of particles
   double sum_of_weight_squared = 0;
@@ -307,7 +360,7 @@ bool ParticleFilter<ProcessModel, MeasurementModel>::resample( unsigned int n ){
     return false; // no resampling
   }
 
-  if( n == 0 )
+  if( n == 0 || n > nParticles_ )
     n = nParticles_; // number of particles to sample
 
   // Sampler settings
@@ -366,6 +419,8 @@ bool ParticleFilter<ProcessModel, MeasurementModel>::resample( unsigned int n ){
 
       particleSet_[next_unsampled_idx]->setParentId( particleSet_[idx]->getId() );
       particleSet_[idx]->copyStateTo( particleSet_[next_unsampled_idx] );
+      particleSet_[next_unsampled_idx]->deleteData();
+      particleSet_[idx]->copyDataTo( particleSet_[next_unsampled_idx] );
 
       next_unsampled_idx++;
     }      
