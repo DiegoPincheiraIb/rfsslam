@@ -444,8 +444,10 @@ public:
     }
 
     boost::timer::auto_cpu_timer *stepTimer = NULL;
-    boost::timer::auto_cpu_timer *processTimer = new boost::timer::auto_cpu_timer(6, "Total run time: %ws\n");
-
+    boost::timer::auto_cpu_timer *processTimer = NULL;
+    if(reportTimingInfo_){
+      processTimer = new boost::timer::auto_cpu_timer(6, "Total run time: %ws\n");
+    }
     /////////// Run simulator from k = 1 to kMax_ /////////
 
     for(int k = 1; k < kMax_; k++){
@@ -466,7 +468,7 @@ public:
       
       if( k <= 100){
 	for( int i = 0; i < nParticles_; i++)
-	  pFilter_->setParticlePose(0, groundtruth_pose_[k]);
+	  pFilter_->setParticlePose(i, groundtruth_pose_[k]);
       }
 
       // Prepare measurement vector for update
