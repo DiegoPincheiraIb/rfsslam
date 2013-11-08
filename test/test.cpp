@@ -7,7 +7,7 @@
 #include "MeasurementTest.hpp"
 #include "ProcessModelTest.hpp"
 #include "MeasurementModelTest.hpp"
-//#include "GaussianMixtureTest.hpp"
+#include "GaussianMixtureTest.hpp"
 #include "ParticleFilterTest.hpp"
 #include "KalmanFilterTest.hpp"
 #include "LinearAssignmentTest.hpp"

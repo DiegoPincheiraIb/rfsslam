@@ -64,11 +64,7 @@ public:
    * \brief Configurations for this ParticleFilter
    */
   struct Config{
-    /** Number of threads to use for computations. 
-     *  Right now, the overheads of multithreading
-     *  does not make it worth-while 
-     */
-    unsigned int nThreadsPropagationStep_; 
+    
   }PFconfig;
 
 
@@ -164,9 +160,10 @@ public:
    * Sampling will not occur if number of effective particles is above effNParticles_t_.
    * \param[in] n number of particles in the resampled set. This must be less than or equal to the nu,ber of particles.
    *        The default value of 0 will keep the same number of particles.
+   * \param[in] forceResample Force resampling to occur irrespective of the effective number of particles
    * \return true if resampling occured
    */
-  bool resample( unsigned int n = 0 );
+  bool resample( unsigned int n = 0, bool forceResample = false );
 
  
 
@@ -179,6 +176,7 @@ protected:
   MeasurementModel* pMeasurementModel_; /**< Measurement model pointer */
   
   double effNParticles_t_; /**< Effective particle count threshold for resampling */
+  double effNParticles_t_percent_; /**< Effective particle count percentage threshold for resampling */
 
   std::vector<TMeasure> measurements_; /**< Container for measurements to use for update of particle weight */
 
@@ -254,17 +252,19 @@ copyParticle(int idx, int n, double weight){
   
   // initiate particles
   nParticles_ += n;
-  particleSet_.resize(nParticles_);
-
+  particleSet_.reserve(nParticles_);
   if( weight < 0 )
-    weight = particleSet_[idx].getWeight();
+    weight = particleSet_[idx]->getWeight();
   else
-    particleSet_[idx].setWeight(weight);
-  for( int i = 0 ; i < n ; i++ ){
-    particleSet_[nParticles_ + n]->setParentId( particleSet_[idx]->getParentId() );
-    particleSet_[idx]->copyStateTo( particleSet_[nParticles_ + n] );
-    particleSet_[idx]->copyDataTo( particleSet_[nParticles_ + n] );
-    particleSet_[nParticles_ + n]->setWeight(weight);
+    particleSet_[idx]->setWeight(weight);
+  for( int i = 0 ; i < n ; i++ ){			
+    particleSet_.push_back( new Particle<TPose, ParticleExtraData>() );	       
+    int idxNew = particleSet_.size() - 1;
+    particleSet_[idxNew]->setWeight( weight );
+    particleSet_[idxNew]->setId( idxNew );
+    particleSet_[idxNew]->setParentId( particleSet_[idx]->getParentId() );
+    particleSet_[idx]->copyStateTo( particleSet_[idxNew] );
+    particleSet_[idx]->copyDataTo( particleSet_[idxNew] );
   } 
   return nParticles_;
 }
@@ -337,6 +337,7 @@ template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
 void ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::
 setEffectiveParticleCountThreshold(double t){
   effNParticles_t_ = t;
+  effNParticles_t_percent_ = t / nParticles_;
 }
 
 template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
@@ -346,18 +347,20 @@ getEffectiveParticleCountThreshold(){
 }
 
 template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
-bool ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::resample( unsigned int n ){
+bool ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::resample( unsigned int n, bool forceResample ){
 
   // Check effective number of particles
-  double sum_of_weight_squared = 0;
-  normalizeWeights(); // sum of all particle weights is now 1
-  for( int i = 0; i < nParticles_; i++ ){
-    double w_i = particleSet_[i]->getWeight();
-    sum_of_weight_squared += (w_i * w_i); // and divide by 1
-  }
-  double nEffParticles_ = 1.0 / sum_of_weight_squared;
-  if( nEffParticles_ > effNParticles_t_ ){
-    return false; // no resampling
+  if(!forceResample){
+    double sum_of_weight_squared = 0;
+    normalizeWeights(); // sum of all particle weights is now 1
+    for( int i = 0; i < nParticles_; i++ ){
+      double w_i = particleSet_[i]->getWeight();
+      sum_of_weight_squared += (w_i * w_i); // and divide by 1
+    }
+    double nEffParticles_ = 1.0 / sum_of_weight_squared;
+    if( nEffParticles_ > effNParticles_t_ && nEffParticles_ / nParticles_ > effNParticles_t_percent_){
+      return false; // no resampling
+    }
   }
 
   if( n == 0 || n > nParticles_ )
@@ -431,6 +434,7 @@ bool ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::resample
     delete particleSet_[i];
   }
   nParticles_ = n;
+  particleSet_.resize(nParticles_);
 
   // Reset weight of all particles
   for( int i = 0; i < n; i++ ){

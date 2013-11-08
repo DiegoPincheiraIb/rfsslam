@@ -233,7 +233,6 @@ void Particle<PoseType, DataType>::copyStateTo(Particle<PoseType, DataType>* p){
 
 template< class PoseType, class DataType >
 void Particle<PoseType, DataType>::copyDataTo(Particle<PoseType, DataType>* p){
-  p->data_ = NULL;
   if( data_ != NULL )
     p->data_ = new DataType( *data_ );
 }

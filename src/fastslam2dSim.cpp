@@ -103,6 +103,8 @@ public:
     effNParticleThreshold_ = cfg.lookup("Filter.effectiveNumberOfParticlesThreshold");
     minInterSampleTimesteps_ = cfg.lookup("Filter.minInterSampleTimesteps");
     minLogMeasurementLikelihood_ = cfg.lookup("Filter.minLogMeasurementLikelihood");
+    maxNDataAssocHypotheses_ = cfg.lookup("Filter.maxNDataAssocHypotheses");
+    maxDataAssocLogLikelihoodDiff_ = cfg.lookup("Filter.maxDataAssocLogLikelihoodDiff");
     landmarkExistencePruningThreshold_ = cfg.lookup("Filter.landmarkExistencePruningThreshold");
     reportTimingInfo_ = cfg.lookup("Filter.reportTimingInfo");
 
@@ -394,6 +396,8 @@ public:
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
     pFilter_->config.minInterSampleTimesteps_ = minInterSampleTimesteps_;
     pFilter_->config.minLogMeasurementLikelihood_ = minLogMeasurementLikelihood_;
+    pFilter_->config.maxNDataAssocHypotheses_ = maxNDataAssocHypotheses_;
+    pFilter_->config.maxDataAssocLogLikelihoodDiff_ = maxDataAssocLogLikelihoodDiff_;
     pFilter_->config.mapExistencePruneThreshold_ = landmarkExistencePruningThreshold_;
     pFilter_->config.landmarkExistencePrior_ = 0.5;
     pFilter_->config.reportTimingInfo_ = reportTimingInfo_;
@@ -410,7 +414,6 @@ public:
     if(logToFile_){
       pParticlePoseFile = fopen("data/particlePose.dat", "w");
       fprintf( pParticlePoseFile, "Timesteps: %d\n", kMax_);
-      fprintf( pParticlePoseFile, "nParticles: %d\n\n", pFilter_->getParticleCount());
     }
     FILE* pLandmarkEstFile;
     if(logToFile_){
@@ -423,6 +426,7 @@ public:
 
     if(logToFile_){
       fprintf( pParticlePoseFile, "k = 0\n");
+      fprintf( pParticlePoseFile, "nParticles = %d\n", pFilter_->getParticleCount() );
       for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	pFilter_->getParticleSet()->at(i)->getPose(x_i);
 	fprintf( pParticlePoseFile, "%f   %f   %f   1.0\n", x_i.get(0), x_i.get(1), x_i.get(2));
@@ -476,6 +480,7 @@ public:
 
       // Log particle poses
       if(logToFile_){
+	fprintf( pParticlePoseFile, "nParticles = %d\n", pFilter_->getParticleCount() );
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	  pFilter_->getParticleSet()->at(i)->getPose(x_i);
 	  double w = pFilter_->getParticleSet()->at(i)->getWeight();
@@ -571,6 +576,8 @@ private:
   double effNParticleThreshold_;
   int minInterSampleTimesteps_;
   double minLogMeasurementLikelihood_;
+  int maxNDataAssocHypotheses_;
+  double maxDataAssocLogLikelihoodDiff_;
   double landmarkExistencePruningThreshold_;
   bool reportTimingInfo_;
   bool logToFile_;

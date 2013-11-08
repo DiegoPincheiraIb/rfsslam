@@ -29,7 +29,7 @@ dr_pose = fscanf(fid_dr, '%f %f %f %f\n', [4, inf]);
 z_k = textscan(fid_meas, '%f %f %f', 1);  
 
 kMax = textscan(fid_pEst, 'Timesteps: %d');
-nParticles = textscan(fid_pEst, 'nParticles: %d\n');
+%nParticles = textscan(fid_pEst, 'nParticles: %d\n');
 kMax = textscan(fid_lmEst, 'Timesteps: %d');
 nParticles = textscan(fid_lmEst, 'nParticles: %d\n');
 %odom = fscanf(fid_odo, '%f %f %f %f\n', [4, inf]);
@@ -101,6 +101,7 @@ for k = 1:kMax{1} % actual time index starts at 0
     %h_drHdg = line([dr_x dr_x+0.5*cos(dr_z)], [dr_y dr_y+0.5*sin(dr_z)], 'Color', 'k');
     
     %Plot particle pose
+    nParticles = textscan(fid_pEst, 'nParticles = %d\n');
     x_i_k = textscan(fid_pEst, '%f %f %f %f\n');
     x_i = zeros(4, nParticles{1});
     highest_weight_i = 0;

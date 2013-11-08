@@ -421,7 +421,6 @@ public:
     if(logToFile_){
       pParticlePoseFile = fopen("data/particlePose.dat", "w");
       fprintf( pParticlePoseFile, "Timesteps: %d\n", kMax_);
-      fprintf( pParticlePoseFile, "nParticles: %d\n\n", pFilter_->getParticleCount());
     }
     FILE* pLandmarkEstFile;
     if(logToFile_){
@@ -434,6 +433,7 @@ public:
 
     if(logToFile_){
       fprintf( pParticlePoseFile, "k = 0\n");
+      fprintf( pParticlePoseFile, "nParticles = %d\n", pFilter_->getParticleCount() );
       for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	pFilter_->getParticleSet()->at(i)->getPose(x_i);
 	fprintf( pParticlePoseFile, "%f   %f   %f   1.0\n", x_i.get(0), x_i.get(1), x_i.get(2));
@@ -487,6 +487,7 @@ public:
 
       // Log particle poses
       if(logToFile_){
+	fprintf( pParticlePoseFile, "nParticles = %d\n", pFilter_->getParticleCount() );
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	  pFilter_->getParticleSet()->at(i)->getPose(x_i);
 	  double w = pFilter_->getParticleSet()->at(i)->getWeight();

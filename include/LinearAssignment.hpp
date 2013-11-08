@@ -473,7 +473,7 @@ bool HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	if( t < n){ // t is a vertex in X 
 	  for(y = 0; y < n; y++){ // look through children of t
 	    // check if y is in equality graph and not already queued and unmatched
-	    if(fabs(lx[t] + ly[y] - C[t][y]) < 1e-14 && !y_q[y] && xy[t] != y){
+	    if(fabs(lx[t] + ly[y] - C[t][y]) < 1e-13 && !y_q[y] && xy[t] != y){
 	      if(debug){
 		printf("Breadth first search inserting y[%d] in queue with parent x[%d]\n", y, t); 
 	      }
@@ -680,14 +680,16 @@ public:
   /** constructor 
    *  \param[in] C square score matrix from which we will find the best assignments
    *  \param[in] n dimension of C
+   *  \param[in] bigNum A number whose negative is used to replace entries in the cost matrix that cannot be used for assignment
    */ 
-  Murty(double** C, int n) : k_(0), n_(n){
+  Murty(double** C, int n, double bigNum = 10000) : k_(0), n_(n), bigNumber_(bigNum){
     C_ = C;
     C_t_ = new double* [n_];
     for( int i = 0; i < n_; i++){
       C_t_[i] = new double [n_];
     }
     root_ = new MurtyNode(0, n_);
+    bestScore_ = 0;
   }
   
   /** destructor */
@@ -696,6 +698,15 @@ public:
       delete[] C_t_[i];
     delete[] C_t_;
     delete root_;
+  }
+
+  /**
+   * Get the best score.
+   * \note The best score = 0 when object is first initiated.
+   * \return the best score
+   */
+  double getBestScore(){
+    return bestScore_;
   }
 
   /** Find the next best assignment 
@@ -750,7 +761,7 @@ public:
 	a[i] = a_parent[i];
 	freeCol[a[i]] = false;
 	assignmentFixedScore += C_[i][a[i]];
-	//printf("(%d,%d) ", i, a[i]);
+	//printf("(%d,%d)[%f] ", i, a[i], C_[i][a[i]]);
       }
 
       // assignments that have to be included in this partition
@@ -758,7 +769,7 @@ public:
 	a[i] = a_parent[i];
 	freeCol[a[i]] = false;
 	assignmentFixedScore += C_[i][a[i]];
-	//printf("(%d,%d) ", i, a[i]);
+	//printf("(%d,%d)[%f] ", i, a[i], C_[i][a[i]]);
       } 
       //printf("\n");
 
@@ -804,7 +815,7 @@ public:
 	int* nextAssignment = next->getAssignment();
 	int doNotAssign_i = rowRemapR[currentPart];
 	int doNotAssign_j = colRemapR[nextAssignment[currentPart]];
-	C_t_[doNotAssign_i][doNotAssign_j] = -bestScore_;	
+	C_t_[doNotAssign_i][doNotAssign_j] = -bigNumber_;	
 	//printf("(%d,%d)=>(%d,%d) ", currentPart, nextAssignment[currentPart],doNotAssign_i,doNotAssign_j);
 	current = next;
 	
@@ -813,7 +824,7 @@ public:
       bool solutionPossible = false;
       int constraintRow = rowRemapR[p->getPartitionID()];
       for(int j = 0; j < nFreeAssignments; j++){
-	if( C_t_[constraintRow][j] != -bestScore_){
+	if( C_t_[constraintRow][j] != -bigNumber_){
 	  solutionPossible = true;
 	  break;
 	}
@@ -832,20 +843,22 @@ public:
 	  }*/
 	lam_.run(C_t_, nFreeAssignments, aTmp, &s);
       
+	double s_more_accurate = 0;
 	for(int i = 0; i < nFreeAssignments; i++){
 	  int i_actual = rowRemap[i];
 	  int j_actual = colRemap[aTmp[i]];
 	  a[i_actual] = j_actual;
+	  s_more_accurate += C_[i_actual][a[i_actual]];
 	}
 	/*printf("Assignment:\n");
 	for(int i = 0; i < n_; i++){
 	  printf("x[%d] ----- y[%d]\n", i, a[i]);
 	  }*/
-	s += assignmentFixedScore;
-	//printf("Score: %f\n", s);
+	s_more_accurate += assignmentFixedScore;
+	// printf("Score: %f\n", s);
       
 	// Insert the solution in the priority queue and set it as a child of the highest-score node
-	p->setAssignment(a, s);
+	p->setAssignment(a, s_more_accurate);
 	pq.push(p);
       }else{
 	//printf("No solution possible with this partition\n");
@@ -867,6 +880,7 @@ public:
     MurtyNode* node_hi = pq.top();
     assignment = node_hi->getAssignment();
     *score = node_hi->getScore();
+    
     k_++;
 
     return k_;
@@ -882,6 +896,7 @@ private:
   HungarianMethod lam_; /**< Linear assignment method */
   std::priority_queue<MurtyNode*, std::vector<MurtyNode*>, MurtyNodeCompare> pq; /**< Priority queue for easy retrieval of node with highest score */
   double bestScore_;
+  double bigNumber_;
 
 };
 
