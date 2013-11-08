@@ -21,6 +21,7 @@ protected:
 
 };
 
+/*
 TEST_F(LinearAssignmentTest, hungarianMethodTest){
 
   HungarianMethod hm;
@@ -29,28 +30,7 @@ TEST_F(LinearAssignmentTest, hungarianMethodTest){
   double** C = new double*[n];
   for(int i = 0; i < n; i++){
     C[i] = new double[n];
-  }
-  /*
-  for(int i = 0; i < n; i++){
-    for(int j = 0; j < n; j++){  
-      C[i][j] = 1;
-    }
-  }
-  for(int i = 0; i < n; i++){
-    C[i][i] = 5;
-    }*/
-
-  /*
-  C[0][0] = 7;
-  C[0][1] = 4;
-  C[0][2] = 3;
-  C[1][0] = 3;
-  C[1][1] = 1;
-  C[1][2] = 2;
-  C[2][0] = 3;
-  C[2][1] = 0;
-  C[2][2] = 0;
-  */
+  } 
 
   C[0][0] = 10; C[0][1] = 0; C[0][2] =  8; C[0][3] = 15; C[0][4] = 0;
   C[1][0] = 10; C[1][1] = 18; C[1][2] =  7; C[1][3] = 17; C[1][4] = 24;
@@ -75,7 +55,7 @@ TEST_F(LinearAssignmentTest, hungarianMethodTest){
   delete[] C;
   delete[] s;
 
-}
+  }*/
 
 
 TEST_F(LinearAssignmentTest, MurtyAlgorithmTest){
@@ -111,7 +91,7 @@ TEST_F(LinearAssignmentTest, MurtyAlgorithmTest){
   int** bfa;
   double* bfs;
   int nbfa = bf.run(C, n, bfa, bfs);
-  printf("Brute force approach looked through %d assignments\n", nbfa);
+  /*printf("Brute force approach looked through %d assignments\n", nbfa);
   printf("Best assignment:\n");
   for(int j = 0; j < n; j++){
     printf("x[%d] ----- y[%d]\n", j, bfa[0][j]);
@@ -122,7 +102,7 @@ TEST_F(LinearAssignmentTest, MurtyAlgorithmTest){
     printf("x[%d] ----- y[%d]\n", j, bfa[nbfa-1][j]);
   }
   printf("Score: %f\n\n\n", bfs[nbfa-1]);
-
+  */
   int* a;
   double score;
   int k;
@@ -131,10 +111,10 @@ TEST_F(LinearAssignmentTest, MurtyAlgorithmTest){
   do
   {
     k = murty.findNextBest(a, &score); 
-    printf("\nThe %d-best solution:\n", k);
+    //printf("\nThe %d-best solution:\n", k);
     double score2 = 0;
     for(int i = 0; i < n; i++){
-      printf("x[%d] ----- y[%d]\n", i, a[i]);
+      //printf("x[%d] ----- y[%d]\n", i, a[i]);
       score2 += C[i][a[i]];
     }
     ASSERT_DOUBLE_EQ(score, bfs[k-1]);

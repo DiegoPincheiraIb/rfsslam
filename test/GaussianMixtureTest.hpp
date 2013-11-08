@@ -316,11 +316,10 @@ TEST_F(GaussianMixtureTest, GaussianMixturePruningTest){
 
 
 // Test with shared landmarks from 2 mixtures
-TEST_F(GaussianMixtureTest, GaussianMixtureLandmarkSharingTest){
+TEST_F(GaussianMixtureTest, GaussianMixtureCopyTest){
 
   // Using Landmark2d for template 
   GaussianMixture<Landmark2d> gm1;
-  GaussianMixture<Landmark2d> gm2;
 
   int nLandmarks = 10;
   std::vector<Landmark2d*> landmarks(nLandmarks);
@@ -332,25 +331,29 @@ TEST_F(GaussianMixtureTest, GaussianMixtureLandmarkSharingTest){
     landmarks[i]->set( x, Sx );
     double w = i + 1;
     gm1.addGaussian( landmarks[i], w );
-    
-    if(i >= 5){
-      gm2.addGaussian( landmarks[i], w -1);
-    }
-
   }
 
-  Landmark2d* plm;
-  double w;
-  EXPECT_EQ(4, gm2.removeGaussian(0) );
-  gm1.getGaussian(5, plm, w); // 1 should be unchanged
-  EXPECT_EQ(nLandmarks, gm1.getGaussianCount() );
-  EXPECT_TRUE(NULL != plm);
+  GaussianMixture<Landmark2d> gm2( gm1 );
 
-  EXPECT_EQ(4, gm2.removeGaussian(0) ); // should do nothing
-  EXPECT_EQ(3, gm2.removeGaussian(2) );
-  gm1.getGaussian(7, plm, w); // 1 should be unchanged
-  EXPECT_EQ(nLandmarks, gm1.getGaussianCount() );
-  EXPECT_TRUE(NULL != plm);
+  EXPECT_EQ(gm1.getGaussianCount(), gm2.getGaussianCount());
 
-  EXPECT_EQ(2, gm2.prune(0.01));
+  Landmark2d* lm1;
+  Landmark2d* lm2;
+  double w1, w2;
+  gm1.getGaussian(3, lm1, w1);
+  gm2.getGaussian(3, lm2, w2);
+  EXPECT_NE(lm1, lm2);
+
+  gm1.updateGaussian(1, *lm1);
+  gm2.getGaussian(1, lm2, w2);
+  EXPECT_NE(lm1, lm2);
+
+  for(int i = 0; i < gm1.getGaussianCount(); i++){
+    gm1.removeGaussian(i);
+  }
+
+  for(int i = 0; i < gm1.getGaussianCount(); i++){
+    gm2.getGaussian(i, lm2); // should not crash
+  }
+
 }

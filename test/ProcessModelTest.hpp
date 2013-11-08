@@ -120,7 +120,7 @@ TEST_F(ProcessModelTest, sampleTest){
 
   Pose2d::Vec mean = sum / nSamples;
   Pose2d::Vec e = mean - (x_in + u);
-  EXPECT_NEAR(0.0, e.norm(), 1e-2) << "Got:\n" << mean << "\nExpected:\n" << (x_in + u) << "\n";
+  EXPECT_NEAR(0.0, e.norm(), 5e-2) << "Got:\n" << mean << "\nExpected:\n" << (x_in + u) << "\n";
 
 
   Pose2d::Mat sum2;
@@ -134,7 +134,7 @@ TEST_F(ProcessModelTest, sampleTest){
   for( int i = 0; i < mean.size(); i++){
     for( int j = 0; j < mean.size(); j++){
       double e = cov(i,j) - ProcessNoise(i,j);
-      EXPECT_NEAR(0.0, e, 1e-2) << "Failure may be due to randomness\nExpected:" 
+      EXPECT_NEAR(0.0, e, 5e-2) << "Failure may be due to randomness\nExpected:" 
 				<< ProcessNoise(i,j)
 				<< "\nGot:" << cov(i,j) << "\n\n";
     }
