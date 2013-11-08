@@ -349,10 +349,11 @@ getEffectiveParticleCountThreshold(){
 template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
 bool ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::resample( unsigned int n, bool forceResample ){
 
+  normalizeWeights(); // sum of all particle weights is now 1
+
   // Check effective number of particles
   if(!forceResample){
     double sum_of_weight_squared = 0;
-    normalizeWeights(); // sum of all particle weights is now 1
     for( int i = 0; i < nParticles_; i++ ){
       double w_i = particleSet_[i]->getWeight();
       sum_of_weight_squared += (w_i * w_i); // and divide by 1

@@ -447,6 +447,10 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
 	}else{ // landmark estimate m not updated
 
+	  if(nH > 1){
+	    logParticleWeight += likelihoodTable[m][z];
+	  }
+	  
 	  p_exist_given_Z = ((1 - pd_inRange[m]) * config.landmarkExistencePrior_) /
 	    ((1 - config.landmarkExistencePrior_) + (1 - pd_inRange[m]) * config.landmarkExistencePrior_);
 
