@@ -392,7 +392,7 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     Murty murty(likelihoodTable, nMZ);
     std::vector<int*> da; // data association hypotheses
     while(nH < config.maxNDataAssocHypotheses_){
-      da.push_back(new int[nMZ]);
+      da.push_back(NULL);
       nH = murty.findNextBest(da[nH], &logLikelihoodSum);
       if(murty.getBestScore() - logLikelihoodSum >= config.maxDataAssocLogLikelihoodDiff_){
 	nH--;
@@ -482,9 +482,9 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
 
     //---------- 5. Cleanup - Free memory ---------
-    for( int h = 0; h < da.size(); h++){
+    /*for( int h = 0; h < da.size(); h++){
       delete da[h];
-    }
+      }*/
     for( int n = 0; n < nMZ; n++ ){
       delete[] likelihoodTable[n];
     }

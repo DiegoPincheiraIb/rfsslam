@@ -54,8 +54,8 @@ INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
 ADD_LIBRARY(ProcessModel src/ProcessModel.cpp)
 ADD_LIBRARY(MeasurementModel src/MeasurementModel.cpp)
 
-ADD_EXECUTABLE(sim2d src/simulation2d.cpp src/Measurement.cpp src/Pose.cpp)
-TARGET_LINK_LIBRARIES(sim2d config++ ${Boost_LIBRARIES} ProcessModel MeasurementModel)
+ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp src/Measurement.cpp src/Pose.cpp)
+TARGET_LINK_LIBRARIES(rbphdslam2dSim config++ ${Boost_LIBRARIES} ProcessModel MeasurementModel)
 
 ADD_EXECUTABLE(fastslam2dSim src/fastslam2dSim.cpp src/Measurement.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(fastslam2dSim config++ ${Boost_LIBRARIES} ProcessModel MeasurementModel)

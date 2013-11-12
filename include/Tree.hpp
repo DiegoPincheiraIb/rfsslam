@@ -52,8 +52,8 @@ public:
       children_.resize(n_children_exp);
   }
   
-  /** Destructor */
-  ~Node(){
+  /** Destructor, virtual so that the children of derived objects gets destroyed properly */
+  virtual ~Node(){
     Node* parent = NULL;
     Node* current = this;
     do{

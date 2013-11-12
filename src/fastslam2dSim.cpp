@@ -260,6 +260,11 @@ public:
       poissonCmf[i] = poissonCmf[i-1] + poissonPmf[i]; 
     }
 
+    lmkFirstObsTime_.resize( groundtruth_landmark_.size());
+    for( int m = 0; m < lmkFirstObsTime_.size(); m++ ){
+      lmkFirstObsTime_[m] = -1;
+    }
+
     for( int k = 1; k < kMax_; k++ ){
       
       groundtruth_pose_[k];
@@ -278,6 +283,10 @@ public:
 	    z_m_k.setTime(k);
 	    z_m_k.setCov(R);
 	    measurements_.push_back( z_m_k );
+	  }
+
+	  if(lmkFirstObsTime_[m] != -1){
+	    lmkFirstObsTime_[m] = k;
 	  }
 	}
 
@@ -552,6 +561,7 @@ private:
   std::vector<RangeBearingModel::TLandmark> groundtruth_landmark_;
   double varlmx_;
   double varlmy_;
+  std::vector<int> lmkFirstObsTime_;
 
   // Range-Bearing Measurements
   double rangeLimitMax_;

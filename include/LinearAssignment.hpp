@@ -597,7 +597,11 @@ public:
 						    score_(0){}
 
   /** Destructor */
-  ~MurtyNode(){}
+  ~MurtyNode(){
+    if( assignment_ != NULL )
+      delete[] assignment_;
+    assignment_ = NULL;
+  }
 
   /** Comparison operator for sorting */
   bool operator< (const MurtyNode& other){

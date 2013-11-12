@@ -72,7 +72,7 @@ for k = 1:kMax{1} % actual time index starts at 0
         delete( h_particlePos );
     end
     delete(findobj('Color',[0.4, 0.4, 1]))
-    delete(findobj('LineWidth',1.5))
+    delete(findobj('LineWidth',1.1))
     delete( h_time )
     
     %Plot groundtruth pose
@@ -143,7 +143,7 @@ for k = 1:kMax{1} % actual time index starts at 0
                 h_ellipse = ellipse(axes_length(1), axes_length(2), angle, u(1), u(2));
                 set(h_ellipse,'color',[max(0.8-w,0),max(0.8-w,0),1]); 
                 set(h_ellipse,'MarkerEdgeColor',[max(0.8-w,0),max(0.8-w,0),1]); 
-                set(h_ellipse,'LineWidth',1.5);
+                set(h_ellipse,'LineWidth',1.1);
                 
             end
         end
@@ -152,7 +152,7 @@ for k = 1:kMax{1} % actual time index starts at 0
     
     h_time = text(text_x, text_y, sprintf('%d',k));
     
-    %export_fig( sprintf('results/anim/%06d_cp2.png',k));
+    %export_fig( sprintf('results/anim/%06d.png',k));
 
 pause(0.02)
   
