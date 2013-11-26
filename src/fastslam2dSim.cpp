@@ -278,14 +278,15 @@ public:
 					   groundtruth_landmark_[m],
 					   z_m_k);
 	if(success){
-   
+
 	  if(z_m_k.get(0) <= rangeLimitMax_ && z_m_k.get(0) >= rangeLimitMin_ && drand48() <= Pd_){
 	    z_m_k.setTime(k);
 	    z_m_k.setCov(R);
 	    measurements_.push_back( z_m_k );
 	  }
 
-	  if(lmkFirstObsTime_[m] != -1){
+	  // Observe the first time in which a landmark is observed 
+	  if(lmkFirstObsTime_[m] == -1){
 	    lmkFirstObsTime_[m] = k;
 	  }
 	}
@@ -319,6 +320,9 @@ public:
   /** Data Logging */
   void exportSimData(){
 
+    if(!logToFile_)
+      return;
+
     double t;
 
     FILE* pGTPoseFile;
@@ -335,7 +339,7 @@ public:
     RangeBearingModel::TLandmark::Vec m;
     for(int i = 0; i < groundtruth_landmark_.size(); i++){
       groundtruth_landmark_[i].get(m);
-      fprintf( pGTLandmarkFile, "%f   %f\n", m(0), m(1));
+      fprintf( pGTLandmarkFile, "%f   %f   %d\n", m(0), m(1), lmkFirstObsTime_[i]);
     }
     fclose(pGTLandmarkFile);
 
@@ -608,11 +612,13 @@ int main(int argc, char* argv[]){
     return -1;
   }
   sim.generateTrajectory( initRandSeed );
+  
+  srand48( time(NULL) );
+
   sim.generateOdometry();
   sim.generateLandmarks();
   sim.generateMeasurements();
   sim.exportSimData();
- 
   sim.setupRBPHDFilter();
 
   sim.run();

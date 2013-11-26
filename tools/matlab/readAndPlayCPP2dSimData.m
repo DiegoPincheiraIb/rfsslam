@@ -24,7 +24,7 @@ disp('Opening landmark estimate file');
 fid_lmEst = fopen('../../data/landmarkEst.dat');
 
 gt_pose = fscanf(fid_gtPose, '%f %f %f %f\n', [4, inf]);
-gt_lmk = fscanf(fid_gtLmk, '%f %f\n', [2, inf]);
+gt_lmk = fscanf(fid_gtLmk, '%f %f %d\n', [3, inf]);
 dr_pose = fscanf(fid_dr, '%f %f %f %f\n', [4, inf]);
 z_k = textscan(fid_meas, '%f %f %f', 1);  
 
@@ -126,6 +126,7 @@ for k = 1:kMax{1} % actual time index starts at 0
         data = textscan(fid_lmEst, '%f %f %f %f %f %f %f\n');
         
         if i == highest_weight_i
+            %display(map_size);
             for m = 1:map_size
                 
                 u = [data{1}(m); data{2}(m)];
@@ -152,7 +153,7 @@ for k = 1:kMax{1} % actual time index starts at 0
     
     h_time = text(text_x, text_y, sprintf('%d',k));
     
-    %export_fig( sprintf('results/anim/%06d.png',k));
+    export_fig( sprintf('results/anim/%06d.png',k));
 
 pause(0.02)
   

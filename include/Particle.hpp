@@ -31,6 +31,9 @@
 #ifndef PARTICLE_HPP
 #define PARTICLE_HPP
 
+#include <cstddef>
+#include "RandomVec.hpp"
+
 /** 
  *  \class Particle
  *  \brief A class for a particle for the particle filter

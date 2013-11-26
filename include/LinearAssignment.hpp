@@ -473,7 +473,7 @@ bool HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	if( t < n){ // t is a vertex in X 
 	  for(y = 0; y < n; y++){ // look through children of t
 	    // check if y is in equality graph and not already queued and unmatched
-	    if(fabs(lx[t] + ly[y] - C[t][y]) < 1e-13 && !y_q[y] && xy[t] != y){
+	    if(fabs(lx[t] + ly[y] - C[t][y]) < 1e-12 && !y_q[y] && xy[t] != y){
 	      if(debug){
 		printf("Breadth first search inserting y[%d] in queue with parent x[%d]\n", y, t); 
 	      }
@@ -486,7 +486,7 @@ bool HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 	  t -= n; // fix the index back to original
 	  for(x = 0; x < n; x++){ // look through children of t
 	    // check if x is in equality graph and in set S and not already queued and matched
-	    if(fabs(lx[x] + ly[t] - C[x][t]) < 1e-14 && S[x] && !x_q[x] && yx[t] == x){
+	    if(fabs(lx[x] + ly[t] - C[x][t]) < 1e-12 && S[x] && !x_q[x] && yx[t] == x){
 	      if(debug){
 		printf("Breadth first search inserting x[%d] in queue with parent y[%d]\n", x, t);
 	      }
@@ -501,13 +501,13 @@ bool HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
 
       if(!augmentingPathFound){
 	printf("Cannot find alternating path\n");
-	printf("Slack table:\n");
+	/*printf("Slack table:\n");
 	for(int x = 0; x < n; x++){
 	  for(int y = 0; y < n; y++){
 	    printf("%e   ", lx[x] + ly[y] - C[x][y]);
 	  }
 	  printf("\n");
-	}
+	  }*/
 	return false;
       }
 
@@ -716,7 +716,7 @@ public:
   /** Find the next best assignment 
    *  \param[out] assignment pointer to array of assignment (no need to allocate/deallocate )
    *  \param[out] score the assignment score 
-   *  \return k, the k-best solution index
+   *  \return k, the k-best solution index, or -1 if no more solutions are available
    */
   int findNextBest( int* &assignment, double* score){
     

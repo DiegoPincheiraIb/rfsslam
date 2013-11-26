@@ -289,7 +289,7 @@ public:
 	    measurements_.push_back( z_m_k );
 	  }
 
-	  if(lmkFirstObsTime_[m] != -1){
+	  if(lmkFirstObsTime_[m] == -1){
 	    lmkFirstObsTime_[m] = k;
 	  }
 	}
@@ -323,6 +323,9 @@ public:
   /** Data Logging */
   void exportSimData(){
 
+    if(!logToFile_)
+      return;
+
     double t;
 
     FILE* pGTPoseFile;
@@ -339,7 +342,7 @@ public:
     RangeBearingModel::TLandmark::Vec m;
     for(int i = 0; i < groundtruth_landmark_.size(); i++){
       groundtruth_landmark_[i].get(m);
-      fprintf( pGTLandmarkFile, "%f   %f\n", m(0), m(1));
+      fprintf( pGTLandmarkFile, "%f   %f   %d\n", m(0), m(1), lmkFirstObsTime_[i]);
     }
     fclose(pGTLandmarkFile);
 

@@ -69,6 +69,8 @@ ADD_TEST(unitTest bin/unitTest)
 
 ADD_EXECUTABLE(hmTest src/test.cpp)
 
+ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp src/Pose.cpp)
+
 
 
 
