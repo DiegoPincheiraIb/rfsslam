@@ -28,10 +28,12 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
 #include <libconfig.h++>
 #include "FastSLAM.hpp"
 #include <stdio.h>
+#include <string>
 
 /**
  * \class Simulator2d
@@ -57,12 +59,12 @@ public:
   }
 
   /** Read the simulator configuration file */
-  bool readConfigFile(){
+  bool readConfigFile(const char* fileName){
+
+    cfgFileName_ = fileName;
     
-    libconfig::Config cfg;
-    const char* fileName= "cfg/fastslam2dSim.cfg";
     try{
-      cfg.readFile( fileName );
+      cfg_.readFile( fileName );
     }catch( libconfig::FileIOException &ex){
       printf("\nCannot read file: %s\n\n", fileName);
       return false;
@@ -72,44 +74,45 @@ public:
       printf("\n%s LINE %d\n\n", error, line);
       return false;
     }
-    kMax_ = cfg.lookup("timesteps");
-    dT_ = cfg.lookup("sec_per_timestep");
+    kMax_ = cfg_.lookup("timesteps");
+    dT_ = cfg_.lookup("sec_per_timestep");
     
-    nSegments_ = cfg.lookup("Trajectory.nSegments");
-    max_dx_ = cfg.lookup("Trajectory.max_dx_per_sec");
-    max_dy_ = cfg.lookup("Trajectory.max_dy_per_sec");
-    max_dz_ = cfg.lookup("Trajectory.max_dz_per_sec");
-    min_dx_ = cfg.lookup("Trajectory.min_dx_per_sec");
-    vardx_ = cfg.lookup("Trajectory.vardx");
-    vardy_ = cfg.lookup("Trajectory.vardy");
-    vardz_ = cfg.lookup("Trajectory.vardz");
+    nSegments_ = cfg_.lookup("Trajectory.nSegments");
+    max_dx_ = cfg_.lookup("Trajectory.max_dx_per_sec");
+    max_dy_ = cfg_.lookup("Trajectory.max_dy_per_sec");
+    max_dz_ = cfg_.lookup("Trajectory.max_dz_per_sec");
+    min_dx_ = cfg_.lookup("Trajectory.min_dx_per_sec");
+    vardx_ = cfg_.lookup("Trajectory.vardx");
+    vardy_ = cfg_.lookup("Trajectory.vardy");
+    vardz_ = cfg_.lookup("Trajectory.vardz");
 
-    nLandmarks_ = cfg.lookup("Landmarks.nLandmarks");
-    varlmx_ = cfg.lookup("Landmarks.varlmx");
-    varlmy_ = cfg.lookup("Landmarks.varlmy");
+    nLandmarks_ = cfg_.lookup("Landmarks.nLandmarks");
+    varlmx_ = cfg_.lookup("Landmarks.varlmx");
+    varlmy_ = cfg_.lookup("Landmarks.varlmy");
 
-    rangeLimitMax_ = cfg.lookup("Measurement.rangeLimitMax");
-    rangeLimitMin_ = cfg.lookup("Measurement.rangeLimitMin");
-    rangeLimitBuffer_ = cfg.lookup("Measurement.rangeLimitBuffer");
-    Pd_ = cfg.lookup("Measurement.probDetection");
-    c_ = cfg.lookup("Measurement.clutterIntensity");
-    varzr_ = cfg.lookup("Measurement.varzr");
-    varzb_ = cfg.lookup("Measurement.varzb");
+    rangeLimitMax_ = cfg_.lookup("Measurement.rangeLimitMax");
+    rangeLimitMin_ = cfg_.lookup("Measurement.rangeLimitMin");
+    rangeLimitBuffer_ = cfg_.lookup("Measurement.rangeLimitBuffer");
+    Pd_ = cfg_.lookup("Measurement.probDetection");
+    c_ = cfg_.lookup("Measurement.clutterIntensity");
+    varzr_ = cfg_.lookup("Measurement.varzr");
+    varzb_ = cfg_.lookup("Measurement.varzb");
 
-    nParticles_ = cfg.lookup("Filter.nParticles");
-    pNoiseInflation_ = cfg.lookup("Filter.processNoiseInflationFactor");
-    zNoiseInflation_ = cfg.lookup("Filter.measurementNoiseInflationFactor");
-    innovationRangeThreshold_ = cfg.lookup("Filter.innovationRangeThreshold");
-    effNParticleThreshold_ = cfg.lookup("Filter.effectiveNumberOfParticlesThreshold");
-    minInterSampleTimesteps_ = cfg.lookup("Filter.minInterSampleTimesteps");
-    minLogMeasurementLikelihood_ = cfg.lookup("Filter.minLogMeasurementLikelihood");
-    maxNDataAssocHypotheses_ = cfg.lookup("Filter.maxNDataAssocHypotheses");
-    maxDataAssocLogLikelihoodDiff_ = cfg.lookup("Filter.maxDataAssocLogLikelihoodDiff");
-    landmarkExistencePruningThreshold_ = cfg.lookup("Filter.landmarkExistencePruningThreshold");
-    reportTimingInfo_ = cfg.lookup("Filter.reportTimingInfo");
+    nParticles_ = cfg_.lookup("Filter.nParticles");
+    pNoiseInflation_ = cfg_.lookup("Filter.processNoiseInflationFactor");
+    zNoiseInflation_ = cfg_.lookup("Filter.measurementNoiseInflationFactor");
+    innovationRangeThreshold_ = cfg_.lookup("Filter.innovationRangeThreshold");
+    effNParticleThreshold_ = cfg_.lookup("Filter.effectiveNumberOfParticlesThreshold");
+    minInterSampleTimesteps_ = cfg_.lookup("Filter.minInterSampleTimesteps");
+    minLogMeasurementLikelihood_ = cfg_.lookup("Filter.minLogMeasurementLikelihood");
+    maxNDataAssocHypotheses_ = cfg_.lookup("Filter.maxNDataAssocHypotheses");
+    maxDataAssocLogLikelihoodDiff_ = cfg_.lookup("Filter.maxDataAssocLogLikelihoodDiff");
+    landmarkExistencePruningThreshold_ = cfg_.lookup("Filter.landmarkExistencePruningThreshold");
+    reportTimingInfo_ = cfg_.lookup("Filter.reportTimingInfo");
 
-    logToFile_ = cfg.lookup("Computation.logToFile");
-    
+    logToFile_ = cfg_.lookup("Computation.logToFile");
+    logDirPrefix_ = cfg_.lookup("Computation.logDirPrefix");
+
     return true;   
   }
 
@@ -323,10 +326,22 @@ public:
     if(!logToFile_)
       return;
 
+    boost::filesystem::path dir(logDirPrefix_);
+    boost::filesystem::create_directory(dir);
+
+    boost::filesystem::path cfgFilePathSrc( cfgFileName_ );
+    std::string cfgFileDst( logDirPrefix_ );
+    cfgFileDst += "simSettings.cfg";
+    boost::filesystem::path cfgFilePathDst( cfgFileDst.data() );
+    boost::filesystem::copy_file( cfgFilePathSrc, cfgFilePathDst, boost::filesystem::copy_option::overwrite_if_exists);
+
     double t;
 
+
     FILE* pGTPoseFile;
-    pGTPoseFile = fopen("data/gtPose.dat", "w");
+    std::string filenameGTPose( logDirPrefix_ );
+    filenameGTPose += "gtPose.dat";
+    pGTPoseFile = fopen(filenameGTPose.data(), "w");
     OdometryMotionModel2d::TState::Vec x;
     for(int i = 0; i < groundtruth_pose_.size(); i++){
       groundtruth_pose_[i].get(x, t);
@@ -335,7 +350,9 @@ public:
     fclose(pGTPoseFile);
 
     FILE* pGTLandmarkFile;
-    pGTLandmarkFile = fopen("data/gtLandmark.dat", "w");
+    std::string filenameGTLandmark( logDirPrefix_ );
+    filenameGTLandmark += "gtLandmark.dat";
+    pGTLandmarkFile = fopen(filenameGTLandmark.data(), "w");
     RangeBearingModel::TLandmark::Vec m;
     for(int i = 0; i < groundtruth_landmark_.size(); i++){
       groundtruth_landmark_[i].get(m);
@@ -344,7 +361,9 @@ public:
     fclose(pGTLandmarkFile);
 
     FILE* pOdomFile;
-    pOdomFile = fopen("data/odometry.dat","w");
+    std::string filenameOdom( logDirPrefix_ );
+    filenameOdom += "odometry.dat";
+    pOdomFile = fopen(filenameOdom.data(),"w");
     OdometryMotionModel2d::TInput::Vec u;
     for(int i = 0; i < odometry_.size(); i++){
       odometry_[i].get(u, t);
@@ -353,7 +372,9 @@ public:
     fclose(pOdomFile);
 
     FILE* pMeasurementFile;
-    pMeasurementFile = fopen("data/measurement.dat", "w");
+    std::string filenameMeasurement( logDirPrefix_ );
+    filenameMeasurement += "measurement.dat";
+    pMeasurementFile = fopen(filenameMeasurement.data(), "w");
     RangeBearingModel::TMeasurement::Vec z;
     for(int i = 0; i < measurements_.size(); i++){
       measurements_[i].get(z, t);
@@ -362,7 +383,9 @@ public:
     fclose(pMeasurementFile);
 
     FILE* pDeadReckoningFile;
-    pDeadReckoningFile = fopen("data/deadReckoning.dat", "w");
+    std::string filenameDeadReckoning( logDirPrefix_ );
+    filenameDeadReckoning += "deadReckoning.dat";
+    pDeadReckoningFile = fopen(filenameDeadReckoning.data(), "w");
     OdometryMotionModel2d::TState::Vec odo;
     for(int i = 0; i < deadReckoning_pose_.size(); i++){
       deadReckoning_pose_[i].get(odo, t);
@@ -425,12 +448,16 @@ public:
 
     FILE* pParticlePoseFile;
     if(logToFile_){
-      pParticlePoseFile = fopen("data/particlePose.dat", "w");
+      std::string filenameParticlePoseFile( logDirPrefix_ );
+      filenameParticlePoseFile += "particlePose.dat";
+      pParticlePoseFile = fopen(filenameParticlePoseFile.data(), "w");
       fprintf( pParticlePoseFile, "Timesteps: %d\n", kMax_);
     }
     FILE* pLandmarkEstFile;
     if(logToFile_){
-      pLandmarkEstFile = fopen("data/landmarkEst.dat", "w");
+      std::string filenameLandmarkEstFile( logDirPrefix_ );
+      filenameLandmarkEstFile += "landmarkEst.dat";
+      pLandmarkEstFile = fopen(filenameLandmarkEstFile.data(), "w");
       fprintf( pLandmarkEstFile, "Timesteps: %d\n", kMax_);
       fprintf( pLandmarkEstFile, "nParticles: %d\n\n", pFilter_->getParticleCount());
     }
@@ -543,6 +570,9 @@ public:
 
 private:
 
+  libconfig::Config cfg_;
+  const char* cfgFileName_;
+
   int kMax_; /**< number of timesteps */
   double dT_;
 
@@ -594,32 +624,38 @@ private:
   double maxDataAssocLogLikelihoodDiff_;
   double landmarkExistencePruningThreshold_;
   bool reportTimingInfo_;
+  
   bool logToFile_;
+  const char *logDirPrefix_;
 };
 
 
 
 
-int main(int argc, char* argv[]){
+int main(int argc, char* argv[]){   
 
   int initRandSeed = 0;
-  if( argc == 2 ){
+  const char* logFileName = "cfg/fastslam2dSim.cfg";
+  if( argc >= 2 ){
     initRandSeed = boost::lexical_cast<int>(argv[1]);
+  }
+  if( argc >= 3 ){
+    logFileName = argv[2];
   }
 
   Simulator2d sim;
-  if( !sim.readConfigFile() ){
+  if( !sim.readConfigFile( logFileName ) ){
     return -1;
   }
   sim.generateTrajectory( initRandSeed );
-  
-  srand48( time(NULL) );
+  sim.generateLandmarks();
 
   sim.generateOdometry();
-  sim.generateLandmarks();
   sim.generateMeasurements();
   sim.exportSimData();
   sim.setupRBPHDFilter();
+
+  srand48( time(NULL) );
 
   sim.run();
 

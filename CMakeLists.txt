@@ -20,7 +20,7 @@ FILE(MAKE_DIRECTORY "bin")
 FILE(MAKE_DIRECTORY "lib")
 FILE(MAKE_DIRECTORY "data")
 
-FIND_PACKAGE(Boost COMPONENTS math_c99 timer system thread REQUIRED)
+FIND_PACKAGE(Boost COMPONENTS math_c99 timer system thread filesystem REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON) 
 set(Boost_USE_STATIC_RUNTIME ON)
@@ -70,7 +70,4 @@ ADD_TEST(unitTest bin/unitTest)
 ADD_EXECUTABLE(hmTest src/test.cpp)
 
 ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp src/Pose.cpp)
-
-
-
-
+TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} )

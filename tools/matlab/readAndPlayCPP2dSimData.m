@@ -8,20 +8,24 @@ addpath '~/src/Matlab/export_fig'
 clear all
 close all
 
+logDir = '../../data/rbphdslam/';
+%logDir = '../../data/fastslam/';
+%logDir = '../../data/mhfastslam/';
+
 disp('Opening ground-truth pose file');
-fid_gtPose = fopen('../../data/gtPose.dat');
+fid_gtPose = fopen(strcat(logDir, 'gtPose.dat'));
 disp('Opening ground-truth landmark file');
-fid_gtLmk = fopen('../../data/gtLandmark.dat');
+fid_gtLmk = fopen(strcat(logDir, 'gtLandmark.dat'));
 disp('Opening odometry file');
-fid_odo = fopen('../../data/odometry.dat');
+fid_odo = fopen(strcat(logDir, 'odometry.dat'));
 disp('Opening dead-reckoning file');
-fid_dr = fopen('../../data/deadReckoning.dat');
+fid_dr = fopen(strcat(logDir, 'deadReckoning.dat'));
 disp('Opening measurement file');
-fid_meas = fopen('../../data/measurement.dat');
+fid_meas = fopen(strcat(logDir, 'measurement.dat'));
 disp('Opening particle pose file');
-fid_pEst = fopen('../../data/particlePose.dat');
+fid_pEst = fopen(strcat(logDir, 'particlePose.dat'));
 disp('Opening landmark estimate file');
-fid_lmEst = fopen('../../data/landmarkEst.dat');
+fid_lmEst = fopen(strcat(logDir, 'landmarkEst.dat'));
 
 gt_pose = fscanf(fid_gtPose, '%f %f %f %f\n', [4, inf]);
 gt_lmk = fscanf(fid_gtLmk, '%f %f %d\n', [3, inf]);
@@ -153,9 +157,12 @@ for k = 1:kMax{1} % actual time index starts at 0
     
     h_time = text(text_x, text_y, sprintf('%d',k));
     
-    export_fig( sprintf('results/anim/%06d.png',k));
+    if(k == 1)
+        mkdir( logDir, 'animation');    
+    end
+    export_fig( sprintf(strcat( logDir, '/animation/%06d.png'),k));
 
-pause(0.02)
+pause(0.002)
   
 end
 

@@ -530,14 +530,14 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       double w_k = (1 - Pd[m]) * w_km;
 
       // For landmarks close to sensing limit
-      if (landmarkCloseToSensingLimit[m] == 1){
+      if (landmarkCloseToSensingLimit[m] == 1 && w_km > config.birthGaussianWeight_){
 	double weight_sum_m = 0;
 	for(int z = 0; z < nZ; z++){
 	  weight_sum_m += weightingTable[m][z];
 	}
 	double delta_w = Pd[m] * w_km - weight_sum_m;
 	if( delta_w > 0 ){
-	  w_k += delta_w;
+	  w_k += delta_w; // This is just a heuristic that works well
 	}
       }
 
