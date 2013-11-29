@@ -1,9 +1,9 @@
 clear all
 close all
 
-%logDir = '../../data/rbphdslam/';
+logDir = '../../data/rbphdslam/';
 %logDir = '../../data/fastslam/';
-logDir = '../../data/mhfastslam/';
+%logDir = '../../data/mhfastslam/';
 
 fid_mapError = fopen(strcat(logDir, 'landmarkEstError.dat'));
 
