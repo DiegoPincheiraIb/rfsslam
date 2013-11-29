@@ -34,7 +34,7 @@
 #ifndef STATE_HPP
 #define STATE_HPP
 
-
+#include <assert.h>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/normal_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
@@ -170,6 +170,14 @@ public:
     if( gen_ != NULL )
       delete gen_;
   };
+
+  /** 
+   * [] Operator
+   */
+  double& operator[] (const int n){ 
+    assert(n >= 0 && n < nDim_);
+    return x_(n);
+  }
 
   /** 
    * Set the vector
@@ -318,7 +326,7 @@ public:
    * \param[in] n element index
    * \return element n
    */
-  double get( int n ) const { return x_(n);}
+  double get( const int n ) const { return x_(n);}
 
   /**
    * Get the time
