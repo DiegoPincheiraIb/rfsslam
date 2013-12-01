@@ -103,7 +103,7 @@ public:
     zNoiseInflation_ = cfg_.lookup("Filter.measurementNoiseInflationFactor");
     innovationRangeThreshold_ = cfg_.lookup("Filter.innovationRangeThreshold");
     effNParticleThreshold_ = cfg_.lookup("Filter.effectiveNumberOfParticlesThreshold");
-    minInterSampleTimesteps_ = cfg_.lookup("Filter.minInterSampleTimesteps");
+    minUpdatesBeforeResample_ = cfg_.lookup("Filter.minUpdatesBeforeResample");
     minLogMeasurementLikelihood_ = cfg_.lookup("Filter.minLogMeasurementLikelihood");
     maxNDataAssocHypotheses_ = cfg_.lookup("Filter.maxNDataAssocHypotheses");
     maxDataAssocLogLikelihoodDiff_ = cfg_.lookup("Filter.maxDataAssocLogLikelihoodDiff");
@@ -430,7 +430,7 @@ public:
 
     // configure the filter
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
-    pFilter_->config.minInterSampleTimesteps_ = minInterSampleTimesteps_;
+    pFilter_->config.minUpdatesBeforeResample_ = minUpdatesBeforeResample_;
     pFilter_->config.minLogMeasurementLikelihood_ = minLogMeasurementLikelihood_;
     pFilter_->config.maxNDataAssocHypotheses_ = maxNDataAssocHypotheses_;
     pFilter_->config.maxDataAssocLogLikelihoodDiff_ = maxDataAssocLogLikelihoodDiff_;
@@ -618,7 +618,7 @@ private:
   double zNoiseInflation_;
   double innovationRangeThreshold_;
   double effNParticleThreshold_;
-  int minInterSampleTimesteps_;
+  int minUpdatesBeforeResample_;
   double minLogMeasurementLikelihood_;
   int maxNDataAssocHypotheses_;
   double maxDataAssocLogLikelihoodDiff_;

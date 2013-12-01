@@ -106,7 +106,7 @@ public:
     newGaussianCreateInnovMDThreshold_ = cfg_.lookup("Filter.newGaussianCreateInnovMDThreshold");
     importanceWeightingMeasurementLikelihoodMDThreshold_ = cfg_.lookup("Filter.importanceWeightingMeasurementLikelihoodMDThreshold");
     effNParticleThreshold_ = cfg_.lookup("Filter.effectiveNumberOfParticlesThreshold");
-    minInterSampleTimesteps_ = cfg_.lookup("Filter.minInterSampleTimesteps");
+    minUpdatesBeforeResample_ = cfg_.lookup("Filter.minUpdatesBeforeResample");
     gaussianMergingThreshold_ = cfg_.lookup("Filter.gaussianMergingThreshold");
     gaussianMergingCovarianceInflationFactor_ = cfg_.lookup("Filter.gaussianMergingCovarianceInflationFactor");
     gaussianPruningThreshold_ = cfg_.lookup("Filter.gaussianPruningThreshold");
@@ -433,7 +433,7 @@ public:
     // configure the filter
     pFilter_->config.birthGaussianWeight_ = birthGaussianWeight_;
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
-    pFilter_->config.minInterSampleTimesteps_ = minInterSampleTimesteps_;
+    pFilter_->config.minUpdatesBeforeResample_ = minUpdatesBeforeResample_;
     pFilter_->config.newGaussianCreateInnovMDThreshold_ = newGaussianCreateInnovMDThreshold_;
     pFilter_->config.importanceWeightingMeasurementLikelihoodMDThreshold_ = importanceWeightingMeasurementLikelihoodMDThreshold_;
     pFilter_->config.importanceWeightingEvalPointCount_ = importanceWeightingEvalPointCount_;
@@ -626,7 +626,7 @@ private:
   double newGaussianCreateInnovMDThreshold_;
   double importanceWeightingMeasurementLikelihoodMDThreshold_;
   double effNParticleThreshold_;
-  int minInterSampleTimesteps_;
+  int minUpdatesBeforeResample_;
   double gaussianMergingThreshold_;
   double gaussianMergingCovarianceInflationFactor_;
   double gaussianPruningThreshold_;

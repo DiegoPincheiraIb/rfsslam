@@ -103,6 +103,7 @@ public:
    * \return timestep for which data was read
    */
   int readNextStepData(){
+
     if( fscanf(pGTPoseFile, "%lf %lf %lf %lf\n", &k_, &rx_, &ry_, &rz_ ) == 4 ){ 
       //printf("%f %f %f %f\n", k_, rx_, ry_, rz_);
 
@@ -118,9 +119,18 @@ public:
       Landmark2d::Vec vm;
       Landmark2d::Mat Sm;
       double x, y, z, w, sxx, sxy, syx, syy;
+      double w_hi = 0;
+      w_sum_ = 0;
       int i = 0;
       while( fscanf(pParticlePoseFile, "%lf %lf %lf %lf", &x, &y, &z, &w) == 4){
 	// printf("[%d] %f %f %f %f\n", i, x, y, z, w);
+
+	w_sum_ += w;
+	if( w > w_hi ){
+	  i_hi_ = i;
+	  w_hi = w;
+	}
+
 	Pose2d p(x, y, z);
 	particles_.push_back( Particle<Pose2d, GaussianMixture<Landmark2d> > (i, p, w)); // add GM to template
 	particles_[i].setData(new GaussianMixture<Landmark2d>);
@@ -143,13 +153,6 @@ public:
     return -1;
   }
 
-  /** Calculate the combined robot pose and landmark position estimate error
-   * \return error 
-   */
-  double calcError(){
-
-  }
-
   /** Calculate the cardinality error for landmark estimates
    *  \param[out] nLandmarksObservable the actual number of observed landnmarks up to the current time
    *  \return cardinality estimate
@@ -164,11 +167,6 @@ public:
      }
      nLandmarksObservable = mapObservable.size();
 
-     double particleWeightSum = 0;
-     for(int i = 0; i < particles_.size(); i++){
-       particleWeightSum += particles_[i].getWeight();
-     }
-
      double cardEst = 0;
      for(int i = 0; i < particles_.size(); i++){
 
@@ -177,7 +175,7 @@ public:
        for(int n = 0; n < nGaussians; n++ ){
 	 nLandmarksEst += particles_[i].getData()->getWeight(n); 
        }
-       cardEst += nLandmarksEst * particles_[i].getWeight() / particleWeightSum;;
+       cardEst += nLandmarksEst * particles_[i].getWeight() / w_sum_;
      }
 
      return cardEst;
@@ -190,7 +188,8 @@ public:
   double calcLandmarkError( bool averageError = true){
 
     double const c2 = 9.0; // cutoff
-    double unaccountedEstWeight = 0;
+    double spatialError_i = 0;
+    double cardinalityError_i = 0;
     double ospaError = 0;
 
     std::vector<int> mapObservable;
@@ -200,31 +199,24 @@ public:
       }
     }
 
-    double particleWeightSum = 0;
-    double hiWeight = 0;
-    int i_hiWeight = 0; 
-    for(int i = 0; i < particles_.size(); i++){
-      double w = particles_[i].getWeight();
-      if( w > hiWeight){
-	hiWeight = w;
-	i_hiWeight = i;
-      }
-      particleWeightSum += w;
-    }
-    
-    // For tracking renmaining groundtruth map weight
-    int nLandmarks = mapObservable.size();
-    double w_remain_gt[ nLandmarks ];
-    for(int n = 0; n < nLandmarks; n++ ){
-      w_remain_gt[n] = 1;
-    }
-
     HungarianMethod hm;
 
     for(int i = 0; i < particles_.size(); i++){
 
-      if( !averageError && i != i_hiWeight){
+      if( !averageError && i != i_hi_){
 	continue;
+      }
+
+      double w_i = 1;
+      if( averageError ){
+	w_i = particles_[i].getWeight();
+      }
+      
+      // For tracking renmaining groundtruth map weight
+      int nLandmarks = mapObservable.size();
+      double w_remain_gt[ nLandmarks ];
+      for(int n = 0; n < nLandmarks; n++ ){
+	w_remain_gt[n] = 1;
       }
 
       // For tracking remaining map estimate weight
@@ -232,9 +224,6 @@ public:
       double w_remain_est[ nGaussians ];
       for(int n = 0; n < nGaussians; n++ ){
 	w_remain_est[n] = particles_[i].getData()->getWeight(n); 
-	if( averageError ){
-	  w_remain_est[n] *= particles_[i].getWeight() / particleWeightSum;
-	}
       }
 
       // Create matrix of mahalanobis distance between groundtruth and estimated landmark positions
@@ -254,16 +243,6 @@ public:
 	  E[n][m] = particles_[i].getData()->getGaussian(m)->mahalanobisDist2( map_[mapObservable[n]] );
 	}
       }
-
-      /*if(i == 1){
-	for(int e = 0; e < E_size; e++){
-	  for(int f = 0; f < E_size; f++){
-	    printf("%f   ", E[e][f]);
-	  }
-	  printf("\n");
-	}
-	printf("\n");
-	}*/
       
       // Allocate memory for a a copy of E, which we can use as we iterate to produce a smaller distance matrix
       double** Er = new double* [E_size];
@@ -273,6 +252,8 @@ public:
       
       std::vector<int> nonZeroEstIdx;
       std::vector<int> nonZeroMapIdx;
+
+      spatialError_i = 0;
 
       bool smallerThanCutoffDistanceExists = false;
       do{
@@ -310,15 +291,6 @@ public:
 	  }
 	}
 
-	/*if(i == 1){
-	for(int e = 0; e < Er_size; e++){
-	  for(int f = 0; f < Er_size; f++){
-	    printf("%f   ", Er[e][f]);
-	  }
-	  printf("\n");
-	}
-	printf("\n");}*/
-
 	double cost_tmp;
 	int match[Er_size];
 	bool success = hm.run(Er, Er_size, match, &cost_tmp, false); // Find best linear assignment to minimize distance
@@ -334,6 +306,7 @@ public:
 	  return -1;
 	}
 	
+	double err = 0;
 	for(int e = 0; e < nonZeroMapIdx.size(); e++){
 	  
 	  if(match[e] < nonZeroEstIdx.size() && Er[e][match[e]] < c2){
@@ -344,13 +317,7 @@ public:
 	    w_remain_est[ nonZeroEstIdx[ match[e] ] ] -= accountedWeight;
 	    w_remain_gt[ nonZeroMapIdx[e] ] -= accountedWeight;
 
-	    double err = Er[e][match[e]] * accountedWeight;
-	    //printf("%f\n", err);
-	    if( averageError ){
-	      err *= (particles_[i].getWeight() / particleWeightSum);
-	    }
-
-	    ospaError += err;
+	    spatialError_i += Er[e][match[e]] * accountedWeight;
 
 	  }
 
@@ -358,9 +325,21 @@ public:
 
       }while( smallerThanCutoffDistanceExists );
       
+      double unaccountedEstWeight = 0;
+      double unaccountedMapWeight = 0;
       for(int e = 0; e < nGaussians; e++){
 	unaccountedEstWeight += w_remain_est[e];
       }
+      for(int e = 0; e < nLandmarks; e++){
+	unaccountedMapWeight += w_remain_gt[e];
+      }
+      cardinalityError_i = fmax(unaccountedMapWeight, unaccountedEstWeight) * c2;
+      //printf("Unaccounted map: %f   Unaccounted est: %f\n", unaccountedMapWeight, unaccountedEstWeight);
+      //printf("Spatial: %f   Card: %f\n", spatialError_i, cardinalityError_i);
+
+      double ospaError_i = sqrt( (spatialError_i + cardinalityError_i) / nLandmarks ); 
+      //printf("OSPA Error: %f   w: %f\n", ospaError, w_i);
+      ospaError += (ospaError_i * w_i);
 
       for(int e = 0; e < E_size; e++ ){
 	delete[] E[e];
@@ -371,26 +350,69 @@ public:
 
     }  
 
-    double unaccountedMapWeight = 0;
-    for(int e = 0; e < nLandmarks; e++){
-      unaccountedMapWeight += w_remain_gt[e];
+    if( averageError ){
+      return (ospaError / w_sum_);
+    }else{
+      return ospaError;
     }
-
-    //printf("Accounted dist error: %f\n", sqrt( ospaError / nLandmarks ));
-    //printf("Unaccounted Est Weight: %f\n", unaccountedEstWeight);
-    //printf("Unaccounted Map Weight: %f\n", unaccountedMapWeight);
-
-    printf("spatial component = %f   cardinality component = %f\n", ospaError, c2 * fmax(unaccountedEstWeight, unaccountedMapWeight));
-    ospaError = sqrt( (ospaError + c2 * fmax(unaccountedEstWeight, unaccountedMapWeight)) / nLandmarks);
-    return ospaError;
 
   }
 
   /** Calculate the error for vehicle pose estimate
    *  \return error 
    */
-  double calcPoseError(){
+  double calcPoseError(double &err_x, double &err_y, double &err_rot, double &err_dist, bool getAverageError = true){
 
+    err_x = 0;
+    err_y = 0;
+    err_rot = 0;
+    err_dist = 0;
+
+    Pose2d poseEst;
+    double w = 1;
+    double ex;
+    double ey;
+    double er;
+
+    for(int i = 0; i < particles_.size(); i++){
+
+      if( !getAverageError && i != i_hi_){
+	continue;
+      }
+
+      if( getAverageError ){
+	w = particles_[i].getWeight();
+      }
+
+      particles_[i].getPose(poseEst);
+
+      ex = poseEst[0] - rx_;
+      ey = poseEst[1] - ry_;
+      er = poseEst[2] - rz_;
+      if(er > PI)
+	er -= 2 * PI;
+      else if(er < -PI)
+	er += 2 * PI;
+
+      err_x += ex * w;
+      err_y += ey * w;
+      err_rot += er * w;
+      err_dist += sqrt(ex * ex + ey * ey) * w;
+
+      if( !getAverageError && i == i_hi_){
+	break;
+      }
+
+    }
+
+    if( getAverageError ){
+
+      err_x /= w_sum_;
+      err_y /= w_sum_;
+      err_rot /= w_sum_;
+      err_dist /= w_sum_;
+    }
+    
   }
 
 private:
@@ -409,7 +431,11 @@ private:
   double ry_;
   double rz_;
 
+  double i_hi_;  /** highest particle weight index */
+  double w_sum_; /** particle weight sum */
+
   std::vector< Particle<Pose2d, GaussianMixture<Landmark2d> > > particles_;
+  std::vector< Pose2d > pose_gt_;
   std::vector< Landmark2d::Vec > map_;
   std::vector<double> mapObsTimestep_;
 
@@ -431,22 +457,33 @@ int main(int argc, char* argv[]){
   }
 
   std::string filenameLandmarkEstError( logDir );
+  std::string filenamePoseEstError( logDir );
   filenameLandmarkEstError += "landmarkEstError.dat";
+  filenamePoseEstError += "poseEstError.dat";
   FILE* pMapEstErrorFile = fopen(filenameLandmarkEstError.data(), "w");
+  FILE* pPoseEstErrorFile = fopen(filenamePoseEstError.data(), "w");
 
   LogFileReader2dSim reader(logDir);
 
   int k = 0;
   while( reader.readNextStepData() != -1){
+    
+    double ex, ey, er, ed;
+    reader.calcPoseError( ex, ey, er, ed, false );
+    fprintf(pPoseEstErrorFile, "%d   %f   %f   %f   %f\n", k, ex, ey, er, ed);
+
+    printf("   error x: %f   error y: %f   error rot: %f   error dist: %f\n", ex, ey, er, ed);
+
     int nLandmarksObserved;
     double cardEst = reader.getCardinalityEst( nLandmarksObserved );
-    double ospaError = reader.calcLandmarkError( false);
+    double ospaError = reader.calcLandmarkError( false );
     fprintf(pMapEstErrorFile, "%d   %d   %f   %f\n", k, nLandmarksObserved, cardEst, ospaError);
-    printf("k: %d   nLandmarks: %d   nLandmarks estimated: %f   OSPA error: %f\n", k, nLandmarksObserved, cardEst, ospaError);
+ 
+    printf("   nLandmarks: %d   nLandmarks estimated: %f   OSPA error: %f\n", nLandmarksObserved, cardEst, ospaError);
     printf("--------------------\n");
     k++;
   }
-
+  fclose(pPoseEstErrorFile);
   fclose(pMapEstErrorFile);
   return 0;
 

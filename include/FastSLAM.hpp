@@ -86,8 +86,8 @@ public:
    */
   struct Config{
 
-    /** Minimum timeteps betwen resampling of particles*/
-    double minInterSampleTimesteps_;
+    /** Minimum updates betwen resampling of particles*/
+    int minUpdatesBeforeResample_;
 
     /** If true, timing information is written to the console every update*/
     bool reportTimingInfo_;
@@ -132,7 +132,7 @@ public:
    * \param[in] u input 
    * \param[in] currentTimestep current timestep;
    */
-  void predict( TInput u, int currentTimestep );
+  void predict( TInput u, int currentTimestep = 0);
 
   /**
    * Update the map, calculate importance weighting, and perform resampling if necessary
@@ -140,7 +140,7 @@ public:
    * gets cleared after the function call. 
    * \param[in] currentTimestep current timestep;
    */
-  void update( std::vector<TMeasurement> &Z, int currentTimestep );
+  void update( std::vector<TMeasurement> &Z, int currentTimestep = 0);
 
   /**
    * Get the size of the Gaussian mixture for a particle
@@ -186,8 +186,7 @@ private:
   /** indices of unused measurement for each particle for creating birth Gaussians */
   std::vector< std::vector<unsigned int> > unused_measurements_; 
 
-  int k_currentTimestep_; /**< current time */
-  int k_lastResample_; /**< last resample time */
+  unsigned int nUpdatesSinceResample; /**< Number of updates performed since the last resmaple */
   
   /** 
    * Add birth Gaussians for each particle's map using unused_measurements_
@@ -236,8 +235,8 @@ FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
   for(int i = 0; i < n; i++){
     this->particleSet_[i]->setData( new GaussianMixture<TLandmark>() );
   }
-  
-  config.minInterSampleTimesteps_ = 5;
+
+  config.minUpdatesBeforeResample_ = 1;
   config.reportTimingInfo_ = false;
   config.landmarkExistencePrior_ = 0.5;
   config.mapExistencePruneThreshold_ = -3.0;
@@ -245,8 +244,8 @@ FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
   config.nParticlesMax_ = n * 3;
   config.maxNDataAssocHypotheses_ = 1;
   config.maxDataAssocLogLikelihoodDiff_ = 5;
-  
-  k_lastResample_ = -10;
+
+  nUpdatesSinceResample = 0;
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
@@ -265,7 +264,7 @@ LmkProcessModel* FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel,
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::predict( TInput u,
+void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::predict( TInput u, 
 											      int currentTimestep){
 
   boost::timer::auto_cpu_timer *timer = NULL;
@@ -273,7 +272,6 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     timer = new boost::timer::auto_cpu_timer(6, "Predict time: %ws\n");
 
   // propagate particles
-  k_currentTimestep_ = currentTimestep;
   this->propagate(u);
 
   // propagate landmarks
@@ -293,7 +291,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z,
-												int currentTimestep){
+											     int currentTimestep){
 
   boost::timer::auto_cpu_timer *timer_mapUpdate = NULL;
   boost::timer::auto_cpu_timer *timer_particleWeighting = NULL;
@@ -301,7 +299,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
   boost::timer::auto_cpu_timer *timer_mapPrune = NULL;
   boost::timer::auto_cpu_timer *timer_particleResample = NULL;
 
-  k_currentTimestep_ = currentTimestep;
+  nUpdatesSinceResample++;
 
   this->setMeasurements( Z ); // Z gets cleared after this call, measurements now stored in this->measurements_
 
@@ -310,7 +308,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     timer_mapUpdate = new boost::timer::auto_cpu_timer(6, "Map update time: %ws\n");
   }
   if(!updateMap())
-    printf("k = %d     Update Failed!\n", k_currentTimestep_);
+    printf("Update Failed!\n");
   if(timer_mapUpdate != NULL)
     delete timer_mapUpdate;
 
@@ -587,15 +585,12 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
   if( this->nParticles_ > config.nParticlesMax_){
     resampleOccured = this->resample( nParticles_init_, true );
-    k_lastResample_ = k_currentTimestep_;
-  }
-
-  if( k_currentTimestep_ - k_lastResample_ >= config.minInterSampleTimesteps_){
+  }else if( nUpdatesSinceResample >= config.minUpdatesBeforeResample_){
     resampleOccured = this->resample( nParticles_init_ );
   }
 
   if( resampleOccured ){
-    k_lastResample_ = k_currentTimestep_;
+    nUpdatesSinceResample = 0;
   }else{
     this->normalizeWeights();
   }

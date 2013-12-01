@@ -160,7 +160,7 @@ for k = 1:kMax{1} % actual time index starts at 0
     if(k == 1)
         mkdir( logDir, 'animation');    
     end
-    export_fig( sprintf(strcat( logDir, '/animation/%06d.png'),k));
+    %export_fig( sprintf(strcat( logDir, '/animation/%06d.png'),k));
 
 pause(0.002)
   
