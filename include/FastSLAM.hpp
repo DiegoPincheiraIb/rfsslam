@@ -130,9 +130,9 @@ public:
   /**
    * Predict the robot trajectory using the lastest odometry data
    * \param[in] u input 
-   * \param[in] currentTimestep current timestep;
+   * \param[in] Timestamp size of timestep;
    */
-  void predict( TInput u, int currentTimestep = 0);
+  void predict( TInput u, TimeStamp &dT);
 
   /**
    * Update the map, calculate importance weighting, and perform resampling if necessary
@@ -140,7 +140,7 @@ public:
    * gets cleared after the function call. 
    * \param[in] currentTimestep current timestep;
    */
-  void update( std::vector<TMeasurement> &Z, int currentTimestep = 0);
+  void update( std::vector<TMeasurement> &Z);
 
   /**
    * Get the size of the Gaussian mixture for a particle
@@ -265,14 +265,14 @@ LmkProcessModel* FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel,
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::predict( TInput u, 
-											      int currentTimestep){
+											      TimeStamp &dT){
 
   boost::timer::auto_cpu_timer *timer = NULL;
   if(config.reportTimingInfo_)
     timer = new boost::timer::auto_cpu_timer(6, "Predict time: %ws\n");
 
   // propagate particles
-  this->propagate(u);
+  this->propagate(u, dT);
 
   // propagate landmarks
   for( int i = 0; i < this->nParticles_; i++ ){
@@ -281,7 +281,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       TLandmark *plm;
       //maps_[i]->getGaussian(m, plm);
       this->particleSet_[i]->getData()->getGaussian(m, plm);
-      lmkModelPtr_->staticStep(*plm, *plm);
+      lmkModelPtr_->staticStep(*plm, *plm, dT);
     }
   }
 
@@ -290,8 +290,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z,
-											     int currentTimestep){
+void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z){
 
   boost::timer::auto_cpu_timer *timer_mapUpdate = NULL;
   boost::timer::auto_cpu_timer *timer_particleWeighting = NULL;

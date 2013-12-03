@@ -42,7 +42,7 @@ OdometryMotionModel2d::~OdometryMotionModel2d(){}
 void OdometryMotionModel2d::step(  Pose2d &s_k, 
 				   Pose2d &s_km, 
 				   Odometry2d &input_k, 
-				   const double dT ){
+				   TimeStamp const &dT ){
  
 
   Pose2d::Vec x_k_i_;       /* \f[ \begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_{k} \f]*/
@@ -61,7 +61,8 @@ void OdometryMotionModel2d::step(  Pose2d &s_k,
   Eigen::Matrix2d C_k_km_;  /* rotation matrix from odometry input */
  
   /* State at k-1 */
-  s_km.get(x_km_i_);
+  TimeStamp t_km;
+  s_km.get(x_km_i_, t_km);
   p_km_i_ = x_km_i_.head(2);
   theta_km_ = x_km_i_(2);
   double ct = cos(theta_km_);
@@ -69,8 +70,7 @@ void OdometryMotionModel2d::step(  Pose2d &s_k,
   C_km_i_ << ct, st, -st, ct;
 
   /* Odometry */
-  double t;
-  input_k.get(u_k_km_, t);
+  input_k.get(u_k_km_);
   dp_k_km_ = u_k_km_.head(2);
   dtheta_k_km_ = u_k_km_(2);
   ct = cos(dtheta_k_km_);
@@ -82,10 +82,11 @@ void OdometryMotionModel2d::step(  Pose2d &s_k,
   C_k_i_ = C_k_km_ * C_km_i_;
 
   /* Write state at k */
+  TimeStamp t_k = t_km + dT;
   theta_k_ = atan2( C_k_i_(0, 1), C_k_i_(0, 0) );
   x_k_i_.head(2) = p_k_i_;
   x_k_i_(2) = theta_k_;
-  s_k.set(x_k_i_);
+  s_k.set(x_k_i_, t_k);
 }
 
 
@@ -94,7 +95,7 @@ void OdometryMotionModel2d::step(  Pose2d &s_k,
 OdometryMotionModel1d::OdometryMotionModel1d( Pose1d::Mat &Q ) : ProcessModel(Q) {}
 
 void OdometryMotionModel1d::step ( Pose1d &s_k, Pose1d &s_km, Odometry1d &input_k, 
-				   double const dT){
+				   TimeStamp const &dT){
 
   Pose1d::Vec x_km_; /**< position at k-1 */
   Pose1d::Vec x_k_;  /**< position at k */

@@ -200,7 +200,7 @@ correct(const TPose &pose, const TMeasurement &measurement,
   if(!pMeasurementModel_->measure( pose , landmark_current , measurement_exp , &H))
     return false; // invalid expected measurement produced
   
-  double t; 
+  TimeStamp t; 
   measurement.get(z_act, t);
   measurement_exp.get(z_exp, S);
 

@@ -28,55 +28,36 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "Pose.hpp"
+#include "TimeStamp.hpp"
+#include <math.h>
 
-/********** Implementation of 1d vechile position state ***********/
-
-Pose1d::Pose1d(){}
-
-Pose1d::Pose1d(double x, double Sx, TimeStamp &t){
-  Vec state;
-  Mat cov;
-  state << x;
-  cov << Sx;
-  set(state, cov, t);
+TimeStamp::TimeStamp(){
+  sec = 0;
+  nsec = 0;
 }
 
-Pose1d::Pose1d(Eigen::Matrix<double, 1, 1> &x, Eigen::Matrix<double, 1, 1> &Sx, TimeStamp &t):
-  RandomVec< Eigen::Matrix<double, 1, 1>, Eigen::Matrix<double, 1, 1> >(x, Sx, t){}
-
-Pose1d::Pose1d(double x, TimeStamp &t){
-  Vec state;
-  state << x;
-  set(state, t);
+TimeStamp::TimeStamp(int32_t s, int32_t ns) : sec(s), nsec(ns){
+  normalize();
 }
 
-Pose1d::Pose1d(Eigen::Matrix<double, 1, 1> &x, TimeStamp &t):
-  RandomVec< Eigen::Matrix<double, 1, 1>, Eigen::Matrix<double, 1, 1> >(x, t){}
-
-
-/********** Implementation of 2d vehicle pose state **********/
-
-Pose2d::Pose2d(){}
-
-Pose2d::Pose2d(Vec &x, Mat &Sx, TimeStamp &t) :
-  RandomVec< Eigen::Vector3d, Eigen::Matrix3d >(x, Sx, t){}
-
-Pose2d::Pose2d(Vec &x, TimeStamp &t) : 
-  RandomVec< Eigen::Vector3d, Eigen::Matrix3d >(x, t){}
-
-Pose2d::Pose2d( double x, double y, double theta, 
-		double var_x, double var_y, double var_theta,
-		TimeStamp &t ){
-  Vec state;
-  state << x, y, theta;
-  Mat cov;
-  cov << 
-    var_x, 0, 0,
-    0, var_y, 0,
-    0, 0, var_x;
-  set(state, cov, t);
+TimeStamp::TimeStamp(double t){
+  setTime(t);
 }
 
-Pose2d::~Pose2d(){}
+TimeStamp::~TimeStamp(){}
+
+double TimeStamp::getTimeAsDouble() const{
+  
+  return ( (double)sec + (double)nsec * 1e-9 );
+}
+
+void TimeStamp::setTime(double const t){
+  
+  double intPart, fracPart;
+  fracPart = modf(t, &intPart);
+  sec = (int32_t)intPart;
+  nsec = (int32_t)(fracPart * 1000000000);
+  normalize();
+
+}
 

@@ -121,9 +121,13 @@ public:
   /** 
    * Propagate particles using the process model
    * \param[in] input to the process model
-   * \param[in] dt time-step of input (not used by all process models)
+   * \param[in] dT time-step of input 
+   * \param[in] useModelNoise use the additive noise for the process model
+   * \param[in] useInputNoise use the noise fn the input
    */
-  void propagate( TInput &input, double const dt = 0);
+  void propagate( TInput &input, TimeStamp const &dT, 
+		  bool useModelNoise = true,
+		  bool useInputNoise = false);
 
   /**
    * Calculate and update importance weights for all particles;
@@ -224,11 +228,13 @@ addParticles(int n, TPose* initState, double initWeight){
   nParticles_ += n;
   particleSet_.reserve(nParticles_);
  
+  TimeStamp t0;
+
   bool noInitState = true; 
   if(initState == NULL){
     typename TPose::Vec x0;
     x0.setZero();  
-    initState = new TPose(x0, 0);
+    initState = new TPose(x0, t0);
   }else{
     noInitState = false;
   }
@@ -300,11 +306,13 @@ void ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::setMeasu
 
 template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
 void ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::propagate( TInput &input, 
-								double const dt){
+										   TimeStamp const &dT,
+										   bool useModelNoise,
+										   bool useInputNoise){
   TPose x_km, x_k;
   for( int i = 0 ; i < nParticles_ ; i++ ){
     particleSet_[i]->getPose( x_km );
-    pProcessModel_->sample( x_k, x_km, input, dt);
+    pProcessModel_->sample( x_k, x_km, input, dT, useModelNoise, useInputNoise);
     particleSet_[i]->setPose( x_k );
   } 
 }

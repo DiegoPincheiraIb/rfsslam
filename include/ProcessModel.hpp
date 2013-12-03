@@ -95,7 +95,7 @@ public:
    * \param[in] dT size of time-step
    */
   virtual void step( StateType &s_k, StateType &s_km, 
-		     InputType &input_k , double const dT = 0 ) = 0;		     
+		     InputType &input_k , TimeStamp const &dT) = 0;		     
 
   /**
    * Sample the process noise to predict the pose at k from k-1
@@ -105,7 +105,8 @@ public:
    * are valid (i.e., semi-positive definite)
    * \param[out] s_k \f$\mathbf{x}_k\f$ sampled pose at current time-step k. This can be the same object as s_km (to update in place). 
    * \param[in] s_km \f$\mathbf{x}_{k-1}\f$ pose at previous time-step k-1
-   * \param[in] input_k \f$\mathbf{u}_k\f$ input to process model
+   * \param[in] input_k \f$\mathbf{u}_k\f$ input to process model. If using useInputWhiteGaussianNoise, the assoicated noise needs 
+   * to be manually set according to dT.
    * \param[in] dT size of time-step
    * \param[in] useAdditiveWhiteGaussianNoise if true, the output includes 
    * the zero-mean additive white Gaussian noise specified for this ProcessModel
@@ -114,16 +115,14 @@ public:
    * Gaussian noise.
    */
   virtual void sample( StateType &s_k, StateType &s_km, 
-		       InputType &input_k, double const dT = 0,
+		       InputType &input_k, TimeStamp const &dT,
 		       bool useAdditiveWhiteGaussianNoise = true,
 		       bool useInputWhiteGaussianNoise = false ){
     
     if(useInputWhiteGaussianNoise){
 
       InputType in;
-      input_k.sample(in);
-      //RandomVecMathTools<InputType>::sample(input_k, in);
-
+      input_k.sample(in); // noise of in needs to be defined according to dT outside this function
       step( s_k, s_km, in, dT );
 
     }else{
@@ -134,10 +133,7 @@ public:
     
     if( useAdditiveWhiteGaussianNoise && Q_ != StateType::Mat::Zero() ){
 
-      //typename StateType::Vec x_k;
-      //double t;
       s_k.setCov(Q_);
-      //RandomVecMathTools<StateType>::sample(x_k, Q_, L_, t, s_k);
       s_k.sample();
     }
   }
@@ -146,9 +142,6 @@ protected:
   
   /** Covariance matrix for zero mean white Gaussian noise */
   typename StateType::Mat Q_;
-
-  /** Lower triangular part of Cholesky decomposition on S_zmgn */
-  //typename StateType::Mat L_;
 
   /** Flag to indicate if Q_ has been assigned a value */
   bool inputNoiseDefined_;
@@ -189,16 +182,15 @@ public:
    * \param[in] dT size of time-step
    */
   void step( StateType &s_k, StateType &s_km, 
-	     NullInput &input_k , double const dT = 1 ){
+	     NullInput &input_k , TimeStamp const &dT){
     
     if( this->inputNoiseDefined_ ){
       typename StateType::Vec x;
       typename StateType::Mat S;
-      double t;
-      s_km.get(x, S, t);
-      S += (this->Q_ * dT * dT);
-      t += dT;
-      s_k.set(x, S, t);
+      s_km.get(x, S, t_);
+      S += (this->Q_);
+      t_ += dT;
+      s_k.set(x, S, t_);
     }else{
       s_k = s_km;
     }
@@ -210,10 +202,14 @@ public:
    * \param[in] s_km State at previous time-step k-1
    * \param[in] dT size of time-step
    */		     
-  void staticStep( StateType &s_k, StateType &s_km, double const dT = 1){
+  void staticStep( StateType &s_k, StateType &s_km, TimeStamp const &dT){
     NullInput input;
     step(s_k , s_km , input , dT);
   }
+
+private:
+
+  TimeStamp t_; 
 
 };
 
@@ -289,10 +285,10 @@ public:
    * \param[out] s_k pose at current time-step k
    * \param[in] s_km pose at previous time-step k-1
    * \param[in] input_k input to process model
-   * \param[in] dT size of time-step (not used)
+   * \param[in] dT size of time-step
    */
   void step( Pose2d &s_k, Pose2d &s_km, Odometry2d &input_k, 
-	     double const dT=0);
+	     TimeStamp const &dT);
   
 };
 
@@ -336,7 +332,7 @@ public:
    * \param[in] dT size of time-step (not used)
    */
   void step( Pose1d &s_k, Pose1d &s_km, Odometry1d &input_k, 
-	     double const dT=0);
+	     TimeStamp const &dT);
 
 };
 

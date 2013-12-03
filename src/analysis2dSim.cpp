@@ -100,18 +100,18 @@ public:
   }
 
   /** Read data for the next timestep 
-   * \return timestep for which data was read
+   * \return time for which data was read
    */
   int readNextStepData(){
 
     if( fscanf(pGTPoseFile, "%lf %lf %lf %lf\n", &k_, &rx_, &ry_, &rz_ ) == 4 ){ 
       //printf("%f %f %f %f\n", k_, rx_, ry_, rz_);
 
-      int k = -1;
+      double k = -1;
       int nParticles = -1;
-      int n1 = fscanf(pParticlePoseFile, "k = %d\n", &k);
+      int n1 = fscanf(pParticlePoseFile, "k = %lf\n", &k);
       int n2 = fscanf(pParticlePoseFile, "nParticles = %d\n", &nParticles);
-      printf("k = %d, n = %d\n", k, nParticles);
+      printf("k = %f, n = %d\n", k, nParticles);
 
       particles_.clear();
       particles_.reserve(nParticles);
@@ -131,12 +131,15 @@ public:
 	  w_hi = w;
 	}
 
-	Pose2d p(x, y, z);
+	Pose2d p;
+	p[0] = x;
+	p[1] = y;
+	p[2] = z;
 	particles_.push_back( Particle<Pose2d, GaussianMixture<Landmark2d> > (i, p, w)); // add GM to template
 	particles_[i].setData(new GaussianMixture<Landmark2d>);
 
 	int nP, nM;
-	int n3 = fscanf(pLandmarkEstFile, "Timestep: %d   Particle: %d   Map Size: %d\n", &k, &nP, &nM);
+	int n3 = fscanf(pLandmarkEstFile, "Timestep: %lf   Particle: %d   Map Size: %d\n", &k, &nP, &nM);
 	int m = 0;
 	while( fscanf(pLandmarkEstFile, "%lf %lf %lf %lf %lf %lf %lf\n", &x, &y, &sxx, &sxy, &syx, &syy, &w) == 7){
 	  //printf("(%d) %f %f %f %f %f %f %f\n", m, x, y, sxx, sxy, syx, syy, w);
@@ -465,23 +468,24 @@ int main(int argc, char* argv[]){
 
   LogFileReader2dSim reader(logDir);
 
-  int k = 0;
-  while( reader.readNextStepData() != -1){
+  double k = reader.readNextStepData();
+  while( k != -1){
     
     double ex, ey, er, ed;
     reader.calcPoseError( ex, ey, er, ed, false );
-    fprintf(pPoseEstErrorFile, "%d   %f   %f   %f   %f\n", k, ex, ey, er, ed);
+    fprintf(pPoseEstErrorFile, "%f   %f   %f   %f   %f\n", k, ex, ey, er, ed);
 
     printf("   error x: %f   error y: %f   error rot: %f   error dist: %f\n", ex, ey, er, ed);
 
     int nLandmarksObserved;
     double cardEst = reader.getCardinalityEst( nLandmarksObserved );
     double ospaError = reader.calcLandmarkError( false );
-    fprintf(pMapEstErrorFile, "%d   %d   %f   %f\n", k, nLandmarksObserved, cardEst, ospaError);
+    fprintf(pMapEstErrorFile, "%f   %d   %f   %f\n", k, nLandmarksObserved, cardEst, ospaError);
  
     printf("   nLandmarks: %d   nLandmarks estimated: %f   OSPA error: %f\n", nLandmarksObserved, cardEst, ospaError);
     printf("--------------------\n");
-    k++;
+    
+    k = reader.readNextStepData();
   }
   fclose(pPoseEstErrorFile);
   fclose(pMapEstErrorFile);

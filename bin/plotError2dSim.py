@@ -76,42 +76,42 @@ errorOSPA = mapEst[:,3];
 
 # Generate plots
 plt.figure(1);
-p1, = plt.plot(poseTimesteps, poseErr_x, 'r-');
-p2, = plt.plot(poseTimesteps, poseErr_y, 'b-');
+p1, = plt.plot(poseTimesteps[::10], poseErr_x[::10], 'r-');
+p2, = plt.plot(poseTimesteps[::10], poseErr_y[::10], 'b-');
 plt.legend([p1, p2], ["x", "y"], loc=4);
 plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
-plt.xlabel('Timestep');
+plt.xlabel('Time [s]');
 plt.ylabel('Position error [m]');
 plt.grid(True);
 plt.ylim(-0.3, 0.3);
 
 plt.figure(2);
-plt.plot(poseTimesteps, poseErr_r, 'r-');
-plt.xlabel('Timestep');
+plt.plot(poseTimesteps[::10], poseErr_r[::10], 'r-');
+plt.xlabel('Time [s]');
 plt.ylabel('Rotation error [deg]');
 plt.grid(True);
 plt.ylim(-10, 10);
 
 plt.figure(3);
-plt.plot(poseTimesteps, poseErr_d, 'r-');
-plt.xlabel('Timestep');
+plt.plot(poseTimesteps[::10], poseErr_d[::10], 'r-');
+plt.xlabel('Time [s]');
 plt.ylabel('Position error [m]');
 plt.grid(True);
 plt.ylim(ymax = 0.3);
 
 plt.figure(4);
-plt.plot(mapTimesteps, errorOSPA, 'r-');
-plt.xlabel('Timestep');
+plt.plot(mapTimesteps[::10], errorOSPA[::10], 'r-');
+plt.xlabel('Time [s]');
 plt.ylabel('OSPA error');
 plt.grid(True);
 plt.ylim(ymax = 3);
 
 plt.figure(5);
-p1, = plt.plot(mapTimesteps, landmarksMeasured, 'k-', linewidth=3.0);
-p2, = plt.plot(mapTimesteps, landmarksEstimated, 'r-');
+p1, = plt.plot(mapTimesteps[::10], landmarksMeasured[::10], 'k-', linewidth=3.0);
+p2, = plt.plot(mapTimesteps[::10], landmarksEstimated[::10], 'r-');
 plt.legend([p1, p2], ["Actual", "Estimated"], loc=4);
 plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
-plt.xlabel('Timestep');
+plt.xlabel('Time [s]');
 plt.ylabel('Number of landmarks observed');
 plt.grid(True);
 plt.ylim(ymax = 70);

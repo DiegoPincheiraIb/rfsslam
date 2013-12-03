@@ -28,13 +28,13 @@ disp('Opening landmark estimate file');
 fid_lmEst = fopen(strcat(logDir, 'landmarkEst.dat'));
 
 gt_pose = fscanf(fid_gtPose, '%f %f %f %f\n', [4, inf]);
-gt_lmk = fscanf(fid_gtLmk, '%f %f %d\n', [3, inf]);
+gt_lmk = fscanf(fid_gtLmk, '%f %f %f\n', [3, inf]);
 dr_pose = fscanf(fid_dr, '%f %f %f %f\n', [4, inf]);
 z_k = textscan(fid_meas, '%f %f %f', 1);  
 
-kMax = textscan(fid_pEst, 'Timesteps: %d');
+kMax = textscan(fid_pEst, 'Timesteps: %f');
 %nParticles = textscan(fid_pEst, 'nParticles: %d\n');
-kMax = textscan(fid_lmEst, 'Timesteps: %d');
+kMax = textscan(fid_lmEst, 'Timesteps: %f');
 nParticles = textscan(fid_lmEst, 'nParticles: %d\n');
 %odom = fscanf(fid_odo, '%f %f %f %f\n', [4, inf]);
 %meas = fscanf(fid_meas, '%f %f %f\n', [3, inf]);
@@ -76,6 +76,7 @@ for k = 1:kMax{1} % actual time index starts at 0
         delete( h_particlePos );
     end
     delete(findobj('Color',[0.4, 0.4, 1]))
+    delete(findobj('Color','g'))
     delete(findobj('LineWidth',1.1))
     delete( h_time )
     
@@ -88,7 +89,7 @@ for k = 1:kMax{1} % actual time index starts at 0
     h_robotHdg = line([x x+0.5*cos(z)], [y y+0.5*sin(z)], 'Color', 'k');
     
     %Plot measurements
-    while(z_k{1} == k-1)
+    while(abs(z_k{1} - (k-1)*0.1) < 1e-10)
         r = z_k{2};
         b = z_k{3};
         mx = x + r*cos(b + z);
@@ -102,7 +103,7 @@ for k = 1:kMax{1} % actual time index starts at 0
     %dr_y = dr_pose(3,k);
     %dr_z = dr_pose(4,k);
     %h_drPos = plot(dr_x, dr_y, 'go', 'MarkerSize', 5, 'MarkerFaceColor', 'g');
-    %h_drHdg = line([dr_x dr_x+0.5*cos(dr_z)], [dr_y dr_y+0.5*sin(dr_z)], 'Color', 'k');
+    %h_drHdg = line([dr_x dr_x+0.5*cos(dr_z)], [dr_y dr_y+0.5*sin(dr_z)], 'Color', 'g');
     
     %Plot particle pose
     nParticles = textscan(fid_pEst, 'nParticles = %d\n');

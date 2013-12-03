@@ -135,17 +135,20 @@ public:
    * Predict the robot trajectory using the lastest odometry data
    * \param[in] u input 
    * \param[in] currentTimestep current timestep (no longer used);
+   * \param[in] useModelNoise use the additive noise for the process model
+   * \param[in] useInputNoise use the noise fn the input
    */
-  void predict( TInput u, int currentTimestep = 0);
+  void predict( TInput u, TimeStamp const &dT,
+		bool useModelNoise = true,
+		bool useInputNoise = false);
 
   /**
    * Update the map, calculate importance weighting, sample if necessary, and
    * create new birth Gaussians.
    * \param[in] Z set of measurements to use for the update, placed in a std vector, which
-   * gets cleared after the function call. 
-   * \param[in] currentTimestep current timestep (no longer used);
+   * gets cleared after the function call.
    */
-  void update( std::vector<TMeasurement> &Z, int currentTimestep = 0);
+  void update( std::vector<TMeasurement> &Z);
 
   /**
    * Get the size of the Gaussian mixture for a particle
@@ -287,7 +290,9 @@ LmkProcessModel* RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementMod
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::predict( TInput u,
-												 int currentTimestep){
+												 TimeStamp const &dT,
+												 bool useModelNoise,
+												 bool useInputNoise){
 
   boost::timer::auto_cpu_timer *timer = NULL;
   if(config.reportTimingInfo_)
@@ -298,14 +303,14 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   addBirthGaussians();
 
   // propagate particles
-  this->propagate(u);
+  this->propagate(u, dT);
 
   // propagate landmarks
   for( int i = 0; i < this->nParticles_; i++ ){
     for( int m = 0; m < this->particleSet_[i]->getData()->getGaussianCount(); m++){
       TLandmark *plm;
       this->particleSet_[i]->getData()->getGaussian(m, plm);
-      lmkModelPtr_->staticStep(*plm, *plm);
+      lmkModelPtr_->staticStep(*plm, *plm, dT);
     }
   }
 
@@ -314,8 +319,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z,
-												int currentTimestep){
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z){
 
   boost::timer::auto_cpu_timer *timer_mapUpdate = NULL;
   boost::timer::auto_cpu_timer *timer_particleWeighting = NULL;

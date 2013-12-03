@@ -76,6 +76,7 @@ public:
     }
     kMax_ = cfg_.lookup("timesteps");
     dT_ = cfg_.lookup("sec_per_timestep");
+    dTimeStamp_ = TimeStamp(dT_);
     
     nSegments_ = cfg_.lookup("Trajectory.nSegments");
     max_dx_ = cfg_.lookup("Trajectory.max_dx_per_sec");
@@ -126,20 +127,22 @@ public:
     printf("Generating trajectory with random seed = %d\n", randSeed);
     srand48( randSeed);
 
+    TimeStamp t;
     int seg = 0;
     OdometryMotionModel2d::TState::Mat Q;
     Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
-    Q = dT_ * Q * dT_;
     OdometryMotionModel2d motionModel(Q);
-    OdometryMotionModel2d::TInput input_k(0, 0, 0, 0, 0, 0, 0);
-    OdometryMotionModel2d::TState pose_k(0, 0, 0, 0, 0, 0, 0);
-    OdometryMotionModel2d::TState pose_km(0, 0, 0, 0, 0, 0, 0);
+    OdometryMotionModel2d::TInput input_k(0, 0, 0, 0, 0, 0, t);
+    OdometryMotionModel2d::TState pose_k(0, 0, 0, 0, 0, 0, t);
+    OdometryMotionModel2d::TState pose_km(0, 0, 0, 0, 0, 0, t);
     groundtruth_displacement_.reserve( kMax_ );
     groundtruth_pose_.reserve( kMax_ );
     groundtruth_displacement_.push_back(input_k);
     groundtruth_pose_.push_back(pose_k);
 
     for( int k = 1; k < kMax_; k++ ){
+
+      t += dTimeStamp_;
 
       if( k <= 50 ){
 	double dx = 0;
@@ -160,12 +163,12 @@ public:
       }
 
       groundtruth_displacement_.push_back(input_k);
-      groundtruth_displacement_.back().setTime(k);
+      groundtruth_displacement_.back().setTime(t);
 
       OdometryMotionModel2d::TState x_k;
-      motionModel.step(x_k, groundtruth_pose_[k-1], input_k);
+      motionModel.step(x_k, groundtruth_pose_[k-1], input_k, dTimeStamp_);
       groundtruth_pose_.push_back( x_k );
-      groundtruth_pose_.back().setTime(k);
+      groundtruth_pose_.back().setTime(t);
 
     }
 
@@ -181,25 +184,30 @@ public:
     zero.set(u0, 0);
     odometry_.push_back( zero );
 
-
     OdometryMotionModel2d::TState::Mat Q;
     Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
     OdometryMotionModel2d motionModel(Q);
     deadReckoning_pose_.reserve( kMax_ );
     deadReckoning_pose_.push_back( groundtruth_pose_[0] );
 
+    TimeStamp t;
+
     for( int k = 1; k < kMax_; k++){
       
+      t += dTimeStamp_;
+      double dt = dTimeStamp_.getTimeAsDouble();
+
       OdometryMotionModel2d::TInput in = groundtruth_displacement_[k];
-      in.setCov(Q);
+      OdometryMotionModel2d::TState::Mat Qk = Q * dt * dt;
+      in.setCov(Qk);
       OdometryMotionModel2d::TInput out;
-      RandomVecMathTools<OdometryMotionModel2d::TInput>::sample(in, out);
+      in.sample(out);
       
       odometry_.push_back( out );
 
       OdometryMotionModel2d::TState p;
-      motionModel.step(p, deadReckoning_pose_[k-1], odometry_[k]);
-      p.setTime(k);
+      motionModel.step(p, deadReckoning_pose_[k-1], odometry_[k], dTimeStamp_);
+      p.setTime(t);
       deadReckoning_pose_.push_back( p );
     }
 
@@ -272,8 +280,12 @@ public:
       lmkFirstObsTime_[m] = -1;
     }
 
+    TimeStamp t;
+
     for( int k = 1; k < kMax_; k++ ){
       
+      t += dTimeStamp_;
+
       groundtruth_pose_[k];
       
       // Real detections
@@ -287,13 +299,13 @@ public:
 	if(success){
    
 	  if(z_m_k.get(0) <= rangeLimitMax_ && z_m_k.get(0) >= rangeLimitMin_ && drand48() <= Pd_){
-	    z_m_k.setTime(k);
+	    z_m_k.setTime(t);
 	    z_m_k.setCov(R);
 	    measurements_.push_back( z_m_k );
 	  }
 
 	  if(lmkFirstObsTime_[m] == -1){
-	    lmkFirstObsTime_[m] = k;
+	    lmkFirstObsTime_[m] = t.getTimeAsDouble();
 	  }
 	}
 
@@ -314,7 +326,7 @@ public:
 	RangeBearingModel::TMeasurement z_clutter;
 	RangeBearingModel::TMeasurement::Vec z;
 	z << r, b;
-	z_clutter.set(z, k);
+	z_clutter.set(z, t);
 	measurements_.push_back(z_clutter);
 	
       }
@@ -338,7 +350,7 @@ public:
     boost::filesystem::path cfgFilePathDst( cfgFileDst.data() );
     boost::filesystem::copy_file( cfgFilePathSrc, cfgFilePathDst, boost::filesystem::copy_option::overwrite_if_exists);
 
-    double t;
+    TimeStamp t;
 
     FILE* pGTPoseFile;
     std::string filenameGTPose( logDirPrefix_ );
@@ -347,7 +359,7 @@ public:
     OdometryMotionModel2d::TState::Vec x;
     for(int i = 0; i < groundtruth_pose_.size(); i++){
       groundtruth_pose_[i].get(x, t);
-      fprintf( pGTPoseFile, "%f   %f   %f   %f\n", t, x(0), x(1), x(2));
+      fprintf( pGTPoseFile, "%f   %f   %f   %f\n", t.getTimeAsDouble(), x(0), x(1), x(2));
     }
     fclose(pGTPoseFile);
 
@@ -358,7 +370,7 @@ public:
     RangeBearingModel::TLandmark::Vec m;
     for(int i = 0; i < groundtruth_landmark_.size(); i++){
       groundtruth_landmark_[i].get(m);
-      fprintf( pGTLandmarkFile, "%f   %f   %d\n", m(0), m(1), lmkFirstObsTime_[i]);
+      fprintf( pGTLandmarkFile, "%f   %f   %f\n", m(0), m(1), lmkFirstObsTime_[i]);
     }
     fclose(pGTLandmarkFile);
 
@@ -369,7 +381,7 @@ public:
     OdometryMotionModel2d::TInput::Vec u;
     for(int i = 0; i < odometry_.size(); i++){
       odometry_[i].get(u, t);
-      fprintf( pOdomFile, "%f   %f   %f   %f\n", t, u(0), u(1), u(2));
+      fprintf( pOdomFile, "%f   %f   %f   %f\n", t.getTimeAsDouble(), u(0), u(1), u(2));
     }
     fclose(pOdomFile);
 
@@ -380,7 +392,7 @@ public:
     RangeBearingModel::TMeasurement::Vec z;
     for(int i = 0; i < measurements_.size(); i++){
       measurements_[i].get(z, t);
-      fprintf( pMeasurementFile, "%f   %f   %f\n", t, z(0), z(1) );
+      fprintf( pMeasurementFile, "%f   %f   %f\n", t.getTimeAsDouble(), z(0), z(1) );
     }
     fclose(pMeasurementFile);
 
@@ -391,7 +403,7 @@ public:
     OdometryMotionModel2d::TState::Vec odo;
     for(int i = 0; i < deadReckoning_pose_.size(); i++){
       deadReckoning_pose_[i].get(odo, t);
-      fprintf( pDeadReckoningFile, "%f   %f   %f   %f\n", t, odo(0), odo(1), odo(2));
+      fprintf( pDeadReckoningFile, "%f   %f   %f   %f\n", t.getTimeAsDouble(), odo(0), odo(1), odo(2));
     }
     fclose(pDeadReckoningFile);
 
@@ -405,16 +417,19 @@ public:
 			       RangeBearingModel,
 			       RangeBearingKalmanFilter>( nParticles_ );
 
-    // configure robot motion model
+    double dt = dTimeStamp_.getTimeAsDouble();
+
+    // configure robot motion model (only need to set once since timesteps are constant)
     OdometryMotionModel2d::TState::Mat Q;
     Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
-    Q *= pNoiseInflation_;
+    Q *= (pNoiseInflation_ * dt * dt);
     pFilter_->getProcessModel()->setNoise(Q);
 
-    // configure landmark process model
+    // configure landmark process model (only need to set once since timesteps are constant)
     Landmark2d::Mat Q_lm;
     Q_lm << varlmx_, 0, 0, varlmy_;
-    pFilter_->getLmkProcessModel()->setNoise(Q_lm);
+    Q_lm = Q_lm * dt * dt;
+    pFilter_->getLmkProcessModel()->setNoise(Q_lm); 
 
     // configure measurement model
     RangeBearingModel::TMeasurement::Mat R;
@@ -470,7 +485,7 @@ public:
     int zIdx = 0;
 
     if(logToFile_){
-      fprintf( pParticlePoseFile, "k = 0\n");
+      fprintf( pParticlePoseFile, "k = 0.0\n");
       fprintf( pParticlePoseFile, "nParticles = %d\n", pFilter_->getParticleCount() );
       for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	pFilter_->getParticleSet()->at(i)->getPose(x_i);
@@ -488,7 +503,11 @@ public:
     }
     /////////// Run simulator from k = 1 to kMax_ /////////
 
+    TimeStamp time;
+
     for(int k = 1; k < kMax_; k++){
+
+      time += dTimeStamp_;
 
       if(reportTimingInfo_){
 	stepTimer = new boost::timer::auto_cpu_timer(6, "Step time: %ws\n");
@@ -498,11 +517,24 @@ public:
 	printf("k = %d\n", k);
       
       if(logToFile_){
-	fprintf( pParticlePoseFile, "k = %d\n", k);
+	fprintf( pParticlePoseFile, "k = %f\n", time.getTimeAsDouble());
       }
       
       ////////// Prediction Step //////////
-      pFilter_->predict( odometry_[k], k );
+
+      // configure robot motion model ( not necessary since in simulation, timesteps are constant)
+      // OdometryMotionModel2d::TState::Mat Q;
+      // Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
+      // Q *= (pNoiseInflation_ * dt * dt);
+      // pFilter_->getProcessModel()->setNoise(Q);
+
+      // configure landmark process model ( not necessary since in simulation, timesteps are constant)
+      // Landmark2d::Mat Q_lm;
+      // Q_lm << varlmx_, 0, 0, varlmy_;
+      // Q_lm = Q_lm * dt * dt;
+      // pFilter_->getLmkProcessModel()->setNoise(Q_lm);
+
+      pFilter_->predict( odometry_[k], dTimeStamp_ );
       
       if( k <= 100){
 	for( int i = 0; i < nParticles_; i++)
@@ -511,8 +543,8 @@ public:
 
       // Prepare measurement vector for update
       std::vector<RangeBearingModel::TMeasurement> Z;
-      double kz = measurements_[ zIdx ].getTime();
-      while( kz == k ){
+      TimeStamp kz = measurements_[ zIdx ].getTime();
+      while( kz == time ){ 
 	Z.push_back( measurements_[zIdx] );
 	zIdx++;
 	if(zIdx >= measurements_.size())
@@ -521,7 +553,7 @@ public:
       }
 
       ////////// Update Step //////////
-      pFilter_->update(Z, k);
+      pFilter_->update(Z);
 
       // Log particle poses
       if(logToFile_){
@@ -538,7 +570,7 @@ public:
       if(logToFile_){
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	  int mapSize = pFilter_->getGMSize(i);
-	  fprintf( pLandmarkEstFile, "Timestep: %d\tParticle: %d\tMap Size: %d\n", k, i, mapSize);
+	  fprintf( pLandmarkEstFile, "Timestep: %f\tParticle: %d\tMap Size: %d\n", time.getTimeAsDouble(), i, mapSize);
 	  for( int m = 0; m < mapSize; m++ ){
 	    RangeBearingModel::TLandmark::Vec u;
 	    RangeBearingModel::TLandmark::Mat S;
@@ -579,7 +611,8 @@ private:
   const char* cfgFileName_;
 
   int kMax_; /**< number of timesteps */
-  double dT_;
+  double dT_; /**< duration of timestep in seconds */
+  TimeStamp dTimeStamp_; /**< duration of timestep in timestamp */
 
   // Trajectory
   int nSegments_;
@@ -600,7 +633,7 @@ private:
   std::vector<RangeBearingModel::TLandmark> groundtruth_landmark_;
   double varlmx_;
   double varlmy_;
-  std::vector<int> lmkFirstObsTime_;
+  std::vector<double> lmkFirstObsTime_;
 
   // Range-Bearing Measurements
   double rangeLimitMax_;
