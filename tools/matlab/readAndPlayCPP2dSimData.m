@@ -9,8 +9,8 @@ clear all
 close all
 
 %logDir = '../../data/rbphdslam/';
-%logDir = '../../data/fastslam/';
-logDir = '../../data/mhfastslam/';
+logDir = '../../data/fastslam/';
+%logDir = '../../data/mhfastslam/';
 
 disp('Opening ground-truth pose file');
 fid_gtPose = fopen(strcat(logDir, 'gtPose.dat'));

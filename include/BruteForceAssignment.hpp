@@ -1,7 +1,7 @@
 /*
  * Software License Agreement (New BSD License)
  *
- * Copyright (c) 2013, Keith Leung, Felipe Inostroza
+ * Copyright (c) 2013, Keith Leung
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -28,11 +28,60 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LINEAR_ASSIGNMENT
-#define LINEAR_ASSIGNMENT
+#ifndef LINEAR_ASSIGNMENT_HPP
+#define LINEAR_ASSIGNMENT_HPP
 
-#include "BruteForceAssignment.hpp"
-#include "HungarianMethod.hpp"
-#include "MurtyAlgorithm.hpp"
+#include <queue>
+
+/**
+ * \class BruteForceLinearAssignment
+ * This function finds all the linear assignments and orders them from best to worst.
+ * It is intended for testing and checking the Hungarian method and Murty's k-best algorithm.
+ * \brief Brute-force linear assignment 
+ */
+class BruteForceLinearAssignment
+{
+
+public:
+
+  /** Constructor */
+  BruteForceLinearAssignment();
+
+  /** Destructor */
+  ~BruteForceLinearAssignment();
+  
+  /**
+   *  Run brute-force linear assignment by finding the cost of all possible linear assignments
+   *  in a lexicographical order, and then returning the results in an ordered format with 
+   *  respect to the cost / score.
+   *  \param[in] C square cost / score matrix
+   *  \param[in] n dimension of C
+   *  \param[out] a ordered assignments a[k][n], where k is the assignment order
+   *  \param[out] s ordered assignment scores
+   *  \param[in] maxToMin ordering of results
+   *  \return number of assignments
+   */
+  unsigned int run(double** C, int n, int** &a, double* &s, bool maxToMin = true);
+
+private:
+
+  /** \brief A linear assignment */
+  struct assignment{
+    int* a;
+    double score;
+    
+    bool operator<(const assignment& rhs) const{
+      if(score < rhs.score)
+	return true;
+      return false;
+    }
+
+  };
+
+  std::priority_queue<assignment> pq;
+  unsigned int nAssignments;
+  int** a_;
+  double* s_;
+};
 
 #endif
