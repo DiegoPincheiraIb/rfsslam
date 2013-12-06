@@ -76,7 +76,7 @@ void CostMatrix::reduce(double lim, bool minVal){
   for(int i = 0; i < n_; i++){
     for(int j = 0; j < n_; j++){
 
-      if( (C_[i][j] >= lim && minVal) || (C_[i][j] <= lim && !minVal) ){
+      if( (C_[i][j] >= lim && !minVal) || (C_[i][j] <= lim && minVal) ){ 
 	C_[i][j] = lim;
       }else{
 	nMatch_i[i]++;

@@ -61,7 +61,7 @@ int main(int argc, char* argv[]){
   int* i_remap;
   int* j_remap;
   CostMatrix CMat(C, n);
-  CMat.reduce(10, false);
+  CMat.reduce(10);
   int n1 = CMat.getCostMatrix(C_1);
   int n2 = CMat.getCostMatrixReduced(C_2, a1, &s1, i_remap, j_remap);
 
