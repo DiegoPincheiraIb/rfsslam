@@ -34,6 +34,14 @@ import sys
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
+#from matplotlib import rc
+#rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+## for Palatino and other serif fonts use:
+#rc('font',**{'family':'serif','serif':['Palatino']})
+#rc('text', usetex=True)
+
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
 
 if len(sys.argv) < 2:
     print "Usage: plotError2dSim DATA_DIR\n";
@@ -78,48 +86,64 @@ errorOSPA = mapEst[:,3];
 plt.figure(1);
 p1, = plt.plot(poseTimesteps[::10], poseErr_x[::10], 'r-');
 p2, = plt.plot(poseTimesteps[::10], poseErr_y[::10], 'b-');
-plt.legend([p1, p2], ["x", "y"], loc=4);
+plt.legend([p1, p2], [r"$x$", r"$y$"], loc=4);
 plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
-plt.xlabel('Time [s]');
-plt.ylabel('Position error [m]');
+plt.xlabel(r'Time [s]');
+plt.ylabel(r'Position error [m]');
 plt.grid(True);
 plt.ylim(-0.3, 0.3);
 
 plt.figure(2);
 plt.plot(poseTimesteps[::10], poseErr_r[::10], 'r-');
-plt.xlabel('Time [s]');
-plt.ylabel('Rotation error [deg]');
+plt.xlabel(r'Time [s]');
+plt.ylabel(r'Rotation error [deg]');
 plt.grid(True);
 plt.ylim(-10, 10);
 
 plt.figure(3);
 plt.plot(poseTimesteps[::10], poseErr_d[::10], 'r-');
-plt.xlabel('Time [s]');
-plt.ylabel('Position error [m]');
+plt.xlabel(r'Time [s]');
+plt.ylabel(r'Position error [m]');
 plt.grid(True);
 plt.ylim(ymax = 0.3);
 
 plt.figure(4);
 plt.plot(mapTimesteps[::10], errorOSPA[::10], 'r-');
-plt.xlabel('Time [s]');
-plt.ylabel('OSPA error');
+plt.xlabel(r'Time [s]');
+plt.ylabel(r'OSPA error');
 plt.grid(True);
 plt.ylim(ymax = 3);
 
 plt.figure(5);
 p1, = plt.plot(mapTimesteps[::10], landmarksMeasured[::10], 'k-', linewidth=3.0);
 p2, = plt.plot(mapTimesteps[::10], landmarksEstimated[::10], 'r-');
-plt.legend([p1, p2], ["Actual", "Estimated"], loc=4);
+plt.legend([p1, p2], [r"Actual", r"Estimated"], loc=4);
 plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
-plt.xlabel('Time [s]');
-plt.ylabel('Number of landmarks observed');
+plt.xlabel(r'Time [s]');
+plt.ylabel(r'Number of landmarks observed');
 plt.grid(True);
 plt.ylim(ymax = 70);
-#plt.show();
+
+fig, ax1 = plt.subplots()
+p1, = ax1.plot(poseTimesteps[::10], poseErr_x[::10], 'r-');
+p2, = ax1.plot(poseTimesteps[::10], poseErr_y[::10], 'b-');
+ax2 = ax1.twinx();
+p3, = ax2.plot(poseTimesteps[::10], poseErr_r[::10], 'g-')
+
+plt.legend([p1, p2, p3], [r"$x$", r"$y$", r"$\theta$"], loc=4);
+plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
+ax1.set_xlabel(r"Time [s]");
+ax1.set_ylabel(r"Position error [m]");
+ax2.set_ylabel(r"Orientation error [deg]");
+ax1.grid(True);
+ax1.set_ylim(-0.3, 0.3);
+ax2.set_ylim(-6, 6);
+#fig.show();
 
 # Save plots
 errorPosePosFile = dataDir + 'errorPosePos.pdf';
 errorPoseRotFile = dataDir + 'errorPoseRot.pdf';
+errorPoseFile = dataDir + 'errorPose.pdf';
 errorPoseDstFile = dataDir + 'errorPoseDst.pdf';
 errorOSPAFile = dataDir + 'errorOSPA.pdf';
 errorCardinalityFile = dataDir + 'errorCardinality.pdf';
@@ -138,5 +162,7 @@ plt.savefig(errorOSPAFile, format='pdf', bbox_inches='tight');
 plt.figure(5);
 print('Saving  ' + errorCardinalityFile); 
 plt.savefig(errorCardinalityFile, format='pdf', bbox_inches='tight');
-
+plt.figure(6);
+print('Saving  ' + errorPoseFile);
+plt.savefig(errorPoseFile, format='pdf', bbox_inches='tight');
 

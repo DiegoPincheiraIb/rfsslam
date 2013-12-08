@@ -356,8 +356,9 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     timer_mapMerge = new boost::timer::auto_cpu_timer(6, "Map merge time: %ws\n");
   }
   for( int i = 0; i < this->nParticles_; i++){ 
+
     this->particleSet_[i]->getData()->merge( config.gaussianMergingThreshold_, 
-		     config.gaussianMergingCovarianceInflationFactor_);    
+					     config.gaussianMergingCovarianceInflationFactor_);   
   } 
   if(timer_mapMerge != NULL)
     delete timer_mapMerge;
@@ -366,7 +367,9 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     timer_mapPrune = new boost::timer::auto_cpu_timer(6, "Map prune time: %ws\n");
   }
   for( int i = 0; i < this->nParticles_; i++){ 
+
     this->particleSet_[i]->getData()->prune( config.gaussianPruningThreshold_ );    
+
   }
   if(timer_mapPrune != NULL)
     delete timer_mapPrune;
@@ -447,7 +450,12 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       bool isCloseToSensingLimit;
       Pd[m] = this->pMeasurementModel_->probabilityOfDetection( *pose, *lm, 
 								isCloseToSensingLimit); 
-      landmarkCloseToSensingLimit[m] = ( isCloseToSensingLimit ) ? 1 : 0;
+      if(isCloseToSensingLimit){
+	landmarkCloseToSensingLimit[m] = 1;
+	Pd[m] = 1;
+      }else{
+	landmarkCloseToSensingLimit[m] = 0;
+      }
       double w_km = this->particleSet_[i]->getData()->getWeight(m);
       double Pd_times_w_km = Pd[m] * w_km;
 
@@ -506,7 +514,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       }
 
       for(unsigned int m = 0; m < nM; m++){
-	weightingTable[m][z] /= sum;
+	weightingTable[m][z] = weightingTable[m][z] / sum;
       }
     }
     if(config.useClusterProcess_){
@@ -514,13 +522,12 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       this->particleSet_[i]->setWeight( exp(w_km_sum) * likelihoodProd);
     }
 
-
     // ---------- 3. Add new Gaussians to map  ----------
     // New Gaussians will have indices >= nM 
     for(int m = 0; m < nM; m++){
       for(int z = 0; z < nZ; z++){
 	if(newLandmarkPointer[m][z] != NULL && weightingTable[m][z] > 0){
-	  this->particleSet_[i]->getData()->addGaussian( newLandmarkPointer[m][z], weightingTable[m][z]);  
+	  this->particleSet_[i]->getData()->addGaussian( newLandmarkPointer[m][z],  weightingTable[m][z]);  
 	}
       }
     }
@@ -540,6 +547,8 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	double delta_w = Pd[m] * w_km - weight_sum_m;
 	if( delta_w > 0 ){
 	  w_k += delta_w; // This is just a heuristic that works well
+	  if(w_k > 1)
+	    w_k = 1;
 	}
       }
 
