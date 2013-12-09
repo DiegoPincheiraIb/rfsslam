@@ -223,7 +223,7 @@ correct(const TPose &pose, const TMeasurement &measurement,
     innov.set(z_act, S);
     *zLikelihood = innov.evalGaussianLikelihood( z_exp, mahalanobisDist2 );   
     if(*zLikelihood != *zLikelihood) // When likelihood is so small that it becomes NAN
-      zLikelihood = 0;  
+      *zLikelihood = 0;  
   }
 
   return true;
