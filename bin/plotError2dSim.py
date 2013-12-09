@@ -3,7 +3,7 @@
  #
  # Software License Agreement (New BSD License)
  #
- # Copyright (c) 2013, Keith Leung, Felipe Inostroza
+ # Copyright (c) 2013, Keith Leung
  # All rights reserved.
  # 
  # Redistribution and use in source and binary forms, with or without
@@ -130,14 +130,14 @@ p2, = ax1.plot(poseTimesteps[::10], poseErr_y[::10], 'b-');
 ax2 = ax1.twinx();
 p3, = ax2.plot(poseTimesteps[::10], poseErr_r[::10], 'g-')
 
-plt.legend([p1, p2, p3], [r"$x$", r"$y$", r"$\theta$"], loc=4);
+plt.legend([p1, p2, p3], [r"$x$", r"$y$", r"$\theta$"], loc=3);
 plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
 ax1.set_xlabel(r"Time [s]");
 ax1.set_ylabel(r"Position error [m]");
 ax2.set_ylabel(r"Orientation error [deg]");
 ax1.grid(True);
-ax1.set_ylim(-0.3, 0.3);
-ax2.set_ylim(-6, 6);
+ax1.set_ylim(-1.5, 1.5);
+ax2.set_ylim(-15, 15);
 #fig.show();
 
 # Save plots
