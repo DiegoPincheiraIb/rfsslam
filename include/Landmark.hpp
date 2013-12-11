@@ -95,4 +95,6 @@ Landmark1d;
 
 typedef Landmark<Eigen::Vector2d, Eigen::Matrix2d> Landmark2d;
 
+typedef Landmark<Eigen::Vector3d, Eigen::Matrix3d> Landmark3d;
+
 #endif
