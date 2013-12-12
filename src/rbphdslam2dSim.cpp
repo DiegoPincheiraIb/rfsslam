@@ -471,29 +471,21 @@ public:
       std::string filenameParticlePoseFile( logDirPrefix_ );
       filenameParticlePoseFile += "particlePose.dat";
       pParticlePoseFile = fopen(filenameParticlePoseFile.data(), "w");
-      fprintf( pParticlePoseFile, "Timesteps: %d\n", kMax_);
     }
     FILE* pLandmarkEstFile;
     if(logToFile_){
       std::string filenameLandmarkEstFile( logDirPrefix_ );
       filenameLandmarkEstFile += "landmarkEst.dat";
       pLandmarkEstFile = fopen(filenameLandmarkEstFile.data(), "w");
-      fprintf( pLandmarkEstFile, "Timesteps: %d\n", kMax_);
-      fprintf( pLandmarkEstFile, "nParticles: %d\n\n", pFilter_->getParticleCount());
     }
     OdometryMotionModel2d::TState x_i;
     int zIdx = 0;
 
     if(logToFile_){
-      fprintf( pParticlePoseFile, "k = 0.0\n");
-      fprintf( pParticlePoseFile, "nParticles = %d\n", pFilter_->getParticleCount() );
       for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	pFilter_->getParticleSet()->at(i)->getPose(x_i);
-	fprintf( pParticlePoseFile, "%f   %f   %f   1.0\n", x_i.get(0), x_i.get(1), x_i.get(2));
-      }
-      for(int i = 0; i < pFilter_->getParticleCount(); i++){
-	fprintf( pLandmarkEstFile, "Timestep: %d\tParticle: %d\tMap Size: %d\n", 0, i, 0);
-      }      
+	fprintf( pParticlePoseFile, "%f   %d   %f   %f   %f   1.0\n", 0.0, i, x_i.get(0), x_i.get(1), x_i.get(2));
+      }   
     }
 
     boost::timer::auto_cpu_timer *stepTimer = NULL;
@@ -515,10 +507,6 @@ public:
       
       if( k % 1 == 0)
 	printf("k = %d\n", k);
-      
-      if(logToFile_){
-	fprintf( pParticlePoseFile, "k = %f\n", time.getTimeAsDouble());
-      }
       
       ////////// Prediction Step //////////
 
@@ -557,11 +545,10 @@ public:
 
       // Log particle poses
       if(logToFile_){
-	fprintf( pParticlePoseFile, "nParticles = %d\n", pFilter_->getParticleCount() );
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	  pFilter_->getParticleSet()->at(i)->getPose(x_i);
 	  double w = pFilter_->getParticleSet()->at(i)->getWeight();
-	  fprintf( pParticlePoseFile, "%f   %f   %f   %f\n", x_i.get(0), x_i.get(1), x_i.get(2), w);
+	  fprintf( pParticlePoseFile, "%f   %d   %f   %f   %f   %f\n", time.getTimeAsDouble(), i, x_i.get(0), x_i.get(1), x_i.get(2), w);
 	}
 	fprintf( pParticlePoseFile, "\n");
       }
@@ -570,21 +557,18 @@ public:
       if(logToFile_){
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	  int mapSize = pFilter_->getGMSize(i);
-	  fprintf( pLandmarkEstFile, "Timestep: %f\tParticle: %d\tMap Size: %d\n", time.getTimeAsDouble(), i, mapSize);
 	  for( int m = 0; m < mapSize; m++ ){
 	    RangeBearingModel::TLandmark::Vec u;
 	    RangeBearingModel::TLandmark::Mat S;
 	    double w;
 	    pFilter_->getLandmark(i, m, u, S, w);
 	    
+	    fprintf( pLandmarkEstFile, "%f   %d   ", time.getTimeAsDouble(), i);
 	    fprintf( pLandmarkEstFile, "%f   %f      ", u(0), u(1));
-	    fprintf( pLandmarkEstFile, "%f   %f   ", S(0,0), S(0,1));
-	    fprintf( pLandmarkEstFile, "%f   %f   ", S(1,0), S(1,1));
+	    fprintf( pLandmarkEstFile, "%f   %f   %f", S(0,0), S(0,1), S(1,1));
 	    fprintf( pLandmarkEstFile, "   %f\n", w );
 	  }
-	  fprintf( pLandmarkEstFile, "\n");
 	}
-	fprintf( pLandmarkEstFile, "\n");
       }
 
       if(reportTimingInfo_){

@@ -71,3 +71,6 @@ TARGET_LINK_LIBRARIES(hmTest LinearAssignment)
 
 ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} TimeStamp LinearAssignment)
+
+ADD_EXECUTABLE(convertLogFiles src/convertLogFiles.cpp)
+TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})
