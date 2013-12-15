@@ -34,10 +34,17 @@
 import sys
 import os.path
 import numpy as np
+
+import matplotlib
+#matplotlib.use("AGG");
+#print matplotlib.__version__
+
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from matplotlib.patches import Ellipse, Circle
 from matplotlib import transforms
+
+saveMovie = True;
 
 nLandmarksDrawMax = 300;
 nMeasurementsDrawMax = 100;
@@ -95,6 +102,11 @@ else:
     sys.exit(0);
 measurementFileHandle = open(measurementFile, "r");
 
+estimateImageFile = 'estimate.pdf';
+estimateImageFile = dataDir + estimateImageFile;
+estimateMovieFile = 'estimate.mp4';
+estimateMovieFile = dataDir + estimateMovieFile;
+
 # Reading files
 
 print('Reading ' + gtPoseFile);
@@ -103,6 +115,7 @@ gtPose_t = gtPose[:,0];
 gtPose_x = gtPose[:,1];
 gtPose_y = gtPose[:,2];
 gtPose_r = gtPose[:,3];
+print('Number of poses: ' + str(len(gtPose)));
 
 print('Reading ' + gtMapFile);
 gtMap = np.genfromtxt(gtMapFile);
@@ -127,6 +140,8 @@ while p[0] == p_t:
         p_idx_maxWeight = p_idx;
     p = np.fromfile(estPoseFileHandle, dtype=float, count=6, sep=" ");
     p_idx += 1;
+px_best = gtPose_x * 0;
+py_best = gtPose_y * 0;
 
 m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
 
@@ -134,12 +149,13 @@ z = np.fromfile(measurementFileHandle, count=3, sep=" ", dtype=float);
 
 # Plotting 
 
-fig = plt.plot(gtMap_x, gtMap_y, 'k.');
+fig = plt.figure( figsize=(12,10), facecolor='w')
+plt.plot(gtMap_x, gtMap_y, 'k.');
 ax = plt.gca();
 plt.axis('equal');
 plt.grid(True);
 
-plt.plot(gtPose_x, gtPose_y, 'r--');
+gtPoseHandle, = plt.plot(gtPose_x, gtPose_y, 'r--');
 
 gtPoseCurrentPos, = plt.plot([], [], 'ro');
 gtPoseCurrentDir, = plt.plot([], [], 'r-');
@@ -155,17 +171,21 @@ for i in range(0, nLandmarksDrawMax) :
     landmarks.append(landmark_ellipse); 
     ax.add_patch(landmarks[i]);
 
-particles, = plt.plot([], [], 'g.');
+particles, = plt.plot([], [], 'b.');
 
+xLim = plt.getp(ax, 'xlim');
+yLim = plt.getp(ax, 'ylim');
+txt = plt.text(xLim[1]-1, yLim[1]-1, " ");
 
 def animateInit():
 
+    txt.set_text("Time: ");
     gtPoseCurrentPos.set_data([],[]);
     gtPoseCurrentDir.set_data([],[]);
     particles.set_data([],[]);
     for i in range(0, nMeasurementsDrawMax) :
         measurements[i].set_data([],[]);
-        measurements[i].set_color([0.2,0.2,0.8]);
+        measurements[i].set_color([0.5,0.5,0.9]);
     for i in range(0, nLandmarksDrawMax):
         landmarks[i].center = (0,0);
         landmarks[i].width = 0;
@@ -182,6 +202,10 @@ def animate(i):
     currentTime = i * 0.1;
     drawnObjects = [];
 
+    # Time
+    txt.set_text("Time: {0}".format(currentTime));
+    drawnObjects.append(txt);
+
     # Groundtruth 
     gtPoseCurrentPos.set_xdata(gtPose_x[i]);
     gtPoseCurrentPos.set_ydata(gtPose_y[i]); # Append to drawn objects later so it shows above measurements
@@ -193,6 +217,8 @@ def animate(i):
     p_idx = 0;
     p_idx_maxWeight = 0;
     p_maxWeight = p[5];
+    px_best[i] = p[2];
+    py_best[i] = p[3];
     p_x = [];
     p_y = [];
     p_w = [];
@@ -203,13 +229,15 @@ def animate(i):
         if p[5] > p_maxWeight :
             p_maxWeight = p[5];
             p_idx_maxWeight = p_idx;
+            px_best[i] = p[2];
+            py_best[i] = p[3];
         p = np.fromfile(estPoseFileHandle, dtype=float, count=6, sep=" ");
         p_idx += 1;
     particles.set_data(p_x, p_y);
 
     # Landmarks
     m_idx = 0;
-    while abs(m[0] - currentTime) < 1e-12:
+    while m.any() and abs(m[0] - currentTime) < 1e-12:
         if round(m[1]) == round(p_idx_maxWeight):
 
             cov = np.array([ [ m[4], m[5] ], [ m[5], m[6] ] ]);
@@ -231,34 +259,48 @@ def animate(i):
             landmarks[m_idx].set_transform(t_compound);
             drawnObjects.append(landmarks[m_idx]);
             m_idx += 1;
+
         m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
+
+    while landmarks[m_idx].height != 0:
+        landmarks[m_idx].set_alpha(0);
+        landmarks[m_idx].center = (0, 0);
+        landmarks[m_idx].height = 0;
+        landmarks[m_idx].width = 0;
+        m_idx += 1;
 
     # Measurements
     nZ = 0;
-    while abs(z[0] -  currentTime) < 1e-12:
+    while z.any() and abs(z[0] -  currentTime) < 1e-12:
         z_dir = gtPose_r[i] + z[2];
         z_end = [gtPose_x[i] + z[1]*np.cos(z_dir), gtPose_y[i] + z[1]*np.sin(z_dir) ];
         measurements[nZ].set_data([gtPose_x[i], z_end[0]], [gtPose_y[i], z_end[1]]);
         drawnObjects.append(measurements[nZ]);
         z = np.fromfile(measurementFileHandle, count=3, sep=" ", dtype=float);
         nZ += 1;
+    while measurements[nZ].get_xdata() != []:
+        measurements[nZ].set_data([], []);
+        nZ += 1;
     
     drawnObjects.append(gtPoseCurrentPos);
     drawnObjects.append(gtPoseCurrentDir);
     drawnObjects.append(particles);
-    
-    
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, len(gtPose_t)-1), interval=30, 
-                               init_func=animateInit, blit=True);
-plt.show();
-
-#line = measurementFileHandle.readline();
-#line.strip();
-
-#print line[1];
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, len(gtPose_t)), interval=30, 
+                               init_func=animateInit, blit=True, repeat=False);
+if saveMovie:
+    animation.save(estimateMovieFile, fps=30, extra_args=['-loglevel','quiet','-vcodec','libx264'])
+    estPoseHandle, = plt.plot(px_best, py_best, 'b-');
+    for i in range(0, nMeasurementsDrawMax) : 
+        measurements[i].remove();
+    txt.set_text(" ");
+    plt.legend([gtPoseHandle, estPoseHandle], ["Ground-truth", r"Estimated"], loc=4);
+    plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
+    plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
+else:
+    plt.show()
 
 measurementFileHandle.close();
 
