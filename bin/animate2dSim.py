@@ -295,8 +295,9 @@ if saveMovie:
     estPoseHandle, = plt.plot(px_best, py_best, 'b-');
     for i in range(0, nMeasurementsDrawMax) : 
         measurements[i].remove();
+    plt.setp(gtPoseHandle, linewidth=2.0)
     txt.set_text(" ");
-    plt.legend([gtPoseHandle, estPoseHandle], ["Ground-truth", r"Estimated"], loc=4);
+    plt.legend([gtPoseHandle, estPoseHandle], ["Ground-truth trajectory", r"Estimated trajectory"], loc=4);
     plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
     plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
 else:
