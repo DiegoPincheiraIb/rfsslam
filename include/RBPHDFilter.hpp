@@ -448,6 +448,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     }
 
     // nM x nZ table for Gaussian weighting
+    checkWeightingTableSize(nM, nZ);
     TLandmark*** newLandmarkPointer = new TLandmark** [ nM ];
     for( int n = 0; n < nM; n++ ){
       newLandmarkPointer[n] = new TLandmark* [ nZ ];
@@ -1108,7 +1109,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       weightingTableNRows_ = nRows;
       weightingTableNCols_ = nCols; 
     }else{ // Only increase row
-      double* weightingTableOld = weightingTable_;
+      double** weightingTableOld = weightingTable_;
       weightingTable_ = new double* [nRows];
       for(int m = 0; m < weightingTableNRows_ ; m++ ){
 	if( m < weightingTableNRows_){
