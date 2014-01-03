@@ -130,9 +130,9 @@ public:
   /**
    * Predict the robot trajectory using the lastest odometry data
    * \param[in] u input 
-   * \param[in] currentTimestep current timestep;
+   * \param[in] Timestamp size of timestep;
    */
-  void predict( TInput u, int currentTimestep = 0);
+  void predict( TInput u, TimeStamp &dT);
 
   /**
    * Update the map, calculate importance weighting, and perform resampling if necessary
@@ -140,7 +140,7 @@ public:
    * gets cleared after the function call. 
    * \param[in] currentTimestep current timestep;
    */
-  void update( std::vector<TMeasurement> &Z, int currentTimestep = 0);
+  void update( std::vector<TMeasurement> &Z);
 
   /**
    * Get the size of the Gaussian mixture for a particle
@@ -265,14 +265,14 @@ LmkProcessModel* FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel,
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::predict( TInput u, 
-											      int currentTimestep){
+											      TimeStamp &dT){
 
   boost::timer::auto_cpu_timer *timer = NULL;
   if(config.reportTimingInfo_)
     timer = new boost::timer::auto_cpu_timer(6, "Predict time: %ws\n");
 
   // propagate particles
-  this->propagate(u);
+  this->propagate(u, dT);
 
   // propagate landmarks
   for( int i = 0; i < this->nParticles_; i++ ){
@@ -281,7 +281,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       TLandmark *plm;
       //maps_[i]->getGaussian(m, plm);
       this->particleSet_[i]->getData()->getGaussian(m, plm);
-      lmkModelPtr_->staticStep(*plm, *plm);
+      lmkModelPtr_->staticStep(*plm, *plm, dT);
     }
   }
 
@@ -290,8 +290,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z,
-											     int currentTimestep){
+void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z){
 
   boost::timer::auto_cpu_timer *timer_mapUpdate = NULL;
   boost::timer::auto_cpu_timer *timer_particleWeighting = NULL;
@@ -369,16 +368,6 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       }
     }
 
-    int nNonMinM[nMZ]; // keep track of the number of non-minimum log-likelihood for m
-    int nNonMinZ[nMZ]; // keep track of the number of non-minimum log-likelihood for z
-    int daFixed[nMZ]; // keep track of data association that we can fix because there is *almost* certainly no ambiguity
-    int daFixedR[nMZ];
-    for(unsigned int m = 0; m < nMZ; m++){
-      nNonMinM[m] = 0;
-      nNonMinZ[m] = 0;
-      daFixed[m] = -1;
-      daFixedR[m] = -1;
-    }
     // Fill in table for landmarks within range    
     for(unsigned int m = 0; m < nM; m++){
       TLandmark* lm = lm_inRange[m]; // landmark position estimate
@@ -388,105 +377,114 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 	if( isValidExpectedMeasurement ){
 	  likelihoodTable[m][z] = fmax(config.minLogMeasurementLikelihood_, 
 				       log(measurement_exp.evalGaussianLikelihood(this->measurements_[z])));
-	  if(likelihoodTable[m][z] > config.minLogMeasurementLikelihood_){
-	    nNonMinM[m]++;
-	    nNonMinZ[z]++;
-	    daFixed[m] = z;
-	    daFixedR[z] = m;
-	  }
 	}
       }
     }
-    
-    // Create a reduced likelihood table to make the Hungarian method and Murty's Method run faster
-    int nMReduced = 0;
-    std::vector<int> mRemap;
-    for(unsigned int m = 0; m < nM; m++){
-      if( nNonMinM[m] == 0){
-	daFixed[m] = -2;
-      }else if( nNonMinM[m] == 1 && nNonMinZ[ daFixed[m] ] != 1){
-	mRemap.push_back(m);
-	daFixed[m] = -1;
-	nMReduced++;
-      }else if( nNonMinM[m] > 1) {
-	mRemap.push_back(m);
-	daFixed[m] = -1;
-	nMReduced++;
+    /*
+    if( i == 0){
+      printf("\n");
+      for(int m = 0; m < nMZ; m++){
+	for(int z = 0; z < nMZ; z++){
+	  printf("%f   ", likelihoodTable[m][z]);
+	}
+	printf("\n");
       }
+      printf("\n");
+    }
+    */
+    CostMatrix likelihoodMat(likelihoodTable, nMZ);
+    likelihoodMat.reduce(config.minLogMeasurementLikelihood_);
+    double** likelihoodTableReduced;
+    int* assignments_fixed = new int[nMZ];
+    double score_reduced;
+    int* mRemap;
+    int* zRemap;
+    int nMZReduced = likelihoodMat.getCostMatrixReduced(likelihoodTableReduced, assignments_fixed, &score_reduced, mRemap, zRemap);
+    /*
+    if(i == 0){
+      printf("\n");
+      for(int m = 0; m < nMZReduced; m++){
+	for(int z = 0; z < nMZReduced; z++){
+	  printf("%f   ", likelihoodTableReduced[m][z]);
+	}
+	printf("\n");
+      }
+      printf("\n");
     }
 
-    int nZReduced = 0;
-    std::vector<int> zRemap;
-    for(unsigned int z = 0; z < nZ; z++){
-      if( nNonMinZ[z] == 1 && nNonMinM[ daFixedR[z] ] != 1 ){
-	zRemap.push_back(z);
-	nZReduced++;
-      }else if( nNonMinZ[z] > 1 ){
-	zRemap.push_back(z);
-	nZReduced++;
+    if(i == 0){
+      printf("nMZReduce = %d\n", nMZReduced);
+      for(int m = 0; m < nMZ; m++ ){
+	printf("%d -- %d\n", m, assignments_fixed[m]);
       }
+      printf("\n");
     }
-    int nMZReduced = nMReduced;
-    if(nZReduced > nMReduced){
-      nMZReduced = nZReduced;
-    }
-    double** likelihoodTableReduced = new double* [ nMZReduced ];
-    for( int m = 0; m < nMZReduced; m++ ){
-      likelihoodTableReduced[m] = new double [ nMZReduced ];
-      for(int z = 0; z < nMZReduced; z++){	
-	if(m < nMReduced && z < nZReduced){
-	  likelihoodTableReduced[m][z] = likelihoodTable[mRemap[m]][zRemap[z]];
-	}else{
-	  likelihoodTableReduced[m][z] = config.minLogMeasurementLikelihood_;
-	}
-      }
-    }
-    
+    */
     // Use Hungaian Method and Murty's Method for k-best data association
-    unsigned int nH = 0; // number of data association hypotheses (will create a new particle for each)
+    unsigned int nH = 0; // number of data association hypotheses (we will create a new particle for each)
     double logLikelihoodSum = 0;
     Murty murty(likelihoodTableReduced, nMZReduced);
     std::vector<int*> da; // data association hypotheses
-    while(nH < config.maxNDataAssocHypotheses_){
-
-      int* daVar = NULL;
-      unsigned int nH_old = nH;
-      nH = murty.findNextBest(daVar, &logLikelihoodSum);
-      if(nH == -1){
-	nH = nH_old;
-	break;
-      }
-      if(murty.getBestScore() - logLikelihoodSum >= config.maxDataAssocLogLikelihoodDiff_){
-	nH--;
-	break;
-      }
-
+    if( nMZReduced == 0 ){
       int* da_current = new int[nMZ];
       for(unsigned int m = 0; m < nM; m++){
-	da_current[m] = daFixed[m];
+	da_current[m] = assignments_fixed[m];
       }
-      for(unsigned int m = 0; m < nMReduced; m++){
-	if(daVar[m] < nZReduced){
-	  da_current[mRemap[m]] = zRemap[daVar[m]];
-	}else{
-	  da_current[mRemap[m]] = -2;
-	}
-      }
-      da.push_back(da_current);
+      da.push_back( da_current );
+    }else{
+      while(nH < config.maxNDataAssocHypotheses_){
 
+	int* daVar = NULL;
+	unsigned int nH_old = nH;
+	nH = murty.findNextBest(daVar, &logLikelihoodSum);
+	if(nH == -1){
+	  nH = nH_old;
+	  break;
+	}
+	if(murty.getBestScore() - logLikelihoodSum >= config.maxDataAssocLogLikelihoodDiff_){
+	  nH--;
+	  break;
+	}
+
+	int* da_current = new int[nMZ];
+	for(unsigned int m = 0; m < nM; m++){
+	  da_current[m] = assignments_fixed[m];
+	}
+	for(unsigned int m = 0; m < nMZReduced; m++){
+	  int z_o = zRemap[ daVar[m] ];
+	  int m_o = mRemap[m];
+	  if(z_o < nZ){
+	    da_current[ m_o ] = z_o;
+	  }else{
+	    da_current[ m_o ] = -2;
+	  }
+	}
+	da.push_back(da_current);
+
+      }
     }
 
+    delete[] assignments_fixed;
+    /*
+    if(i == 0){
+      for(int m = 0; m < nMZ; m++ ){
+	printf("%d -- %d\n", m, da[0][m]);
+      }
+      printf("\n");
+    }
+    */
     // particle indices for update
     unsigned int pi[nH];
     pi[0] = i; 
     if(nH > 1){
-      this->copyParticle(i, nH-1, this->particleSet_[i]->getWeight() / nH);
+      double newWeight = this->particleSet_[i]->getWeight() / nH;
+      this->particleSet_[i]->setWeight(newWeight);
+      this->copyParticle(i, nH-1, newWeight);
       for(unsigned int h = 1; h < nH; h++){
 	pi[h] = this->nParticles_ - h;
-	this->particleSet_[pi[h]]->getData()->getGaussianCount();
+	//this->particleSet_[pi[h]]->getData()->getGaussianCount();
       }
     }
-    
 
     for(unsigned int h = 0; h < nH; h++){
     
@@ -549,7 +547,8 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
       //---------- 4. Importance Weighting --------------
       // Some of the work has already been done in the map update step
-      this->particleSet_[pi[h]]->setWeight( exp(logParticleWeight) );
+      double prev_p_weight = this->particleSet_[pi[h]]->getWeight();
+      this->particleSet_[pi[h]]->setWeight( prev_p_weight * exp(logParticleWeight) );
 
     }
 
@@ -562,11 +561,6 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       delete[] likelihoodTable[n];
     }
     delete[] likelihoodTable;
-    
-    for( int n = 0; n < nMZReduced; n++ ){
-      delete[] likelihoodTableReduced[n];
-    }
-    delete[] likelihoodTableReduced;
     
     for( int d = 0; d < da.size(); d++ ){
       delete[] da[d];

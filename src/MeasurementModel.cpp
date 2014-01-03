@@ -113,10 +113,9 @@ void RangeBearingModel::inverseMeasure(const Pose2d &pose,
   Eigen::Vector3d poseState;
   Eigen::Vector2d measurementState, mean;
   Eigen::Matrix2d measurementUncertainty, covariance, Hinv;
-  double t;
  
   pose.get(poseState);
-  measurement.get(measurementState, t);
+  measurement.get(measurementState);
   this->getNoise(measurementUncertainty); 
   mean << poseState(0) + measurementState(0) *cos( poseState(2) + measurementState(1) ),
           poseState(1) + measurementState(0) *sin( poseState(2) + measurementState(1) );

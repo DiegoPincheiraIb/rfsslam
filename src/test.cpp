@@ -29,34 +29,103 @@
  */
 
 #include "LinearAssignment.hpp"
+#include <stdio.h>
 #include <iostream>
 
-
 int main(int argc, char* argv[]){
-  
-  int n = 9;
-  double** C = new double*[n];
-  for(int i = 0; i < n; i++){
+ 
+  int n = 5;
+  double** C = new double* [n];
+  for(int i = 0; i < n; i++ ){
     C[i] = new double[n];
   }
+  C[0][0] =  1; C[0][1] = 1; C[0][2] =  9; C[0][3] =  14; C[0][4] =12;
+  C[1][0] =  1; C[1][1] = 1; C[1][2] =  7; C[1][3] =  12; C[1][4] = 15;
+  C[2][0] =  2; C[2][1] = 15; C[2][2] = 2; C[2][3] =  2; C[2][4] = 2;
+  C[3][0] =  1; C[3][1] = 1; C[3][2] = 18; C[3][3] =  9; C[3][4] = 6;
+  C[4][0] = 14; C[4][1] = 1; C[4][2] =  0; C[4][3] =  9; C[4][4] = 8;
 
-  for(int i = 0; i < n; i++){
-    for(int j = 0; j < n; j++){
-      C[i][j] = 0.0;
+  printf("\n");
+  for(int i = 0; i < n; i++ ){
+    for(int j = 0; j < n; j++ ){
+      printf("%f   ", C[i][j]);
     }
+    printf("\n");
   }
-  C[1][2] = 13.166439;
-  C[2][4] = 10.711177;
-  C[3][1] = 3.686331;
-  C[3][4] = 13.426078;
+  printf("\n");
 
-  /*
-  C[0][0] = 10; C[0][1] = 21; C[0][2] = 11; C[0][3] = 15; C[0][4] = 21;
-  C[1][0] = 10; C[1][1] = 18; C[1][2] =  7; C[1][3] = 16; C[1][4] = 5;
-  C[2][0] = 17; C[2][1] = 15; C[2][2] = 20; C[2][3] = 14; C[2][4] = 15;
-  C[3][0] = 12; C[3][1] = 12; C[3][2] =  8; C[3][3] =  9; C[3][4] = 6;
-  C[4][0] = 14; C[4][1] = 17; C[4][2] = 10; C[4][3] = 19; C[4][4] = 8;
-  */
+  double** C_1;
+  double** C_2;
+  int* a1 = new int[n];
+  double s1;
+  int* i_remap;
+  int* j_remap;
+  CostMatrix CMat(C, n);
+  CMat.reduce(10);
+  int n1 = CMat.getCostMatrix(C_1);
+  int n2 = CMat.getCostMatrixReduced(C_2, a1, &s1, i_remap, j_remap);
+
+  printf("\n");
+  for(int i = 0; i < n1; i++ ){
+    for(int j = 0; j < n1; j++ ){
+      printf("%f   ", C_1[i][j]);
+    }
+    printf("\n");
+  }
+  printf("\n");
+
+  printf("\n");
+  for(int i = 0; i < n2; i++ ){
+    for(int j = 0; j < n2; j++ ){
+      printf("%f   ", C_2[i][j]);
+    }
+    printf("\n");
+  }
+  printf("\n");
+  
+  printf("i_remap:\n");
+  for(int i = 0; i < n2; i++ ){
+    printf("%d   ", i_remap[i]);
+  }
+  printf("\n");
+ 
+  printf("j_remap:\n");
+  for(int i = 0; i < n2; i++ ){
+    printf("%d   ", j_remap[i]);
+  }
+  printf("\n");
+
+  printf("Fixed assignments:\n");
+  for(int i = 0; i < n1; i++ ){
+    printf("%d   ", a1[i]);
+  }
+  printf("\n");
+
+  delete a1;
+
+
+
+
+  HungarianMethod hm;
+  int hm_soln[n];
+  double hm_score = 0;
+  hm.run(C, n, hm_soln, &hm_score);
+  printf("Hungarian Method\n");
+  printf("Best assignment:\n");
+  for(int j = 0; j < n; j++){
+    printf("x[%d] ----- y[%d]\n", j, hm_soln[j]);
+  }
+  printf("Score: %f\n\n", hm_score);
+
+
+  hm.run(CMat, hm_soln, &hm_score);
+  printf("Hungarian Method with CostMatrix\n");
+  printf("Best assignment:\n");
+  for(int j = 0; j < n; j++){
+    printf("x[%d] ----- y[%d]\n", j, hm_soln[j]);
+  }
+  printf("Score: %f\n\n", hm_score);
+
 
   BruteForceLinearAssignment bf;
   int** bfa;

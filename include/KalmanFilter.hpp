@@ -201,7 +201,7 @@ correct(const TPose &pose, const TMeasurement &measurement,
   if(!pMeasurementModel_->measure( pose , landmark_current , measurement_exp , &H))
     return false; // invalid expected measurement produced
   
-  double t; 
+  TimeStamp t; 
   measurement.get(z_act, t);
   measurement_exp.get(z_exp, S);
 
@@ -224,7 +224,7 @@ correct(const TPose &pose, const TMeasurement &measurement,
     innov.set(z_act, S);
     *zLikelihood = innov.evalGaussianLikelihood( z_exp, mahalanobisDist2 );   
     if(*zLikelihood != *zLikelihood) // When likelihood is so small that it becomes NAN
-      zLikelihood = 0;  
+      *zLikelihood = 0;  
   }
 /*
   std::cout<< "Pbefor" << std::endl;

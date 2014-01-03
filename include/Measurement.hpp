@@ -80,14 +80,14 @@ public:
    * \param[in] Sx measurement uncertainty covariance
    * \param[in] t time
    */
-  Odometry2d(Vec &x, Mat &Sx, double t = -1);
+  Odometry2d(Vec &x, Mat &Sx, TimeStamp t = TimeStamp());
 
   /** 
    * Constructor - defined only for our convenience
    * \param[in] x measurement vector
    * \param[in] t time
    */
-  Odometry2d(Vec &x, double t = -1);
+  Odometry2d(Vec &x, TimeStamp t = TimeStamp());
 
 
   /** 
@@ -102,7 +102,7 @@ public:
    */
   Odometry2d(double dx_k_km, double dy_k_km, double dtheta_k_km,
 	     double vardx_k_km, double vardy_k_km, double vartheta_k_km,
-	     double t);
+	     TimeStamp t = TimeStamp());
 
   /** Destructor */
   ~Odometry2d();

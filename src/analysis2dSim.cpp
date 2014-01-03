@@ -28,6 +28,7 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <assert.h> 
 #include <boost/filesystem.hpp>
 #include "GaussianMixture.hpp"
 #include "Landmark.hpp"
@@ -66,13 +67,15 @@ public:
 
     readLandmarkGroundtruth();
 
-    int kmax = 0;
-    int n = fscanf(pParticlePoseFile, "Timesteps: %d\n", &kmax);
+    int nread = fscanf(pParticlePoseFile, "%lf %d %lf %lf %lf %lf", &p_t_, &p_id_, &p_x_, &p_y_, &p_z_, &p_w_);
+    //printf("n = %d\n", nread);
+    //printf("t = %f   [%d] %f %f %f\n", p_t_, p_id_, p_x_, p_y_, p_w_);
 
-    int nP;
-    n = fscanf(pLandmarkEstFile, "Timesteps: %d\n", &kmax);
-    n = fscanf(pLandmarkEstFile, "nParticles: %d\n", &nP);
-
+    nread = fscanf(pLandmarkEstFile, "%lf %d %lf %lf %lf %lf %lf %lf\n", 
+			   &lmk_t_, &lmk_pid_, &lmk_x_, &lmk_y_, &lmk_sxx_, &lmk_sxy_, &lmk_syy_, &lmk_w_);
+    //printf("n = %d\n", nread);
+    //printf("t = %f   [%d] %f %f %f\n", lmk_t_, lmk_pid_, lmk_x_, lmk_y_, lmk_w_);
+    
   }
 
   /** Destructor */
@@ -89,66 +92,64 @@ public:
    *  \return number of landmarks 
    */
   int readLandmarkGroundtruth(){
-    double x, y, k;
+    double x, y, t;
     Landmark2d::Vec vm;
-    while( fscanf(pGTLandmarkFile, "%lf %lf %lf", &x, &y, &k) == 3){
-      //printf("%f %f %f\n", x, y, k);
+    while( fscanf(pGTLandmarkFile, "%lf %lf %lf", &x, &y, &t) == 3){
       vm << x, y;
       map_.push_back( vm );
-      mapObsTimestep_.push_back(k);
+      mapObsTimestep_.push_back(t);
     }
   }
 
   /** Read data for the next timestep 
-   * \return timestep for which data was read
+   * \return time for which data was read
    */
-  int readNextStepData(){
+  double readNextStepData(){
 
-    if( fscanf(pGTPoseFile, "%lf %lf %lf %lf\n", &k_, &rx_, &ry_, &rz_ ) == 4 ){ 
-      //printf("%f %f %f %f\n", k_, rx_, ry_, rz_);
+    if( fscanf(pGTPoseFile, "%lf %lf %lf %lf\n", &t_currentStep_, &rx_, &ry_, &rz_ ) == 4){
 
-      int k = -1;
-      int nParticles = -1;
-      int n1 = fscanf(pParticlePoseFile, "k = %d\n", &k);
-      int n2 = fscanf(pParticlePoseFile, "nParticles = %d\n", &nParticles);
-      printf("k = %d, n = %d\n", k, nParticles);
-
+      // Particles
       particles_.clear();
-      particles_.reserve(nParticles);
+      particles_.reserve(200);
+      w_sum_ = 0;
+      double w_hi = 0;
+      while(fabs(p_t_ - t_currentStep_) < 1e-12 ){
+	// printf("t = %f   [%d] %f %f %f\n", p_t_, p_id_, p_x_, p_y_, p_w_);
 
+	w_sum_ += p_w_;
+	if( p_w_ > w_hi ){
+	  i_hi_ = p_id_;
+	  w_hi = p_w_;
+	}
+
+	Pose2d p;
+	p[0] = p_x_;
+	p[1] = p_y_;
+	p[2] = p_z_;
+	Particle<Pose2d, GaussianMixture<Landmark2d> > particle(p_id_, p, p_w_);
+	particles_.push_back( particle ); 
+	particles_[p_id_].setData(new GaussianMixture<Landmark2d>);
+
+	if( fscanf(pParticlePoseFile, "%lf %d %lf %lf %lf %lf", &p_t_, &p_id_, &p_x_, &p_y_, &p_z_, &p_w_) != 6)
+	  break;
+      }
+
+      // Landmarks
       Landmark2d::Vec vm;
       Landmark2d::Mat Sm;
-      double x, y, z, w, sxx, sxy, syx, syy;
-      double w_hi = 0;
-      w_sum_ = 0;
-      int i = 0;
-      while( fscanf(pParticlePoseFile, "%lf %lf %lf %lf", &x, &y, &z, &w) == 4){
-	// printf("[%d] %f %f %f %f\n", i, x, y, z, w);
+      while(fabs(lmk_t_ - t_currentStep_) < 1e-12){
+	//printf("t = %f   [%d] %f %f %f\n", lmk_t_, lmk_pid_, lmk_x_, lmk_y_, lmk_w_);
 
-	w_sum_ += w;
-	if( w > w_hi ){
-	  i_hi_ = i;
-	  w_hi = w;
-	}
+	vm << lmk_x_, lmk_y_;
+	Sm << lmk_sxx_, lmk_sxy_, lmk_sxy_, lmk_syy_;
+	particles_[lmk_pid_].getData()->addGaussian(new Landmark2d(vm, Sm), lmk_w_);
 
-	Pose2d p(x, y, z);
-	particles_.push_back( Particle<Pose2d, GaussianMixture<Landmark2d> > (i, p, w)); // add GM to template
-	particles_[i].setData(new GaussianMixture<Landmark2d>);
-
-	int nP, nM;
-	int n3 = fscanf(pLandmarkEstFile, "Timestep: %d   Particle: %d   Map Size: %d\n", &k, &nP, &nM);
-	int m = 0;
-	while( fscanf(pLandmarkEstFile, "%lf %lf %lf %lf %lf %lf %lf\n", &x, &y, &sxx, &sxy, &syx, &syy, &w) == 7){
-	  //printf("(%d) %f %f %f %f %f %f %f\n", m, x, y, sxx, sxy, syx, syy, w);
-	  vm << x, y;
-	  Sm << sxx, sxy, syx, syy;
-	  particles_[i].getData()->addGaussian(new Landmark2d(vm, Sm), w);
-	  m++;
-	}
-
-	i++;
+        if(fscanf(pLandmarkEstFile, "%lf %d %lf %lf %lf %lf %lf %lf\n", 
+		  &lmk_t_, &lmk_pid_, &lmk_x_, &lmk_y_, &lmk_sxx_, &lmk_sxy_, &lmk_syy_, &lmk_w_) != 8)
+	  break;
       }
-      return k_;
+
+      return t_currentStep_;
     }
     return -1;
   }
@@ -161,7 +162,7 @@ public:
 
     std::vector<int> mapObservable;
      for(int n = 0; n < mapObsTimestep_.size(); n++){
-       if( mapObsTimestep_[n] <= k_ ){
+       if( mapObsTimestep_[n] <= t_currentStep_ ){
 	 mapObservable.push_back(n);
        }
      }
@@ -194,7 +195,7 @@ public:
 
     std::vector<int> mapObservable;
     for(int n = 0; n < mapObsTimestep_.size(); n++){
-      if( mapObsTimestep_[n] <= k_ ){
+      if( mapObsTimestep_[n] <= t_currentStep_ ){
 	mapObservable.push_back(n);
       }
     }
@@ -423,9 +424,10 @@ private:
   FILE* pLandmarkEstFile;  /**< landmark estimate file pointer */ 
   FILE* pMapEstErrorFile;  /**< landmark estimate error file pointer */
 
-  double k_;  /**< timestep */
   double mx_; /**< landmark x pos */
   double my_; /**< landmark y pos */
+
+  double t_currentStep_;
 
   double rx_;
   double ry_;
@@ -438,6 +440,22 @@ private:
   std::vector< Pose2d > pose_gt_;
   std::vector< Landmark2d::Vec > map_;
   std::vector<double> mapObsTimestep_;
+
+  double p_t_; 
+  int p_id_;
+  double p_x_; 
+  double p_y_; 
+  double p_z_; 
+  double p_w_;
+
+  double lmk_t_; 
+  int lmk_pid_;
+  double lmk_x_;
+  double lmk_y_;
+  double lmk_sxx_;
+  double lmk_sxy_;
+  double lmk_syy_;
+  double lmk_w_;
 
 };
 
@@ -465,23 +483,26 @@ int main(int argc, char* argv[]){
 
   LogFileReader2dSim reader(logDir);
 
-  int k = 0;
-  while( reader.readNextStepData() != -1){
+  double k = reader.readNextStepData();
+  while( k != -1){
+
+    printf("Time: %f\n", k);
     
     double ex, ey, er, ed;
     reader.calcPoseError( ex, ey, er, ed, false );
-    fprintf(pPoseEstErrorFile, "%d   %f   %f   %f   %f\n", k, ex, ey, er, ed);
+    fprintf(pPoseEstErrorFile, "%f   %f   %f   %f   %f\n", k, ex, ey, er, ed);
 
     printf("   error x: %f   error y: %f   error rot: %f   error dist: %f\n", ex, ey, er, ed);
 
     int nLandmarksObserved;
     double cardEst = reader.getCardinalityEst( nLandmarksObserved );
     double ospaError = reader.calcLandmarkError( false );
-    fprintf(pMapEstErrorFile, "%d   %d   %f   %f\n", k, nLandmarksObserved, cardEst, ospaError);
+    fprintf(pMapEstErrorFile, "%f   %d   %f   %f\n", k, nLandmarksObserved, cardEst, ospaError);
  
     printf("   nLandmarks: %d   nLandmarks estimated: %f   OSPA error: %f\n", nLandmarksObserved, cardEst, ospaError);
     printf("--------------------\n");
-    k++;
+    
+    k = reader.readNextStepData();
   }
   fclose(pPoseEstErrorFile);
   fclose(pMapEstErrorFile);

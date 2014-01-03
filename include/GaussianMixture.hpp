@@ -102,6 +102,12 @@ public:
    */
   unsigned int getGaussianCount();
 
+  /** 
+   * Get the sum of all Gaussian weights 
+   * \reuturn sum
+   */
+  double getWeightSum();
+
   /**
    * Set the weight of a Gaussian indicated by the given index
    * \param[in] idx index
@@ -321,6 +327,15 @@ unsigned int GaussianMixture<Landmark>::getGaussianCount(){
 }
 
 template< class Landmark >
+double GaussianMixture<Landmark>::getWeightSum(){
+  double sum = 0;
+  for(int i = 0; i < n_; i++){
+    sum += gList_[i].weight;
+  }
+  return sum;
+}
+
+template< class Landmark >
 void GaussianMixture<Landmark>::setWeight( unsigned int idx, double w ){
   isSorted_ = false;
   gList_[idx].weight_prev = gList_[idx].weight;
@@ -384,6 +399,9 @@ unsigned int GaussianMixture<Landmark>::merge(const double t,
 
   for(unsigned int i = 0; i < nGaussians; i++){
    
+    if(gList_[i].landmark == NULL)
+      continue;
+
     for(unsigned int j = i+1; j < nGaussians; j++){
 
       if( merge(i, j, t, f_inflation) ){

@@ -44,6 +44,7 @@
 //#include <Eigen/StdVector>
 #include <iostream>
 #include <stdio.h>
+#include "TimeStamp.hpp"
 
 double const PI = acos(-1);
 
@@ -79,7 +80,8 @@ public:
     }
     x_.setZero();
     Sx_.setZero();
-    t_ = -1;
+    t_.sec = -1;
+    t_.nsec = 0;
 
   }
 
@@ -89,7 +91,7 @@ public:
    * \param[in] Sx covariance
    * \param[in] t time
    */
-  RandomVec(VecType x, MatType Sx, double t = -1) : 
+  RandomVec(VecType x, MatType Sx, TimeStamp t = TimeStamp() ) : 
     isValid_Sx_L_(false), 
     isValid_Sx_inv_(false),
     isValid_Sx_det_(false),
@@ -109,7 +111,7 @@ public:
    * \param[in] x vector
    * \param[in] t time
    */
-  RandomVec(VecType x, double t = -1) : 
+  RandomVec(VecType x, TimeStamp t = TimeStamp()) : 
     isValid_Sx_L_(false), 
     isValid_Sx_inv_(false),
     isValid_Sx_det_(false),
@@ -200,7 +202,7 @@ public:
    * Set the time
    * \param[in] t time
    */
-  void setTime( double t ){
+  void setTime( TimeStamp t ){
     t_ = t;
   }
 
@@ -219,7 +221,7 @@ public:
    * \param[in] x vector to be set
    * \param[in] t time
    */
-  void set( VecType &x, double t){
+  void set( VecType &x, TimeStamp t){
     set(x);
     t_ = t;
   }
@@ -230,7 +232,7 @@ public:
    * \param[in] Sx covariance to be set
    * \param[in] t time
    */
-  void set( VecType &x, MatType &Sx, double t){
+  void set( VecType &x, MatType &Sx, TimeStamp t){
     set(x);
     setCov(Sx);
     t_ = t;
@@ -304,7 +306,7 @@ public:
    * \param[out] x vector
    * \param[out] t time
    */
-  void get( VecType &x, double &t) const {
+  void get( VecType &x, TimeStamp &t) const {
     get(x);
     t = t_;
   }
@@ -315,7 +317,7 @@ public:
    * \param[out] Sx uncertainty
    * \param[out] t time
    */
-  void get( VecType &x, MatType &Sx, double &t) const {
+  void get( VecType &x, MatType &Sx, TimeStamp &t) const {
     get(x);
     getCov(Sx);
     t = t_;
@@ -332,7 +334,7 @@ public:
    * Get the time
    * \return time
    */
-  double getTime() const {
+  TimeStamp getTime() const {
     return t_;
   }
 
@@ -478,7 +480,7 @@ private:
   bool isValid_Sx_det_; /**< Determinant of Sx_ is up to date */
   MatType Sx_L_; /**< Lower triangular part of Cholesky decomposition on Sx_ */
   bool isValid_Sx_L_; /**< Lower triangular part of Cholesky decomposition on Sx_ is up to date */
-  double t_; /**< time */
+  TimeStamp t_; /**< timestamp */
 
   VecType e_; /**< temporary */
 

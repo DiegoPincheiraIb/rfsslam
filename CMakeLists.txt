@@ -51,23 +51,26 @@ INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
 #LINK_DIRECTORIES()
 
+ADD_LIBRARY(TimeStamp src/TimeStamp.cpp)
 ADD_LIBRARY(ProcessModel src/ProcessModel.cpp)
 ADD_LIBRARY(MeasurementModel src/MeasurementModel.cpp)
+ADD_LIBRARY(LinearAssignment src/HungarianMethod.cpp src/MurtyAlgorithm.cpp src/BruteForceAssignment.cpp)
 
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp src/Measurement.cpp src/Pose.cpp)
-TARGET_LINK_LIBRARIES(rbphdslam2dSim config++ ${Boost_LIBRARIES} ProcessModel MeasurementModel)
+TARGET_LINK_LIBRARIES(rbphdslam2dSim config++ ${Boost_LIBRARIES} TimeStamp ProcessModel MeasurementModel)
 
 ADD_EXECUTABLE(fastslam2dSim src/fastslam2dSim.cpp src/Measurement.cpp src/Pose.cpp)
-TARGET_LINK_LIBRARIES(fastslam2dSim config++ ${Boost_LIBRARIES} ProcessModel MeasurementModel)
+TARGET_LINK_LIBRARIES(fastslam2dSim config++ ${Boost_LIBRARIES} TimeStamp ProcessModel MeasurementModel LinearAssignment)
 
-#ADD_EXECUTABLE(sim1d src/simulation1d.cpp src/Measurement.cpp src/Pose.cpp)
-#TARGET_LINK_LIBRARIES(sim1d config++ ${Boost_LIBRARIES} ProcessModel MeasurementModel)
-
-ADD_EXECUTABLE(unitTest test/test.cpp src/Measurement.cpp src/Pose.cpp)
-TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread MeasurementModel ProcessModel)
-ADD_TEST(unitTest bin/unitTest)
+#ADD_EXECUTABLE(unitTest test/test.cpp src/Measurement.cpp src/Pose.cpp)
+#TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread TimeStamp MeasurementModel ProcessModel LinearAssignment)
+#ADD_TEST(unitTest bin/unitTest)
 
 ADD_EXECUTABLE(hmTest src/test.cpp)
+TARGET_LINK_LIBRARIES(hmTest LinearAssignment)
 
 ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp src/Pose.cpp)
-TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} )
+TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} TimeStamp LinearAssignment)
+
+ADD_EXECUTABLE(convertLogFiles src/convertLogFiles.cpp)
+TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})
