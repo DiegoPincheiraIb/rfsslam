@@ -34,7 +34,7 @@
 
 Pose1d::Pose1d(){}
 
-Pose1d::Pose1d(double x, double Sx, TimeStamp &t){
+Pose1d::Pose1d(double x, double Sx, const TimeStamp &t){
   Vec state;
   Mat cov;
   state << x;
@@ -42,16 +42,16 @@ Pose1d::Pose1d(double x, double Sx, TimeStamp &t){
   set(state, cov, t);
 }
 
-Pose1d::Pose1d(Eigen::Matrix<double, 1, 1> &x, Eigen::Matrix<double, 1, 1> &Sx, TimeStamp &t):
+Pose1d::Pose1d(const Eigen::Matrix<double, 1, 1> &x, const Eigen::Matrix<double, 1, 1> &Sx, const TimeStamp &t):
   RandomVec< Eigen::Matrix<double, 1, 1>, Eigen::Matrix<double, 1, 1> >(x, Sx, t){}
 
-Pose1d::Pose1d(double x, TimeStamp &t){
+Pose1d::Pose1d(double x, const TimeStamp &t){
   Vec state;
   state << x;
   set(state, t);
 }
 
-Pose1d::Pose1d(Eigen::Matrix<double, 1, 1> &x, TimeStamp &t):
+Pose1d::Pose1d(const Eigen::Matrix<double, 1, 1> &x, const TimeStamp &t):
   RandomVec< Eigen::Matrix<double, 1, 1>, Eigen::Matrix<double, 1, 1> >(x, t){}
 
 
@@ -59,22 +59,22 @@ Pose1d::Pose1d(Eigen::Matrix<double, 1, 1> &x, TimeStamp &t):
 
 Pose2d::Pose2d(){}
 
-Pose2d::Pose2d(Vec &x, Mat &Sx, TimeStamp &t) :
+Pose2d::Pose2d(const Vec &x, const Mat &Sx, const TimeStamp &t) :
   RandomVec< Eigen::Vector3d, Eigen::Matrix3d >(x, Sx, t){}
 
-Pose2d::Pose2d(Vec &x, TimeStamp &t) : 
+Pose2d::Pose2d(const Vec &x, const TimeStamp &t) :
   RandomVec< Eigen::Vector3d, Eigen::Matrix3d >(x, t){}
 
 Pose2d::Pose2d( double x, double y, double theta, 
 		double var_x, double var_y, double var_theta,
-		TimeStamp &t ){
+		const TimeStamp &t ){
   Vec state;
   state << x, y, theta;
   Mat cov;
   cov << 
     var_x, 0, 0,
     0, var_y, 0,
-    0, 0, var_x;
+    0, 0, var_theta;
   set(state, cov, t);
 }
 
