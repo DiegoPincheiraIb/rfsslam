@@ -20,7 +20,7 @@ FILE(MAKE_DIRECTORY "bin")
 FILE(MAKE_DIRECTORY "lib")
 FILE(MAKE_DIRECTORY "data")
 
-FIND_PACKAGE(Boost COMPONENTS math_c99 timer system thread filesystem REQUIRED)
+FIND_PACKAGE(Boost COMPONENTS math_c99 timer system thread filesystem graph REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON) 
 set(Boost_USE_STATIC_RUNTIME ON)
