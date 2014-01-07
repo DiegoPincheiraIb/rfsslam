@@ -74,3 +74,6 @@ TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} TimeStamp LinearAssignmen
 
 ADD_EXECUTABLE(convertLogFiles src/convertLogFiles.cpp)
 TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})
+
+ADD_EXECUTABLE(cc_test src/connected_component_test.cpp)
+TARGET_LINK_LIBRARIES(cc_test ${Boost_LIBRARIES})
