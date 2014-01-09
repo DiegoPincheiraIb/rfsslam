@@ -187,6 +187,7 @@ correct(const TPose &pose, const TMeasurement &measurement,
 	TLandmark &landmark_current, TLandmark &landmark_updated,
 	double* zLikelihood, double* mahalanobisDist2 ){
 
+
   TMeasurement measurement_exp; // expected measurement
 
   Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime>  K; // Kalman gain
@@ -225,6 +226,22 @@ correct(const TPose &pose, const TMeasurement &measurement,
     if(*zLikelihood != *zLikelihood) // When likelihood is so small that it becomes NAN
       *zLikelihood = 0;  
   }
+/*
+  std::cout<< "Pbefor" << std::endl;
+  std::cout<< P << std::endl;
+  std::cout<< "Pafter" << std::endl;
+  std::cout<< P_updated << std::endl;
+  std::cout<< "H" << std::endl;
+  std::cout<< H << std::endl;
+  std::cout<< "S" << std::endl;
+  std::cout<< S << std::endl;
+  std::cout<< "S_inv" << std::endl;
+  std::cout<< S_inv << std::endl;
+  std::cout<< "R" << std::endl;
+  pMeasurementModel_->getNoise(S);
+  std::cout<< S << std::endl;
+*/
+
 
   return true;
 

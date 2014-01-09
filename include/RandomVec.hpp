@@ -91,7 +91,7 @@ public:
    * \param[in] Sx covariance
    * \param[in] t time
    */
-  RandomVec(VecType x, MatType Sx, TimeStamp t = TimeStamp() ) : 
+  RandomVec(const VecType x, const MatType Sx, const TimeStamp t = TimeStamp() ) :
     isValid_Sx_L_(false), 
     isValid_Sx_inv_(false),
     isValid_Sx_det_(false),
@@ -111,7 +111,7 @@ public:
    * \param[in] x vector
    * \param[in] t time
    */
-  RandomVec(VecType x, TimeStamp t = TimeStamp()) : 
+  RandomVec(const VecType x, const TimeStamp t = TimeStamp()) :
     isValid_Sx_L_(false), 
     isValid_Sx_inv_(false),
     isValid_Sx_det_(false),
@@ -185,13 +185,13 @@ public:
    * Set the vector
    * \param[in] x vector to be set
    */
-  void set( VecType &x ){x_ = x;}
+  void set( const VecType &x ){x_ = x;}
 
   /** 
    * Set the covariance for uncertainty
    * \param[in] Sx uncertainty to be set
    */
-  void setCov( MatType &Sx){
+  void setCov( const MatType &Sx){
     Sx_ = Sx;
     isValid_Sx_L_ = false; 
     isValid_Sx_inv_ = false;
@@ -202,7 +202,7 @@ public:
    * Set the time
    * \param[in] t time
    */
-  void setTime( TimeStamp t ){
+  void setTime( const TimeStamp t ){
     t_ = t;
   }
 
@@ -211,7 +211,7 @@ public:
    * \param[in] x vector to be set
    * \param[in] Sx covariance to be set
    */
-  void set( VecType &x, MatType &Sx){
+  void set( const VecType &x, const MatType &Sx){
     set(x);
     setCov(Sx);
   }
@@ -221,7 +221,7 @@ public:
    * \param[in] x vector to be set
    * \param[in] t time
    */
-  void set( VecType &x, TimeStamp t){
+  void set( const VecType &x, const TimeStamp t){
     set(x);
     t_ = t;
   }
@@ -232,7 +232,7 @@ public:
    * \param[in] Sx covariance to be set
    * \param[in] t time
    */
-  void set( VecType &x, MatType &Sx, TimeStamp t){
+  void set( const VecType &x, const MatType &Sx, const TimeStamp t){
     set(x);
     setCov(Sx);
     t_ = t;

@@ -47,6 +47,9 @@ typedef RandomVec < Eigen::Matrix<double, 1, 1>,
 /** Definition for 2d measurement */
 typedef RandomVec <Eigen::Vector2d, Eigen::Matrix2d> Measurement2d;
 
+/** Definition for 3d measurement */
+typedef RandomVec <Eigen::Vector3d, Eigen::Matrix3d> Measurement3d;
+
 
 /** Definition for 1d odometry */
 typedef RandomVec <  Eigen::Matrix<double, 1, 1>,

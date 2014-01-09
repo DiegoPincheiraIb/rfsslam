@@ -61,26 +61,26 @@ public:
    *  \param[in] Sx variance
    *  \param[in] t time
    */
-  Pose1d(double x, double Sx, TimeStamp &t);
+  Pose1d( double x, double Sx, const TimeStamp &t);
 
   /** Constructor 
    *  \param[in] x position
    *  \param[in] Sx variance
    *  \param[in] t time
    */
-  Pose1d(Eigen::Matrix<double, 1, 1> &x, Eigen::Matrix<double, 1, 1> &Sx, TimeStamp &t);
+  Pose1d(const Eigen::Matrix<double, 1, 1> &x, const Eigen::Matrix<double, 1, 1> &Sx, const TimeStamp &t);
 
   /** Constructor 
    *  \param[in] x position
    *  \param[in] t time
    */
-  Pose1d(double x, TimeStamp &t);
+  Pose1d( double x, const TimeStamp &t);
 
   /** Constructor 
    *  \param[in] x position
    *  \param[in] t time
    */
-  Pose1d(Eigen::Matrix<double, 1, 1> &x, TimeStamp &t);
+  Pose1d(const Eigen::Matrix<double, 1, 1> &x, const TimeStamp &t);
 
   /** Destructor */
   ~Pose1d(){}
@@ -116,14 +116,14 @@ public:
    * \param[in] Sx pose uncertainty covariance
    * \param[in] t time
    */
-  Pose2d(Vec &x, Mat &Sx, TimeStamp &t);
+  Pose2d(const Vec &x, const Mat &Sx, const TimeStamp &t);
 
   /** 
    * Constructor - defined only for our convenience
    * \param[in] x pose vector 
    * \param[in] t time
    */
-  Pose2d(Vec &x, TimeStamp &t);
+  Pose2d(const Vec &x, const TimeStamp &t);
 
   /**
    * Constructor - defined only for our convenience
@@ -135,9 +135,9 @@ public:
    * \param[in] var_theta theta orientation variance
    * \param[in] t time
    */
-  Pose2d( double x, double y, double theta, 
+  Pose2d( double x, double y, double theta,
 	  double var_x, double var_y, double var_theta,
-	  TimeStamp &t ); 
+	  const TimeStamp &t );
 
   /** Default destructor */
   ~Pose2d();

@@ -96,6 +96,7 @@ bool RangeBearingModel::measure(const Pose2d &pose,
   
   cov = H * landmarkUncertainty * H.transpose() + R_;
   measurement.set(mean, cov);
+
   
   if(jacobian != NULL)
     *jacobian = H;

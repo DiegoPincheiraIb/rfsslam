@@ -1111,7 +1111,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     }else{ // Only increase row
       double** weightingTableOld = weightingTable_;
       weightingTable_ = new double* [nRows];
-      for(int m = 0; m < weightingTableNRows_ ; m++ ){
+      for(int m = 0; m < nRows ; m++ ){
 	if( m < weightingTableNRows_){
 	  weightingTable_[m] = weightingTableOld[m];
 	}else{
@@ -1120,7 +1120,6 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       }
       weightingTableNRows_ = nRows;
     }
-    weightingTable_ = new double* [nRows]; 
       }else if(weightingTableNCols_ < nCols){ // Only increase Col
     for(int m = 0; m < weightingTableNRows_; m++ ){
       delete[] weightingTable_[m];
