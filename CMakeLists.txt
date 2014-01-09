@@ -49,28 +49,40 @@ INCLUDE_DIRECTORIES(test)
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
-#LINK_DIRECTORIES()
+#LINK_DIRECTORIES(${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 
 ADD_LIBRARY(TimeStamp src/TimeStamp.cpp)
+ADD_LIBRARY(Pose src/Pose.cpp)
+ADD_LIBRARY(Measurement src/Measurement.cpp)
 ADD_LIBRARY(ProcessModel src/ProcessModel.cpp)
 ADD_LIBRARY(MeasurementModel src/MeasurementModel.cpp)
 ADD_LIBRARY(LinearAssignment src/HungarianMethod.cpp src/MurtyAlgorithm.cpp src/BruteForceAssignment.cpp)
+SET(RFSSLAM_LIBRARIES TimeStamp Pose Measurement ProcessModel MeasurementModel LinearAssignment)
 
-ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp src/Measurement.cpp src/Pose.cpp)
-TARGET_LINK_LIBRARIES(rbphdslam2dSim config++ ${Boost_LIBRARIES} TimeStamp ProcessModel MeasurementModel)
+ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)
+TARGET_LINK_LIBRARIES(rbphdslam2dSim config++ ${Boost_LIBRARIES} ${RFSSLAM_LIBRARIES})
 
-ADD_EXECUTABLE(fastslam2dSim src/fastslam2dSim.cpp src/Measurement.cpp src/Pose.cpp)
-TARGET_LINK_LIBRARIES(fastslam2dSim config++ ${Boost_LIBRARIES} TimeStamp ProcessModel MeasurementModel LinearAssignment)
+ADD_EXECUTABLE(fastslam2dSim src/fastslam2dSim.cpp)
+TARGET_LINK_LIBRARIES(fastslam2dSim config++ ${Boost_LIBRARIES} ${RFSSLAM_LIBRARIES})
 
 #ADD_EXECUTABLE(unitTest test/test.cpp src/Measurement.cpp src/Pose.cpp)
 #TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread TimeStamp MeasurementModel ProcessModel LinearAssignment)
 #ADD_TEST(unitTest bin/unitTest)
 
-ADD_EXECUTABLE(hmTest src/test.cpp)
-TARGET_LINK_LIBRARIES(hmTest LinearAssignment)
-
 ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} TimeStamp LinearAssignment)
 
+#ADD_EXECUTABLE(hmTest src/test.cpp)
+#TARGET_LINK_LIBRARIES(hmTest LinearAssignment)
+
 ADD_EXECUTABLE(convertLogFiles src/convertLogFiles.cpp)
 TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})
+
+INSTALL(TARGETS ${RFSSLAM_LIBRARIES} 
+  DESTINATION /usr/local/lib/rfsslam
+  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+
+FILE(GLOB headerFiles "include/*.hpp")
+INSTALL(FILES ${headerFiles}
+  DESTINATION /usr/local/include/rfsslam
+  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
