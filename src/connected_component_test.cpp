@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
   boost::uniform_01<> ud;
   boost::variate_generator<boost::mt19937, boost::uniform_01<> > gen(rng, ud);
 
-  int const C_size = 5;
+  int const C_size = 7;
   double** C = new double*[C_size];
   for(int i = 0; i < C_size; i++){
     C[i] = new double[C_size];
@@ -27,13 +27,13 @@ int main(int argc, char *argv[])
       C[i][j] = 0;
     }
   }
-  C[0][3] = gen();
-  C[1][0] = gen();
-  C[2][2] = gen();
-  C[2][4] = gen();
-  C[4][1] = gen();
-  C[4][2] = gen();
-  C[4][4] = gen();
+  C[1][4] = gen();
+  C[2][1] = gen();
+  C[3][3] = gen();
+  C[3][5] = gen();
+  C[5][2] = gen();
+  C[5][3] = gen();
+  C[5][5] = gen();
 
   for(int i = 0; i < C_size; i++){
     for(int j = 0; j < C_size; j++){
@@ -53,13 +53,33 @@ int main(int argc, char *argv[])
 
   for(int n = 0; n < nP; n++){
     
+    printf("Partition %d\n", n);
+
     size_t nCols, nRows;
-    likelihoodMat.getPartitionSize(n, nCols, nRows);
+    likelihoodMat.getPartitionSize(n, nRows, nCols);
     double** Cp = new double* [nCols + nRows];
     for(int i = 0; i < nCols + nRows; i++){
       Cp[i] = new double[nCols + nRows];
     }
-    likelihoodMat.getPartition(n, Cp);
+
+    bool isZeroPartition;
+    int* rowIdx = new int[nRows];
+    int* colIdx = new int[nCols];
+    likelihoodMat.getPartition(n, Cp, &isZeroPartition, rowIdx, colIdx);
+ 
+    if(isZeroPartition)
+      printf("Zero partition\n");
+    printf("Original rows: ");
+    for(int i = 0; i < nRows; i++){
+      printf("%d  ", rowIdx[i]);
+    }
+    printf("\n");
+    printf("Original cols: ");
+    for(int j = 0; j < nCols; j++){
+      printf("%d  ", colIdx[j]);
+    }
+    printf("\n");
+
     for(int i = 0; i < nRows; i++){
       for(int j = 0; j < nCols; j++){
 	printf("%f  ", Cp[i][j]);
@@ -71,6 +91,9 @@ int main(int argc, char *argv[])
       delete[] Cp[i];
     }
     delete[] Cp;
+
+    delete[] rowIdx;
+    delete[] colIdx;
 
   }
 
