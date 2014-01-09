@@ -32,7 +32,7 @@
 #include <boost/filesystem.hpp>
 #include "GaussianMixture.hpp"
 #include "Landmark.hpp"
-#include "LinearAssignment.hpp"
+#include "HungarianMethod.hpp"
 #include "Particle.hpp"
 #include "Pose.hpp"
 #include <stdio.h>

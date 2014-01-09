@@ -54,7 +54,7 @@ INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
 ADD_LIBRARY(TimeStamp src/TimeStamp.cpp)
 ADD_LIBRARY(ProcessModel src/ProcessModel.cpp)
 ADD_LIBRARY(MeasurementModel src/MeasurementModel.cpp)
-ADD_LIBRARY(LinearAssignment src/HungarianMethod.cpp src/MurtyAlgorithm.cpp src/BruteForceAssignment.cpp)
+ADD_LIBRARY(LinearAssignment src/HungarianMethod.cpp src/MurtyAlgorithm.cpp src/BruteForceAssignment.cpp src/LinearAssignment.cpp)
 
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp src/Measurement.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dSim config++ ${Boost_LIBRARIES} TimeStamp ProcessModel MeasurementModel)

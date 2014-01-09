@@ -71,10 +71,10 @@ else:
 print('Reading ' + poseEstFile);
 poseEst = np.genfromtxt(poseEstFile);
 poseTimesteps = poseEst[:,0];
-poseErr_x = poseEst[:,1];
-poseErr_y = poseEst[:,2];
+poseErr_x = poseEst[:,1]*10;
+poseErr_y = poseEst[:,2]*10;
 poseErr_r = poseEst[:,3] * 180.0 / np.pi ;
-poseErr_d = poseEst[:,4];
+poseErr_d = poseEst[:,4]*10;
 print('Reading ' + mapEstFile);
 mapEst = np.genfromtxt(mapEstFile);
 mapTimesteps = mapEst[:,0];
@@ -91,28 +91,31 @@ plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
 plt.xlabel(r'Time [s]');
 plt.ylabel(r'Position error [m]');
 plt.grid(True);
-plt.ylim(-0.3, 0.3);
+plt.ylim(-3, 3);
+#plt.ylim(-15, 15);
 
 plt.figure(2);
 plt.plot(poseTimesteps[::10], poseErr_r[::10], 'r-');
 plt.xlabel(r'Time [s]');
 plt.ylabel(r'Rotation error [deg]');
 plt.grid(True);
-plt.ylim(-10, 10);
+plt.ylim(-6, 6);
+#plt.ylim(-15, 15);
 
 plt.figure(3);
 plt.plot(poseTimesteps[::10], poseErr_d[::10], 'r-');
 plt.xlabel(r'Time [s]');
 plt.ylabel(r'Position error [m]');
 plt.grid(True);
-plt.ylim(ymax = 0.3);
+plt.ylim(ymax = 3);
+#plt.ylim(ymax = 15);
 
 plt.figure(4);
 plt.plot(mapTimesteps[::10], errorOSPA[::10], 'r-');
 plt.xlabel(r'Time [s]');
 plt.ylabel(r'OSPA error');
 plt.grid(True);
-plt.ylim(ymax = 3);
+plt.ylim(ymax = 4);
 
 plt.figure(5);
 p1, = plt.plot(mapTimesteps[::10], landmarksMeasured[::10], 'k-', linewidth=3.0);
@@ -136,8 +139,10 @@ ax1.set_xlabel(r"Time [s]");
 ax1.set_ylabel(r"Position error [m]");
 ax2.set_ylabel(r"Orientation error [deg]");
 ax1.grid(True);
-ax1.set_ylim(-1.5, 1.5);
-ax2.set_ylim(-15, 15);
+ax1.set_ylim(-3, 3);
+ax2.set_ylim(-6, 6);
+#ax1.set_ylim(-15, 15);
+#ax2.set_ylim(-15, 15);
 #fig.show();
 
 # Save plots

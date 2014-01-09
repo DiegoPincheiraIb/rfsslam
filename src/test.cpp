@@ -28,7 +28,9 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "LinearAssignment.hpp"
+#include "BruteForceAssignment.hpp"
+#include "HungarianMethod.hpp"
+#include "MurtyAlgorithm.hpp"
 #include <stdio.h>
 #include <iostream>
 

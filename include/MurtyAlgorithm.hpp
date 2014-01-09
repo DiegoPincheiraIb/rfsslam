@@ -34,6 +34,7 @@
 #include <cstddef>
 #include <list>
 #include <queue> 
+#include "LinearAssignment.hpp"
 #include "HungarianMethod.hpp"
 
 /** 

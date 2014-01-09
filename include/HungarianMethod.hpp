@@ -31,70 +31,10 @@
 #ifndef HUNGARIAN_METHOD_HPP
 #define HUNGARIAN_METHOD_HPP
 
+#include "LinearAssignment.hpp"
 #include <queue>
 #include <vector>
 
-/**
- * \class CostMatrix
- * \brief Cost / Reward matrix for linear assignment
- * \author Keith Leung
- */
-class CostMatrix{
-
-public:
-  
-  /**
-   * Constructor
-   * \param[in] C A square cost matrix. Caller must take care of deallocation.
-   * \param[in] nDim size of C
-   */
-  CostMatrix(double** C, int nDim);
-
-  /**
-   * Destructor 
-   */
-  ~CostMatrix();
-
-  /**
-   * Reduce the cost matrix based on assignments that are almost certain. C will be modified.
-   * \param[in] lim the limit for elements in C
-   * \param[in] minVal true if the limit is a lower limit for elements in C as opposed to an upper limit
-   */
-  void reduce(double lim, bool minVal = true);
-
-  /**
-   * Get the cost matrix
-   * \param[out] C cost matrix pointer
-   * \return size of C
-   */
-  int getCostMatrix(double** &C);
-
-  /**
-   * Get the reduced cost matrix
-   * \param[out] C reduced cost matrix pointer
-   * \param[out] fixedAssignments pointer to an array of size n = getCostMatrix(C_full) assignments, where -1 indicates unassgined.
-   * The caller must allocate memory for this array before calling the function.
-   * \param[out] score pointer to the score of the fixed assignments. Memory needs to be allocated by caller.
-   * \param[out] i_remap pointer to an array of the mapping of row indices from the reduced cost matrix to the full cost matrix 
-   * \param[out] j_remap pointer to an array of the mapping of col indices from the reduced cost matrix to the full cost matrix
-   * \return size of C
-   */
-  int getCostMatrixReduced(double** &C, int* &fixedAssignments, double* score, int* &i_remap, int* &j_remap);  
-
-private:
-
-  double** C_; /**< cost matrix */
-  double** C_reduced_; /**< reduced cost matrix with fixed assignments */
-  std::vector<int> a_fixed_; /**< fixed assignments */
-  std::vector<int> a_fixed_reverse_; /**< reverse fixed assignments */
-  int n_; /**< size of C */
-  int n_reduced_; /**< size of C_reduced */
-  std::vector<int> i_reduced_; /**< Index remapping for the reduced matrix */
-  std::vector<int> j_reduced_; /**< Index remapping for the reduced matrix */
-  int* i_remap_; /**< Index remapping for the reduced matrix */
-  int* j_remap_; /**< Index remapping for the reduced matrix */
-  bool reducedCostMatAvailable_; /**< Flag indicating if the reduced cost matrix has been calculated */
-};
 
 /** 
  * \class HungarianMethod
