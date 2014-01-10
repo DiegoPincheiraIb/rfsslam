@@ -102,5 +102,15 @@ int main(int argc, char *argv[])
   }
   delete[] C;
 
+
+  int* ordering = new int[5];
+  for(int i = 0; i < 5; i++){
+    ordering[i] = i;
+  }
+  do{
+    printf("%d %d %d %d %d\n", ordering[0], ordering[1], ordering[2], ordering[3], ordering[4]);
+  }while(std::next_permutation(ordering, ordering + 5));
+
+
   return 0;
 }

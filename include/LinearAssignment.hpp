@@ -87,12 +87,12 @@ public:
   /**
    * Get a partition of the cost matrix
    * \param[in] p partition number 
-   * \param[out] Cp partition p of the cost matrix C. Memory needs to be allocated by caller. Use getPartitionSize() to determine the size of the partition for memory allocation.
+   * \param[out] Cp if not NULL, partition p of the cost matrix C. Memory needs to be allocated by caller. Use getPartitionSize() to determine the size of the partition for memory allocation.
    * \param[out] isZeroPartition if not equal to NULL, indicates if partition p contains all zeros
    * \param[out] if not NULL, row_indices the original indices of the rows in partition p
    * \param[out] if not NULL, col_indices the original indices of the columns in partition p
    */
-  void getPartition(int p, double** Cp, bool* isZeroPartition = NULL, int* row_indices = NULL, int* col_indices = NULL);
+  void getPartition(int p, double** Cp = NULL, bool* isZeroPartition = NULL, int* row_indices = NULL, int* col_indices = NULL);
   
 
   /**
