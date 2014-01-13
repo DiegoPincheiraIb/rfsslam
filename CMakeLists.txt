@@ -17,6 +17,7 @@ SET(CMAKE_CXX_COMPILER "c++")
 SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-msse4.2")
 
 FILE(MAKE_DIRECTORY "bin")
+FILE(MAKE_DIRECTORY "bin/examples")
 FILE(MAKE_DIRECTORY "lib")
 FILE(MAKE_DIRECTORY "data")
 
@@ -94,3 +95,11 @@ TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})
 
 ADD_EXECUTABLE(cc_test src/connected_component_test.cpp)
 TARGET_LINK_LIBRARIES(cc_test ${Boost_LIBRARIES} rfsslam)
+
+# Examples
+
+ADD_EXECUTABLE(examples/linearAssignment_CostMatrixPartitioning src/examples/linearAssignment_CostMatrixPartitioning.cpp)
+TARGET_LINK_LIBRARIES(examples/linearAssignment_CostMatrixPartitioning ${Boost_LIBRARIES} rfsslam)
+
+ADD_EXECUTABLE(examples/linearAssignment_LexicographicOrdering src/examples/linearAssignment_LexicographicOrdering.cpp)
+TARGET_LINK_LIBRARIES(examples/linearAssignment_LexicographicOrdering ${Boost_LIBRARIES} rfsslam)
