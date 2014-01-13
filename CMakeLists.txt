@@ -66,7 +66,8 @@ ADD_LIBRARY(rfsslam
   src/HungarianMethod.cpp
   src/MurtyAlgorithm.cpp
   src/BruteForceAssignment.cpp
-  src/LinearAssignment.cpp)
+  src/LinearAssignment.cpp
+  src/PermutationLexicographic.cpp)
 #SET(RFSSLAM_LIBRARIES TimeStamp Pose Measurement ProcessModel MeasurementModel LinearAssignment)
 
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)

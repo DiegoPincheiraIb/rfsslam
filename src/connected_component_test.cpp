@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <utility>
 #include "LinearAssignment.hpp"
+#include "PermutationLexicographic.hpp"
 
 #include <boost/timer/timer.hpp>
 #include <boost/format.hpp>
@@ -103,14 +104,26 @@ int main(int argc, char *argv[])
   delete[] C;
 
 
-  int* ordering = new int[5];
-  for(int i = 0; i < 5; i++){
-    ordering[i] = i;
+  unsigned int const nM = 5;
+  unsigned int const nZ = 3;
+  uint* ordering = new uint[nM + nZ];
+  
+   
+  PermutationLexicographic pl(nM, nZ, true);
+  unsigned int nPerm = pl.next(ordering);
+  while( nPerm != 0){
+    printf("[%d] %d %d %d %d %d %d %d %d  | ", nPerm, ordering[0], ordering[1], ordering[2], ordering[3], ordering[4], ordering[5], ordering[6], ordering[7]);
+
+    printf("| Outliers: ");
+    for(int i = nM; i < nM + nZ; i++){
+      if(ordering[i] < nZ)
+	printf("%d ",ordering[i]);
+    }
+    printf("\n");
+    nPerm = pl.next(ordering);
   }
-  do{
-    printf("%d %d %d %d %d\n", ordering[0], ordering[1], ordering[2], ordering[3], ordering[4]);
-  }while(std::next_permutation(ordering, ordering + 5));
+  
 
-
+  delete[] ordering;
   return 0;
 }
