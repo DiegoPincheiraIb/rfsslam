@@ -34,7 +34,7 @@
 
 PermutationLexicographic::PermutationLexicographic(unsigned int nM, 
 						   unsigned int nZ, 
-						   bool includeClutter) : nM_(nM), nZ_(nZ), nP_(0)
+						   bool includeClutter) : nM_(nM), nZ_(nZ), nP_(0), last_(false)
 {
 
   if(nM != nZ)

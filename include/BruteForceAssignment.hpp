@@ -62,13 +62,13 @@ public:
    *  \param[in] maxToMin ordering of results
    *  \return number of assignments
    */
-  unsigned int run(double** C, int n, int** &a, double* &s, bool maxToMin = true);
+  unsigned int run(double** C, int n, unsigned int** &a, double* &s, bool maxToMin = true);
 
 private:
 
   /** \brief A linear assignment */
   struct assignment{
-    int* a;
+    unsigned int* a;
     double score;
     
     bool operator<(const assignment& rhs) const{
@@ -79,9 +79,9 @@ private:
 
   };
 
-  std::priority_queue<assignment> pq;
-  unsigned int nAssignments;
-  int** a_;
+  std::priority_queue<assignment> pq_;
+  unsigned int nAssignments_;
+  unsigned int** a_;
   double* s_;
 };
 

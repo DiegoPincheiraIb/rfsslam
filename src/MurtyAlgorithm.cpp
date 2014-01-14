@@ -115,7 +115,7 @@ int MurtyNode::getPartitionID(){
   return id_;
 }
 
-Murty::Murty(double** C, int n, double bigNum) : k_(0), n_(n), bigNumber_(bigNum){
+Murty::Murty(double** C, unsigned int n, double bigNum) : k_(0), n_(n), bigNumber_(bigNum){
   C_ = C;
   C_t_ = new double* [n_];
   for( int i = 0; i < n_; i++){
@@ -123,6 +123,8 @@ Murty::Murty(double** C, int n, double bigNum) : k_(0), n_(n), bigNumber_(bigNum
   }
   root_ = new MurtyNode(0, n_);
   bestScore_ = 0;
+  ideal_nC_ = n;
+  ideal_nR_ = n;
 }
   
 Murty::~Murty(){
@@ -132,6 +134,14 @@ Murty::~Murty(){
   delete root_;
 }
 
+void Murty::setIdealBlock(unsigned int nR, unsigned int nC){
+  ideal_nC_ = nC;
+  ideal_nR_ = nR;
+  if(ideal_nC_ > n_)
+    ideal_nC_ = n_;
+  if(ideal_nR_ > n_)
+    ideal_nR_ = n_;
+}
 
 double Murty::getBestScore(){
   return bestScore_;
@@ -163,9 +173,23 @@ int Murty::findNextBest( int* &assignment, double* score){
   int parent_partition = parent->getPartitionID();
   pq.pop();
 
+  int* a_parent = parent->getAssignment();
+  bool Z_used_by_real_m[n_];
+  for(int i = 0; i < n_; i++){
+    Z_used_by_real_m[i] = false;
+  }
+  for(int i = 0; i < ideal_nR_; i++){
+    Z_used_by_real_m[ a_parent[i] ] = true;
+  }
+
   // partition this node (into n_ - 1 - parent_partition parts) -- make children nodes
   //printf("\n************************\n");
-  for(int n = parent_partition; n < n_-1; n++ ){ 
+  for(int n = parent_partition; n < n_ - 1; n++ ){ 
+
+    if(n >= ideal_nR_ && a_parent[n] >= ideal_nC_ && Z_used_by_real_m[n - ideal_nR_]){
+      // printf("Skipping partition due to redundant assignment");
+      continue;
+    }
       
     //printf("\nPartition %d\n", n);
     MurtyNode* p = new MurtyNode(n, n_);
@@ -179,7 +203,6 @@ int Murty::findNextBest( int* &assignment, double* score){
 
     // Copy all the fixed assignments from the parent node
     //printf("Must have: ");
-    int* a_parent = parent->getAssignment();
     for(int i = 0; i < parent_partition; i++){
       a[i] = a_parent[i];
       freeCol[a[i]] = false;
@@ -253,7 +276,7 @@ int Murty::findNextBest( int* &assignment, double* score){
       }
     }
 
-    // Solve best-linear assignment for the n partitions
+    // Solve best-linear assignment for the n-th partition
     if(solutionPossible){
       int aTmp[nFreeAssignments];
       double s = 0;

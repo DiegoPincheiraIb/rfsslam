@@ -130,7 +130,7 @@ int main(int argc, char* argv[]){
 
 
   BruteForceLinearAssignment bf;
-  int** bfa;
+  unsigned int** bfa;
   double* bfs;
   int nbfa = bf.run(C, n, bfa, bfs);
   printf("Brute force approach looked through %d assignments\n", nbfa);

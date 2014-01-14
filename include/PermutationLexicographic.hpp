@@ -62,7 +62,7 @@ public:
    * \param[out] permutation pointer to an array for reading the current permutation. 
    * Memory should be allocated by the caller. The size of the array needs to be nM if includeClutter = false,
    * and nM + nZ if includeClutter is true.
-   * \return permutation number
+   * \return permutation number or 0 if there are no permutations remaining
    */
   unsigned int next(unsigned int* permutation);
 
