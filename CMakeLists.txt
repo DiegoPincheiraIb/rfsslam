@@ -17,6 +17,7 @@ SET(CMAKE_CXX_COMPILER "c++")
 SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-march=native")
 
 FILE(MAKE_DIRECTORY "bin")
+FILE(MAKE_DIRECTORY "bin/examples")
 FILE(MAKE_DIRECTORY "lib")
 FILE(MAKE_DIRECTORY "data")
 
@@ -49,7 +50,7 @@ INCLUDE_DIRECTORIES(test)
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
-#LINK_DIRECTORIES(${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
+#LINK_DIRECTORIES()
 
 #ADD_LIBRARY(TimeStamp src/TimeStamp.cpp)
 #ADD_LIBRARY(Pose src/Pose.cpp)
@@ -65,7 +66,9 @@ ADD_LIBRARY(rfsslam
   src/MeasurementModel.cpp
   src/HungarianMethod.cpp
   src/MurtyAlgorithm.cpp
-  src/BruteForceAssignment.cpp)
+  src/BruteForceAssignment.cpp
+  src/LinearAssignment.cpp
+  src/PermutationLexicographic.cpp)
 #SET(RFSSLAM_LIBRARIES TimeStamp Pose Measurement ProcessModel MeasurementModel LinearAssignment)
 
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)
@@ -78,6 +81,9 @@ TARGET_LINK_LIBRARIES(fastslam2dSim config++ ${Boost_LIBRARIES} rfsslam)
 #TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread TimeStamp MeasurementModel ProcessModel LinearAssignment)
 #ADD_TEST(unitTest bin/unitTest)
 
+ADD_EXECUTABLE(hmTest src/test.cpp)
+TARGET_LINK_LIBRARIES(hmTest rfsslam)
+
 ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} rfsslam)
 
@@ -87,11 +93,13 @@ TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} rfsslam)
 ADD_EXECUTABLE(convertLogFiles src/convertLogFiles.cpp)
 TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})
 
-INSTALL(TARGETS rfsslam
-  DESTINATION /usr/local/lib/rfsslam
-  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+# Examples
 
-FILE(GLOB headerFiles "include/*.hpp")
-INSTALL(FILES ${headerFiles}
-  DESTINATION /usr/local/include/rfsslam
-  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+ADD_EXECUTABLE(examples/linearAssignment_CostMatrixPartitioning src/examples/linearAssignment_CostMatrixPartitioning.cpp)
+TARGET_LINK_LIBRARIES(examples/linearAssignment_CostMatrixPartitioning ${Boost_LIBRARIES} rfsslam)
+
+ADD_EXECUTABLE(examples/linearAssignment_LexicographicOrdering src/examples/linearAssignment_LexicographicOrdering.cpp)
+TARGET_LINK_LIBRARIES(examples/linearAssignment_LexicographicOrdering ${Boost_LIBRARIES} rfsslam)
+
+ADD_EXECUTABLE(examples/linearAssignment_MurtyAlgorithm src/examples/linearAssignment_MurtyAlgorithm.cpp)
+TARGET_LINK_LIBRARIES(examples/linearAssignment_MurtyAlgorithm ${Boost_LIBRARIES} rfsslam)

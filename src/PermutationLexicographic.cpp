@@ -28,61 +28,66 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LINEAR_ASSIGNMENT_HPP
-#define LINEAR_ASSIGNMENT_HPP
+#include "PermutationLexicographic.hpp"
+#include <algorithm>
+#include <stdio.h>
 
-#include "LinearAssignment.hpp"
-#include <queue>
-
-/**
- * \class BruteForceLinearAssignment
- * This function finds all the linear assignments and orders them from best to worst.
- * It is intended for testing and checking the Hungarian method and Murty's k-best algorithm.
- * \brief Brute-force linear assignment 
- */
-class BruteForceLinearAssignment
+PermutationLexicographic::PermutationLexicographic(unsigned int nM, 
+						   unsigned int nZ, 
+						   bool includeClutter) : nM_(nM), nZ_(nZ), nP_(0), last_(false)
 {
 
-public:
-
-  /** Constructor */
-  BruteForceLinearAssignment();
-
-  /** Destructor */
-  ~BruteForceLinearAssignment();
+  if(nM != nZ)
+    includeClutter = true;
   
-  /**
-   *  Run brute-force linear assignment by finding the cost of all possible linear assignments
-   *  in a lexicographical order, and then returning the results in an ordered format with 
-   *  respect to the cost / score.
-   *  \param[in] C square cost / score matrix
-   *  \param[in] n dimension of C
-   *  \param[out] a ordered assignments a[k][n], where k is the assignment order
-   *  \param[out] s ordered assignment scores
-   *  \param[in] maxToMin ordering of results
-   *  \return number of assignments
-   */
-  unsigned int run(double** C, int n, unsigned int** &a, double* &s, bool maxToMin = true);
+  oSize_ = 0;
+  if(includeClutter == false){
+    oSize_ = nM;
+  }else{
+    oSize_ = nM + nZ;
+  }
 
-private:
+  o_ = new unsigned int[oSize_];
+  for(int i = 0; i < oSize_; i++){
+    if( i < nZ )
+      o_[i] = i;
+    else
+      o_[i] = nZ;
+  }
+  
+  
+}
 
-  /** \brief A linear assignment */
-  struct assignment{
-    unsigned int* a;
-    double score;
+PermutationLexicographic::~PermutationLexicographic(){
+
+  delete[] o_;
+
+}
+
+unsigned int PermutationLexicographic::next(unsigned int* permutation){
+
+  if(last_){
+    for(int i = 0; i < oSize_; i++){
+      permutation[i] = 0;
+    } 
+    return 0;
+  }
+
+  for(int i = 0; i < oSize_; i++){
+    permutation[i] = o_[i];
+  }
     
-    bool operator<(const assignment& rhs) const{
-      if(score < rhs.score)
-	return true;
-      return false;
-    }
+  unsigned int u = nM_;
+  unsigned int v = oSize_ - 1;
 
-  };
+  while(u < v){ // Fast forward permutations to the next meaningful one
+    std::swap(o_[u], o_[v]);
+    u++;
+    v--;
+  }
+  
+  last_ = !std::next_permutation(o_, o_ + oSize_);
+  nP_++;
+  return nP_;
 
-  std::priority_queue<assignment> pq_;
-  unsigned int nAssignments_;
-  unsigned int** a_;
-  double* s_;
-};
-
-#endif
+}

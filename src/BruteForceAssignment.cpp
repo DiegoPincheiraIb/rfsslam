@@ -22,22 +22,23 @@
  * DISCLAIMED. IN NO EVENT SHALL THE AMTC, UNIVERSIDAD DE CHILE, OR THE COPYRIGHT 
  * HOLDERS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE 
- * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS OR BUSINESS INTERRUPTION) 
  * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "BruteForceAssignment.hpp"
+#include "PermutationLexicographic.hpp"
 
 #include <cmath>
 #include <stdio.h>
 
-BruteForceLinearAssignment::BruteForceLinearAssignment() : a_(NULL), s_(NULL), nAssignments(0){}
+BruteForceLinearAssignment::BruteForceLinearAssignment() : a_(NULL), s_(NULL), nAssignments_(0){}
 
 BruteForceLinearAssignment::~BruteForceLinearAssignment(){
   if(a_ != NULL ){
-    for( unsigned int m = 0; m < nAssignments; m++ ){
+    for( unsigned int m = 0; m < nAssignments_; m++ ){
       delete[] a_[m];
     }
     delete[] a_;
@@ -45,10 +46,20 @@ BruteForceLinearAssignment::~BruteForceLinearAssignment(){
   if(s_ != NULL ){
     delete[] s_;
   }
-  s_ = new double [nAssignments];
+  s_ = new double [nAssignments_];
 }
 
-unsigned int BruteForceLinearAssignment::run(double** C, int n, int** &a, double* &s, bool maxToMin){
+unsigned int BruteForceLinearAssignment::run(double** C, int n, unsigned int** &a, double* &s, bool maxToMin){
+
+  if(a_ != NULL ){
+    for( unsigned int m = 0; m < nAssignments_; m++ ){
+      delete[] a_[m];
+    }
+    delete[] a_;
+  }
+  if(s_ != NULL ){
+    delete[] s_;
+  }
 
   double offset = 0;
   if(!maxToMin){
@@ -66,94 +77,43 @@ unsigned int BruteForceLinearAssignment::run(double** C, int n, int** &a, double
     }
   }
 
-
-  unsigned int nAssignments = 0;
-  bool lastPermutationSequence = false;
-  std::vector<int> currentPermutation(n);
-  for(int m = 0; m < n; m++){
-    currentPermutation[m] = m;
-  }
-
-  while( !lastPermutationSequence ){
+  nAssignments_ = 0;
+  PermutationLexicographic lex(n, n, false);
+  while(true){
     
+    unsigned int* o = new unsigned int[n];
+    int np = lex.next(o);
+    if(np == 0){
+      delete[] a;
+      break;
+    }
+    nAssignments_ = np;
     assignment as;
+    as.a = o;
     as.score = 0;
-    as.a = new int[n];
-    for(int z = 0; z < n; z++){
-      int m = currentPermutation[ z ];
-      as.a[z] = m;
-      if( maxToMin )
-	as.score += C[m][z];
-      else
-	as.score -= ( C[m][z] + offset );
-    }
-    pq.push(as);
-    nAssignments++;
-
-    // Generate the next permutation sequence
-    for(int m = n - 2; m >= -1; m--){
-
-      if( m == -1){
-	lastPermutationSequence = true;
-	break;
+    if( maxToMin ){
+      for(int i = 0; i < n; i++ ){
+	as.score += C[i][o[i]];
       }
-      
-      // Find the highest index m such that currentPermutation[m] < currentPermutation[m+1]
-      if(currentPermutation[m] < currentPermutation[ m + 1 ]){
-
-	// Find highest index i such that currentPermutation[i] > currentPermutation[m] 
-	// then swap the elements
-	for(int i = n - 1; i >= 0; i--){
-	  if( currentPermutation[i] > currentPermutation[m] ){
-	    int temp = currentPermutation[i];
-	    currentPermutation[i] = currentPermutation[m];
-	    currentPermutation[m] = temp;
-	    break;
-	  }
-	}
-
-	// reverse order of elements after currentPermutation[m]
-	int nElementsToSwap = n - (m + 1);
-	int elementsToSwapMidPt = nElementsToSwap / 2;
-	int idx1 = m + 1;
-	int idx2 = n - 1;
-	for(int i = 1; i <= elementsToSwapMidPt; i++){
-	  int temp = currentPermutation[idx1];
-	  currentPermutation[idx1] = currentPermutation[idx2];
-	  currentPermutation[idx2] = temp;
-	  idx1++;
-	  idx2--;
-	}
-
-	break;
+    }else{
+      for(int i = 0; i < n; i++ ){
+	as.score -= ( C[i][o[i]] + offset );
       }
-
     }
+    
+    pq_.push(as);
 
-    // now we should have the next permutation sequence
   }
 
-
-  if(a_ != NULL ){
-    for( unsigned int m = 0; m < nAssignments; m++ ){
-      delete[] a_[m];
-    }
-    delete[] a_;
-  }
-  a_ = new int* [nAssignments];
-  if(s_ != NULL ){
-    delete[] s_;
-  }
-  s_ = new double [nAssignments];
-
-  for(int m = 0; m < nAssignments; m++){
-    assignment as = pq.top();
-    pq.pop();
+  a_ = new unsigned int* [nAssignments_];
+  s_ = new double [nAssignments_];
+  for(int m = 0; m < nAssignments_; m++){
+    assignment as = pq_.top();
+    pq_.pop();
     a_[m] = as.a;
     s_[m] = as.score;
   }
-     
   a = a_;
   s = s_;
-  return nAssignments;
+  return nAssignments_;
 }

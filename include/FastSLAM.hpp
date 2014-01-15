@@ -34,7 +34,10 @@
 #include <boost/timer/timer.hpp>
 #include <Eigen/Core>
 #include "GaussianMixture.hpp"
-#include "LinearAssignment.hpp"
+
+#include "HungarianMethod.hpp"
+#include "MurtyAlgorithm.hpp"
+
 #include "KalmanFilter.hpp"
 #include "ParticleFilter.hpp"
 #include <math.h>

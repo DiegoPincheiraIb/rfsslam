@@ -43,6 +43,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from matplotlib.patches import Ellipse, Circle
 from matplotlib import transforms
+import matplotlib.ticker as ticker   
 
 saveMovie = True;
 
@@ -150,7 +151,7 @@ z = np.fromfile(measurementFileHandle, count=3, sep=" ", dtype=float);
 # Plotting 
 
 fig = plt.figure( figsize=(12,10), facecolor='w')
-plt.plot(gtMap_x, gtMap_y, 'k.');
+gtMapHandle, = plt.plot(gtMap_x, gtMap_y, 'k.');
 ax = plt.gca();
 plt.axis('equal');
 plt.grid(True);
@@ -297,8 +298,13 @@ if saveMovie:
         measurements[i].remove();
     plt.setp(gtPoseHandle, linewidth=2.0)
     txt.set_text(" ");
-    plt.legend([gtPoseHandle, estPoseHandle], ["Ground-truth trajectory", r"Estimated trajectory"], loc=4);
+    plt.legend([gtPoseHandle, estPoseHandle, gtMapHandle, landmarks[0]], ["Ground-truth trajectory", "Estimated trajectory", "Ground-truth landmark", "Estimated landmark" ], loc=4);
     plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
+    scale = 10;
+    ticks = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*scale))
+    plt.gca().xaxis.set_major_formatter(ticks)
+    ticks = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y*scale))
+    plt.gca().yaxis.set_major_formatter(ticks)
     plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
 else:
     plt.show()

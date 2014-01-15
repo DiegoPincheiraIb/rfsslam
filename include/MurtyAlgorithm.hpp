@@ -34,6 +34,7 @@
 #include <cstddef>
 #include <list>
 #include <queue> 
+#include "LinearAssignment.hpp"
 #include "HungarianMethod.hpp"
 
 /** 
@@ -156,11 +157,12 @@ class Murty{
 public:
    
   /** constructor 
-   *  \param[in] C square score matrix from which we will find the best assignments
+   *  \param[in] C square score matrix from which we will find the best assignments. This is deleted when the object is
+   *  destroyed.
    *  \param[in] n dimension of C
    *  \param[in] bigNum A number whose negative is used to replace entries in the cost matrix that cannot be used for assignment
    */ 
-  Murty(double** C, int n, double bigNum = 10000);
+  Murty(double** C, unsigned int n, double bigNum = 10000);
   
   /** destructor */
   ~Murty();
@@ -179,17 +181,30 @@ public:
    */
   int findNextBest( int* &assignment, double* score);
 
+  /** This is useful where we need to consider cases in whcih it is possible for elements
+   *  to be unassigned. For example, in pairing landmarks with measurements, landmarks may be 
+   *  misdetected, and measurements may be false alarm. To use this function, the origin (ideal)
+   *  m x n assignment matrix should be augmented to be a (m+n) x (m+n) matrix, such that the
+   *  ideal matrix is in the upper left. The upper right augmented block should represent miss-detections 
+   *  and the lower left augmented block should represent false alarms. 
+   *  \param[in] nR number of rows in the ideal block
+   *  \param[in] nC number of columns in the ideal block
+   */
+  void setIdealBlock(unsigned int nR, unsigned int nC);
+
 private:
   
   MurtyNode* root_; /**< The best linear assignment */
   int k_; /**< number of solutions found */
   double** C_; /**< the nxn score matrix */
   double** C_t_; /**< temporary score matrix */
-  int n_; /**< dimension of C_ and C_t_*/
+  unsigned int n_; /**< dimension of C_ and C_t_*/
   HungarianMethod lam_; /**< Linear assignment method */
   std::priority_queue<MurtyNode*, std::vector<MurtyNode*>, MurtyNodeCompare> pq; /**< Priority queue for easy retrieval of node with highest score */
   double bestScore_;
   double bigNumber_;
+  unsigned int ideal_nC_; /**< dimension of ideal assignment block */
+  unsigned int ideal_nR_; /**< dimention of ideal assignment block */
 
 };
 

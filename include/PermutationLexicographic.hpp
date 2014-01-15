@@ -28,61 +28,52 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LINEAR_ASSIGNMENT_HPP
-#define LINEAR_ASSIGNMENT_HPP
-
-#include "LinearAssignment.hpp"
-#include <queue>
+#ifndef PERMUTATION_LEXICOGRAPHIC
+#define PERMUTATION_LEXICOGRAPHIC
 
 /**
- * \class BruteForceLinearAssignment
- * This function finds all the linear assignments and orders them from best to worst.
- * It is intended for testing and checking the Hungarian method and Murty's k-best algorithm.
- * \brief Brute-force linear assignment 
+ * \class PermutationLexicographic
+ * A class for generating assingments based on lexicographic ordering with or without clutter.
+ * This class is mainly intended for assignments of measurements to landmarks, where measurements
+ * can be outliers (i.e., non-associated with a landmark), and landmarks can be miss-detected
+ * (i.e., not associated with a measurement)
+ * \brief Generate lexicographical ordering
  */
-class BruteForceLinearAssignment
+class PermutationLexicographic
 {
-
 public:
-
-  /** Constructor */
-  BruteForceLinearAssignment();
-
-  /** Destructor */
-  ~BruteForceLinearAssignment();
   
   /**
-   *  Run brute-force linear assignment by finding the cost of all possible linear assignments
-   *  in a lexicographical order, and then returning the results in an ordered format with 
-   *  respect to the cost / score.
-   *  \param[in] C square cost / score matrix
-   *  \param[in] n dimension of C
-   *  \param[out] a ordered assignments a[k][n], where k is the assignment order
-   *  \param[out] s ordered assignment scores
-   *  \param[in] maxToMin ordering of results
-   *  \return number of assignments
+   * Constructor 
+   * \param[in] nM number of landmarks
+   * \param[in] nZ number of measurements
+   * \param[in] includeClutter if true, considers linear assignments with clutter and miss-detections. 
+   * This will default to true if nM and nZ are not the same
    */
-  unsigned int run(double** C, int n, unsigned int** &a, double* &s, bool maxToMin = true);
+  PermutationLexicographic(unsigned int nM, unsigned int nZ, bool includeClutter = true);
+
+  /**
+   * Destructor 
+   */
+  ~PermutationLexicographic();
+
+  /**
+   * Find the next permutation in the lexicographic ordering
+   * \param[out] permutation pointer to an array for reading the current permutation. 
+   * Memory should be allocated by the caller. The size of the array needs to be nM if includeClutter = false,
+   * and nM + nZ if includeClutter is true.
+   * \return permutation number or 0 if there are no permutations remaining
+   */
+  unsigned int next(unsigned int* permutation);
 
 private:
 
-  /** \brief A linear assignment */
-  struct assignment{
-    unsigned int* a;
-    double score;
-    
-    bool operator<(const assignment& rhs) const{
-      if(score < rhs.score)
-	return true;
-      return false;
-    }
-
-  };
-
-  std::priority_queue<assignment> pq_;
-  unsigned int nAssignments_;
-  unsigned int** a_;
-  double* s_;
+  unsigned int* o_; /**< ordering */
+  unsigned int oSize_; /**< size of array o_ */
+  unsigned int nM_; /**< number of landmarks */
+  unsigned int nZ_; /**< number of measurements */
+  unsigned int nP_; /**< number of permutations */
+  bool last_; /**< last permutation reached */
 };
 
 #endif

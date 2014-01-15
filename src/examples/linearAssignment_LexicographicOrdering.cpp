@@ -1,7 +1,7 @@
 /*
  * Software License Agreement (New BSD License)
  *
- * Copyright (c) 2013, Keith Leung
+ * Copyright (c) 2013, Keith Leung, Felipe Inostroza
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -28,61 +28,51 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LINEAR_ASSIGNMENT_HPP
-#define LINEAR_ASSIGNMENT_HPP
 
-#include "LinearAssignment.hpp"
-#include <queue>
-
-/**
- * \class BruteForceLinearAssignment
- * This function finds all the linear assignments and orders them from best to worst.
- * It is intended for testing and checking the Hungarian method and Murty's k-best algorithm.
- * \brief Brute-force linear assignment 
+/** This example shows how lexicographic ordering for pairing landmarks and measurements
+ *  can be performed when we have clutter and mis-detections. 
  */
-class BruteForceLinearAssignment
+
+#include <stdio.h>
+#include <vector>
+#include <algorithm>
+#include <utility>
+#include "LinearAssignment.hpp"
+#include "PermutationLexicographic.hpp"
+
+#include <boost/timer/timer.hpp>
+#include <boost/format.hpp>
+
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_01.hpp>
+#include <boost/random/variate_generator.hpp>
+
+int main(int argc, char *argv[])
 {
 
-public:
+  printf("5 landmarks and 3 measurements\n");
+  printf("First 5 columns indicate the measurement number to which the landmark is associated\n");
+  printf("A value == 3 in the first 5 columns imply that a landmark was mis-detected\n");
+  printf("A value == 3 in the last 3 columns represent that the measurement is an outlier\n\n");
 
-  /** Constructor */
-  BruteForceLinearAssignment();
+  unsigned int const nM = 5;
+  unsigned int const nZ = 3;
+  uint* ordering = new uint[nM + nZ];
+ 
+  PermutationLexicographic pl(nM, nZ, true);
+  unsigned int nPerm = pl.next(ordering);
+  while( nPerm != 0){
+    printf("[%d] %d %d %d %d %d | %d %d %d ", nPerm, ordering[0], ordering[1], ordering[2], ordering[3], ordering[4], ordering[5], ordering[6], ordering[7]);
 
-  /** Destructor */
-  ~BruteForceLinearAssignment();
-  
-  /**
-   *  Run brute-force linear assignment by finding the cost of all possible linear assignments
-   *  in a lexicographical order, and then returning the results in an ordered format with 
-   *  respect to the cost / score.
-   *  \param[in] C square cost / score matrix
-   *  \param[in] n dimension of C
-   *  \param[out] a ordered assignments a[k][n], where k is the assignment order
-   *  \param[out] s ordered assignment scores
-   *  \param[in] maxToMin ordering of results
-   *  \return number of assignments
-   */
-  unsigned int run(double** C, int n, unsigned int** &a, double* &s, bool maxToMin = true);
-
-private:
-
-  /** \brief A linear assignment */
-  struct assignment{
-    unsigned int* a;
-    double score;
-    
-    bool operator<(const assignment& rhs) const{
-      if(score < rhs.score)
-	return true;
-      return false;
+    printf("| Outliers: ");
+    for(int i = nM; i < nM + nZ; i++){
+      if(ordering[i] < nZ)
+	printf("%d ",ordering[i]);
     }
-
-  };
-
-  std::priority_queue<assignment> pq_;
-  unsigned int nAssignments_;
-  unsigned int** a_;
-  double* s_;
-};
-
-#endif
+    printf("\n");
+    nPerm = pl.next(ordering);
+  }
+  
+  delete[] ordering;
+  return 0;
+}

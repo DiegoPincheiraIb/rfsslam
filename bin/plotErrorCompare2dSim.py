@@ -102,19 +102,19 @@ else:
 print('Reading ' + poseEstFile_rbphdslam);
 poseEst = np.genfromtxt(poseEstFile_rbphdslam);
 poseTimesteps = poseEst[:,0];
-poseErr_d_rbphdslam = poseEst[:,4];
+poseErr_d_rbphdslam = poseEst[:,4]*10;
 #print poseErr_d_rbphdslam[::10];
 
 print('Reading ' + poseEstFile_fastslam);
 poseEst = np.genfromtxt(poseEstFile_fastslam);
 poseTimesteps = poseEst[:,0];
-poseErr_d_fastslam = poseEst[:,4];
+poseErr_d_fastslam = poseEst[:,4]*10;
 #print poseErr_d_fastslam[::10];
 
 print('Reading ' + poseEstFile_mhfastslam);
 poseEst = np.genfromtxt(poseEstFile_mhfastslam);
 poseTimesteps = poseEst[:,0];
-poseErr_d_mhfastslam = poseEst[:,4];
+poseErr_d_mhfastslam = poseEst[:,4]*10;
 #print poseErr_d_mhfastslam[::10];
 
 poseEst = None;
@@ -152,7 +152,8 @@ plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
 plt.xlabel(r'Time [s]');
 plt.ylabel(r'Distance error [m]');
 plt.grid(True);
-plt.ylim(ymax = 0.3);
+plt.ylim(ymax = 3);
+#plt.ylim(ymax = 15);
 
 plt.figure(2);
 p1, = plt.plot(mapTimesteps[::10], errorOSPA_rbphdslam[::10], 'r-');

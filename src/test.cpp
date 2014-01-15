@@ -28,7 +28,9 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "LinearAssignment.hpp"
+#include "BruteForceAssignment.hpp"
+#include "HungarianMethod.hpp"
+#include "MurtyAlgorithm.hpp"
 #include <stdio.h>
 #include <iostream>
 
@@ -128,7 +130,7 @@ int main(int argc, char* argv[]){
 
 
   BruteForceLinearAssignment bf;
-  int** bfa;
+  unsigned int** bfa;
   double* bfs;
   int nbfa = bf.run(C, n, bfa, bfs);
   printf("Brute force approach looked through %d assignments\n", nbfa);
