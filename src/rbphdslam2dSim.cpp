@@ -113,6 +113,7 @@ public:
     gaussianPruningThreshold_ = cfg_.lookup("Filter.gaussianPruningThreshold");
     reportTimingInfo_ = cfg_.lookup("Filter.reportTimingInfo");
     importanceWeightingEvalPointCount_ = cfg_.lookup("Filter.importanceWeightingEvalPointCount");
+    importanceWeightingEvalPointGuassianWeight_ = cfg_.lookup("Filter.importanceWeightingEvalPointGuassianWeight");
     useClusterProcess_ = cfg_.lookup("Filter.useClusterProcess");
 
     logToFile_ = cfg_.lookup("Computation.logToFile");
@@ -452,6 +453,7 @@ public:
     pFilter_->config.newGaussianCreateInnovMDThreshold_ = newGaussianCreateInnovMDThreshold_;
     pFilter_->config.importanceWeightingMeasurementLikelihoodMDThreshold_ = importanceWeightingMeasurementLikelihoodMDThreshold_;
     pFilter_->config.importanceWeightingEvalPointCount_ = importanceWeightingEvalPointCount_;
+    pFilter_->config.importanceWeightingEvalPointGuassianWeight_ = importanceWeightingEvalPointGuassianWeight_;
     pFilter_->config.gaussianMergingThreshold_ = gaussianMergingThreshold_;
     pFilter_->config.gaussianMergingCovarianceInflationFactor_ = gaussianMergingCovarianceInflationFactor_;
     pFilter_->config.gaussianPruningThreshold_ = gaussianPruningThreshold_;
@@ -648,6 +650,7 @@ private:
   double gaussianMergingCovarianceInflationFactor_;
   double gaussianPruningThreshold_;
   int importanceWeightingEvalPointCount_;
+  double importanceWeightingEvalPointGuassianWeight_;
   bool reportTimingInfo_;
   bool useClusterProcess_;
 

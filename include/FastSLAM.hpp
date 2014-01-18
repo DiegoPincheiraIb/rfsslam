@@ -49,7 +49,7 @@
  *  \class FastSLAM
  *  \brief Factored Solution to SLAM
  *  
- *  This is an implementation of the FastSLAM v1.0 algorithm. 
+ *  This is an implementation of the FastSLAM v1.0 algorithm and the MH-FastSLAM algorithm
  *
  *  INPROCEEDINGS{Montemerlo02a,
  *  AUTHOR         = {Montemerlo, M. and Thrun, S. and Koller, D. and 
@@ -363,9 +363,10 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     if(nZ > nM){
       nMZ = nZ;
     }
-    double** likelihoodTable = new double* [ nMZ ];
+    
+    double** likelihoodTable;
+    CostMatrix likelihoodMat(likelihoodTable, nMZ);
     for( int m = 0; m < nMZ; m++ ){
-      likelihoodTable[m] = new double [ nMZ ];
       for(int z = 0; z < nMZ; z++){
 	likelihoodTable[m][z] = config.minLogMeasurementLikelihood_;
       }
@@ -383,19 +384,7 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 	}
       }
     }
-    /*
-    if( i == 0){
-      printf("\n");
-      for(int m = 0; m < nMZ; m++){
-	for(int z = 0; z < nMZ; z++){
-	  printf("%f   ", likelihoodTable[m][z]);
-	}
-	printf("\n");
-      }
-      printf("\n");
-    }
-    */
-    CostMatrix likelihoodMat(likelihoodTable, nMZ);
+ 
     likelihoodMat.reduce(config.minLogMeasurementLikelihood_);
     double** likelihoodTableReduced;
     int* assignments_fixed = new int[nMZ];
@@ -403,26 +392,7 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     int* mRemap;
     int* zRemap;
     int nMZReduced = likelihoodMat.getCostMatrixReduced(likelihoodTableReduced, assignments_fixed, &score_reduced, mRemap, zRemap);
-    /*
-    if(i == 0){
-      printf("\n");
-      for(int m = 0; m < nMZReduced; m++){
-	for(int z = 0; z < nMZReduced; z++){
-	  printf("%f   ", likelihoodTableReduced[m][z]);
-	}
-	printf("\n");
-      }
-      printf("\n");
-    }
-
-    if(i == 0){
-      printf("nMZReduce = %d\n", nMZReduced);
-      for(int m = 0; m < nMZ; m++ ){
-	printf("%d -- %d\n", m, assignments_fixed[m]);
-      }
-      printf("\n");
-    }
-    */
+   
     // Use Hungaian Method and Murty's Method for k-best data association
     unsigned int nH = 0; // number of data association hypotheses (we will create a new particle for each)
     double logLikelihoodSum = 0;
@@ -557,14 +527,6 @@ bool FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
 
     //---------- 5. Cleanup - Free memory ---------
-    /*for( int h = 0; h < da.size(); h++){
-      delete da[h];
-      }*/
-    for( int n = 0; n < nMZ; n++ ){
-      delete[] likelihoodTable[n];
-    }
-    delete[] likelihoodTable;
-    
     for( int d = 0; d < da.size(); d++ ){
       delete[] da[d];
     }

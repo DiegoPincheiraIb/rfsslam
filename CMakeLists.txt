@@ -52,12 +52,6 @@ INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
 #LINK_DIRECTORIES()
 
-#ADD_LIBRARY(TimeStamp src/TimeStamp.cpp)
-#ADD_LIBRARY(Pose src/Pose.cpp)
-#ADD_LIBRARY(Measurement src/Measurement.cpp)
-#ADD_LIBRARY(ProcessModel src/ProcessModel.cpp)
-#ADD_LIBRARY(MeasurementModel src/MeasurementModel.cpp)
-#ADD_LIBRARY(LinearAssignment src/HungarianMethod.cpp src/MurtyAlgorithm.cpp src/BruteForceAssignment.cpp)
 ADD_LIBRARY(rfsslam 
   src/TimeStamp.cpp 
   src/Pose.cpp 
@@ -67,9 +61,8 @@ ADD_LIBRARY(rfsslam
   src/HungarianMethod.cpp
   src/MurtyAlgorithm.cpp
   src/BruteForceAssignment.cpp
-  src/LinearAssignment.cpp
+  src/CostMatrix.cpp
   src/PermutationLexicographic.cpp)
-#SET(RFSSLAM_LIBRARIES TimeStamp Pose Measurement ProcessModel MeasurementModel LinearAssignment)
 
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dSim config++ ${Boost_LIBRARIES} rfsslam)
@@ -86,9 +79,6 @@ TARGET_LINK_LIBRARIES(hmTest rfsslam)
 
 ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} rfsslam)
-
-#ADD_EXECUTABLE(hmTest src/test.cpp)
-#TARGET_LINK_LIBRARIES(hmTest LinearAssignment)
 
 ADD_EXECUTABLE(convertLogFiles src/convertLogFiles.cpp)
 TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})

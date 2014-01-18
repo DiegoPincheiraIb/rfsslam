@@ -31,7 +31,7 @@
 #ifndef LINEAR_ASSIGNMENT_HPP
 #define LINEAR_ASSIGNMENT_HPP
 
-#include "LinearAssignment.hpp"
+#include "CostMatrix.hpp"
 #include <queue>
 
 /**

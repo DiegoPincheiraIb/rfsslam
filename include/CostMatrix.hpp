@@ -28,39 +28,113 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LINEAR_ASSIGNMENT
-#define LINEAR_ASSIGNMENT
+#ifndef COST_MATRIX
+#define COST_MATRIX
 
 #include <cstddef>
 #include <vector>
 
+class CostMatrix;
+
 /**
- * \class CostMatrix
- * \brief Cost / Reward matrix for linear assignment
+ * \class CostMatrixGeneral
+ * \brief A general cost / reward matrix that does not necessarily be square
  * \author Keith Leung
  */
-class CostMatrix{
+class CostMatrixGeneral{
+
+  friend class CostMatrix;
 
 public:
-  
-  /**
+
+  /** 
    * Constructor
-   * \param[in] C A square cost matrix. Caller must take care of deallocation.
-   * \param[in] nDim size of C
+   * \param[out] C pointer to cost / reward matrix array. This object will take care of memory (de)allocation
+   * \param[in] nR number of rows in C
+   * \param[in] nC number of columns in C
    */
-  CostMatrix(double** C, int nDim);
+  CostMatrixGeneral(double** &C, unsigned int nR, unsigned int nC);
 
   /**
-   * Destructor 
+   * Destructor
    */
-  ~CostMatrix();
+  ~CostMatrixGeneral();
+
+  /**
+   * Get the cost matrix
+   * \param[out] C pointer to cost matrix
+   * \param[out] nR number of rows
+   * \param[out] nC number of columns
+   */
+  void getCostMatrix(double** &C, unsigned int &nR, unsigned int &nC);
 
   /**
    * Partition the cost matrix such that the rows and columns can be re-ordered to get a block diagonal matrix,
    * where each block is a partition.
    * \return the number of partitions
    */
-  size_t partition();
+  unsigned int partition();
+  
+  /**
+   * Get the size of a partition of the cost matrix
+   * \param[in] p partition number 
+   * \param[out] nRows number of rows
+   * \param[out] nCols number of cols
+   * \return true if p is a non zero partition
+   */
+  bool getPartitionSize(int p, unsigned int &nRows, unsigned int &nCols);
+
+ /**
+   * Get a partition of the cost matrix
+   * \param[in] p partition number 
+   * \param[out] Cp pointer to partition p of the cost matrix C.
+   * \param[out] nRows number of rows
+   * \param[out] nCols number of cols
+   * \param[out] isZeroPartition if not equal to NULL, indicates if partition p contains all zeros
+   * \param[out] row_indices the original indices of the rows in partition p
+   * \param[out] col_indices the original indices of the columns in partition p
+   * \param[in] allocateExtendedMatrix if true, the array allocated for Cp will be [nRows + nCols] x [nRows + nCols]
+   * \return true if p is a non zero partition
+   */
+  bool getPartition(int p, double** &Cp, unsigned int &nRows, unsigned int &nCols,
+		    unsigned int* &row_indices, unsigned int* &col_indices, bool allocateExtendedMatrix = false);
+
+private:
+  
+  double** C_; /**< pointer to matrix */
+  unsigned int nR_; /**< number of row */
+  unsigned int nC_; /**< number of columns */
+
+  std::vector<unsigned int> *components_i; /**< row partitioning */
+  std::vector<unsigned int> *components_j; /**< column partitioning */
+  std::vector<double**> *components_mat; /**< matrix partitions */
+  std::vector<unsigned int*> *components_rowIdx; /**< partition row indices */
+  std::vector<unsigned int*> *components_colIdx; /**< partition column indices*/
+  bool* components_extendedAllocate_; /**< flag for memory allocation size */
+  int combinedZeroPartition_; /**< parititon of all zeros */
+  unsigned int nPartitions_;
+};
+
+/**
+ * \class CostMatrix
+ * \brief Sqaure cost / reward matrix for linear assignment
+ * \author Keith Leung
+ */
+class CostMatrix : public CostMatrixGeneral{
+
+public:
+  
+  /**
+   * Constructor
+   * \param[in] C A square cost matrix.
+   * \param[in] nDim size of C
+   */
+  CostMatrix(double** &C, int nDim);
+
+  /**
+   * Destructor 
+   */
+  ~CostMatrix();
 
   /**
    * Reduce the cost matrix based on assignments that are almost certain. C will be modified.
@@ -69,31 +143,6 @@ public:
    */
   void reduce(double lim, bool minVal = true);
 
-  /**
-   * Get the cost matrix
-   * \param[out] C cost matrix pointer
-   * \return size of C
-   */
-  int getCostMatrix(double** &C);
-
-  /**
-   * Get the size of a partition
-   * \param[in] p partition number 
-   * \param[out] nRows number of rows
-   * \param[out] nCols number of cols
-   */
-  void getPartitionSize(int p, size_t& nRows, size_t& nCols);
-  
-  /**
-   * Get a partition of the cost matrix
-   * \param[in] p partition number 
-   * \param[out] Cp if not NULL, partition p of the cost matrix C. Memory needs to be allocated by caller. Use getPartitionSize() to determine the size of the partition for memory allocation.
-   * \param[out] isZeroPartition if not equal to NULL, indicates if partition p contains all zeros
-   * \param[out] if not NULL, row_indices the original indices of the rows in partition p
-   * \param[out] if not NULL, col_indices the original indices of the columns in partition p
-   */
-  void getPartition(int p, double** Cp = NULL, bool* isZeroPartition = NULL, int* row_indices = NULL, int* col_indices = NULL);
-  
 
   /**
    * Get the reduced cost matrix
@@ -109,7 +158,6 @@ public:
 
 private:
 
-  double** C_; /**< cost matrix */
   double** C_reduced_; /**< reduced cost matrix with fixed assignments */
   std::vector<int> a_fixed_; /**< fixed assignments */
   std::vector<int> a_fixed_reverse_; /**< reverse fixed assignments */
@@ -120,11 +168,6 @@ private:
   int* i_remap_; /**< Index remapping for the reduced matrix */
   int* j_remap_; /**< Index remapping for the reduced matrix */
   bool reducedCostMatAvailable_; /**< Flag indicating if the reduced cost matrix has been calculated */
-
-  
-  std::vector<unsigned int> *components_i;
-  std::vector<unsigned int> *components_j;
-  int combinedZeroPartition_;
 
 };
 
