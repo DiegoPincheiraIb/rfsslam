@@ -101,5 +101,5 @@ TARGET_LINK_LIBRARIES(examples/linearAssignment_CostMatrixPartitioning ${Boost_L
 ADD_EXECUTABLE(examples/linearAssignment_LexicographicOrdering src/examples/linearAssignment_LexicographicOrdering.cpp)
 TARGET_LINK_LIBRARIES(examples/linearAssignment_LexicographicOrdering ${Boost_LIBRARIES} rfsslam)
 
-ADD_EXECUTABLE(examples/linearAssignment_MurtyAlgorithm src/examples/linearAssignment_MurtyAlgorithm.cpp)
-TARGET_LINK_LIBRARIES(examples/linearAssignment_MurtyAlgorithm ${Boost_LIBRARIES} rfsslam)
+#ADD_EXECUTABLE(examples/linearAssignment_MurtyAlgorithm src/examples/linearAssignment_MurtyAlgorithm.cpp)
+#TARGET_LINK_LIBRARIES(examples/linearAssignment_MurtyAlgorithm ${Boost_LIBRARIES} rfsslam)
