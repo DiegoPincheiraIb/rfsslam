@@ -74,14 +74,8 @@ TARGET_LINK_LIBRARIES(fastslam2dSim config++ ${Boost_LIBRARIES} rfsslam)
 #TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread TimeStamp MeasurementModel ProcessModel LinearAssignment)
 #ADD_TEST(unitTest bin/unitTest)
 
-ADD_EXECUTABLE(hmTest src/test.cpp)
-TARGET_LINK_LIBRARIES(hmTest rfsslam)
-
 ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} rfsslam)
-
-#ADD_EXECUTABLE(hmTest src/test.cpp)
-#TARGET_LINK_LIBRARIES(hmTest LinearAssignment)
 
 ADD_EXECUTABLE(convertLogFiles src/convertLogFiles.cpp)
 TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})
