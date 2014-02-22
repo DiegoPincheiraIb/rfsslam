@@ -103,3 +103,10 @@ TARGET_LINK_LIBRARIES(examples/linearAssignment_LexicographicOrdering ${Boost_LI
 
 ADD_EXECUTABLE(examples/linearAssignment_MurtyAlgorithm src/examples/linearAssignment_MurtyAlgorithm.cpp)
 TARGET_LINK_LIBRARIES(examples/linearAssignment_MurtyAlgorithm ${Boost_LIBRARIES} rfsslam)
+
+# Installation
+
+INSTALL(TARGETS rfsslam
+   DESTINATION /usr/local/lib/rfsslam
+   PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+ 
