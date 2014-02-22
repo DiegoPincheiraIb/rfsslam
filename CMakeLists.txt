@@ -14,7 +14,7 @@ SET(CMAKE_CXX_COMPILER "c++")
 
 # Disable of edit the following line according to your processor's support for SSE
 # For X86-64 architecture, SSE2 is generally enabled by default
-SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-msse4.2")
+SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-march=native")
 
 FILE(MAKE_DIRECTORY "bin")
 FILE(MAKE_DIRECTORY "bin/examples")
@@ -106,7 +106,13 @@ TARGET_LINK_LIBRARIES(examples/linearAssignment_MurtyAlgorithm ${Boost_LIBRARIES
 
 # Installation
 
-INSTALL(TARGETS rfsslam
-   DESTINATION /usr/local/lib/rfsslam
-   PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
- 
+
+
+INSTALL(TARGETS ${RFSSLAM_LIBRARIES} 
+  DESTINATION /usr/local/lib/rfsslam
+  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+  
+FILE(GLOB headerFiles "include/*.hpp")
+INSTALL(FILES ${headerFiles}
+  DESTINATION /usr/local/include/rfsslam
+  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
