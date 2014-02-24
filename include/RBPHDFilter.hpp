@@ -265,7 +265,7 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   kfPtr_ = new KalmanFilter(lmkModelPtr_, this->getMeasurementModel());
   
   for(int i = 0; i < n; i++){
-    printf("Creating map structure for particle %d\n", i);
+    //printf("Creating map structure for particle %d\n", i);
     this->particleSet_[i]->setData( new GaussianMixture<TLandmark>() );
     unused_measurements_.push_back( std::vector<unsigned int>() );
   }
