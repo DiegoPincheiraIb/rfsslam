@@ -113,7 +113,6 @@ public:
     gaussianPruningThreshold_ = cfg_.lookup("Filter.gaussianPruningThreshold");
     reportTimingInfo_ = cfg_.lookup("Filter.reportTimingInfo");
     importanceWeightingEvalPointCount_ = cfg_.lookup("Filter.importanceWeightingEvalPointCount");
-    importanceWeightingEvalPointGuassianWeight_ = cfg_.lookup("Filter.importanceWeightingEvalPointGuassianWeight");
     useClusterProcess_ = cfg_.lookup("Filter.useClusterProcess");
 
     logToFile_ = cfg_.lookup("Computation.logToFile");
@@ -453,7 +452,6 @@ public:
     pFilter_->config.newGaussianCreateInnovMDThreshold_ = newGaussianCreateInnovMDThreshold_;
     pFilter_->config.importanceWeightingMeasurementLikelihoodMDThreshold_ = importanceWeightingMeasurementLikelihoodMDThreshold_;
     pFilter_->config.importanceWeightingEvalPointCount_ = importanceWeightingEvalPointCount_;
-    pFilter_->config.importanceWeightingEvalPointGuassianWeight_ = importanceWeightingEvalPointGuassianWeight_;
     pFilter_->config.gaussianMergingThreshold_ = gaussianMergingThreshold_;
     pFilter_->config.gaussianMergingCovarianceInflationFactor_ = gaussianMergingCovarianceInflationFactor_;
     pFilter_->config.gaussianPruningThreshold_ = gaussianPruningThreshold_;
@@ -507,7 +505,7 @@ public:
 	stepTimer = new boost::timer::auto_cpu_timer(6, "Step time: %ws\n");
       }
       
-      if( k % 1 == 0)
+      if( k % 100 == 0)
 	printf("k = %d\n", k);
       
       ////////// Prediction Step //////////
@@ -650,7 +648,6 @@ private:
   double gaussianMergingCovarianceInflationFactor_;
   double gaussianPruningThreshold_;
   int importanceWeightingEvalPointCount_;
-  double importanceWeightingEvalPointGuassianWeight_;
   bool reportTimingInfo_;
   bool useClusterProcess_;
 
@@ -694,7 +691,11 @@ int main(int argc, char* argv[]){
 
   srand48( time(NULL) );
 
-  sim.run();
+  boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
+
+  sim.run(); 
+
+  delete timer;
 
   return 0;
 
