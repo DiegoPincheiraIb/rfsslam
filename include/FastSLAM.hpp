@@ -135,7 +135,7 @@ public:
    * \param[in] u input 
    * \param[in] Timestamp size of timestep;
    */
-  void predict( TInput u, TimeStamp &dT);
+  void predict( TInput u,const  TimeStamp &dT);
 
   /**
    * Update the map, calculate importance weighting, and perform resampling if necessary
@@ -268,7 +268,7 @@ LmkProcessModel* FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel,
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::predict( TInput u, 
-											      TimeStamp &dT){
+                                                  TimeStamp const &dT){
 
   boost::timer::auto_cpu_timer *timer = NULL;
   if(config.reportTimingInfo_)
