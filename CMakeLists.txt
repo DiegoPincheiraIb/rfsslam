@@ -14,7 +14,7 @@ SET(CMAKE_CXX_COMPILER "c++")
 
 # Disable of edit the following line according to your processor's support for SSE
 # For X86-64 architecture, SSE2 is generally enabled by default
-SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-msse4.2")
+SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-march=native")
 
 FILE(MAKE_DIRECTORY "bin")
 FILE(MAKE_DIRECTORY "bin/examples")
@@ -52,12 +52,6 @@ INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
 #LINK_DIRECTORIES()
 
-#ADD_LIBRARY(TimeStamp src/TimeStamp.cpp)
-#ADD_LIBRARY(Pose src/Pose.cpp)
-#ADD_LIBRARY(Measurement src/Measurement.cpp)
-#ADD_LIBRARY(ProcessModel src/ProcessModel.cpp)
-#ADD_LIBRARY(MeasurementModel src/MeasurementModel.cpp)
-#ADD_LIBRARY(LinearAssignment src/HungarianMethod.cpp src/MurtyAlgorithm.cpp src/BruteForceAssignment.cpp)
 ADD_LIBRARY(rfsslam 
   src/TimeStamp.cpp 
   src/Pose.cpp 
@@ -67,9 +61,9 @@ ADD_LIBRARY(rfsslam
   src/HungarianMethod.cpp
   src/MurtyAlgorithm.cpp
   src/BruteForceAssignment.cpp
-  src/LinearAssignment.cpp
+  src/CostMatrix.cpp
   src/PermutationLexicographic.cpp)
-#SET(RFSSLAM_LIBRARIES TimeStamp Pose Measurement ProcessModel MeasurementModel LinearAssignment)
+
 
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dSim config++ ${Boost_LIBRARIES} rfsslam)
@@ -81,14 +75,9 @@ TARGET_LINK_LIBRARIES(fastslam2dSim config++ ${Boost_LIBRARIES} rfsslam)
 #TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread TimeStamp MeasurementModel ProcessModel LinearAssignment)
 #ADD_TEST(unitTest bin/unitTest)
 
-ADD_EXECUTABLE(hmTest src/test.cpp)
-TARGET_LINK_LIBRARIES(hmTest rfsslam)
 
 ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} rfsslam)
-
-#ADD_EXECUTABLE(hmTest src/test.cpp)
-#TARGET_LINK_LIBRARIES(hmTest LinearAssignment)
 
 ADD_EXECUTABLE(convertLogFiles src/convertLogFiles.cpp)
 TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})
@@ -101,5 +90,18 @@ TARGET_LINK_LIBRARIES(examples/linearAssignment_CostMatrixPartitioning ${Boost_L
 ADD_EXECUTABLE(examples/linearAssignment_LexicographicOrdering src/examples/linearAssignment_LexicographicOrdering.cpp)
 TARGET_LINK_LIBRARIES(examples/linearAssignment_LexicographicOrdering ${Boost_LIBRARIES} rfsslam)
 
-#ADD_EXECUTABLE(examples/linearAssignment_MurtyAlgorithm src/examples/linearAssignment_MurtyAlgorithm.cpp)
-#TARGET_LINK_LIBRARIES(examples/linearAssignment_MurtyAlgorithm ${Boost_LIBRARIES} rfsslam)
+ADD_EXECUTABLE(examples/linearAssignment_MurtyAlgorithm src/examples/linearAssignment_MurtyAlgorithm.cpp)
+TARGET_LINK_LIBRARIES(examples/linearAssignment_MurtyAlgorithm ${Boost_LIBRARIES} rfsslam)
+
+# Installation
+
+
+
+INSTALL(TARGETS ${RFSSLAM_LIBRARIES} 
+  DESTINATION /usr/local/lib/rfsslam
+  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+  
+FILE(GLOB headerFiles "include/*.hpp")
+INSTALL(FILES ${headerFiles}
+  DESTINATION /usr/local/include/rfsslam
+  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)

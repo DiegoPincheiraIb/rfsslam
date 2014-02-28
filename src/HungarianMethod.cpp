@@ -44,7 +44,8 @@ bool HungarianMethod::run (CostMatrix &C, int* soln, double* cost, bool maximize
 
   double** C_full;
   double** C_reduced;
-  int n_full = C.getCostMatrix(C_full);
+  unsigned int nRowsFull, nColsFull;
+  C.getCostMatrix(C_full, nRowsFull, nColsFull);
   *cost = 0;
   double score_fixed = 0;
   int* i_remap = NULL;
@@ -68,7 +69,7 @@ bool HungarianMethod::run (CostMatrix &C, int* soln, double* cost, bool maximize
     return true;
   }else{
     // no reduction on C was performed
-    return run(C_full, n_full, soln, cost, maximize);
+    return run(C_full, nRowsFull, soln, cost, maximize);
   }
 
 }
