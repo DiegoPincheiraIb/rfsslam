@@ -507,7 +507,7 @@ public:
 	stepTimer = new boost::timer::auto_cpu_timer(6, "Step time: %ws\n");
       }
       
-      if( k % 1 == 0)
+      if( k % 100 == 0)
 	printf("k = %d\n", k);
       
       ////////// Prediction Step //////////
@@ -644,13 +644,13 @@ private:
   double birthGaussianWeight_;
   double newGaussianCreateInnovMDThreshold_;
   double importanceWeightingMeasurementLikelihoodMDThreshold_;
+  double importanceWeightingEvalPointGuassianWeight_;
   double effNParticleThreshold_;
   int minUpdatesBeforeResample_;
   double gaussianMergingThreshold_;
   double gaussianMergingCovarianceInflationFactor_;
   double gaussianPruningThreshold_;
   int importanceWeightingEvalPointCount_;
-  double importanceWeightingEvalPointGuassianWeight_;
   bool reportTimingInfo_;
   bool useClusterProcess_;
 
@@ -692,9 +692,13 @@ int main(int argc, char* argv[]){
  
   sim.setupRBPHDFilter();
 
-  srand48( time(NULL) );
+  //srand48( time(NULL) );
 
-  sim.run();
+  boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
+
+  sim.run(); 
+
+  delete timer;
 
   return 0;
 
