@@ -31,7 +31,7 @@
 #ifndef HUNGARIAN_METHOD_HPP
 #define HUNGARIAN_METHOD_HPP
 
-#include "LinearAssignment.hpp"
+#include "CostMatrix.hpp"
 #include <queue>
 #include <vector>
 

@@ -34,7 +34,6 @@
 #include <cstddef>
 #include <list>
 #include <queue> 
-#include "LinearAssignment.hpp"
 #include "HungarianMethod.hpp"
 
 /** 
@@ -157,8 +156,7 @@ class Murty{
 public:
    
   /** constructor 
-   *  \param[in] C square score matrix from which we will find the best assignments. This is deleted when the object is
-   *  destroyed.
+   *  \param[in] C square score matrix from which we will find the best assignments.
    *  \param[in] n dimension of C
    *  \param[in] bigNum A number whose negative is used to replace entries in the cost matrix that cannot be used for assignment
    */ 

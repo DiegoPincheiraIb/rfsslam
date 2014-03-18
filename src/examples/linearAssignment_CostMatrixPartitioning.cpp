@@ -37,7 +37,7 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
-#include "LinearAssignment.hpp"
+#include "CostMatrix.hpp"
 
 #include <boost/timer/timer.hpp>
 #include <boost/format.hpp>
@@ -53,9 +53,10 @@ int main(int argc, char *argv[])
   boost::variate_generator<boost::mt19937, boost::uniform_01<> > gen(rng, ud);
 
   int const C_size = 7;
-  double** C = new double*[C_size];
+  double** C;
+  CostMatrix likelihoodMat(C, C_size);
+
   for(int i = 0; i < C_size; i++){
-    C[i] = new double[C_size];
     for(int j = 0; j < C_size; j++){
       C[i][j] = 0;
     }
@@ -79,7 +80,6 @@ int main(int argc, char *argv[])
 
   boost::timer::cpu_timer timer;
 
-  CostMatrix likelihoodMat(C, C_size);
   int nP = likelihoodMat.partition();
   
   boost::timer::cpu_times t = timer.elapsed();
@@ -89,17 +89,11 @@ int main(int argc, char *argv[])
     
     printf("Partition %d\n", n);
 
-    size_t nCols, nRows;
-    likelihoodMat.getPartitionSize(n, nRows, nCols);
-    double** Cp = new double* [nCols + nRows];
-    for(int i = 0; i < nCols + nRows; i++){
-      Cp[i] = new double[nCols + nRows];
-    }
-
-    bool isZeroPartition;
-    int* rowIdx = new int[nRows];
-    int* colIdx = new int[nCols];
-    likelihoodMat.getPartition(n, Cp, &isZeroPartition, rowIdx, colIdx);
+    unsigned int nCols, nRows;
+    double** Cp; 
+    unsigned int* rowIdx;
+    unsigned int* colIdx;
+    bool isZeroPartition = !likelihoodMat.getPartition(n, Cp, nRows, nCols, rowIdx, colIdx);
  
     if(isZeroPartition)
       printf("Zero partition\n");
@@ -120,21 +114,8 @@ int main(int argc, char *argv[])
       }
       printf("\n");
     }
-    
-    for(int i = 0; i < nCols + nRows; i++){
-      delete[] Cp[i];
-    }
-    delete[] Cp;
-
-    delete[] rowIdx;
-    delete[] colIdx;
 
   }
-
-  for(int i = 0; i < C_size; i++){
-    delete[] C[i];
-  }
-  delete[] C;
 
   return 0;
 }

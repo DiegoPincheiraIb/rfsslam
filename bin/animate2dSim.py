@@ -45,7 +45,7 @@ from matplotlib.patches import Ellipse, Circle
 from matplotlib import transforms
 import matplotlib.ticker as ticker   
 
-saveMovie = True;
+saveMovie = False;
 
 nLandmarksDrawMax = 300;
 nMeasurementsDrawMax = 100;
