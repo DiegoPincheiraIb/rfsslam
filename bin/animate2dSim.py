@@ -245,15 +245,20 @@ def animate(i):
             w = m[7];
             eVal, eVec = np.linalg.eig(cov);
             eVal = eVal.real;
-            a1 = 5*np.sqrt(eVal[0]); # ellipse semi-major-axis
-            a2 = 5*np.sqrt(eVal[1]); # ellipse semi-minor-axis
-            a1Angle = np.arctan2(eVec[1,0], eVec[0,0]); # angle of semi-major-axis
-            #a2Angle = np.arctan2(eVec[1,1], eVec[0,1]);
+            a1 = 5*np.sqrt(eVal[0]); # Assume this is semi-major axis first
+            a2 = 5*np.sqrt(eVal[1]); 
+            semiMajorAxis = eVec[:,0];
+            if a2 > a1:
+                aTmp = a1
+                a1 = a2
+                a2 = aTmp
+                semiMajorAxis = eVec[:,1];
+            a1Angle = np.arctan2(semiMajorAxis[1], semiMajorAxis[0]);
 
             landmarks[m_idx].set_alpha(min(w, 0.75));
             landmarks[m_idx].center = (m[2], m[3]);
-            landmarks[m_idx].height = a1;
-            landmarks[m_idx].width = a2;
+            landmarks[m_idx].height = a2;
+            landmarks[m_idx].width = a1;
             t_start = ax.transData;
             t_rot = transforms.Affine2D().rotate_around(m[2], m[3], a1Angle);
             t_compound = t_rot + t_start;
