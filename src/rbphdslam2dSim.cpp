@@ -301,7 +301,7 @@ public:
    
 	  if(z_m_k.get(0) <= rangeLimitMax_ && z_m_k.get(0) >= rangeLimitMin_ && drand48() <= Pd_){
 	    z_m_k.setTime(t);
-	    z_m_k.setCov(R);
+	    // z_m_k.setCov(R);
 	    measurements_.push_back( z_m_k );
 	  }
 
@@ -584,6 +584,34 @@ public:
       delete processTimer;
       processTimer = NULL;
     }
+    
+    printf("Elapsed Timing Information [nsec]\n");
+    printf("Prediction -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->predict_wall, pFilter_->getTimingInfo()->predict_cpu);
+    printf("Map Update -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->mapUpdate_wall, pFilter_->getTimingInfo()->mapUpdate_cpu);
+    printf("Weighting  -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->particleWeighting_wall, pFilter_->getTimingInfo()->particleWeighting_cpu);
+    printf("Map Merge  -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->mapMerge_wall, pFilter_->getTimingInfo()->mapMerge_cpu);
+    printf("Map Prune  -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->mapPrune_wall, pFilter_->getTimingInfo()->mapPrune_cpu);
+    printf("Resampling -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->particleResample_wall, pFilter_->getTimingInfo()->particleResample_cpu);
+    printf("Total      -- wall: %lld   cpu: %lld\n",
+	   pFilter_->getTimingInfo()->predict_wall +
+	   pFilter_->getTimingInfo()->mapUpdate_wall +
+	   pFilter_->getTimingInfo()->particleWeighting_wall +
+	   pFilter_->getTimingInfo()->mapMerge_wall +
+	   pFilter_->getTimingInfo()->mapPrune_wall +
+	   pFilter_->getTimingInfo()->particleResample_wall,
+	   pFilter_->getTimingInfo()->predict_cpu +
+	   pFilter_->getTimingInfo()->mapUpdate_cpu +
+	   pFilter_->getTimingInfo()->particleWeighting_cpu +
+	   pFilter_->getTimingInfo()->mapMerge_cpu +
+	   pFilter_->getTimingInfo()->mapPrune_cpu + 
+	   pFilter_->getTimingInfo()->particleResample_cpu);
+    printf("\n");
 
     if(logToFile_){
       fclose(pParticlePoseFile);

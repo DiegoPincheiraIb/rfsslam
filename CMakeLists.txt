@@ -18,6 +18,7 @@ SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-march=native")
 
 FILE(MAKE_DIRECTORY "bin")
 FILE(MAKE_DIRECTORY "bin/examples")
+FILE(MAKE_DIRECTORY "bin/test")
 FILE(MAKE_DIRECTORY "lib")
 FILE(MAKE_DIRECTORY "data")
 
@@ -60,6 +61,7 @@ INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
 #ADD_LIBRARY(LinearAssignment src/HungarianMethod.cpp src/MurtyAlgorithm.cpp src/BruteForceAssignment.cpp)
 ADD_LIBRARY(rfsslam 
   src/TimeStamp.cpp 
+  src/Timer.cpp
   src/Pose.cpp 
   src/Measurement.cpp 
   src/ProcessModel.cpp 
@@ -101,9 +103,10 @@ TARGET_LINK_LIBRARIES(examples/linearAssignment_LexicographicOrdering ${Boost_LI
 ADD_EXECUTABLE(examples/linearAssignment_MurtyAlgorithm src/examples/linearAssignment_MurtyAlgorithm.cpp)
 TARGET_LINK_LIBRARIES(examples/linearAssignment_MurtyAlgorithm ${Boost_LIBRARIES} rfsslam)
 
+ADD_EXECUTABLE(test/cpu_timer_test src/tests/cpu_timer_info.cpp)
+TARGET_LINK_LIBRARIES(test/cpu_timer_test ${Boost_LIBRARIES})
+
 # Installation
-
-
 
 INSTALL(TARGETS rfsslam
   DESTINATION /usr/local/lib/rfsslam

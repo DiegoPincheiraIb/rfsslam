@@ -31,7 +31,7 @@
 #ifndef RBPHDFILTER_HPP
 #define RBPHDFILTER_HPP
 
-#include <boost/timer/timer.hpp>
+#include "Timer.hpp"
 #include <Eigen/Core>
 #include "GaussianMixture.hpp"
 #include "MurtyAlgorithm.hpp"
@@ -121,6 +121,25 @@ public:
 
   } config;
 
+
+  /**
+   * \brief Elapsed timing information 
+   */
+  struct TimingInfo {
+    long long predict_wall;
+    long long predict_cpu;
+    long long mapUpdate_wall;
+    long long mapUpdate_cpu;
+    long long particleWeighting_wall;
+    long long particleWeighting_cpu;
+    long long mapMerge_wall;
+    long long mapMerge_cpu;
+    long long mapPrune_wall;
+    long long mapPrune_cpu;
+    long long particleResample_wall;
+    long long particleResample_cpu;
+  } timingInfo_;
+
   /** 
    * Constructor 
    * \param n number of particles
@@ -139,7 +158,7 @@ public:
   /**
    * Predict the robot trajectory using the lastest odometry data
    * \param[in] u input 
-   * \param[in] currentTimestep current timestep (no longer used);
+   * \param[in] Timestep timestep, which the motion model may or may not use;
    * \param[in] useModelNoise use the additive noise for the process model
    * \param[in] useInputNoise use the noise fn the input
    */
@@ -188,6 +207,7 @@ public:
    */
   void setParticlePose(int i, TPose &p);
 
+  TimingInfo* getTimingInfo();
 
 private:
 
@@ -202,7 +222,15 @@ private:
   std::vector< std::vector<unsigned int> > unused_measurements_; 
 
   unsigned int nUpdatesSinceResample; /**< Number of updates performed since the last resmaple */
+
+  Timer timer_predict_; /**< Timer for prediction step */
+  Timer timer_mapUpdate_; /**< Timer for map update */
+  Timer timer_particleWeighting_; /**< Timer for particle weighting */
+  Timer timer_mapMerge_; /**< Timer for map merging */ 
+  Timer timer_mapPrune_; /**< Timer for map pruning */
+  Timer timer_particleResample_; /**<Timer for particle resampling */
   
+
   /** 
    * Add birth Gaussians for each particle's map using unused_measurements_
    */ 
@@ -320,10 +348,9 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 												 TimeStamp const &dT,
 												 bool useModelNoise,
 												 bool useInputNoise){
-
-  boost::timer::auto_cpu_timer *timer = NULL;
-  if(config.reportTimingInfo_)
-    timer = new boost::timer::auto_cpu_timer(6, "Predict time: %ws\n");
+  if(config.reportTimingInfo_){
+    timer_predict_.resume();
+  }
 
 
   // Add birth Gaussians using pose before prediction
@@ -341,70 +368,49 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     }
   }
 
-  if(timer != NULL)
-    delete timer;
+  if(config.reportTimingInfo_){
+    timer_predict_.stop();
+  }
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z){
-
-  boost::timer::auto_cpu_timer *timer_mapUpdate = NULL;
-  boost::timer::auto_cpu_timer *timer_particleWeighting = NULL;
-  boost::timer::auto_cpu_timer *timer_mapMerge = NULL;
-  boost::timer::auto_cpu_timer *timer_mapPrune = NULL;
-  boost::timer::auto_cpu_timer *timer_particleResample = NULL;
 
   nUpdatesSinceResample++;
 
   this->setMeasurements( Z ); // Z gets cleared after this call, measurements now stored in this->measurements_
 
   ////////// Map Update //////////
-  if(config.reportTimingInfo_){
-    timer_mapUpdate = new boost::timer::auto_cpu_timer(6, "Map update time: %ws\n");
-  }
+  timer_mapUpdate_.resume();
   updateMap();
-  if(timer_mapUpdate != NULL)
-    delete timer_mapUpdate;
+  timer_mapUpdate_.stop();
 
   ////////// Particle Weighintg //////////
-  if(config.reportTimingInfo_){
-    timer_particleWeighting = new boost::timer::auto_cpu_timer(6, "Particle weighting time: %ws\n");
-  }
+  timer_particleWeighting_.resume();
   if(!config.useClusterProcess_){
     importanceWeighting();
   }
-  if(timer_particleWeighting != NULL)
-    delete timer_particleWeighting;
+  timer_particleWeighting_.stop();
 
   //////////// Merge and prune //////////
   int maxMapSize = -1;
   int i_maxMapSize = -1;
-  if(config.reportTimingInfo_){
-    timer_mapMerge = new boost::timer::auto_cpu_timer(6, "Map merge time: %ws\n");
-  }
+  timer_mapMerge_.resume();
   for( int i = 0; i < this->nParticles_; i++){ 
 
     this->particleSet_[i]->getData()->merge( config.gaussianMergingThreshold_, 
 					     config.gaussianMergingCovarianceInflationFactor_);   
   } 
-  if(timer_mapMerge != NULL)
-    delete timer_mapMerge;
+  timer_mapMerge_.stop();
   
-  if(config.reportTimingInfo_){
-    timer_mapPrune = new boost::timer::auto_cpu_timer(6, "Map prune time: %ws\n");
-  }
+  timer_mapPrune_.resume();
   for( int i = 0; i < this->nParticles_; i++){ 
-
     this->particleSet_[i]->getData()->prune( config.gaussianPruningThreshold_ );    
-
   }
-  if(timer_mapPrune != NULL)
-    delete timer_mapPrune;
+  timer_mapPrune_.stop();
 
   //////////// Particle resampling //////////
-  if(config.reportTimingInfo_){
-    timer_particleResample = new boost::timer::auto_cpu_timer(6, "Particle resample time: %ws\n");
-  }
+  timer_particleResample_.resume();
   bool resampleOccured = false;
   if( nUpdatesSinceResample >= config.minUpdatesBeforeResample_){
     resampleOccured = this->resample();
@@ -415,9 +421,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   }else{
     this->normalizeWeights();
   }
- 
-  if(timer_particleResample != NULL)
-    delete timer_particleResample;
+  timer_particleResample_.stop();
 
 }
 
@@ -714,7 +718,8 @@ rfsMeasurementLikelihood( const int particleIdx,
   int nL = nM;
   if(nZ > nL)
     nL = nZ;
-  TLandmark* evalPt; 
+  TLandmark* evalPt;
+  TLandmark evalPt_copy;
   TMeasurement expected_z;
   double const threshold = config.importanceWeightingMeasurementLikelihoodMDThreshold_ *
     config.importanceWeightingMeasurementLikelihoodMDThreshold_;
@@ -727,13 +732,17 @@ rfsMeasurementLikelihood( const int particleIdx,
   for(int m = 0; m < nM; m++){
     
     this->particleSet_[i]->getData()->getGaussian( evalPtIdx[m], evalPt ); // get location of m
-    this->pMeasurementModel_->measure( x, *evalPt, expected_z); // get expected measurement for m
+    evalPt_copy = *evalPt; // so that we don't change the actual data //
+    evalPt_copy.setCov(MeasurementModel::TLandmark::Mat::Zero()); //
+    //this->pMeasurementModel_->measure( x, *evalPt, expected_z); // get expected measurement for m
+    this->pMeasurementModel_->measure( x, evalPt_copy, expected_z); // get expected measurement for m
     double Pd = evalPtPd[m]; // get the prob of detection of m
 
     for(int n = 0; n < nZ; n++){
 
       // calculate measurement likelihood with detection statistics
-      L[m][n] = this->measurements_[n].evalGaussianLikelihood( expected_z, &md2) * Pd; 
+      // L[m][n] = this->measurements_[n].evalGaussianLikelihood( expected_z, &md2) * Pd;
+      L[m][n] = expected_z.evalGaussianLikelihood( this->measurements_[n], &md2) * Pd; // new line 
       if( md2 > threshold ){
 	L[m][n] = 0;
       }
@@ -1051,4 +1060,18 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     weightingTableNCols_ = nCols;
   }
 
+}
+
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+typename RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::TimingInfo* RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
+  getTimingInfo(){
+
+  timer_predict_.elapsed(timingInfo_.predict_wall, timingInfo_.predict_cpu);
+  timer_mapUpdate_.elapsed(timingInfo_.mapUpdate_wall, timingInfo_.mapUpdate_cpu);
+  timer_particleWeighting_.elapsed(timingInfo_.particleWeighting_wall, timingInfo_.particleWeighting_cpu);
+  timer_mapMerge_.elapsed(timingInfo_.mapMerge_wall, timingInfo_.mapMerge_cpu);
+  timer_mapPrune_.elapsed(timingInfo_.mapPrune_wall, timingInfo_.mapPrune_cpu);
+  timer_particleResample_.elapsed(timingInfo_.particleResample_wall, timingInfo_.particleResample_cpu);
+  
+  return &timingInfo_;
 }

@@ -87,6 +87,15 @@ public:
   }
 
   /** 
+   * Get the additive zero mean Gaussian noise covariance matrix 
+   * \param[in] Q noise covariance
+   */
+  void getNoise(typename StateType::Mat &Q){
+    if(inputNoiseDefined_)
+      Q = Q_;
+  }
+
+  /** 
    * Abstract function for determining pose at time-step k from pose at time-step k-1
    * This must be implemented in a derived class
    * \param[out] s_k \f$\mathbf{x}_k\f$ pose at current time-step k. This can be the same object as s_km (to update in place)

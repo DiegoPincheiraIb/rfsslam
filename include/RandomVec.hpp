@@ -202,7 +202,7 @@ public:
    * Set the time
    * \param[in] t time
    */
-  void setTime( const TimeStamp t ){
+  void setTime( const TimeStamp &t ){
     t_ = t;
   }
 
@@ -221,7 +221,7 @@ public:
    * \param[in] x vector to be set
    * \param[in] t time
    */
-  void set( const VecType &x, const TimeStamp t){
+  void set( const VecType &x, const TimeStamp &t){
     set(x);
     t_ = t;
   }
@@ -232,7 +232,7 @@ public:
    * \param[in] Sx covariance to be set
    * \param[in] t time
    */
-  void set( const VecType &x, const MatType &Sx, const TimeStamp t){
+  void set( const VecType &x, const MatType &Sx, const TimeStamp &t){
     set(x);
     setCov(Sx);
     t_ = t;
