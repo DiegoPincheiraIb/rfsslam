@@ -6,7 +6,11 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 #SET(CMAKE_BUILD_TYPE Debug)
 SET(CMAKE_BUILD_TYPE Release)
-PROJECT(RFS_SLAM)
+PROJECT(RFSSLAM)
+SET(RFSSLAM_MAJOR_VERSION 1)
+SET(RFSSLAM_MINOR_VERSION 1)
+SET(RFSSLAM_PATCH_VERSION 0)
+SET(RFSSLAM_VERSION ${RFSSLAM_MAJOR_VERSION}.${RFSSLAM_MINOR_VERSION}.${RFSSLAM_PATCH_VERSION})
 
 # Explicitly set for colorgcc. By default, they point to gcc and c++ with absolute path
 SET(CMAKE_C_COMPILER "gcc")
@@ -53,12 +57,6 @@ INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
 #LINK_DIRECTORIES()
 
-#ADD_LIBRARY(TimeStamp src/TimeStamp.cpp)
-#ADD_LIBRARY(Pose src/Pose.cpp)
-#ADD_LIBRARY(Measurement src/Measurement.cpp)
-#ADD_LIBRARY(ProcessModel src/ProcessModel.cpp)
-#ADD_LIBRARY(MeasurementModel src/MeasurementModel.cpp)
-#ADD_LIBRARY(LinearAssignment src/HungarianMethod.cpp src/MurtyAlgorithm.cpp src/BruteForceAssignment.cpp)
 ADD_LIBRARY(rfsslam 
   src/TimeStamp.cpp 
   src/Timer.cpp
@@ -110,8 +108,11 @@ TARGET_LINK_LIBRARIES(test/cpu_timer_test ${Boost_LIBRARIES})
 
 INSTALL(TARGETS rfsslam
   DESTINATION /usr/local/lib/rfsslam
-  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
-  
+  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+  EXPORT rfsslam-targets)
+INSTALL(EXPORT rfsslam-targets DESTINATION /usr/local/lib/rfsslam)
+INSTALL(FILES rfsslam-config.cmake DESTINATION /usr/local/lib/rfsslam)
+
 FILE(GLOB headerFiles "include/*.hpp")
 INSTALL(FILES ${headerFiles}
   DESTINATION /usr/local/include/rfsslam
