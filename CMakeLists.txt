@@ -11,6 +11,7 @@ SET(RFSSLAM_MAJOR_VERSION 1)
 SET(RFSSLAM_MINOR_VERSION 1)
 SET(RFSSLAM_PATCH_VERSION 0)
 SET(RFSSLAM_VERSION ${RFSSLAM_MAJOR_VERSION}.${RFSSLAM_MINOR_VERSION}.${RFSSLAM_PATCH_VERSION})
+message(STATUS "RFSSLAM Version ${RFSSLAM_VERSION}")
 
 # Explicitly set for colorgcc. By default, they point to gcc and c++ with absolute path
 SET(CMAKE_C_COMPILER "gcc")
@@ -111,7 +112,10 @@ INSTALL(TARGETS rfsslam
   PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
   EXPORT rfsslam-targets)
 INSTALL(EXPORT rfsslam-targets DESTINATION /usr/local/lib/rfsslam)
-INSTALL(FILES rfsslam-config.cmake DESTINATION /usr/local/lib/rfsslam)
+CONFIGURE_FILE(rfsslam-config.cmake.in "rfsslam-config.cmake" @ONLY)
+CONFIGURE_FILE(rfsslam-config-version.cmake.in "rfsslam-config-version.cmake" @ONLY)
+INSTALL(FILES rfsslam-config.cmake rfsslam-config-version.cmake
+  DESTINATION /usr/local/lib/rfsslam)
 
 FILE(GLOB headerFiles "include/*.hpp")
 INSTALL(FILES ${headerFiles}
