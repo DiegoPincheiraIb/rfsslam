@@ -238,6 +238,11 @@ public:
     t_ = t;
   }
 
+  /**
+   * Get the vector
+   * \return x vector
+   */
+  VecType get() const { return x_;}
 
   /** 
    * Get the vector
@@ -245,9 +250,15 @@ public:
    */
   void get( VecType &x ) const {x = x_;}
 
+  /**
+   * Get the covariance matrix
+   * \return Sx covariance representing the uncertainty
+   */
+  MatType getCov() const { return Sx_; }
+
   /** 
    * Get the covariance matrix
-   * \param[out] Sx uncertainty 
+   * \param[out] Sx uncertainty representing the uncertainty 
    */
   void getCov( MatType &Sx) const {
     Sx = Sx_;

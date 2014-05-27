@@ -83,6 +83,12 @@ public:
    */
   void setTime(double const t);
 
+  /** Set the time
+   *  \param[in] s seconds
+   *  \param[in] ns nanoseconds
+   */
+  void setTime(int32_t const s, int32_t const ns);
+
   int32_t sec; /**< number of seconds */
   int32_t nsec; /**< number of nanoseconds */
 

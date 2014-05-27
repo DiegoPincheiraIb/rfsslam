@@ -357,7 +357,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   addBirthGaussians();
 
   // propagate particles
-  this->propagate(u, dT);
+  this->propagate(u, dT, useModelNoise, useInputNoise);
 
   // propagate landmarks
   for( int i = 0; i < this->nParticles_; i++ ){

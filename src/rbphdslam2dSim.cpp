@@ -720,7 +720,7 @@ int main(int argc, char* argv[]){
  
   sim.setupRBPHDFilter();
 
-  //srand48( time(NULL) );
+  srand48( time(NULL) );
 
   boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
 

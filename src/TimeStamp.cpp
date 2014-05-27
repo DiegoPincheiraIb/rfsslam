@@ -61,3 +61,8 @@ void TimeStamp::setTime(double const t){
 
 }
 
+void TimeStamp::setTime(int32_t s, int32_t ns){
+  sec = s;
+  nsec = ns;
+  normalize();
+}
