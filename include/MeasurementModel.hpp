@@ -78,7 +78,7 @@ public:
    * Get the zero-mean-white-Gaussian noise covariance matrix, \f$\mathbf{R}\f$
    * \param[out] R covariance matrix
    */
-  void getNoise( typename MeasurementType::Mat &R ){
+  void getNoise( typename MeasurementType::Mat &R ) const{
     R = R_;
   }
   
@@ -119,42 +119,25 @@ public:
       	       bool useAdditiveWhiteGaussianNoise = true,		       
 	       bool usePoseWhiteGaussianNoise = false,
 	       bool useLandmarkWhiteGaussianNoise = false){
-	
-    typename MeasurementType::Vec z;
-    typename MeasurementType::Vec noise;
-
-    PoseType* pose_sample = &pose;
-    LandmarkType* landmark_sample = &landmark;
-    bool deallocatePose = false;
-    bool deallocateLandmark = false;
     
     if(usePoseWhiteGaussianNoise){
-
-      pose_sample = new PoseType;
-      deallocatePose = true;      
-      pose.sample(*pose_sample);
+      pose.sample(pose_sample_);
+    }else{
+      pose_sample_ = pose;
     }
 
     if(useLandmarkWhiteGaussianNoise){
-
-      landmark_sample = new LandmarkType;
-      deallocateLandmark = true;
-      landmark.sample(*landmark_sample);
+      landmark.sample(landmark_sample_);
+    }else{
+      landmark_sample_ = landmark;
     }
 
-    bool success = this->measure( *pose_sample, *landmark_sample, measurement);
+    bool success = this->measure( pose_sample_, landmark_sample_, measurement);
 
-    if(success){
-      if(useAdditiveWhiteGaussianNoise){
-	measurement.setCov(R_);
-	measurement.sample();
-      }
+    if(success && useAdditiveWhiteGaussianNoise){
+      measurement.setCov(R_);
+      measurement.sample();
     }
-
-    if(deallocatePose)
-      delete pose_sample;
-    if(deallocateLandmark)
-      delete landmark_sample;
 
     return success;
 
@@ -221,6 +204,11 @@ public:
 protected:
 
   typename MeasurementType::Mat R_; /**< additive zero-mean Gaussian noise covariance */
+
+private:
+
+  PoseType pose_sample_; /**< Sampled pose*/
+  LandmarkType landmark_sample_; /**< Sampled landmark*/
 
 };
 

@@ -32,6 +32,7 @@
 #include <boost/lexical_cast.hpp>
 #include <libconfig.h++>
 #include "RBPHDFilter.hpp"
+#include "KalmanFilter_RngBrg.hpp"
 #include <stdio.h>
 #include <string>
 
@@ -103,6 +104,7 @@ public:
     pNoiseInflation_ = cfg_.lookup("Filter.processNoiseInflationFactor");
     zNoiseInflation_ = cfg_.lookup("Filter.measurementNoiseInflationFactor");
     innovationRangeThreshold_ = cfg_.lookup("Filter.innovationRangeThreshold");
+    innovationBearingThreshold_ = cfg_.lookup("Filter.innovationBearingThreshold");
     birthGaussianWeight_ = cfg_.lookup("Filter.birthGaussianWeight");
     newGaussianCreateInnovMDThreshold_ = cfg_.lookup("Filter.newGaussianCreateInnovMDThreshold");
     importanceWeightingMeasurementLikelihoodMDThreshold_ = cfg_.lookup("Filter.importanceWeightingMeasurementLikelihoodMDThreshold");
@@ -111,7 +113,6 @@ public:
     gaussianMergingThreshold_ = cfg_.lookup("Filter.gaussianMergingThreshold");
     gaussianMergingCovarianceInflationFactor_ = cfg_.lookup("Filter.gaussianMergingCovarianceInflationFactor");
     gaussianPruningThreshold_ = cfg_.lookup("Filter.gaussianPruningThreshold");
-    reportTimingInfo_ = cfg_.lookup("Filter.reportTimingInfo");
     importanceWeightingEvalPointCount_ = cfg_.lookup("Filter.importanceWeightingEvalPointCount");
     importanceWeightingEvalPointGuassianWeight_ = cfg_.lookup("Filter.importanceWeightingEvalPointGuassianWeight");
     useClusterProcess_ = cfg_.lookup("Filter.useClusterProcess");
@@ -445,6 +446,7 @@ public:
 
     // configure the Kalman filter for landmark updates
     pFilter_->getKalmanFilter()->config.rangeInnovationThreshold_ = innovationRangeThreshold_;
+    pFilter_->getKalmanFilter()->config.bearingInnovationThreshold_ = innovationBearingThreshold_;
 
     // configure the filter
     pFilter_->config.birthGaussianWeight_ = birthGaussianWeight_;
@@ -457,7 +459,6 @@ public:
     pFilter_->config.gaussianMergingThreshold_ = gaussianMergingThreshold_;
     pFilter_->config.gaussianMergingCovarianceInflationFactor_ = gaussianMergingCovarianceInflationFactor_;
     pFilter_->config.gaussianPruningThreshold_ = gaussianPruningThreshold_;
-    pFilter_->config.reportTimingInfo_ = reportTimingInfo_;
     pFilter_->config.useClusterProcess_ = useClusterProcess_;
   }
 
@@ -492,9 +493,8 @@ public:
 
     boost::timer::auto_cpu_timer *stepTimer = NULL;
     boost::timer::auto_cpu_timer *processTimer = NULL;
-    if(reportTimingInfo_){
-      processTimer = new boost::timer::auto_cpu_timer(6, "Total run time: %ws\n");
-    }
+    
+    processTimer = new boost::timer::auto_cpu_timer(6, "Total run time: %ws\n");
     /////////// Run simulator from k = 1 to kMax_ /////////
 
     TimeStamp time;
@@ -502,10 +502,6 @@ public:
     for(int k = 1; k < kMax_; k++){
 
       time += dTimeStamp_;
-
-      if(reportTimingInfo_){
-	stepTimer = new boost::timer::auto_cpu_timer(6, "Step time: %ws\n");
-      }
       
       if( k % 100 == 0)
 	printf("k = %d\n", k);
@@ -573,32 +569,27 @@ public:
 	}
       }
 
-      if(reportTimingInfo_){
-	delete stepTimer;
-	stepTimer = NULL;
-      }
-
     }
 
-    if(reportTimingInfo_){
-      delete processTimer;
-      processTimer = NULL;
-    }
+    delete processTimer;
+
     
     printf("Elapsed Timing Information [nsec]\n");
-    printf("Prediction -- wall: %lld   cpu: %lld\n", 
+    printf("Prediction    -- wall: %lld   cpu: %lld\n", 
 	   pFilter_->getTimingInfo()->predict_wall, pFilter_->getTimingInfo()->predict_cpu);
-    printf("Map Update -- wall: %lld   cpu: %lld\n", 
+    printf("Map Update    -- wall: %lld   cpu: %lld\n", 
 	   pFilter_->getTimingInfo()->mapUpdate_wall, pFilter_->getTimingInfo()->mapUpdate_cpu);
-    printf("Weighting  -- wall: %lld   cpu: %lld\n", 
+    printf("Map Update KF -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->mapUpdate_kf_wall, pFilter_->getTimingInfo()->mapUpdate_kf_cpu);
+    printf("Weighting     -- wall: %lld   cpu: %lld\n", 
 	   pFilter_->getTimingInfo()->particleWeighting_wall, pFilter_->getTimingInfo()->particleWeighting_cpu);
-    printf("Map Merge  -- wall: %lld   cpu: %lld\n", 
+    printf("Map Merge     -- wall: %lld   cpu: %lld\n", 
 	   pFilter_->getTimingInfo()->mapMerge_wall, pFilter_->getTimingInfo()->mapMerge_cpu);
-    printf("Map Prune  -- wall: %lld   cpu: %lld\n", 
+    printf("Map Prune     -- wall: %lld   cpu: %lld\n", 
 	   pFilter_->getTimingInfo()->mapPrune_wall, pFilter_->getTimingInfo()->mapPrune_cpu);
-    printf("Resampling -- wall: %lld   cpu: %lld\n", 
+    printf("Resampling    -- wall: %lld   cpu: %lld\n", 
 	   pFilter_->getTimingInfo()->particleResample_wall, pFilter_->getTimingInfo()->particleResample_cpu);
-    printf("Total      -- wall: %lld   cpu: %lld\n",
+    printf("Total         -- wall: %lld   cpu: %lld\n",
 	   pFilter_->getTimingInfo()->predict_wall +
 	   pFilter_->getTimingInfo()->mapUpdate_wall +
 	   pFilter_->getTimingInfo()->particleWeighting_wall +
@@ -669,6 +660,7 @@ private:
   double pNoiseInflation_;
   double zNoiseInflation_;
   double innovationRangeThreshold_;
+  double innovationBearingThreshold_;
   double birthGaussianWeight_;
   double newGaussianCreateInnovMDThreshold_;
   double importanceWeightingMeasurementLikelihoodMDThreshold_;
@@ -679,7 +671,6 @@ private:
   double gaussianMergingCovarianceInflationFactor_;
   double gaussianPruningThreshold_;
   int importanceWeightingEvalPointCount_;
-  bool reportTimingInfo_;
   bool useClusterProcess_;
 
   bool logToFile_;

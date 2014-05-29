@@ -38,7 +38,7 @@
 #include "HungarianMethod.hpp"
 #include "MurtyAlgorithm.hpp"
 
-#include "KalmanFilter.hpp"
+#include "KalmanFilter_RngBrg.hpp"
 #include "ParticleFilter.hpp"
 #include <math.h>
 #include <vector>

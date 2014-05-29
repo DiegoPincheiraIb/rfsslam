@@ -65,6 +65,7 @@ ADD_LIBRARY(rfsslam
   src/Measurement.cpp 
   src/ProcessModel.cpp 
   src/MeasurementModel.cpp
+  src/KalmanFilter_RngBrg.cpp
   src/HungarianMethod.cpp
   src/MurtyAlgorithm.cpp
   src/BruteForceAssignment.cpp

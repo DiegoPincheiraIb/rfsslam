@@ -113,9 +113,6 @@ public:
     /** Minimum number of updates betwen resampling of particles*/
     int minUpdatesBeforeResample_;
 
-    /** If true, timing information is written to the console every update*/
-    bool reportTimingInfo_;
-
     /** Use the particle weighting strategty from Single-cluster PHD Filtering by Lee, et. al. */
     bool useClusterProcess_;
 
@@ -130,6 +127,8 @@ public:
     long long predict_cpu;
     long long mapUpdate_wall;
     long long mapUpdate_cpu;
+    long long mapUpdate_kf_wall;
+    long long mapUpdate_kf_cpu;
     long long particleWeighting_wall;
     long long particleWeighting_cpu;
     long long mapMerge_wall;
@@ -214,9 +213,11 @@ private:
   double **weightingTable_; /**< Weighting table used during map update */
   int weightingTableNRows_; /**< Number of rows in the weighting table */
   int weightingTableNCols_; /**< Number of cols in the weighting table */
+  TLandmark*** newLandmarkTable_; /**< Table for initiating new landmarks */
 
   KalmanFilter *kfPtr_; /**< pointer to the Kalman filter */
   LmkProcessModel *lmkModelPtr_; /**< pointer to landmark process model */
+  double threshold_mahalanobisDistance2_mapUpdate_; /**< Mahalanobis distance squared threshold, above which Kalman Filter update will not occur*/
 
   /** indices of unused measurement for each particle for creating birth Gaussians */
   std::vector< std::vector<unsigned int> > unused_measurements_; 
@@ -225,6 +226,7 @@ private:
 
   Timer timer_predict_; /**< Timer for prediction step */
   Timer timer_mapUpdate_; /**< Timer for map update */
+  Timer timer_mapUpdate_kf_; /**<Timer for the Kalman filter part of map update */
   Timer timer_particleWeighting_; /**< Timer for particle weighting */
   Timer timer_mapMerge_; /**< Timer for map merging */ 
   Timer timer_mapPrune_; /**< Timer for map pruning */
@@ -311,15 +313,16 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   config.importanceWeightingMeasurementLikelihoodMDThreshold_ = 3.0;
   config.newGaussianCreateInnovMDThreshold_ = 0.2;
   config.minUpdatesBeforeResample_ = 1;
-  config.reportTimingInfo_ = false;
   
   nUpdatesSinceResample = 0;
 
   weightingTableNRows_ = 100; 
   weightingTableNCols_ = 100;
   weightingTable_ = new double*[weightingTableNRows_];
+  newLandmarkTable_ = new TLandmark**[weightingTableNRows_];
   for(int n = 0; n < weightingTableNRows_; n++){
-    weightingTable_[n] = new double[weightingTableNRows_];
+    weightingTable_[n] = new double[weightingTableNCols_];
+    newLandmarkTable_[n] = new TLandmark*[weightingTableNCols_];
   }
 }
 
@@ -348,10 +351,8 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 												 TimeStamp const &dT,
 												 bool useModelNoise,
 												 bool useInputNoise){
-  if(config.reportTimingInfo_){
-    timer_predict_.resume();
-  }
-
+ 
+  timer_predict_.resume();
 
   // Add birth Gaussians using pose before prediction
   addBirthGaussians();
@@ -368,9 +369,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     }
   }
 
-  if(config.reportTimingInfo_){
-    timer_predict_.stop();
-  }
+  timer_predict_.stop();
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
@@ -435,7 +434,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   for(unsigned int i = startIdx; i < stopIdx; i++){    
 
     //---------- 1. setup / book-keeping ----------
-   
+    
     const unsigned int nM = this->particleSet_[i]->getData()->getGaussianCount();
     unused_measurements_[i].clear();    
     if(nM == 0){ // No existing landmark case -> flag all measurements as unused and go to next particles
@@ -458,21 +457,23 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
     // nM x nZ table for Gaussian weighting
     checkWeightingTableSize(nM, nZ);
-    TLandmark*** newLandmarkPointer = new TLandmark** [ nM ];
+    /*TLandmark*** newLandmarkPointer = new TLandmark** [ nM ];
     for( int n = 0; n < nM; n++ ){
       newLandmarkPointer[n] = new TLandmark* [ nZ ];
-    }
-    for(int m = 0; m < nM; m++){
+      }*/
+    /*for(int m = 0; m < nM; m++){
       for(int z = 0; z < nZ; z++){
 	newLandmarkPointer[m][z] = NULL;
 	weightingTable_[m][z] = 0;
       }
-    }
+      }*/
 
     //----------  2. Kalman Filter map update ----------
 
+    timer_mapUpdate_kf_.resume();
     const TPose *pose = this->particleSet_[i]->getPose();
     TLandmark* lmNew = NULL;
+    threshold_mahalanobisDistance2_mapUpdate_ = config.newGaussianCreateInnovMDThreshold_ * config.newGaussianCreateInnovMDThreshold_;
 
     for(unsigned int m = 0; m < nM; m++){
 
@@ -495,23 +496,22 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	  if(lmNew == NULL)
 	    lmNew = new TLandmark;
 
-	  newLandmarkPointer[m][z] = NULL;
+	  newLandmarkTable_[m][z] = NULL;
 	  weightingTable_[m][z] = 0;
 	  double innovationLikelihood = 0;
 	  double innovationMahalanobisDist2 = 0;
-	  double threshold = config.newGaussianCreateInnovMDThreshold_ * config.newGaussianCreateInnovMDThreshold_;
 	
 	  // RUN KF, create new landmark for likely updates but do not add to map_[i] yet
 	  // because we cannot determine actual weight until the entire weighting table is
 	  // filled in
 	  bool updateMade = kfPtr_->correct(*pose, this->measurements_[z], *lm, *lmNew, 
 					    &innovationLikelihood, &innovationMahalanobisDist2);
-
-	  if ( !updateMade || innovationMahalanobisDist2 > threshold ){
-	    newLandmarkPointer[m][z] = NULL;
+    
+	  if ( !updateMade || innovationMahalanobisDist2 > threshold_mahalanobisDistance2_mapUpdate_ ){
+	    newLandmarkTable_[m][z] = NULL;
 	    weightingTable_[m][z] = 0;
 	  }else{
-	    newLandmarkPointer[m][z] = lmNew;
+	    newLandmarkTable_[m][z] = lmNew;
 	    lmNew = NULL;
 	    weightingTable_[m][z] = Pd_times_w_km * innovationLikelihood;
 	  }	
@@ -520,7 +520,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
       }else{ // Pd = 0
 	for(int z = 0; z < nZ; z++){
-	  newLandmarkPointer[m][z] = NULL;
+	  newLandmarkTable_[m][z] = NULL;
 	  weightingTable_[m][z] = 0;
 	}
       }
@@ -552,12 +552,15 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       this->particleSet_[i]->setWeight( exp(w_km_sum) * likelihoodProd);
     }
 
+    timer_mapUpdate_kf_.stop();
+
     // ---------- 3. Add new Gaussians to map  ----------
     // New Gaussians will have indices >= nM 
     for(int m = 0; m < nM; m++){
       for(int z = 0; z < nZ; z++){
-	if(newLandmarkPointer[m][z] != NULL && weightingTable_[m][z] > 0){
-	  this->particleSet_[i]->getData()->addGaussian( newLandmarkPointer[m][z],  weightingTable_[m][z]);  
+	if(newLandmarkTable_[m][z] != NULL && weightingTable_[m][z] > 0){
+	  this->particleSet_[i]->getData()->addGaussian( newLandmarkTable_[m][z],  weightingTable_[m][z]);  
+	  newLandmarkTable_[m][z] = NULL;
 	}
       }
     }
@@ -588,22 +591,16 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     //----------  5. Identify unused measurements for adding birth Gaussians later ----------
     unused_measurements_[i].clear();
     for(int z = 0; z < nZ; z++){
-      int useCount = 0;
+      bool is_measurement_used = false;
       for(int m = 0; m < nM; m++){
 	if (weightingTable_[m][z] != 0){
-	  useCount++;
+	  is_measurement_used = true;
+	  break;
 	}
       }
-      if (useCount == 0)
+      if (!is_measurement_used)
 	unused_measurements_[i].push_back( z );
     }
-
-    //----------  6. Cleanup - Free memory ----------
-
-    for( int n = 0; n < nM; n++ ){
-      delete[] newLandmarkPointer[n];
-    }
-    delete[] newLandmarkPointer;
 
   }
 
@@ -1026,36 +1023,46 @@ KalmanFilter* RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel,
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::checkWeightingTableSize(int nRows, int nCols){
 
-  nRows *= 1.2;
-  nCols *= 1.2;
+  nRows *= 1.2; // expand number of rows by a factor of 1.2
+  nCols *= 1.2; // expand number of cols by a factor of 1.2
   if( weightingTableNRows_ < nRows ){ // Row and Col need to increase
     if( weightingTableNCols_ < nCols ){
       for(int m = 0; m < weightingTableNRows_; m++ ){
 	delete[] weightingTable_[m];
+	delete[] newLandmarkTable_[m];
       }
       delete[] weightingTable_;
+      delete[] newLandmarkTable_;
       weightingTable_ = new double* [nRows];
+      newLandmarkTable_ = new TLandmark** [nRows];
       for(int m = 0; m < nRows ; m++ ){
 	weightingTable_[m] = new double [nCols];
+	newLandmarkTable_[m] = new TLandmark* [nCols];
       }
       weightingTableNRows_ = nRows;
       weightingTableNCols_ = nCols; 
     }else{ // Only increase row
       double** weightingTableOld = weightingTable_;
+      TLandmark*** newLandmarkTableOld = newLandmarkTable_;
       weightingTable_ = new double* [nRows];
+      newLandmarkTable_ = new TLandmark** [nRows];
       for(int m = 0; m < nRows ; m++ ){
 	if( m < weightingTableNRows_){
 	  weightingTable_[m] = weightingTableOld[m];
+	  newLandmarkTable_[m] = newLandmarkTableOld[m];
 	}else{
 	  weightingTable_[m] = new double [weightingTableNCols_];
+	  newLandmarkTable_[m] = new TLandmark* [weightingTableNCols_];
 	}
       }
       weightingTableNRows_ = nRows;
     }
-      }else if(weightingTableNCols_ < nCols){ // Only increase Col
+  }else if(weightingTableNCols_ < nCols){ // Only increase Col
     for(int m = 0; m < weightingTableNRows_; m++ ){
       delete[] weightingTable_[m];
+      delete[] newLandmarkTable_[m];
       weightingTable_[m] = new double[nCols];
+      newLandmarkTable_[m] = new TLandmark* [nCols];
     }
     weightingTableNCols_ = nCols;
   }
@@ -1068,6 +1075,7 @@ typename RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, Kalm
 
   timer_predict_.elapsed(timingInfo_.predict_wall, timingInfo_.predict_cpu);
   timer_mapUpdate_.elapsed(timingInfo_.mapUpdate_wall, timingInfo_.mapUpdate_cpu);
+  timer_mapUpdate_kf_.elapsed(timingInfo_.mapUpdate_kf_wall, timingInfo_.mapUpdate_kf_cpu);
   timer_particleWeighting_.elapsed(timingInfo_.particleWeighting_wall, timingInfo_.particleWeighting_cpu);
   timer_mapMerge_.elapsed(timingInfo_.mapMerge_wall, timingInfo_.mapMerge_cpu);
   timer_mapPrune_.elapsed(timingInfo_.mapPrune_wall, timingInfo_.mapPrune_cpu);

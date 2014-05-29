@@ -124,22 +124,36 @@ public:
    * \param[in] z_act actual measurement
    * \param[out] z_innov innovation
    * \return true to allow the correction step to proceed. This is useful for ignoring an update when
-   * the innovation is too large, which may cause problems for the filter.
+   * the innovation is too large due to outliers, which may cause problems for the filter.
    */
   virtual bool calculateInnovation(Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_exp, 
 				   Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_act,
 				   Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_innov);
-
 
 protected:
 
   MeasurementModelType *pMeasurementModel_;
   ProcessModelType *pProcessModel_;
 
+  TMeasurement measurement_exp; /**< expected measurement */
+  Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime>  K; /**< Kalman gain */
+  Eigen::Matrix <double, TMeasurement::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime > H; /**< measurement model Jacobian */
+  Eigen::Matrix <double, TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> S; /**< innovation covariance */
+  Eigen::Matrix <double, TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> S_inv; /**< inverse innovation covariance */
+  Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime>  I; /**< identity matrix */
+  Eigen::Matrix <double, TMeasurement::Vec::RowsAtCompileTime, 1> z_act; /**< measurement - actual */
+  Eigen::Matrix <double, TMeasurement::Vec::RowsAtCompileTime, 1> z_exp; /**< measurement - expected */
+  Eigen::Matrix <double, TMeasurement::Vec::RowsAtCompileTime, 1> z_innov; /**< measurement - innovation */
+  Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, 1> m; /**< mean */
+  Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, 1> m_updated; /**< mean - updated */
+  Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime> P; /**< covariance */
+  Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime> P_updated; /**< covariance - updated */
+  RandomVec<Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1>, Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> > innov; /**< RandomVec form of innovation */
+
 };
 
 //********** Implementation of the standard Kalman Filter  **********/
-// Felipe Inostroza 2013
+// Felipe Inostroza 2013, Keith Leung 2014
 
 template <class ProcessModelType, class MeasurementModelType> 
 KalmanFilter<ProcessModelType, MeasurementModelType>::
@@ -187,16 +201,6 @@ correct(const TPose &pose, const TMeasurement &measurement,
 	TLandmark &landmark_current, TLandmark &landmark_updated,
 	double* zLikelihood, double* mahalanobisDist2 ){
 
-
-  TMeasurement measurement_exp; // expected measurement
-
-  Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime>  K; // Kalman gain
-  Eigen::Matrix <double, TMeasurement::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime > H; // measurement model Jacobian
-  Eigen::Matrix <double, TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> S , S_inv; // innovation covariance
-  Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime>  I; // identity matrix
-  Eigen::Matrix <double, TMeasurement::Vec::RowsAtCompileTime, 1> z_act, z_exp ,z_innov; // measurement: actual, expected, innovation
-  Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, 1> m, m_updated; // means
-  Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime> P, P_updated; // covariance
   
   if(!pMeasurementModel_->measure( pose , landmark_current , measurement_exp , &H))
     return false; // invalid expected measurement produced
@@ -220,7 +224,6 @@ correct(const TPose &pose, const TMeasurement &measurement,
   landmark_updated.set(m_updated, P_updated);
   
   if(zLikelihood != NULL){
-    RandomVec<Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, 1>, Eigen::Matrix < double , TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> > innov;
     innov.set(z_act, S);
     *zLikelihood = innov.evalGaussianLikelihood( z_exp, mahalanobisDist2 );   
     if(*zLikelihood != *zLikelihood) // When likelihood is so small that it becomes NAN
@@ -240,69 +243,5 @@ calculateInnovation(Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime,
   z_innov = z_act - z_exp;
   return true;
 }
-
-
-
-/**
- * \class RangeBearingKalmanFilter
- * \brief A Kalman filter for updating a 2d landmark position from 
- * a single range-bearing measurements. This is derived from the base
- * Kalman Filter to handle innovation involving a rotation (bearing)
- */
-class RangeBearingKalmanFilter : 
-  public KalmanFilter <StaticProcessModel<Landmark2d>, RangeBearingModel>{
-
-  typedef RangeBearingModel::TMeasurement::Vec Vec;
-
-public:
-
-  /** \brief Configuration for this RangeBearingKalmanFilter */
-  struct Config{
-    /** If positive, the innovation threshold above which an update is not processed for stability reasons. */
-    double rangeInnovationThreshold_; 
-  }config;
-
-  /**
-   * Default constructor
-   */
-  RangeBearingKalmanFilter(){
-    config.rangeInnovationThreshold_ = -1;
-  };
-  
-  /**
-   * Constructor
-   * \param[in] pMeasurementModel Pointer to the measurement model
-   * \param[in] pProcessModel Pointer to the process model
-   */
-  RangeBearingKalmanFilter(StaticProcessModel<Landmark2d> *pProcessModel,
-			   RangeBearingModel *pMeasurementModel):
-  KalmanFilter<StaticProcessModel<Landmark2d>, RangeBearingModel>
-  (pProcessModel, pMeasurementModel){
-    config.rangeInnovationThreshold_ = -1;
-  }
-
-  /**
-   * Function to calculate the innovation 
-   * \param[in] z_exp expected measurement predicted using the measurement model 
-   * \param[in] z_act actual measurement
-   * \param[out] z_innov innovation
-   */
-  bool calculateInnovation(Vec &z_exp, Vec &z_act, Vec &z_innov){
-    
-    z_innov = z_act - z_exp;
-
-    if(config.rangeInnovationThreshold_ > 0 && fabs(z_innov(0)) > config.rangeInnovationThreshold_){
-      return false;
-    }
-    while(z_innov(1)>PI){
-      z_innov(1)-=2*PI;
-    }
-    while(z_innov(1)<-PI){
-      z_innov(1)+=2*PI;
-    }  
-    return true;
-  }
-
-};
 
 #endif

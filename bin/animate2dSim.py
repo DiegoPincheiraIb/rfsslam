@@ -294,7 +294,7 @@ def animate(i):
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, len(gtPose_t)), interval=30, 
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, len(gtPose_t)), interval=1, 
                                init_func=animateInit, blit=True, repeat=False);
 if saveMovie:
     animation.save(estimateMovieFile, fps=30, extra_args=['-loglevel','quiet','-vcodec','libx264'])

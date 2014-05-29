@@ -103,6 +103,7 @@ public:
     pNoiseInflation_ = cfg_.lookup("Filter.processNoiseInflationFactor");
     zNoiseInflation_ = cfg_.lookup("Filter.measurementNoiseInflationFactor");
     innovationRangeThreshold_ = cfg_.lookup("Filter.innovationRangeThreshold");
+    innovationBearingThreshold_ = cfg_.lookup("Filter.innovationBearingThreshold");
     effNParticleThreshold_ = cfg_.lookup("Filter.effectiveNumberOfParticlesThreshold");
     minUpdatesBeforeResample_ = cfg_.lookup("Filter.minUpdatesBeforeResample");
     minLogMeasurementLikelihood_ = cfg_.lookup("Filter.minLogMeasurementLikelihood");
@@ -444,6 +445,7 @@ public:
 
     // configure the Kalman filter for landmark updates
     pFilter_->getKalmanFilter()->config.rangeInnovationThreshold_ = innovationRangeThreshold_;
+    pFilter_->getKalmanFilter()->config.bearingInnovationThreshold_ = innovationBearingThreshold_;
 
     // configure the filter
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
@@ -637,6 +639,7 @@ private:
   double pNoiseInflation_;
   double zNoiseInflation_;
   double innovationRangeThreshold_;
+  double innovationBearingThreshold_;
   double effNParticleThreshold_;
   int minUpdatesBeforeResample_;
   double minLogMeasurementLikelihood_;
