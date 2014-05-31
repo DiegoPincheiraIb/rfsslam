@@ -34,6 +34,9 @@
 #include <cmath>
 #include <stdio.h>
 
+namespace rfs
+{
+
 BruteForceLinearAssignment::BruteForceLinearAssignment() : a_(NULL), s_(NULL), nAssignments_(0){}
 
 BruteForceLinearAssignment::~BruteForceLinearAssignment(){
@@ -115,4 +118,6 @@ unsigned int BruteForceLinearAssignment::run(double** C, int n, unsigned int** &
   a = a_;
   s = s_;
   return nAssignments_;
+}
+
 }

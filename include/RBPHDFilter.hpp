@@ -43,6 +43,8 @@
 
 #include <stdio.h>
 
+namespace rfs{
+
 /**
  *  \class RBPHDFilter
  *  \brief Rao-Blackwellized Probability Hypothesis Density Filter class
@@ -1002,9 +1004,6 @@ getLandmark(const int i, const int m,
     return true;
 }
 
-#endif
-
-
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
 setParticlePose(int i, TPose &p){
@@ -1083,3 +1082,8 @@ typename RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, Kalm
   
   return &timingInfo_;
 }
+
+}
+
+
+#endif

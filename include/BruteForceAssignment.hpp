@@ -34,6 +34,8 @@
 #include "CostMatrix.hpp"
 #include <queue>
 
+namespace rfs{
+
 /**
  * \class BruteForceLinearAssignment
  * This function finds all the linear assignments and orders them from best to worst.
@@ -84,5 +86,7 @@ private:
   unsigned int** a_;
   double* s_;
 };
+
+}
 
 #endif

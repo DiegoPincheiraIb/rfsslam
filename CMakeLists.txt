@@ -62,16 +62,18 @@ ADD_LIBRARY(rfsslam
   src/TimeStamp.cpp 
   src/Timer.cpp
   src/Pose.cpp 
-  src/Measurement.cpp 
-  src/ProcessModel.cpp 
-  src/MeasurementModel.cpp
+  src/Measurement_Odometry2D.cpp 
+  src/ProcessModel_Odometry1D.cpp 
+  src/ProcessModel_Odometry2D.cpp
+  src/MeasurementModel_Rng1D.cpp
+  src/MeasurementModel_RngBrg.cpp
   src/KalmanFilter_RngBrg.cpp
   src/HungarianMethod.cpp
   src/MurtyAlgorithm.cpp
   src/BruteForceAssignment.cpp
   src/CostMatrix.cpp
-  src/PermutationLexicographic.cpp)
-#SET(RFSSLAM_LIBRARIES TimeStamp Pose Measurement ProcessModel MeasurementModel LinearAssignment)
+  src/PermutationLexicographic.cpp
+  )
 
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dSim config++ ${Boost_LIBRARIES} rfsslam)

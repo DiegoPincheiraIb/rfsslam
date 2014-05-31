@@ -28,46 +28,40 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "TimeStamp.hpp"
-#include <math.h>
+// Class for using the Kalman filter equations
+// Felipe Inostroza 2013, Keith Leung 2014
+
+#include "KalmanFilter_RngBrg.hpp"
 
 namespace rfs
 {
 
-TimeStamp::TimeStamp(){
-  sec = 0;
-  nsec = 0;
-}
-
-TimeStamp::TimeStamp(int32_t s, int32_t ns) : sec(s), nsec(ns){
-  normalize();
-}
-
-TimeStamp::TimeStamp(double t){
-  setTime(t);
-}
-
-TimeStamp::~TimeStamp(){}
-
-double TimeStamp::getTimeAsDouble() const{
+KalmanFilter_RngBrg::KalmanFilter_RngBrg(){
+  config.rangeInnovationThreshold_ = -1;
+  config.bearingInnovationThreshold_ = -1;
+};
   
-  return ( (double)sec + (double)nsec * 1e-9 );
+KalmanFilter_RngBrg::KalmanFilter_RngBrg(StaticProcessModel<Landmark2d> *pProcessModel,
+						   MeasurementModel_RngBrg *pMeasurementModel):
+  KalmanFilter<StaticProcessModel<Landmark2d>, MeasurementModel_RngBrg>
+  (pProcessModel, pMeasurementModel){
+  config.rangeInnovationThreshold_ = -1;
+  config.bearingInnovationThreshold_ = -1;
 }
 
-void TimeStamp::setTime(double const t){
+bool KalmanFilter_RngBrg::calculateInnovation(Vec &z_exp, Vec &z_act, Vec &z_innov){
+    
+  z_innov = z_act - z_exp;
   
-  double intPart, fracPart;
-  fracPart = modf(t, &intPart);
-  sec = (int32_t)intPart;
-  nsec = (int32_t)(fracPart * 1000000000);
-  normalize();
-
+  if(config.rangeInnovationThreshold_ > 0 && fabs(z_innov(0)) > config.rangeInnovationThreshold_)
+    return false;
+  while(z_innov(1) > PI)
+    z_innov(1) -= 2 * PI;
+  while(z_innov(1) < -PI)
+    z_innov(1) += 2 * PI;
+  if(config.bearingInnovationThreshold_ > 0 && fabs(z_innov(1) > config.bearingInnovationThreshold_) )
+    return false;
+  return true;
 }
-
-void TimeStamp::setTime(int32_t s, int32_t ns){
-  sec = s;
-  nsec = ns;
-  normalize();
-}
-
+  
 }

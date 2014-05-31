@@ -46,6 +46,11 @@
 #include <stdio.h>
 #include "TimeStamp.hpp"
 
+
+namespace rfs
+{
+
+
 double const PI = acos(-1);
 
 /**
@@ -271,7 +276,7 @@ public:
    */
   void getCovCholeskyDecompLower( MatType &Sx_Chol_L){
     if(!isValid_Sx_L_){
-      Eigen::LLT<MatType> cholesky( Sx_ );
+      ::Eigen::LLT<MatType> cholesky( Sx_ );
       Sx_L_ = cholesky.matrixL();
       isValid_Sx_L_ = true;
     }
@@ -432,15 +437,15 @@ public:
     VecType x_sample, indep_noise;
 
     if(!isValid_Sx_L_){
-      Eigen::LLT<MatType> cholesky( Sx_ );
+      ::Eigen::LLT<MatType> cholesky( Sx_ );
       Sx_L_ = cholesky.matrixL();
       isValid_Sx_L_ = true;
     }
 
     if(gen_ == NULL){
-      gen_ = new boost::variate_generator< boost::mt19937, 
-					   boost::normal_distribution<double> >
-	(boost::mt19937(rand()), boost::normal_distribution<double>());
+      gen_ = new ::boost::variate_generator< ::boost::mt19937, 
+					     ::boost::normal_distribution<double> >
+	(::boost::mt19937(rand()), ::boost::normal_distribution<double>());
     }
     
     int n = Sx_L_.cols();
@@ -461,15 +466,15 @@ public:
     VecType x_sample, indep_noise;
 
     if(!isValid_Sx_L_){
-      Eigen::LLT<MatType> cholesky( Sx_ );
+      ::Eigen::LLT<MatType> cholesky( Sx_ );
       Sx_L_ = cholesky.matrixL();
       isValid_Sx_L_ = true;
     }
 
     if(gen_ == NULL){
-      gen_ = new boost::variate_generator< boost::mt19937, 
-					   boost::normal_distribution<double> >
-	(boost::mt19937(rand()), boost::normal_distribution<double>());
+      gen_ = new ::boost::variate_generator< ::boost::mt19937, 
+					     ::boost::normal_distribution<double> >
+	(::boost::mt19937(rand()), ::boost::normal_distribution<double>());
     }
     
     int n = Sx_L_.cols();
@@ -495,8 +500,8 @@ private:
 
   VecType e_; /**< temporary */
 
-  boost::variate_generator< boost::mt19937, 
-			    boost::normal_distribution<double> >* gen_;/**< normal distribution random number generator */ 
+  ::boost::variate_generator< ::boost::mt19937, 
+			      ::boost::normal_distribution<double> >* gen_;/**< normal distribution random number generator */ 
 
   /** Dimensionality check during initialization */
   bool dimCheck(){
@@ -514,5 +519,7 @@ private:
   }
 
 };
+
+} // namespace rfs
 
 #endif

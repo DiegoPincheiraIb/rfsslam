@@ -33,6 +33,8 @@
 
 #include <stdint.h>
 
+namespace rfs{
+
 /**
  * \class TimeStamp
  * \brief A timestamp
@@ -148,5 +150,5 @@ inline void TimeStamp::normalize(){
   sec = sec_temp;
 }
 
-
+}
 #endif

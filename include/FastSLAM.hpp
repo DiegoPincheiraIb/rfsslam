@@ -45,6 +45,8 @@
 
 #include <stdio.h>
 
+namespace rfs{
+
 /**
  *  \class FastSLAM
  *  \brief Factored Solution to SLAM
@@ -597,6 +599,8 @@ setParticlePose(int i, TPose &p){
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 KalmanFilter* FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::getKalmanFilter(){
   return kfPtr_;
+}
+
 }
 
 #endif

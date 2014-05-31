@@ -34,6 +34,8 @@
 #include <cstddef>
 #include <list>
 
+namespace rfs{
+
 /** 
  * \class Node
  * A generic tree node
@@ -114,5 +116,7 @@ private:
   int nChildren_;
   Node* parent_;
 };
+
+}
 
 #endif

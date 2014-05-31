@@ -1,7 +1,7 @@
 /*
  * Software License Agreement (New BSD License)
  *
- * Copyright (c) 2013, Keith Leung, Felipe Inostroza
+ * Copyright (c) 2013, Keith Leung
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -28,38 +28,40 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "Measurement.hpp"
+#include "Timer.hpp"
+#include <boost/lexical_cast.hpp>
 
-/********** Implementation of example 2d odometry measurement **********/
+namespace rfs
+{
 
-Odometry2d::Odometry2d(){}
-
-Odometry2d::Odometry2d(Vec &x, Mat &Sx, TimeStamp t) : 
-  RandomVec< Eigen::Vector3d, Eigen::Matrix3d >(x, Sx, t){}
-
-Odometry2d::Odometry2d(Vec &x, TimeStamp t) : 
-  RandomVec< Eigen::Vector3d, Eigen::Matrix3d >(x, t){}
-
-Odometry2d::Odometry2d(double dx_k_km, double dy_k_km, double dtheta_k_km, 
-		       double vardx_k_km, double vardy_k_km, 
-		       double vartheta_k_km, TimeStamp t) {
-  Eigen::Vector3d u;
-  Eigen::Vector3d covu_diag; 
-  Eigen::Matrix3d covu;
-  u << dx_k_km, dy_k_km, dtheta_k_km;
-  covu_diag << vardx_k_km, vardy_k_km, vartheta_k_km;
-  covu = covu_diag.asDiagonal();
-
-  set( u, covu, t);
+Timer::Timer(){
+  timer_.stop();
 }
 
-Odometry2d::~Odometry2d(){}
+Timer::~Timer(){}
 
+void Timer::start(){
+  timer_.start();
+}
 
+void Timer::stop(){
+  timer_.stop();
+}
 
+void Timer::resume(){
+  timer_.resume();
+}
 
+void Timer::elapsed(std::string &t_wall, std::string &t_cpu){
+  ::boost::timer::cpu_times dt = timer_.elapsed();
+  t_wall = ::boost::lexical_cast<std::string>( dt.wall );
+  t_wall = ::boost::lexical_cast<std::string>( dt.user + dt.system );
+}
 
+void Timer::elapsed(long long &t_wall, long long &t_cpu){
+  ::boost::timer::cpu_times dt = timer_.elapsed();
+  t_wall = dt.wall;
+  t_cpu = dt.user + dt.system;
+}
 
-
-
-
+}

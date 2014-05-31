@@ -28,13 +28,12 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <Eigen/LU>
-#include <math.h>
-#include "MeasurementModel.hpp"
+#include "MeasurementModel_RngBrg.hpp"
 
-/******** Implementation of 2d measurement Model (Range and Bearing) **********/
+namespace rfs
+{
 
-RangeBearingModel::RangeBearingModel(){
+MeasurementModel_RngBrg::MeasurementModel_RngBrg(){
 
   config.probabilityOfDetection_ = 0.95;
   config.uniformClutterIntensity_ = 0.1;
@@ -44,7 +43,7 @@ RangeBearingModel::RangeBearingModel(){
 }
 
 
-RangeBearingModel::RangeBearingModel(Eigen::Matrix2d &covZ){
+MeasurementModel_RngBrg::MeasurementModel_RngBrg(Eigen::Matrix2d &covZ){
 
   setNoise(covZ);
   config.probabilityOfDetection_ = 0.95;
@@ -54,7 +53,7 @@ RangeBearingModel::RangeBearingModel(Eigen::Matrix2d &covZ){
   config.rangeLimBuffer_ = 0.25;
 }
 
-RangeBearingModel::RangeBearingModel(double Sr, double Sb){
+MeasurementModel_RngBrg::MeasurementModel_RngBrg(double Sr, double Sb){
 
   Eigen::Matrix2d covZ;
   covZ <<  Sr, 0, 0, Sb;
@@ -66,9 +65,9 @@ RangeBearingModel::RangeBearingModel(double Sr, double Sb){
   config.rangeLimBuffer_ = 0.25;
 }
 
-RangeBearingModel::~RangeBearingModel(){}
+MeasurementModel_RngBrg::~MeasurementModel_RngBrg(){}
 
-bool RangeBearingModel::measure(const Pose2d &pose, 
+bool MeasurementModel_RngBrg::measure(const Pose2d &pose, 
 				const Landmark2d &landmark, 
 				Measurement2d &measurement, 
 				Eigen::Matrix2d *jacobian){
@@ -107,7 +106,7 @@ bool RangeBearingModel::measure(const Pose2d &pose,
     return true;
 }
 
-void RangeBearingModel::inverseMeasure(const Pose2d &pose, 
+void MeasurementModel_RngBrg::inverseMeasure(const Pose2d &pose, 
 				       const Measurement2d &measurement, 
 				       Landmark2d &landmark){
   Eigen::Vector3d poseState;
@@ -128,7 +127,7 @@ void RangeBearingModel::inverseMeasure(const Pose2d &pose,
 
 }
 
-double RangeBearingModel::probabilityOfDetection( const Pose2d &pose,
+double MeasurementModel_RngBrg::probabilityOfDetection( const Pose2d &pose,
 						  const Landmark2d &landmark,
 						  bool &isCloseToSensingLimit ){
 
@@ -159,133 +158,15 @@ double RangeBearingModel::probabilityOfDetection( const Pose2d &pose,
   return Pd;
 }
 
-double RangeBearingModel::clutterIntensity( Measurement2d &z,
+double MeasurementModel_RngBrg::clutterIntensity( Measurement2d &z,
 					    int nZ){
   return config.uniformClutterIntensity_;
 }
 
 
-double RangeBearingModel::clutterIntensityIntegral( int nZ ){
+double MeasurementModel_RngBrg::clutterIntensityIntegral( int nZ ){
   double sensingArea_ = 2 * PI * (config.rangeLimMax_ - config.rangeLimMin_);
   return ( config.uniformClutterIntensity_ * sensingArea_ );
 }
 
-/************* Implementation of 1d measurement model **************************/
-
-MeasurementModel1d::MeasurementModel1d(){
-
-  config.probabilityOfDetection_ = 0.95;
-  config.uniformClutterIntensity_ = 0.1;
-  config.rangeLimMax_ = 5;
-  config.rangeLimMin_ = 0.3;
-  config.rangeLimBuffer_ = 0.25;
-}
-
-MeasurementModel1d::MeasurementModel1d(Eigen::Matrix<double, 1, 1> &Sr){
-  setNoise(Sr);
-  config.probabilityOfDetection_ = 0.95;
-  config.uniformClutterIntensity_ = 0.1;
-  config.rangeLimMax_ = 5;
-  config.rangeLimMin_ = 0.3;
-  config.rangeLimBuffer_ = 0.25;
-}
-
-MeasurementModel1d::MeasurementModel1d(double Sr){
-  Measurement1d::Mat S;
-  S << Sr;
-  setNoise(S);
-  config.probabilityOfDetection_ = 0.95;
-  config.uniformClutterIntensity_ = 0.1;
-  config.rangeLimMax_ = 5;
-  config.rangeLimMin_ = 0.3;
-  config.rangeLimBuffer_ = 0.25;
-}
-
-MeasurementModel1d::~MeasurementModel1d(){}
-
-bool MeasurementModel1d::measure(const Pose1d &pose, 
-				 const Landmark1d &landmark, 
-				 Measurement1d &measurement, 
-				 Eigen::Matrix<double, 1, 1> *jacobian){
-
-  Pose1d::Vec robotPos;
-  Landmark1d::Vec lmkPos;
-  Landmark1d::Mat lmkPosUncertainty;
-  Measurement1d::Vec z;
-  Eigen::Matrix<double, 1, 1> H;
-  Eigen::Matrix<double, 1, 1> var;
-
-  pose.get(robotPos);
-  landmark.get(lmkPos, lmkPosUncertainty);
-  z = lmkPos - robotPos;
-  H << 1;
-  var = H * lmkPosUncertainty * H.transpose() + R_;
-
-  measurement.set(z, var);
-
-  if(jacobian != NULL)
-    *jacobian = H;
-
-  if(fabs(z(0)) > config.rangeLimMax_ || fabs(z(0)) < config.rangeLimMin_)
-    return false;
-  else
-    return true;
-
-}
-
-void MeasurementModel1d::inverseMeasure(const Pose1d &pose, 
-					const Measurement1d &measurement, 
-					Landmark1d &landmark){
-
-  Pose1d::Vec x;
-  Measurement1d::Vec z;
-  Landmark1d::Vec m;
- 
-  pose.get(x);
-  measurement.get(z);
-  landmark.get(m);
-
-  m = x + z;
-  landmark.set( m, R_ );
-
-}
-
-double MeasurementModel1d::probabilityOfDetection( const Pose1d &pose,
-						   const Landmark1d &landmark,
-						   bool &isCloseToSensingLimit ){
-
-  Pose1d::Vec robotPose;
-  Landmark1d::Vec landmarkState;
-  double range, Pd;
-  
-  isCloseToSensingLimit = false;
-
-  pose.get(robotPose);
-  landmark.get(landmarkState);
-  range = fabs( landmarkState(0) - robotPose(0) );
-
-  if( range <= config.rangeLimMax_ && range >= config.rangeLimMin_){
-    Pd = config.probabilityOfDetection_;
-  }else{
-    Pd = 0;
-  } 
-
-  if( ( range >= (config.rangeLimMax_ - config.rangeLimBuffer_ ) &&
-	range <= (config.rangeLimMax_ + config.rangeLimBuffer_ ) ) ||
-      ( range >= (config.rangeLimMin_ - config.rangeLimBuffer_ ) &&
-	range <= (config.rangeLimMin_ + config.rangeLimBuffer_ ) ) )
-    isCloseToSensingLimit = true;
-
-  return Pd;
-}
-
-double MeasurementModel1d::clutterIntensity( Measurement1d &z,
-					     int nZ){
-  return config.uniformClutterIntensity_;
-}
-
-
-double MeasurementModel1d::clutterIntensityIntegral( int nZ ){
-  double sensingLength = config.rangeLimMax_ - config.rangeLimMin_;
-  return ( config.uniformClutterIntensity_ * sensingLength );
 }

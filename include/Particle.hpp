@@ -34,6 +34,8 @@
 #include <cstddef>
 #include "RandomVec.hpp"
 
+namespace rfs{
+
 /** 
  *  \class Particle
  *  \brief A class for a particle for the particle filter
@@ -259,6 +261,6 @@ void Particle<PoseType, DataType>::deleteData(){
   }
 }
   
-  
+}  
 
 #endif
