@@ -36,6 +36,7 @@
 
 #include "MeasurementModel.hpp"
 #include "ProcessModel.hpp"
+#include <vector>
 
 namespace rfs
 {
@@ -103,7 +104,7 @@ public:
 	       double dT = 1);
 
   /**
-   * Kalman filter update step.
+   * Kalman filter update step for a single landmark, given a single vehicle pose, and single measurement
    * \note This function may be reimplemented in a derived class
    * \param[in] pose the sensor pose
    * \param[in] measurement the measurement to use for updating the landmark state
@@ -119,6 +120,27 @@ public:
 		       TLandmark &landmark_current, TLandmark &landmark_updated,
 		       double* zLikelihood = NULL, 
 		       double* mahalanobisDist2 = NULL);
+
+
+  /**
+   * Kalman filter update step, for a single landmark, given a single vehicle pose, and multiple measurements.
+   * The result is a set of updated landmarks, one for each measurement.
+   * \note This function may be reimplemented in a derived class
+   * \param[in] pose the sensor pose
+   * \param[in] measurement the measurements to use for updating the landmark state
+   * \param[in] landmark_current the current landmark state
+   * \param[out] landmark_updated the updated landmark states (same size as the number of measurements)
+   * \param[out] zLikelihood if supplied, this stores the measurement likelihood (same size as the number of measurements) 
+   * \param[out] mahalanobisDist2 if supplied, stores the sqaured mahalanobis distance 
+   * used to calculate zlikelihood (same size as the number of measurements)
+   * \return true if the update was performed
+   */ 
+  virtual bool correct(const TPose &pose, 
+		       std::vector<TMeasurement> &measurement, 
+		       TLandmark &landmark_current, 
+		       std::vector<TLandmark> &landmark_updated,
+		       std::vector<double> *zLikelihood = NULL, 
+		       std::vector<double> *mahalanobisDist2 = NULL);
   
   /**
    * Calculate the innovation. This may be reimplemented in a derived class
@@ -164,6 +186,7 @@ KalmanFilter()
 {
   pMeasurementModel_ = NULL;
   pProcessModel_ = NULL;
+  I.setIdentity();
 }
 
 template <class ProcessModelType, class MeasurementModelType> 
@@ -173,6 +196,7 @@ KalmanFilter(ProcessModelType *pProcessModel,
 {
   pMeasurementModel_= pMeasurementModel;
   pProcessModel_= pProcessModel;
+  I.setIdentity();
 }
 
 template <class ProcessModelType, class MeasurementModelType> 
@@ -208,27 +232,26 @@ correct(const TPose &pose, const TMeasurement &measurement,
   if(!pMeasurementModel_->measure( pose , landmark_current , measurement_exp , &H))
     return false; // invalid expected measurement produced
   
-  TimeStamp t; 
-  measurement.get(z_act, t);
+  landmark_current.get(m, P);
   measurement_exp.get(z_exp, S);
-
-  if(!calculateInnovation(z_exp, z_act, z_innov))
+  measurement_exp.getCovInv(S_inv);
+  measurement.get(z_act); 
+  if(!calculateInnovation(z_exp, z_act, z_innov)) 
     return false; // innovation cannot be used, abort update
   
-  landmark_current.get(m, P);
-
-  I.setIdentity();
-  measurement_exp.getCovInv(S_inv);
   K = P * H.transpose() * S_inv;
   P_updated = ( I - K * H ) * P;
   P_updated = ( P_updated + P_updated.transpose() ) / 2; // make sure covariance is symetric
-  
-  m_updated = m + K * z_innov;
-  landmark_updated.set(m_updated, P_updated);
+  m_updated = m + K * z_innov; 
+
+  landmark_updated.set(m_updated, P_updated); 
   
   if(zLikelihood != NULL){
-    innov.set(z_act, S);
-    *zLikelihood = innov.evalGaussianLikelihood( z_exp, mahalanobisDist2 );   
+    innov.set(z_exp, S);
+    if(mahalanobisDist2 != NULL)
+      *zLikelihood = innov.evalGaussianLikelihood( z_act, mahalanobisDist2 );   
+    else
+      *zLikelihood = innov.evalGaussianLikelihood( z_act ); 
     if(*zLikelihood != *zLikelihood) // When likelihood is so small that it becomes NAN
       *zLikelihood = 0;  
   }
@@ -236,7 +259,87 @@ correct(const TPose &pose, const TMeasurement &measurement,
   return true;
 
 }
+  
+template <class ProcessModelType, class MeasurementModelType> 
+bool KalmanFilter<ProcessModelType, MeasurementModelType>::
+correct(const TPose &pose, 
+	std::vector<TMeasurement> &measurement, 
+	TLandmark &landmark_current, 
+	std::vector<TLandmark> &landmark_updated,
+	std::vector<double> *zLikelihood, 
+	std::vector<double> *mahalanobisDist2 ){
 
+ 
+  if(!pMeasurementModel_->measure( pose , landmark_current , measurement_exp , &H)){
+    for(int i = 0; i < measurement.size(); i++){
+      landmark_updated[i] = landmark_current;
+      if(zLikelihood != NULL){ 
+	mahalanobisDist2->at(i) = 0;
+      }
+      if(mahalanobisDist2 != NULL){
+	zLikelihood->at(i) = 0;
+      }
+    }
+    return false; // invalid expected measurement produced
+  }
+  
+  landmark_current.get(m, P);
+  measurement_exp.get(z_exp, S);
+  measurement_exp.getCovInv(S_inv);
+  K = P * H.transpose() * S_inv;
+  P_updated = ( I - K * H ) * P;
+  P_updated = ( P_updated + P_updated.transpose() ) / 2; // make sure covariance is symetric
+
+  landmark_updated.resize( measurement.size() );
+  if(zLikelihood != NULL)
+    zLikelihood->resize( measurement.size() );
+  if(mahalanobisDist2 != NULL)
+    mahalanobisDist2->resize( measurement.size() );
+
+  double zl, md2;
+  for(int i = 0; i < measurement.size(); i++){
+      measurement[i].get(z_act); 
+      if(calculateInnovation(z_exp, z_act, z_innov)){
+	m_updated = m + K * z_innov;
+	landmark_updated[i].set(m_updated, P_updated);
+	if(zLikelihood != NULL){
+	  innov.set(z_exp, S);
+	  if(mahalanobisDist2 != NULL){
+	    zl = innov.evalGaussianLikelihood( z_act, &md2 );
+	    mahalanobisDist2->at(i) = md2;
+	  }
+	  else
+	    zl = innov.evalGaussianLikelihood( z_act ); 
+	  if(zl != zl) // When likelihood is so small that it becomes NAN
+	    zl = 0;
+	  zLikelihood->at(i) = zl;
+	}
+      }else{
+	landmark_updated[i] = landmark_current;
+	if(zLikelihood != NULL){ 
+	  mahalanobisDist2->at(i) = 0;
+	}
+	if(mahalanobisDist2 != NULL){
+	  zLikelihood->at(i) = 0;
+	}
+      }
+
+      if(zLikelihood != NULL){
+	if(mahalanobisDist2 != NULL){
+	  zl = measurement_exp.evalGaussianLikelihood( z_act, &md2 );
+	  mahalanobisDist2->at(i) = md2;
+	}
+	else
+	  zl = measurement_exp.evalGaussianLikelihood( z_act ); 
+	if(zl != zl) // When likelihood is so small that it becomes NAN
+	  zl = 0;
+	zLikelihood->at(i) = zl;
+      }
+  } 
+ 
+  return true;
+
+}
 
 template <class ProcessModelType, class MeasurementModelType> 
 bool KalmanFilter<ProcessModelType, MeasurementModelType>::

@@ -459,23 +459,17 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
     // nM x nZ table for Gaussian weighting
     checkWeightingTableSize(nM, nZ);
-    /*TLandmark*** newLandmarkPointer = new TLandmark** [ nM ];
-    for( int n = 0; n < nM; n++ ){
-      newLandmarkPointer[n] = new TLandmark* [ nZ ];
-      }*/
-    /*for(int m = 0; m < nM; m++){
-      for(int z = 0; z < nZ; z++){
-	newLandmarkPointer[m][z] = NULL;
-	weightingTable_[m][z] = 0;
-      }
-      }*/
+
 
     //----------  2. Kalman Filter map update ----------
 
     timer_mapUpdate_kf_.resume();
     const TPose *pose = this->particleSet_[i]->getPose();
-    TLandmark* lmNew = NULL;
     threshold_mahalanobisDistance2_mapUpdate_ = config.newGaussianCreateInnovMDThreshold_ * config.newGaussianCreateInnovMDThreshold_;
+
+    std::vector<double> innovationLikelihood(nZ);
+    std::vector<double> innovationMahalanobisDist2(nZ);
+    std::vector<TLandmark> lmNew(nZ);
 
     for(unsigned int m = 0; m < nM; m++){
 
@@ -493,29 +487,20 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       double Pd_times_w_km = Pd[m] * w_km;
 
       if(Pd[m] != 0){
+
+	// RUN KF, create new landmark for likely updates but do not add to map_[i] yet
+	// because we cannot determine actual weight until the entire weighting table is
+	// filled in
+	kfPtr_->correct(*pose, this->measurements_, *lm, lmNew, &innovationLikelihood, &innovationMahalanobisDist2);
+	
 	for(int z = 0; z < nZ; z++){
 
-	  if(lmNew == NULL)
-	    lmNew = new TLandmark;
-
-	  newLandmarkTable_[m][z] = NULL;
-	  weightingTable_[m][z] = 0;
-	  double innovationLikelihood = 0;
-	  double innovationMahalanobisDist2 = 0;
-	
-	  // RUN KF, create new landmark for likely updates but do not add to map_[i] yet
-	  // because we cannot determine actual weight until the entire weighting table is
-	  // filled in
-	  bool updateMade = kfPtr_->correct(*pose, this->measurements_[z], *lm, *lmNew, 
-					    &innovationLikelihood, &innovationMahalanobisDist2);
-    
-	  if ( !updateMade || innovationMahalanobisDist2 > threshold_mahalanobisDistance2_mapUpdate_ ){
+	  if ( innovationLikelihood[z] == 0 || innovationMahalanobisDist2[z] > threshold_mahalanobisDistance2_mapUpdate_ ){
 	    newLandmarkTable_[m][z] = NULL;
 	    weightingTable_[m][z] = 0;
 	  }else{
-	    newLandmarkTable_[m][z] = lmNew;
-	    lmNew = NULL;
-	    weightingTable_[m][z] = Pd_times_w_km * innovationLikelihood;
+	    newLandmarkTable_[m][z] = new TLandmark( lmNew[z] );
+	    weightingTable_[m][z] = Pd_times_w_km * innovationLikelihood[z];
 	  }	
 
 	} // z forloop end
@@ -528,9 +513,6 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       }
 
     } // m forloop end
-
-    if(lmNew != NULL)
-      delete lmNew;
     
     // Now calculate the weight of each new Gaussian
     for(int z = 0; z < nZ; z++){
@@ -549,6 +531,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	weightingTable_[m][z] = weightingTable_[m][z] / sum;
       }
     }
+    
     if(config.useClusterProcess_){
       double prev_particle_i_weight = this->particleSet_[i]->getWeight();
       this->particleSet_[i]->setWeight( exp(w_km_sum) * likelihoodProd);
