@@ -272,7 +272,6 @@ correct(const TPose &pose,
  
   if(!pMeasurementModel_->measure( pose , landmark_current , measurement_exp , &H)){
     for(int i = 0; i < measurement.size(); i++){
-      landmark_updated[i] = landmark_current;
       if(zLikelihood != NULL){ 
 	mahalanobisDist2->at(i) = 0;
       }
@@ -315,7 +314,6 @@ correct(const TPose &pose,
 	  zLikelihood->at(i) = zl;
 	}
       }else{
-	landmark_updated[i] = landmark_current;
 	if(zLikelihood != NULL){ 
 	  mahalanobisDist2->at(i) = 0;
 	}

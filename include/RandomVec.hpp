@@ -396,10 +396,11 @@ public:
 				 double* mDist2 = NULL){
     if(!isValid_Sx_det_){
       Sx_det_ = Sx_.determinant();
+      gaussian_pdf_factor_ = sqrt( pow( 2*PI, nDim_ ) * Sx_det_ );
       isValid_Sx_det_ = true;
     }
     double md2 = mahalanobisDist2( x_eval );
-    double l = ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim_ ) * Sx_det_ ) );
+    double l = ( exp(-0.5 * md2 ) / gaussian_pdf_factor_ );
     if( l != l) //If md2 is very large, l will become NAN;
       l = 0;
     if(mDist2 != NULL)
@@ -417,10 +418,11 @@ public:
 				 double* mDist2 = NULL){
     if(!isValid_Sx_det_){
       Sx_det_ = Sx_.determinant();
+      gaussian_pdf_factor_ = sqrt( pow( 2*PI, nDim_ ) * Sx_det_ );
       isValid_Sx_det_ = true;
     }
     double md2 = mahalanobisDist2( x_eval );
-    double l = ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim_ ) * Sx_det_ ) );
+    double l = ( exp(-0.5 * md2 ) / gaussian_pdf_factor_ );
     if( l != l) //If md2 is very large, l will become NAN;
       l = 0;
     if(mDist2 != NULL)
@@ -493,6 +495,7 @@ private:
   MatType Sx_inv_; /**< Inverse covariance */
   bool isValid_Sx_inv_; /**< Inverse covariance is up to date */
   double Sx_det_; /**< Determinant of Sx_ */
+  double gaussian_pdf_factor_; /**< \f[ \sqrt{ (2\pi)^n)|\Sigma| } \f]*/
   bool isValid_Sx_det_; /**< Determinant of Sx_ is up to date */
   MatType Sx_L_; /**< Lower triangular part of Cholesky decomposition on Sx_ */
   bool isValid_Sx_L_; /**< Lower triangular part of Cholesky decomposition on Sx_ is up to date */
