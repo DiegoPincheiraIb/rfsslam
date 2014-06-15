@@ -367,6 +367,12 @@ bool ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::resample
       sum_of_weight_squared += (w_i * w_i); // and divide by 1
     }
     double nEffParticles_ = 1.0 / sum_of_weight_squared;
+    printf("%e\n",nEffParticles_);
+    if (std::isnan(nEffParticles_)){
+       for( int i = 0; i < nParticles_; i++ )
+         printf("Pw %d\t%e\n",i,particleSet_[i]->getWeight());
+    }
+      
     if( nEffParticles_ > effNParticles_t_ && nEffParticles_ / nParticles_ > effNParticles_t_percent_){
       return false; // no resampling
     }

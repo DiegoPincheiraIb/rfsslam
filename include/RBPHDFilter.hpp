@@ -330,7 +330,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   addBirthGaussians();
 
   // propagate particles
-  this->propagate(u, dT);
+  this->propagate(u, dT, useModelNoise, useInputNoise);
 
   // propagate landmarks
   for( int i = 0; i < this->nParticles_; i++ ){
@@ -684,7 +684,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     // 4. calculate measurement likelihood at eval points
     // note that rfsMeasurementLikelihood uses maps_[i] which is already sorted by weight
     double measurementLikelihood = rfsMeasurementLikelihood( i, evalPointIdx, evalPointPd );
-    //printf("Particle %d measurement likelihood = %f\n", i, measurementLikelihood);
+    //printf("Particle %d measurement likelihood = %e\n", i, measurementLikelihood);
 
     // 5. calculate overall weight
     double overall_weight = measurementLikelihood * intensityProd_beforeUpdate / intensityProd_afterUpdate *
@@ -693,7 +693,15 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     double prev_weight = this->particleSet_[i]->getWeight();
     this->particleSet_[i]->setWeight( overall_weight * prev_weight );
     //printf("Particle %d overall weight = %f\n\n", i, overall_weight);
-
+    
+    if(std::isnan(overall_weight*prev_weight)){
+      printf("Particle %d intensity prod bef = %f\n", i, intensityProd_beforeUpdate);
+      printf("Particle %d intensity prod after = %f\n", i,  intensityProd_afterUpdate);
+      printf("Particle %d measurement likelihood = %f\n", i, measurementLikelihood);
+      printf("Particle %d overall weight = %f\n\n", i, overall_weight);
+      printf("Particle %d prev weight = %f\n\n", i, prev_weight);
+    }
+    
   }
 
 }
@@ -723,21 +731,33 @@ rfsMeasurementLikelihood( const int particleIdx,
   // Create and fill in likelihood table (nM x nZ)
   double** L;
   CostMatrixGeneral likelihoodMatrix(L, nM, nZ);
-
+  //std::cout <<"nL: " << nL << " nM: " << nM <<"\n";
   for(int m = 0; m < nM; m++){
     
     this->particleSet_[i]->getData()->getGaussian( evalPtIdx[m], evalPt ); // get location of m
     this->pMeasurementModel_->measure( x, *evalPt, expected_z); // get expected measurement for m
     double Pd = evalPtPd[m]; // get the prob of detection of m
-
+    
+    typename TMeasurement::Mat covZ;
+    typename TMeasurement::Vec meanZ;
+    expected_z.get(meanZ,covZ);
+    //std::cout << "expected meanZ:\n"<< meanZ << "\n";
+    //std::cout << "expected covZ:\n"<< covZ << "\n";
     for(int n = 0; n < nZ; n++){
+this->measurements_[n].get(meanZ,covZ);
 
       // calculate measurement likelihood with detection statistics
-      L[m][n] = this->measurements_[n].evalGaussianLikelihood( expected_z, &md2) * Pd; 
+      L[m][n] = expected_z.evalGaussianLikelihood( this->measurements_[n], &md2) * Pd; 
       if( md2 > threshold ){
 	L[m][n] = 0;
       }
+      //std::cout << "meanZ:\n" << meanZ << "\n";
+      //std::cout << "covZ:\n"<< covZ << "\n";
+      //std::cout << "\t"<< L[m][n] ;
+      //std::cout << "Pd:\n"<< Pd << "\n";
+      
     }
+    //std::cout << "\n";
   }
 
   // Partition the Likelihood Table and turn into a log-likelihood table
