@@ -34,6 +34,9 @@
 #include <cmath>
 #include <stdio.h>
 
+namespace rfs
+{
+
 BruteForceLinearAssignment::BruteForceLinearAssignment() : a_(NULL), s_(NULL), nAssignments_(0){}
 
 BruteForceLinearAssignment::~BruteForceLinearAssignment(){
@@ -46,7 +49,6 @@ BruteForceLinearAssignment::~BruteForceLinearAssignment(){
   if(s_ != NULL ){
     delete[] s_;
   }
-  s_ = new double [nAssignments_];
 }
 
 unsigned int BruteForceLinearAssignment::run(double** C, int n, unsigned int** &a, double* &s, bool maxToMin){
@@ -84,7 +86,7 @@ unsigned int BruteForceLinearAssignment::run(double** C, int n, unsigned int** &
     unsigned int* o = new unsigned int[n];
     int np = lex.next(o);
     if(np == 0){
-      delete[] a;
+      delete[] o;
       break;
     }
     nAssignments_ = np;
@@ -116,4 +118,6 @@ unsigned int BruteForceLinearAssignment::run(double** C, int n, unsigned int** &
   a = a_;
   s = s_;
   return nAssignments_;
+}
+
 }

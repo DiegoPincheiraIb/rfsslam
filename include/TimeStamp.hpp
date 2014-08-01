@@ -33,6 +33,8 @@
 
 #include <stdint.h>
 
+namespace rfs{
+
 /**
  * \class TimeStamp
  * \brief A timestamp
@@ -82,6 +84,12 @@ public:
    *  \param[in] t time in seconds
    */
   void setTime(double const t);
+
+  /** Set the time
+   *  \param[in] s seconds
+   *  \param[in] ns nanoseconds
+   */
+  void setTime(int32_t const s, int32_t const ns);
 
   int32_t sec; /**< number of seconds */
   int32_t nsec; /**< number of nanoseconds */
@@ -142,5 +150,5 @@ inline void TimeStamp::normalize(){
   sec = sec_temp;
 }
 
-
+}
 #endif

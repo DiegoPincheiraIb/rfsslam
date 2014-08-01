@@ -39,6 +39,8 @@
 #include <string>
 #include <vector>
 
+using namespace rfs;
+
 /**
  * \class LogFileReader2dSim
  * \brief A class for reading 2d sim log files and for calculating errors

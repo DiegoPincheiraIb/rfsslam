@@ -31,15 +31,19 @@
 #ifndef RBPHDFILTER_HPP
 #define RBPHDFILTER_HPP
 
-#include <boost/timer/timer.hpp>
+#include "Timer.hpp"
 #include <Eigen/Core>
 #include "GaussianMixture.hpp"
+#include "MurtyAlgorithm.hpp"
 #include "ParticleFilter.hpp"
+#include "PermutationLexicographic.hpp"
 #include "KalmanFilter.hpp"
 #include <math.h>
 #include <vector>
 
 #include <stdio.h>
+
+namespace rfs{
 
 /**
  *  \class RBPHDFilter
@@ -91,6 +95,9 @@ public:
     */
     int importanceWeightingEvalPointCount_;
 
+    /** The weight above which a Gaussian's mean is considered as a evaluation point for particle importance factor */
+    double importanceWeightingEvalPointGuassianWeight_;
+
     /** The mahalanobis distance threshold used to determine if a possible meaurement-landmark
      *  pairing is significant to worth considering 
      */
@@ -108,13 +115,31 @@ public:
     /** Minimum number of updates betwen resampling of particles*/
     int minUpdatesBeforeResample_;
 
-    /** If true, timing information is written to the console every update*/
-    bool reportTimingInfo_;
-
     /** Use the particle weighting strategty from Single-cluster PHD Filtering by Lee, et. al. */
     bool useClusterProcess_;
 
   } config;
+
+
+  /**
+   * \brief Elapsed timing information 
+   */
+  struct TimingInfo {
+    long long predict_wall;
+    long long predict_cpu;
+    long long mapUpdate_wall;
+    long long mapUpdate_cpu;
+    long long mapUpdate_kf_wall;
+    long long mapUpdate_kf_cpu;
+    long long particleWeighting_wall;
+    long long particleWeighting_cpu;
+    long long mapMerge_wall;
+    long long mapMerge_cpu;
+    long long mapPrune_wall;
+    long long mapPrune_cpu;
+    long long particleResample_wall;
+    long long particleResample_cpu;
+  } timingInfo_;
 
   /** 
    * Constructor 
@@ -134,7 +159,7 @@ public:
   /**
    * Predict the robot trajectory using the lastest odometry data
    * \param[in] u input 
-   * \param[in] currentTimestep current timestep (no longer used);
+   * \param[in] Timestep timestep, which the motion model may or may not use;
    * \param[in] useModelNoise use the additive noise for the process model
    * \param[in] useInputNoise use the noise fn the input
    */
@@ -183,21 +208,33 @@ public:
    */
   void setParticlePose(int i, TPose &p);
 
+  TimingInfo* getTimingInfo();
 
 private:
 
   double **weightingTable_; /**< Weighting table used during map update */
   int weightingTableNRows_; /**< Number of rows in the weighting table */
   int weightingTableNCols_; /**< Number of cols in the weighting table */
+  TLandmark*** newLandmarkTable_; /**< Table for initiating new landmarks */
 
   KalmanFilter *kfPtr_; /**< pointer to the Kalman filter */
   LmkProcessModel *lmkModelPtr_; /**< pointer to landmark process model */
+  double threshold_mahalanobisDistance2_mapUpdate_; /**< Mahalanobis distance squared threshold, above which Kalman Filter update will not occur*/
 
   /** indices of unused measurement for each particle for creating birth Gaussians */
   std::vector< std::vector<unsigned int> > unused_measurements_; 
 
   unsigned int nUpdatesSinceResample; /**< Number of updates performed since the last resmaple */
+
+  Timer timer_predict_; /**< Timer for prediction step */
+  Timer timer_mapUpdate_; /**< Timer for map update */
+  Timer timer_mapUpdate_kf_; /**<Timer for the Kalman filter part of map update */
+  Timer timer_particleWeighting_; /**< Timer for particle weighting */
+  Timer timer_mapMerge_; /**< Timer for map merging */ 
+  Timer timer_mapPrune_; /**< Timer for map pruning */
+  Timer timer_particleResample_; /**<Timer for particle resampling */
   
+
   /** 
    * Add birth Gaussians for each particle's map using unused_measurements_
    */ 
@@ -265,7 +302,7 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   kfPtr_ = new KalmanFilter(lmkModelPtr_, this->getMeasurementModel());
   
   for(int i = 0; i < n; i++){
-    printf("Creating map structure for particle %d\n", i);
+    // printf("Creating map structure for particle %d\n", i);
     this->particleSet_[i]->setData( new GaussianMixture<TLandmark>() );
     unused_measurements_.push_back( std::vector<unsigned int>() );
   }
@@ -278,15 +315,16 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   config.importanceWeightingMeasurementLikelihoodMDThreshold_ = 3.0;
   config.newGaussianCreateInnovMDThreshold_ = 0.2;
   config.minUpdatesBeforeResample_ = 1;
-  config.reportTimingInfo_ = false;
   
   nUpdatesSinceResample = 0;
 
   weightingTableNRows_ = 100; 
   weightingTableNCols_ = 100;
   weightingTable_ = new double*[weightingTableNRows_];
+  newLandmarkTable_ = new TLandmark**[weightingTableNRows_];
   for(int n = 0; n < weightingTableNRows_; n++){
-    weightingTable_[n] = new double[weightingTableNRows_];
+    weightingTable_[n] = new double[weightingTableNCols_];
+    newLandmarkTable_[n] = new TLandmark*[weightingTableNCols_];
   }
 }
 
@@ -315,17 +353,14 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 												 TimeStamp const &dT,
 												 bool useModelNoise,
 												 bool useInputNoise){
-
-  boost::timer::auto_cpu_timer *timer = NULL;
-  if(config.reportTimingInfo_)
-    timer = new boost::timer::auto_cpu_timer(6, "Predict time: %ws\n");
-
+ 
+  timer_predict_.resume();
 
   // Add birth Gaussians using pose before prediction
   addBirthGaussians();
 
   // propagate particles
-  this->propagate(u, dT);
+  this->propagate(u, dT, useModelNoise, useInputNoise);
 
   // propagate landmarks
   for( int i = 0; i < this->nParticles_; i++ ){
@@ -336,70 +371,47 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     }
   }
 
-  if(timer != NULL)
-    delete timer;
+  timer_predict_.stop();
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z){
-
-  boost::timer::auto_cpu_timer *timer_mapUpdate = NULL;
-  boost::timer::auto_cpu_timer *timer_particleWeighting = NULL;
-  boost::timer::auto_cpu_timer *timer_mapMerge = NULL;
-  boost::timer::auto_cpu_timer *timer_mapPrune = NULL;
-  boost::timer::auto_cpu_timer *timer_particleResample = NULL;
 
   nUpdatesSinceResample++;
 
   this->setMeasurements( Z ); // Z gets cleared after this call, measurements now stored in this->measurements_
 
   ////////// Map Update //////////
-  if(config.reportTimingInfo_){
-    timer_mapUpdate = new boost::timer::auto_cpu_timer(6, "Map update time: %ws\n");
-  }
+  timer_mapUpdate_.resume();
   updateMap();
-  if(timer_mapUpdate != NULL)
-    delete timer_mapUpdate;
+  timer_mapUpdate_.stop();
 
   ////////// Particle Weighintg //////////
-  if(config.reportTimingInfo_){
-    timer_particleWeighting = new boost::timer::auto_cpu_timer(6, "Particle weighting time: %ws\n");
-  }
+  timer_particleWeighting_.resume();
   if(!config.useClusterProcess_){
     importanceWeighting();
   }
-  if(timer_particleWeighting != NULL)
-    delete timer_particleWeighting;
+  timer_particleWeighting_.stop();
 
   //////////// Merge and prune //////////
   int maxMapSize = -1;
   int i_maxMapSize = -1;
-  if(config.reportTimingInfo_){
-    timer_mapMerge = new boost::timer::auto_cpu_timer(6, "Map merge time: %ws\n");
-  }
+  timer_mapMerge_.resume();
   for( int i = 0; i < this->nParticles_; i++){ 
 
     this->particleSet_[i]->getData()->merge( config.gaussianMergingThreshold_, 
 					     config.gaussianMergingCovarianceInflationFactor_);   
   } 
-  if(timer_mapMerge != NULL)
-    delete timer_mapMerge;
+  timer_mapMerge_.stop();
   
-  if(config.reportTimingInfo_){
-    timer_mapPrune = new boost::timer::auto_cpu_timer(6, "Map prune time: %ws\n");
-  }
+  timer_mapPrune_.resume();
   for( int i = 0; i < this->nParticles_; i++){ 
-
     this->particleSet_[i]->getData()->prune( config.gaussianPruningThreshold_ );    
-
   }
-  if(timer_mapPrune != NULL)
-    delete timer_mapPrune;
+  timer_mapPrune_.stop();
 
   //////////// Particle resampling //////////
-  if(config.reportTimingInfo_){
-    timer_particleResample = new boost::timer::auto_cpu_timer(6, "Particle resample time: %ws\n");
-  }
+  timer_particleResample_.resume();
   bool resampleOccured = false;
   if( nUpdatesSinceResample >= config.minUpdatesBeforeResample_){
     resampleOccured = this->resample();
@@ -410,9 +422,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   }else{
     this->normalizeWeights();
   }
- 
-  if(timer_particleResample != NULL)
-    delete timer_particleResample;
+  timer_particleResample_.stop();
 
 }
 
@@ -426,7 +436,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   for(unsigned int i = startIdx; i < stopIdx; i++){    
 
     //---------- 1. setup / book-keeping ----------
-   
+    
     const unsigned int nM = this->particleSet_[i]->getData()->getGaussianCount();
     unused_measurements_[i].clear();    
     if(nM == 0){ // No existing landmark case -> flag all measurements as unused and go to next particles
@@ -449,21 +459,17 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
     // nM x nZ table for Gaussian weighting
     checkWeightingTableSize(nM, nZ);
-    TLandmark*** newLandmarkPointer = new TLandmark** [ nM ];
-    for( int n = 0; n < nM; n++ ){
-      newLandmarkPointer[n] = new TLandmark* [ nZ ];
-    }
-    for(int m = 0; m < nM; m++){
-      for(int z = 0; z < nZ; z++){
-	newLandmarkPointer[m][z] = NULL;
-	weightingTable_[m][z] = 0;
-      }
-    }
+
 
     //----------  2. Kalman Filter map update ----------
 
+    timer_mapUpdate_kf_.resume();
     const TPose *pose = this->particleSet_[i]->getPose();
-    TLandmark* lmNew = NULL;
+    threshold_mahalanobisDistance2_mapUpdate_ = config.newGaussianCreateInnovMDThreshold_ * config.newGaussianCreateInnovMDThreshold_;
+
+    std::vector<double> innovationLikelihood(nZ);
+    std::vector<double> innovationMahalanobisDist2(nZ);
+    std::vector<TLandmark> lmNew(nZ);
 
     for(unsigned int m = 0; m < nM; m++){
 
@@ -481,45 +487,32 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       double Pd_times_w_km = Pd[m] * w_km;
 
       if(Pd[m] != 0){
+
+	// RUN KF, create new landmark for likely updates but do not add to map_[i] yet
+	// because we cannot determine actual weight until the entire weighting table is
+	// filled in
+	kfPtr_->correct(*pose, this->measurements_, *lm, lmNew, &innovationLikelihood, &innovationMahalanobisDist2);
+	
 	for(int z = 0; z < nZ; z++){
 
-	  if(lmNew == NULL)
-	    lmNew = new TLandmark;
-
-	  newLandmarkPointer[m][z] = NULL;
-	  weightingTable_[m][z] = 0;
-	  double innovationLikelihood = 0;
-	  double innovationMahalanobisDist2 = 0;
-	  double threshold = config.newGaussianCreateInnovMDThreshold_ * config.newGaussianCreateInnovMDThreshold_;
-	
-	  // RUN KF, create new landmark for likely updates but do not add to map_[i] yet
-	  // because we cannot determine actual weight until the entire weighting table is
-	  // filled in
-	  bool updateMade = kfPtr_->correct(*pose, this->measurements_[z], *lm, *lmNew, 
-					    &innovationLikelihood, &innovationMahalanobisDist2);
-
-	  if ( !updateMade || innovationMahalanobisDist2 > threshold ){
-	    newLandmarkPointer[m][z] = NULL;
+	  if ( innovationLikelihood[z] == 0 || innovationMahalanobisDist2[z] > threshold_mahalanobisDistance2_mapUpdate_ ){
+	    newLandmarkTable_[m][z] = NULL;
 	    weightingTable_[m][z] = 0;
 	  }else{
-	    newLandmarkPointer[m][z] = lmNew;
-	    lmNew = NULL;
-	    weightingTable_[m][z] = Pd_times_w_km * innovationLikelihood;
+	    newLandmarkTable_[m][z] = new TLandmark( lmNew[z] );
+	    weightingTable_[m][z] = Pd_times_w_km * innovationLikelihood[z];
 	  }	
 
 	} // z forloop end
 
       }else{ // Pd = 0
 	for(int z = 0; z < nZ; z++){
-	  newLandmarkPointer[m][z] = NULL;
+	  newLandmarkTable_[m][z] = NULL;
 	  weightingTable_[m][z] = 0;
 	}
       }
 
     } // m forloop end
-
-    if(lmNew != NULL)
-      delete lmNew;
     
     // Now calculate the weight of each new Gaussian
     for(int z = 0; z < nZ; z++){
@@ -538,17 +531,21 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	weightingTable_[m][z] = weightingTable_[m][z] / sum;
       }
     }
+    
     if(config.useClusterProcess_){
       double prev_particle_i_weight = this->particleSet_[i]->getWeight();
       this->particleSet_[i]->setWeight( exp(w_km_sum) * likelihoodProd);
     }
 
+    timer_mapUpdate_kf_.stop();
+
     // ---------- 3. Add new Gaussians to map  ----------
     // New Gaussians will have indices >= nM 
     for(int m = 0; m < nM; m++){
       for(int z = 0; z < nZ; z++){
-	if(newLandmarkPointer[m][z] != NULL && weightingTable_[m][z] > 0){
-	  this->particleSet_[i]->getData()->addGaussian( newLandmarkPointer[m][z],  weightingTable_[m][z]);  
+	if(newLandmarkTable_[m][z] != NULL && weightingTable_[m][z] > 0){
+	  this->particleSet_[i]->getData()->addGaussian( newLandmarkTable_[m][z],  weightingTable_[m][z]);  
+	  newLandmarkTable_[m][z] = NULL;
 	}
       }
     }
@@ -579,22 +576,16 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     //----------  5. Identify unused measurements for adding birth Gaussians later ----------
     unused_measurements_[i].clear();
     for(int z = 0; z < nZ; z++){
-      int useCount = 0;
+      bool is_measurement_used = false;
       for(int m = 0; m < nM; m++){
 	if (weightingTable_[m][z] != 0){
-	  useCount++;
+	  is_measurement_used = true;
+	  break;
 	}
       }
-      if (useCount == 0)
+      if (!is_measurement_used)
 	unused_measurements_[i].push_back( z );
     }
-
-    //----------  6. Cleanup - Free memory ----------
-
-    for( int n = 0; n < nM; n++ ){
-      delete[] newLandmarkPointer[n];
-    }
-    delete[] newLandmarkPointer;
 
   }
 
@@ -606,7 +597,6 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
   for(int i = 0; i < this->nParticles_; i++){
 
-    //printf("Importance weighting for particle %d\n", i);
     TPose x;
     this->particleSet_[i]->getPose( x );
 
@@ -627,12 +617,14 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       double w, w_prev;
       bool closeToSensingLim;
       this->particleSet_[i]->getData()->getGaussian(m, plm_temp, w, w_prev);
-      double Pd = this->pMeasurementModel_->probabilityOfDetection(x,*plm_temp, closeToSensingLim);
+      if(w < config.importanceWeightingEvalPointGuassianWeight_)
+	break;
+      double Pd = this->pMeasurementModel_->probabilityOfDetection(x, *plm_temp, closeToSensingLim);
       if( Pd > 0 ){
 	evalPointIdx.push_back(m);
 	evalPointPd.push_back(Pd);
       }
-      if(evalPointIdx.size() >= nEvalPoints)
+      if(nEvalPoints != -1 && evalPointIdx.size() >= nEvalPoints)
 	break;
     }
     nEvalPoints = evalPointIdx.size();
@@ -646,15 +638,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       this->particleSet_[i]->getData()->getGaussian(m, plm_temp, w, w_prev); // for newly created Gaussians, w_prev = 0
       gaussianWeightSumBeforeUpdate += w_prev;
       gaussianWeightSumAfterUpdate += w;
-      //printf("w_[%d] = %f\n", i, w);
     }
-    // Check for NaN
-    if( gaussianWeightSumBeforeUpdate != gaussianWeightSumBeforeUpdate ||
-	gaussianWeightSumAfterUpdate != gaussianWeightSumAfterUpdate ){
-      //printf("Particle %d map size before update = %f\n", i, gaussianWeightSumBeforeUpdate);
-      //printf("Particle %d map size after update = %f\n", i, gaussianWeightSumAfterUpdate);
-    }
-    //printf("Particle %d map size after - before update = %f\n", i, gaussianWeightSumAfterUpdate - gaussianWeightSumBeforeUpdate);
     
     // 3. evaluate intensity function at eval points and take their product
     double intensityProd_beforeUpdate = 1;
@@ -674,30 +658,14 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	double w, w_prev;
 	this->particleSet_[i]->getData()->getGaussian(m, plm, w, w_prev);
 	// New Gaussians from update will have w_prev = 0
-	// Out Gaussians (missed-detection) will not have been updated, but weights will have changed
+	// Old Gaussians (missed-detection) will not have been updated, but weights will have changed
 	double likelihood = plm->evalGaussianLikelihood( *lm_evalPt );
 	intensity_at_evalPt_beforeUpdate += w_prev * likelihood; // w_prev for newly created Gaussians are 0
 	intensity_at_evalPt_afterUpdate += w * likelihood;
-	// NaN check
-	if( likelihood != likelihood || 
-	    intensity_at_evalPt_beforeUpdate != intensity_at_evalPt_beforeUpdate || 
-	    intensity_at_evalPt_afterUpdate != intensity_at_evalPt_afterUpdate){
-	  printf("Particle %d map intensity error for eval point %d\n", i, m);
-	  printf("intensity before update = %f\n", intensity_at_evalPt_beforeUpdate);
-	  printf("intensity after update = %f\n", intensity_at_evalPt_afterUpdate);
-	}
       }
       intensityProd_beforeUpdate *= intensity_at_evalPt_beforeUpdate;
       intensityProd_afterUpdate *= intensity_at_evalPt_afterUpdate;
-      // NaN Check
-      if( intensityProd_beforeUpdate != intensityProd_beforeUpdate ||
-	  intensityProd_afterUpdate != intensityProd_afterUpdate ){
-	printf("Particle %d map intensity product error\n", i);
-	printf("intensity product before update = %f\n", intensityProd_beforeUpdate);
-	printf("intensity product after update = %f\n", intensityProd_afterUpdate);
-      } 
     }
-    //printf("Particle %d intensity product before / after update = %f\n", i, intensityProd_beforeUpdate / intensityProd_afterUpdate);
 
     // 4. calculate measurement likelihood at eval points
     // note that rfsMeasurementLikelihood uses maps_[i] which is already sorted by weight
@@ -721,236 +689,182 @@ double RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, Kalman
 rfsMeasurementLikelihood( const int particleIdx, 
 			  std::vector<unsigned int> &evalPtIdx,
 			  std::vector<double> &evalPtPd ){
+
   // eval points are first nEvalPoints elements of maps_[i], which are already ordered by weight; 
 
   const int i = particleIdx;
-  const int nM = evalPtIdx.size();
-  const int nZ = this->measurements_.size();
-
-  // Fill in likelihood table
   TPose x;
   this->particleSet_[i]->getPose( x );
-  std::vector< double* > likelihoodTab;
-  likelihoodTab.reserve(nM);
-  for( int m = 0; m < nM; m++ ){
-    
-    double* row = new double[nZ];
-    
-    TLandmark* evalPt; 
-    this->particleSet_[i]->getData()->getGaussian( evalPtIdx[m], evalPt );
-    double Pd = evalPtPd[m];
-    
-    double row_sum = 0;
-    for( int z = 0; z < nZ; z++ ){
+  const int nM = evalPtIdx.size();
+  const int nZ = this->measurements_.size();
+  int nL = nM;
+  if(nZ > nL)
+    nL = nZ;
+  TLandmark* evalPt;
+  TLandmark evalPt_copy;
+  TMeasurement expected_z;
+  double const threshold = config.importanceWeightingMeasurementLikelihoodMDThreshold_ *
+    config.importanceWeightingMeasurementLikelihoodMDThreshold_;
+  double md2; // Mahalanobis distance squared
 
-      TMeasurement expected_z;
-      this->pMeasurementModel_->measure( x, *evalPt, expected_z);
-      //TMeasurement actual_z = this->measurements_[z];
-      
-      double md2;
-      double threshold = config.importanceWeightingMeasurementLikelihoodMDThreshold_;
-      threshold *= threshold;
-      double likelihood = this->measurements_[z].evalGaussianLikelihood( expected_z, &md2);
-      if( md2 <= threshold ){
-	row[z] = likelihood * Pd;
-	row_sum += row[z];
-      }else{
-	row[z] = 0;
-      }
-      
-    }
-    
-    // Check to see if likelihood to all measurements is 0, if so remove this eval point
-    // as it will not contribute anything to the output likelihood
-    if( row_sum == 0 ){
-      delete[] row;
-    }else{
-      likelihoodTab.push_back(row);
-    }
-    
-  }
-  const int likelihoodTabSizeWithoutClutter = likelihoodTab.size();
+  // Create and fill in likelihood table (nM x nZ)
+  double** L;
+  CostMatrixGeneral likelihoodMatrix(L, nM, nZ);
 
-  // Check measurements (columns) with 0 likelihood to all eval points
-  // if so, that measurement is considered clutter
-  int nClutter = 0;
-  double clutterLikelihood = 1; // we will multiply the likelihood sum of all d.a. permuations with this at the end
-  std::vector<int> z_noClutter; // we only want the non-clutter measurements when we permutate over all data assocation pairs later
-  z_noClutter.reserve(nZ);
+  for(int m = 0; m < nM; m++){
+    
+    this->particleSet_[i]->getData()->getGaussian( evalPtIdx[m], evalPt ); // get location of m
+    evalPt_copy = *evalPt; // so that we don't change the actual data //
+    evalPt_copy.setCov(MeasurementModel::TLandmark::Mat::Zero()); //
+    //this->pMeasurementModel_->measure( x, *evalPt, expected_z); // get expected measurement for m
+    this->pMeasurementModel_->measure( x, evalPt_copy, expected_z); // get expected measurement for m
+    double Pd = evalPtPd[m]; // get the prob of detection of m
 
-  for( int z = 0; z < nZ; z++ ){
-    double isClutter = true;
-    for( int m = 0; m < likelihoodTab.size(); m++ ){
-      if( likelihoodTab[m][z] > 0 ){
-	isClutter = false;
-	break;
+    for(int n = 0; n < nZ; n++){
+
+      // calculate measurement likelihood with detection statistics
+      // L[m][n] = this->measurements_[n].evalGaussianLikelihood( expected_z, &md2) * Pd;
+      L[m][n] = expected_z.evalGaussianLikelihood( this->measurements_[n], &md2) * Pd; // new line 
+      if( md2 > threshold ){
+	L[m][n] = 0;
       }
     }
-    if( isClutter ){
-      nClutter++;
-      // TMeasurement actual_z = this->measurements_[z];
-      clutterLikelihood *= this->pMeasurementModel_->clutterIntensity(this->measurements_[z], nZ);;
+  }
+
+  // Partition the Likelihood Table and turn into a log-likelihood table
+  int nP = likelihoodMatrix.partition();
+  double l = 1;
+  double const BIG_NEG_NUM = -1000; // to represent log(0)
+  double clutter[nZ];
+  for(int n = 0; n < nZ; n++ ){
+    clutter[n] = this->pMeasurementModel_->clutterIntensity( this->measurements_[n], nZ );
+  }
+
+  // Go through each partition and determine the likelihood
+  for(int p = 0; p < nP; p++){
+
+    double partition_likelihood = 0;
+
+    unsigned int nCols, nRows;
+    double** Cp; 
+    unsigned int* rowIdx;
+    unsigned int* colIdx;    
+
+    bool isZeroPartition = !likelihoodMatrix.getPartitionSize(p, nRows, nCols);
+    bool useMurtyAlgorithm = true;
+    if(nRows + nCols <= 8 || isZeroPartition)
+      useMurtyAlgorithm = false;
+  
+    isZeroPartition = !likelihoodMatrix.getPartition(p, Cp, nRows, nCols, rowIdx, colIdx, useMurtyAlgorithm); 
+   
+    if(isZeroPartition){ // all landmarks in this partition are mis-detected. All measurements are outliers
+      
+      partition_likelihood = 1;
+      for(int r = 0; r < nRows; r++){
+	partition_likelihood *= evalPtPd[rowIdx[r]];
+      }
+
+      for(int c = 0; c < nCols; c++){
+	partition_likelihood *= clutter[colIdx[c]];
+      }
+
+
     }else{
-      z_noClutter.push_back(z);
-    }
-  }
+      // turn the matrix into a log likelihood matrix with detection statistics,
+      // and fill in the extended part of the partition
 
-  // If the number of measurements is greater than the number of
-  // eval points, then some measurements have to be assigned as clutter.
-  // We will add extra rows for these assignments in likelihoodTab
-  double *clutterRow = NULL;
-  int nR = z_noClutter.size() - likelihoodTab.size();
-  if (nR > 0){
-    clutterRow = new double[nZ];
-    for( int z = 0; z < nZ; z++ ){
-      //TMeasurement actual_z = this->measurements_[z];
-      clutterRow[z] = this->pMeasurementModel_->clutterIntensity(this->measurements_[z], nZ);
-    }
-    for( int r = 0; r < nR; r++ ){
-      likelihoodTab.push_back(clutterRow);
-    }
-  }
-
-  // Go through all permutations of eval point - measurement pairs
-  // to calculate the likelihood
-  double likelihood = 0;
-  while (likelihood == 0){
-
-    if( likelihoodTab.size() == 0 ){
-      likelihood = 1;
-      break;
-    }
-
-    likelihood = rfsMeasurementLikelihoodPermutations( likelihoodTab, z_noClutter);
-    if( likelihood != likelihood ){
-      printf("RFS Measurement likelihood = %f", likelihood);
-    } 
-
-    if( likelihood == 0 ){
-
-      // Add another row to of clutter to likelihoodTab
-      // printf("Adding clutter row for RFS measurement likelihood calculation\n");
-      if( clutterRow == NULL ){
-	clutterRow = new double[nZ];
-	for( int z = 0; z < nZ; z++ ){
-	  //TMeasurement actual_z = this->measurements_[z];
-	  clutterRow[z] = this->pMeasurementModel_->clutterIntensity(this->measurements_[z], nZ);
+      for(int r = 0; r < nRows; r++){
+	for(int c = 0; c < nCols; c++){
+	  if(Cp[r][c] == 0)
+	    Cp[r][c] = BIG_NEG_NUM;
+	  else{
+	    Cp[r][c] = log(Cp[r][c]);
+	    if(Cp[r][c] < BIG_NEG_NUM)
+	      Cp[r][c] = BIG_NEG_NUM;
+	  }
 	}
       }
-      likelihoodTab.push_back( clutterRow );
-      
-    }
-
-  }
-
-  // Deallocate likelihood table
-  for( int m = 0; m < likelihoodTabSizeWithoutClutter; m++ ){
-    delete[] likelihoodTab[m];
-  }
-  if( clutterRow != NULL )
-    delete[] clutterRow;
-
-  if (nClutter > 0){
-    likelihood /= this->pMeasurementModel_->clutterIntensityIntegral( nZ );
-    likelihood *= clutterLikelihood;
-  }
-
-  return likelihood;
-}
 
 
-template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-double RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
-rfsMeasurementLikelihoodPermutations( std::vector< double* > &likelihoodTab, 
-				      std::vector< int > &Z_NoClutter){
-  // Note that nM is always >= nZ
-  // We will find all eval point permutations of (0, 1, 2, ... , nM - 1)
-  // and use the first nZ of each permutation to calculate the likelihood
+      if(useMurtyAlgorithm){ // use Murty's algorithm
 
-  // A function required for sorting
-  struct sort{
-    static bool descend(int i, int j){ return (i > j); }
-  };
-
-  const int nM = likelihoodTab.size();
-  const int nZ = Z_NoClutter.size();
-  double allPermutationLikelihood = 0;
-  bool lastPermutationSequence = false;
-  std::vector<int> currentPermutation(nM);
-  for(int m = 0; m < nM; m++){
-    currentPermutation[m] = m;
-  }
-
-  while( !lastPermutationSequence ){
-
-    // find the likelihood of the current permutation
-    
-    double currentPermutationLikelihood  = 1;
-    for(int z = 0; z < nZ; z++){
-      int m = currentPermutation[ z ];
-      currentPermutationLikelihood *= likelihoodTab[m][ Z_NoClutter[z] ];
-      
-      // Fast-forward permutation if we know that following sequences will also
-      // have 0 likelihood
-      if( currentPermutationLikelihood == 0 && z < nZ - 1){
-	std::sort(currentPermutation.begin() + z + 1, currentPermutation.end(), sort::descend);
-	break;
-      }
-    }
-
-    allPermutationLikelihood += currentPermutationLikelihood;
-
-    // Fast-forward if nM > nZ (i.e., the last nM - nZ elements in the permutation sequence does not matter)
-    if( nM > nZ ){
-      std::sort(currentPermutation.begin() + nZ, currentPermutation.end(), sort::descend);
-    }
-
-    // Generate the next permutation sequence
-    for(int m = nM - 2; m >= -1; m--){
-
-      if( m == -1){
-	lastPermutationSequence = true;
-	break;
-      }
-      
-      // Find the highest index m such that currentPermutation[m] < currentPermutation[m+1]
-      if(currentPermutation[m] < currentPermutation[ m + 1 ]){
-
-	// Find highest index i such that currentPermutation[i] > currentPermutation[m] 
-	// then swap the elements
-	for(int i = nM - 1; i >= 0; i--){
-	  if( currentPermutation[i] > currentPermutation[m] ){
-	    int temp = currentPermutation[i];
-	    currentPermutation[i] = currentPermutation[m];
-	    currentPermutation[m] = temp;
-	    break;
+	// mis-detections
+	for(int r = 0; r < nRows; r++){
+	  for(int c = nCols; c < nRows + nCols; c++){
+	    if(r == c - nCols)
+	      Cp[r][c] = log(1 - evalPtPd[rowIdx[r]]); 
+	    else
+	      Cp[r][c] = BIG_NEG_NUM;
 	  }
 	}
 
-	// reverse order of elements after currentPermutation[m]
-	int nElementsToSwap = nM - (m + 1);
-	int elementsToSwapMidPt = nElementsToSwap / 2;
-	int idx1 = m + 1;
-	int idx2 = nM - 1;
-	for(int i = 1; i <= elementsToSwapMidPt; i++){
-	  int temp = currentPermutation[idx1];
-	  currentPermutation[idx1] = currentPermutation[idx2];
-	  currentPermutation[idx2] = temp;
-	  idx1++;
-	  idx2--;
+	// clutter
+	for(int r = nRows; r < nRows + nCols; r++){
+	  for(int c = 0; c < nCols; c++){
+	    if(r - nRows == c)
+	      Cp[r][c] = log(clutter[colIdx[c]]); 
+	    else
+	      Cp[r][c] = BIG_NEG_NUM;
+	  }
 	}
 
-	break;
-      }
+	// the lower right corner
+	for(int r = nRows; r < nRows + nCols; r++){
+	  for(int c = nCols; c < nRows + nCols; c++){
+	    Cp[r][c] = 0;
+	  }
+	}
 
-    }
+	Murty murtyAlgo(Cp, nRows + nCols);
+	int* a;
+	partition_likelihood = 0;
+	double permutation_log_likelihood = 0;
+	murtyAlgo.setIdealBlock(nRows, nCols);
+	for(int k = 0; k < 200; k++){ 
+	  int rank = murtyAlgo.findNextBest(a, &permutation_log_likelihood);
+	  if(rank == -1 || permutation_log_likelihood < BIG_NEG_NUM)
+	    break;
+	  partition_likelihood += exp(permutation_log_likelihood);
+	}  
 
-    // now we should have the next permutation sequence
-  }
+      }else{ // use lexicographic ordering
 
-  return allPermutationLikelihood;
+	partition_likelihood = 0;
+	double permutation_log_likelihood = 0; 
 
+	uint* o = new uint[nRows + nCols];
+ 
+	PermutationLexicographic pl(nRows, nCols, true);
+	unsigned int nPerm = pl.next(o);
+	while( nPerm != 0){
+	  permutation_log_likelihood = 0; 
+	  for(int a = 0; a < nRows; a++){
+	    if(o[a] < nCols){ // detection
+	      permutation_log_likelihood += Cp[a][o[a]];
+	    }else{ // mis-detection
+	      permutation_log_likelihood += log(1 - evalPtPd[rowIdx[a]]); 
+	    }
+	  }
+	  for(int a = nRows; a < nRows + nCols; a++){ // outliers
+	    if(o[a] < nCols){
+	      permutation_log_likelihood += log(clutter[colIdx[o[a]]]);
+	    }
+	  }
+	  partition_likelihood += exp(permutation_log_likelihood);
+	  nPerm = pl.next(o);
+	}
+
+      } // End lexicographic ordering
+    
+    } // End non zero partition
+
+    l *= partition_likelihood;
+
+  } // End partitions
+ 
+  return (l / this->pMeasurementModel_->clutterIntensityIntegral( nZ ) );
 }
+
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::addBirthGaussians(){
@@ -1073,9 +987,6 @@ getLandmark(const int i, const int m,
     return true;
 }
 
-#endif
-
-
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
 setParticlePose(int i, TPose &p){
@@ -1094,38 +1005,68 @@ KalmanFilter* RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel,
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::checkWeightingTableSize(int nRows, int nCols){
 
-  nRows *= 1.2;
-  nCols *= 1.2;
+  nRows *= 1.2; // expand number of rows by a factor of 1.2
+  nCols *= 1.2; // expand number of cols by a factor of 1.2
   if( weightingTableNRows_ < nRows ){ // Row and Col need to increase
     if( weightingTableNCols_ < nCols ){
       for(int m = 0; m < weightingTableNRows_; m++ ){
 	delete[] weightingTable_[m];
+	delete[] newLandmarkTable_[m];
       }
       delete[] weightingTable_;
+      delete[] newLandmarkTable_;
       weightingTable_ = new double* [nRows];
+      newLandmarkTable_ = new TLandmark** [nRows];
       for(int m = 0; m < nRows ; m++ ){
 	weightingTable_[m] = new double [nCols];
+	newLandmarkTable_[m] = new TLandmark* [nCols];
       }
       weightingTableNRows_ = nRows;
       weightingTableNCols_ = nCols; 
     }else{ // Only increase row
       double** weightingTableOld = weightingTable_;
+      TLandmark*** newLandmarkTableOld = newLandmarkTable_;
       weightingTable_ = new double* [nRows];
+      newLandmarkTable_ = new TLandmark** [nRows];
       for(int m = 0; m < nRows ; m++ ){
 	if( m < weightingTableNRows_){
 	  weightingTable_[m] = weightingTableOld[m];
+	  newLandmarkTable_[m] = newLandmarkTableOld[m];
 	}else{
 	  weightingTable_[m] = new double [weightingTableNCols_];
+	  newLandmarkTable_[m] = new TLandmark* [weightingTableNCols_];
 	}
       }
       weightingTableNRows_ = nRows;
     }
-      }else if(weightingTableNCols_ < nCols){ // Only increase Col
+  }else if(weightingTableNCols_ < nCols){ // Only increase Col
     for(int m = 0; m < weightingTableNRows_; m++ ){
       delete[] weightingTable_[m];
+      delete[] newLandmarkTable_[m];
       weightingTable_[m] = new double[nCols];
+      newLandmarkTable_[m] = new TLandmark* [nCols];
     }
     weightingTableNCols_ = nCols;
   }
 
 }
+
+template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
+typename RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::TimingInfo* RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
+  getTimingInfo(){
+
+  timer_predict_.elapsed(timingInfo_.predict_wall, timingInfo_.predict_cpu);
+  timer_mapUpdate_.elapsed(timingInfo_.mapUpdate_wall, timingInfo_.mapUpdate_cpu);
+  timer_mapUpdate_kf_.elapsed(timingInfo_.mapUpdate_kf_wall, timingInfo_.mapUpdate_kf_cpu);
+  timer_particleWeighting_.elapsed(timingInfo_.particleWeighting_wall, timingInfo_.particleWeighting_cpu);
+  timer_mapMerge_.elapsed(timingInfo_.mapMerge_wall, timingInfo_.mapMerge_cpu);
+  timer_mapPrune_.elapsed(timingInfo_.mapPrune_wall, timingInfo_.mapPrune_cpu);
+  timer_particleResample_.elapsed(timingInfo_.particleResample_wall, timingInfo_.particleResample_cpu);
+  
+  return &timingInfo_;
+}
+
+}
+
+
+#endif

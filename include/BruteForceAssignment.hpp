@@ -31,8 +31,10 @@
 #ifndef LINEAR_ASSIGNMENT_HPP
 #define LINEAR_ASSIGNMENT_HPP
 
-#include "LinearAssignment.hpp"
+#include "CostMatrix.hpp"
 #include <queue>
+
+namespace rfs{
 
 /**
  * \class BruteForceLinearAssignment
@@ -84,5 +86,7 @@ private:
   unsigned int** a_;
   double* s_;
 };
+
+}
 
 #endif

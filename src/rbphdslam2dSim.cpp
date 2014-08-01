@@ -31,9 +31,13 @@
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
 #include <libconfig.h++>
+#include "ProcessModel_Odometry2D.hpp"
 #include "RBPHDFilter.hpp"
+#include "KalmanFilter_RngBrg.hpp"
 #include <stdio.h>
 #include <string>
+
+using namespace rfs;
 
 /**
  * \class Simulator2d
@@ -103,6 +107,7 @@ public:
     pNoiseInflation_ = cfg_.lookup("Filter.processNoiseInflationFactor");
     zNoiseInflation_ = cfg_.lookup("Filter.measurementNoiseInflationFactor");
     innovationRangeThreshold_ = cfg_.lookup("Filter.innovationRangeThreshold");
+    innovationBearingThreshold_ = cfg_.lookup("Filter.innovationBearingThreshold");
     birthGaussianWeight_ = cfg_.lookup("Filter.birthGaussianWeight");
     newGaussianCreateInnovMDThreshold_ = cfg_.lookup("Filter.newGaussianCreateInnovMDThreshold");
     importanceWeightingMeasurementLikelihoodMDThreshold_ = cfg_.lookup("Filter.importanceWeightingMeasurementLikelihoodMDThreshold");
@@ -111,8 +116,8 @@ public:
     gaussianMergingThreshold_ = cfg_.lookup("Filter.gaussianMergingThreshold");
     gaussianMergingCovarianceInflationFactor_ = cfg_.lookup("Filter.gaussianMergingCovarianceInflationFactor");
     gaussianPruningThreshold_ = cfg_.lookup("Filter.gaussianPruningThreshold");
-    reportTimingInfo_ = cfg_.lookup("Filter.reportTimingInfo");
     importanceWeightingEvalPointCount_ = cfg_.lookup("Filter.importanceWeightingEvalPointCount");
+    importanceWeightingEvalPointGuassianWeight_ = cfg_.lookup("Filter.importanceWeightingEvalPointGuassianWeight");
     useClusterProcess_ = cfg_.lookup("Filter.useClusterProcess");
 
     logToFile_ = cfg_.lookup("Computation.logToFile");
@@ -129,12 +134,12 @@ public:
 
     TimeStamp t;
     int seg = 0;
-    OdometryMotionModel2d::TState::Mat Q;
+    MotionModel_Odometry2d::TState::Mat Q;
     Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
-    OdometryMotionModel2d motionModel(Q);
-    OdometryMotionModel2d::TInput input_k(0, 0, 0, 0, 0, 0, t);
-    OdometryMotionModel2d::TState pose_k(0, 0, 0, 0, 0, 0, t);
-    OdometryMotionModel2d::TState pose_km(0, 0, 0, 0, 0, 0, t);
+    MotionModel_Odometry2d motionModel(Q);
+    MotionModel_Odometry2d::TInput input_k(0, 0, 0, 0, 0, 0, t);
+    MotionModel_Odometry2d::TState pose_k(0, 0, 0, 0, 0, 0, t);
+    MotionModel_Odometry2d::TState pose_km(0, 0, 0, 0, 0, 0, t);
     groundtruth_displacement_.reserve( kMax_ );
     groundtruth_pose_.reserve( kMax_ );
     groundtruth_displacement_.push_back(input_k);
@@ -148,7 +153,7 @@ public:
 	double dx = 0;
 	double dy = 0;
 	double dz = 0;
-	input_k = OdometryMotionModel2d::TInput(dx, dy, dz, 
+	input_k = MotionModel_Odometry2d::TInput(dx, dy, dz, 
 						0, 0, 0, k);
       }else if( k >= kMax_ / nSegments_ * seg ){
 	seg++;
@@ -158,14 +163,14 @@ public:
 	}
 	double dy = (drand48() * max_dy_ * 2 - max_dy_) * dT_;
 	double dz = (drand48() * max_dz_ * 2 - max_dz_) * dT_; 
-	input_k = OdometryMotionModel2d::TInput(dx, dy, dz, 
+	input_k = MotionModel_Odometry2d::TInput(dx, dy, dz, 
 						Q(0,0), Q(1,1), Q(2,2), k);  
       }
 
       groundtruth_displacement_.push_back(input_k);
       groundtruth_displacement_.back().setTime(t);
 
-      OdometryMotionModel2d::TState x_k;
+      MotionModel_Odometry2d::TState x_k;
       motionModel.step(x_k, groundtruth_pose_[k-1], input_k, dTimeStamp_);
       groundtruth_pose_.push_back( x_k );
       groundtruth_pose_.back().setTime(t);
@@ -178,15 +183,15 @@ public:
   void generateOdometry(){
 
     odometry_.reserve( kMax_ );
-    OdometryMotionModel2d::TInput zero;
-    OdometryMotionModel2d::TInput::Vec u0;
+    MotionModel_Odometry2d::TInput zero;
+    MotionModel_Odometry2d::TInput::Vec u0;
     u0.setZero();
     zero.set(u0, 0);
     odometry_.push_back( zero );
 
-    OdometryMotionModel2d::TState::Mat Q;
+    MotionModel_Odometry2d::TState::Mat Q;
     Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
-    OdometryMotionModel2d motionModel(Q);
+    MotionModel_Odometry2d motionModel(Q);
     deadReckoning_pose_.reserve( kMax_ );
     deadReckoning_pose_.push_back( groundtruth_pose_[0] );
 
@@ -197,15 +202,15 @@ public:
       t += dTimeStamp_;
       double dt = dTimeStamp_.getTimeAsDouble();
 
-      OdometryMotionModel2d::TInput in = groundtruth_displacement_[k];
-      OdometryMotionModel2d::TState::Mat Qk = Q * dt * dt;
+      MotionModel_Odometry2d::TInput in = groundtruth_displacement_[k];
+      MotionModel_Odometry2d::TState::Mat Qk = Q * dt * dt;
       in.setCov(Qk);
-      OdometryMotionModel2d::TInput out;
+      MotionModel_Odometry2d::TInput out;
       in.sample(out);
       
       odometry_.push_back( out );
 
-      OdometryMotionModel2d::TState p;
+      MotionModel_Odometry2d::TState p;
       motionModel.step(p, deadReckoning_pose_[k-1], odometry_[k], dTimeStamp_);
       p.setTime(t);
       deadReckoning_pose_.push_back( p );
@@ -216,8 +221,8 @@ public:
   /** Generate landmarks */
   void generateLandmarks(){
 
-    RangeBearingModel measurementModel( varzr_, varzb_);
-    RangeBearingModel::TPose pose;
+    MeasurementModel_RngBrg measurementModel( varzr_, varzb_);
+    MeasurementModel_RngBrg::TPose pose;
 
     groundtruth_landmark_.reserve(nLandmarks_);
 
@@ -226,14 +231,14 @@ public:
 
       if( k >= kMax_ / nLandmarks_ * nLandmarksCreated){
 
-	RangeBearingModel::TPose pose;
-	RangeBearingModel::TMeasurement measurementToCreateLandmark;
-	RangeBearingModel::TMeasurement::Vec z;
+	MeasurementModel_RngBrg::TPose pose;
+	MeasurementModel_RngBrg::TMeasurement measurementToCreateLandmark;
+	MeasurementModel_RngBrg::TMeasurement::Vec z;
 	double r = drand48() * rangeLimitMax_;
 	double b = drand48() * 2 * PI;
 	z << r, b;
 	measurementToCreateLandmark.set(z);
-	RangeBearingModel::TLandmark lm;
+	MeasurementModel_RngBrg::TLandmark lm;
 	
 	measurementModel.inverseMeasure( groundtruth_pose_[k], 
 					 measurementToCreateLandmark, 
@@ -252,8 +257,8 @@ public:
   /** Generate landmark measurements */
   void generateMeasurements(){
 
-    RangeBearingModel measurementModel( varzr_, varzb_ );
-    RangeBearingModel::TMeasurement::Mat R;
+    MeasurementModel_RngBrg measurementModel( varzr_, varzb_ );
+    MeasurementModel_RngBrg::TMeasurement::Mat R;
     measurementModel.getNoise(R);
     measurementModel.config.rangeLimMax_ = rangeLimitMax_;
     measurementModel.config.rangeLimMin_ = rangeLimitMin_;
@@ -292,7 +297,7 @@ public:
       for( int m = 0; m < groundtruth_landmark_.size(); m++){
 	
 	bool success;
-	RangeBearingModel::TMeasurement z_m_k;
+	MeasurementModel_RngBrg::TMeasurement z_m_k;
 	success = measurementModel.sample( groundtruth_pose_[k],
 					   groundtruth_landmark_[m],
 					   z_m_k);
@@ -300,7 +305,7 @@ public:
    
 	  if(z_m_k.get(0) <= rangeLimitMax_ && z_m_k.get(0) >= rangeLimitMin_ && drand48() <= Pd_){
 	    z_m_k.setTime(t);
-	    z_m_k.setCov(R);
+	    // z_m_k.setCov(R);
 	    measurements_.push_back( z_m_k );
 	  }
 
@@ -323,8 +328,8 @@ public:
 	while(r < rangeLimitMin_)
 	  r = drand48() * rangeLimitMax_;
 	double b = drand48() * 2 * PI - PI;
-	RangeBearingModel::TMeasurement z_clutter;
-	RangeBearingModel::TMeasurement::Vec z;
+	MeasurementModel_RngBrg::TMeasurement z_clutter;
+	MeasurementModel_RngBrg::TMeasurement::Vec z;
 	z << r, b;
 	z_clutter.set(z, t);
 	measurements_.push_back(z_clutter);
@@ -356,7 +361,7 @@ public:
     std::string filenameGTPose( logDirPrefix_ );
     filenameGTPose += "gtPose.dat";
     pGTPoseFile = fopen(filenameGTPose.data(), "w");
-    OdometryMotionModel2d::TState::Vec x;
+    MotionModel_Odometry2d::TState::Vec x;
     for(int i = 0; i < groundtruth_pose_.size(); i++){
       groundtruth_pose_[i].get(x, t);
       fprintf( pGTPoseFile, "%f   %f   %f   %f\n", t.getTimeAsDouble(), x(0), x(1), x(2));
@@ -367,7 +372,7 @@ public:
     std::string filenameGTLandmark( logDirPrefix_ );
     filenameGTLandmark += "gtLandmark.dat";
     pGTLandmarkFile = fopen(filenameGTLandmark.data(), "w");
-    RangeBearingModel::TLandmark::Vec m;
+    MeasurementModel_RngBrg::TLandmark::Vec m;
     for(int i = 0; i < groundtruth_landmark_.size(); i++){
       groundtruth_landmark_[i].get(m);
       fprintf( pGTLandmarkFile, "%f   %f   %f\n", m(0), m(1), lmkFirstObsTime_[i]);
@@ -378,7 +383,7 @@ public:
     std::string filenameOdom( logDirPrefix_ );
     filenameOdom += "odometry.dat";
     pOdomFile = fopen(filenameOdom.data(),"w");
-    OdometryMotionModel2d::TInput::Vec u;
+    MotionModel_Odometry2d::TInput::Vec u;
     for(int i = 0; i < odometry_.size(); i++){
       odometry_[i].get(u, t);
       fprintf( pOdomFile, "%f   %f   %f   %f\n", t.getTimeAsDouble(), u(0), u(1), u(2));
@@ -389,7 +394,7 @@ public:
     std::string filenameMeasurement( logDirPrefix_ );
     filenameMeasurement += "measurement.dat";
     pMeasurementFile = fopen(filenameMeasurement.data(), "w");
-    RangeBearingModel::TMeasurement::Vec z;
+    MeasurementModel_RngBrg::TMeasurement::Vec z;
     for(int i = 0; i < measurements_.size(); i++){
       measurements_[i].get(z, t);
       fprintf( pMeasurementFile, "%f   %f   %f\n", t.getTimeAsDouble(), z(0), z(1) );
@@ -400,7 +405,7 @@ public:
     std::string filenameDeadReckoning( logDirPrefix_ );
     filenameDeadReckoning += "deadReckoning.dat";
     pDeadReckoningFile = fopen(filenameDeadReckoning.data(), "w");
-    OdometryMotionModel2d::TState::Vec odo;
+    MotionModel_Odometry2d::TState::Vec odo;
     for(int i = 0; i < deadReckoning_pose_.size(); i++){
       deadReckoning_pose_[i].get(odo, t);
       fprintf( pDeadReckoningFile, "%f   %f   %f   %f\n", t.getTimeAsDouble(), odo(0), odo(1), odo(2));
@@ -412,15 +417,15 @@ public:
   /** RB-PHD Filter Setup */
   void setupRBPHDFilter(){
     
-    pFilter_ = new RBPHDFilter<OdometryMotionModel2d,
+    pFilter_ = new RBPHDFilter<MotionModel_Odometry2d,
 			       StaticProcessModel<Landmark2d>,
-			       RangeBearingModel,
-			       RangeBearingKalmanFilter>( nParticles_ );
+			       MeasurementModel_RngBrg,
+			       KalmanFilter_RngBrg>( nParticles_ );
 
     double dt = dTimeStamp_.getTimeAsDouble();
 
     // configure robot motion model (only need to set once since timesteps are constant)
-    OdometryMotionModel2d::TState::Mat Q;
+    MotionModel_Odometry2d::TState::Mat Q;
     Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
     Q *= (pNoiseInflation_ * dt * dt);
     pFilter_->getProcessModel()->setNoise(Q);
@@ -432,7 +437,7 @@ public:
     pFilter_->getLmkProcessModel()->setNoise(Q_lm); 
 
     // configure measurement model
-    RangeBearingModel::TMeasurement::Mat R;
+    MeasurementModel_RngBrg::TMeasurement::Mat R;
     R << varzr_, 0, 0, varzb_;
     R *= zNoiseInflation_;
     pFilter_->getMeasurementModel()->setNoise(R);
@@ -444,6 +449,7 @@ public:
 
     // configure the Kalman filter for landmark updates
     pFilter_->getKalmanFilter()->config.rangeInnovationThreshold_ = innovationRangeThreshold_;
+    pFilter_->getKalmanFilter()->config.bearingInnovationThreshold_ = innovationBearingThreshold_;
 
     // configure the filter
     pFilter_->config.birthGaussianWeight_ = birthGaussianWeight_;
@@ -452,10 +458,10 @@ public:
     pFilter_->config.newGaussianCreateInnovMDThreshold_ = newGaussianCreateInnovMDThreshold_;
     pFilter_->config.importanceWeightingMeasurementLikelihoodMDThreshold_ = importanceWeightingMeasurementLikelihoodMDThreshold_;
     pFilter_->config.importanceWeightingEvalPointCount_ = importanceWeightingEvalPointCount_;
+    pFilter_->config.importanceWeightingEvalPointGuassianWeight_ = importanceWeightingEvalPointGuassianWeight_;
     pFilter_->config.gaussianMergingThreshold_ = gaussianMergingThreshold_;
     pFilter_->config.gaussianMergingCovarianceInflationFactor_ = gaussianMergingCovarianceInflationFactor_;
     pFilter_->config.gaussianPruningThreshold_ = gaussianPruningThreshold_;
-    pFilter_->config.reportTimingInfo_ = reportTimingInfo_;
     pFilter_->config.useClusterProcess_ = useClusterProcess_;
   }
 
@@ -478,7 +484,7 @@ public:
       filenameLandmarkEstFile += "landmarkEst.dat";
       pLandmarkEstFile = fopen(filenameLandmarkEstFile.data(), "w");
     }
-    OdometryMotionModel2d::TState x_i;
+    MotionModel_Odometry2d::TState x_i;
     int zIdx = 0;
 
     if(logToFile_){
@@ -490,9 +496,8 @@ public:
 
     boost::timer::auto_cpu_timer *stepTimer = NULL;
     boost::timer::auto_cpu_timer *processTimer = NULL;
-    if(reportTimingInfo_){
-      processTimer = new boost::timer::auto_cpu_timer(6, "Total run time: %ws\n");
-    }
+    
+    processTimer = new boost::timer::auto_cpu_timer(6, "Total run time: %ws\n");
     /////////// Run simulator from k = 1 to kMax_ /////////
 
     TimeStamp time;
@@ -500,18 +505,14 @@ public:
     for(int k = 1; k < kMax_; k++){
 
       time += dTimeStamp_;
-
-      if(reportTimingInfo_){
-	stepTimer = new boost::timer::auto_cpu_timer(6, "Step time: %ws\n");
-      }
       
-      if( k % 1 == 0)
+      if( k % 100 == 0)
 	printf("k = %d\n", k);
       
       ////////// Prediction Step //////////
 
       // configure robot motion model ( not necessary since in simulation, timesteps are constant)
-      // OdometryMotionModel2d::TState::Mat Q;
+      // MotionModel_Odometry2d::TState::Mat Q;
       // Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
       // Q *= (pNoiseInflation_ * dt * dt);
       // pFilter_->getProcessModel()->setNoise(Q);
@@ -530,7 +531,7 @@ public:
       }
 
       // Prepare measurement vector for update
-      std::vector<RangeBearingModel::TMeasurement> Z;
+      std::vector<MeasurementModel_RngBrg::TMeasurement> Z;
       TimeStamp kz = measurements_[ zIdx ].getTime();
       while( kz == time ){ 
 	Z.push_back( measurements_[zIdx] );
@@ -558,8 +559,8 @@ public:
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	  int mapSize = pFilter_->getGMSize(i);
 	  for( int m = 0; m < mapSize; m++ ){
-	    RangeBearingModel::TLandmark::Vec u;
-	    RangeBearingModel::TLandmark::Mat S;
+	    MeasurementModel_RngBrg::TLandmark::Vec u;
+	    MeasurementModel_RngBrg::TLandmark::Mat S;
 	    double w;
 	    pFilter_->getLandmark(i, m, u, S, w);
 	    
@@ -571,17 +572,40 @@ public:
 	}
       }
 
-      if(reportTimingInfo_){
-	delete stepTimer;
-	stepTimer = NULL;
-      }
-
     }
 
-    if(reportTimingInfo_){
-      delete processTimer;
-      processTimer = NULL;
-    }
+    delete processTimer;
+
+    
+    printf("Elapsed Timing Information [nsec]\n");
+    printf("Prediction    -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->predict_wall, pFilter_->getTimingInfo()->predict_cpu);
+    printf("Map Update    -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->mapUpdate_wall, pFilter_->getTimingInfo()->mapUpdate_cpu);
+    printf("Map Update KF -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->mapUpdate_kf_wall, pFilter_->getTimingInfo()->mapUpdate_kf_cpu);
+    printf("Weighting     -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->particleWeighting_wall, pFilter_->getTimingInfo()->particleWeighting_cpu);
+    printf("Map Merge     -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->mapMerge_wall, pFilter_->getTimingInfo()->mapMerge_cpu);
+    printf("Map Prune     -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->mapPrune_wall, pFilter_->getTimingInfo()->mapPrune_cpu);
+    printf("Resampling    -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->particleResample_wall, pFilter_->getTimingInfo()->particleResample_cpu);
+    printf("Total         -- wall: %lld   cpu: %lld\n",
+	   pFilter_->getTimingInfo()->predict_wall +
+	   pFilter_->getTimingInfo()->mapUpdate_wall +
+	   pFilter_->getTimingInfo()->particleWeighting_wall +
+	   pFilter_->getTimingInfo()->mapMerge_wall +
+	   pFilter_->getTimingInfo()->mapPrune_wall +
+	   pFilter_->getTimingInfo()->particleResample_wall,
+	   pFilter_->getTimingInfo()->predict_cpu +
+	   pFilter_->getTimingInfo()->mapUpdate_cpu +
+	   pFilter_->getTimingInfo()->particleWeighting_cpu +
+	   pFilter_->getTimingInfo()->mapMerge_cpu +
+	   pFilter_->getTimingInfo()->mapPrune_cpu + 
+	   pFilter_->getTimingInfo()->particleResample_cpu);
+    printf("\n");
 
     if(logToFile_){
       fclose(pParticlePoseFile);
@@ -607,14 +631,14 @@ private:
   double vardx_;
   double vardy_;
   double vardz_;
-  std::vector<OdometryMotionModel2d::TInput> groundtruth_displacement_;
-  std::vector<OdometryMotionModel2d::TState> groundtruth_pose_;
-  std::vector<OdometryMotionModel2d::TInput> odometry_;
-  std::vector<OdometryMotionModel2d::TState> deadReckoning_pose_;
+  std::vector<MotionModel_Odometry2d::TInput> groundtruth_displacement_;
+  std::vector<MotionModel_Odometry2d::TState> groundtruth_pose_;
+  std::vector<MotionModel_Odometry2d::TInput> odometry_;
+  std::vector<MotionModel_Odometry2d::TState> deadReckoning_pose_;
 
   // Landmarks 
   int nLandmarks_;
-  std::vector<RangeBearingModel::TLandmark> groundtruth_landmark_;
+  std::vector<MeasurementModel_RngBrg::TLandmark> groundtruth_landmark_;
   double varlmx_;
   double varlmy_;
   std::vector<double> lmkFirstObsTime_;
@@ -627,28 +651,29 @@ private:
   double c_;
   double varzr_;
   double varzb_;
-  std::vector<RangeBearingModel::TMeasurement> measurements_;
+  std::vector<MeasurementModel_RngBrg::TMeasurement> measurements_;
 
   // Filters
-  RangeBearingKalmanFilter kf_;
-  RBPHDFilter<OdometryMotionModel2d, 
+  KalmanFilter_RngBrg kf_;
+  RBPHDFilter<MotionModel_Odometry2d, 
 	      StaticProcessModel<Landmark2d>,
-	      RangeBearingModel,  
-	      RangeBearingKalmanFilter> *pFilter_; 
+	      MeasurementModel_RngBrg,  
+	      KalmanFilter_RngBrg> *pFilter_; 
   int nParticles_;
   double pNoiseInflation_;
   double zNoiseInflation_;
   double innovationRangeThreshold_;
+  double innovationBearingThreshold_;
   double birthGaussianWeight_;
   double newGaussianCreateInnovMDThreshold_;
   double importanceWeightingMeasurementLikelihoodMDThreshold_;
+  double importanceWeightingEvalPointGuassianWeight_;
   double effNParticleThreshold_;
   int minUpdatesBeforeResample_;
   double gaussianMergingThreshold_;
   double gaussianMergingCovarianceInflationFactor_;
   double gaussianPruningThreshold_;
   int importanceWeightingEvalPointCount_;
-  bool reportTimingInfo_;
   bool useClusterProcess_;
 
   bool logToFile_;
@@ -691,7 +716,11 @@ int main(int argc, char* argv[]){
 
   srand48( time(NULL) );
 
-  sim.run();
+  boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
+
+  sim.run(); 
+
+  delete timer;
 
   return 0;
 

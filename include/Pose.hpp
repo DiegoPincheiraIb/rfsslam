@@ -36,6 +36,9 @@
 
 #include "RandomVec.hpp"
 
+namespace rfs{
+
+
 /********** Define a 1d vehicle pose state **********/
 
 /**
@@ -45,8 +48,8 @@
  * \author Keith Leung
  * \note The custom constructors are defined for convenience.
  */
-class Pose1d : public RandomVec< Eigen::Matrix<double, 1, 1>,
-				 Eigen::Matrix<double, 1, 1> >
+class Pose1d : public RandomVec< ::Eigen::Matrix<double, 1, 1>,
+				 ::Eigen::Matrix<double, 1, 1> >
 {
 public:
   
@@ -68,7 +71,7 @@ public:
    *  \param[in] Sx variance
    *  \param[in] t time
    */
-  Pose1d(const Eigen::Matrix<double, 1, 1> &x, const Eigen::Matrix<double, 1, 1> &Sx, const TimeStamp &t);
+  Pose1d(const ::Eigen::Matrix<double, 1, 1> &x, const ::Eigen::Matrix<double, 1, 1> &Sx, const TimeStamp &t);
 
   /** Constructor 
    *  \param[in] x position
@@ -80,7 +83,7 @@ public:
    *  \param[in] x position
    *  \param[in] t time
    */
-  Pose1d(const Eigen::Matrix<double, 1, 1> &x, const TimeStamp &t);
+  Pose1d(const ::Eigen::Matrix<double, 1, 1> &x, const TimeStamp &t);
 
   /** Destructor */
   ~Pose1d(){}
@@ -97,7 +100,7 @@ public:
  * \note This class is derived from pose only so that we can add a 
  *  custom custructor for our convenience.
  */
-class Pose2d : public RandomVec< Eigen::Vector3d, Eigen::Matrix3d >
+class Pose2d : public RandomVec< ::Eigen::Vector3d, ::Eigen::Matrix3d >
 {
 
 public:
@@ -144,5 +147,6 @@ public:
 
 };
 
+}
 
 #endif

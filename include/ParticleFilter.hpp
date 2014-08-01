@@ -31,13 +31,12 @@
 #ifndef PARTICLE_FILTER_HPP
 #define PARTICLE_FILTER_HPP
 
-#include <boost/thread/thread.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/condition.hpp>
 #include "Particle.hpp"
 #include "ProcessModel.hpp"
 #include "MeasurementModel.hpp"
 #include <vector>
+
+namespace rfs{
 
 /** 
  * \class ParticleFilter
@@ -454,5 +453,6 @@ bool ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::resample
 
 }
 
+}
 
 #endif

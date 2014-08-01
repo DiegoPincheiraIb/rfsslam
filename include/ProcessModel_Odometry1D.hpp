@@ -1,7 +1,7 @@
 /*
  * Software License Agreement (New BSD License)
  *
- * Copyright (c) 2013, Keith Leung
+ * Copyright (c) 2013, Keith Leung, Felipe Inostroza
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -28,61 +28,54 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HUNGARIAN_METHOD_HPP
-#define HUNGARIAN_METHOD_HPP
+#ifndef PROCESSMODEL_ODOMETRY1D_HPP
+#define PROCESSMODEL_ODOMETRY1D_HPP
 
-#include "CostMatrix.hpp"
-#include <queue>
-#include <vector>
+#include "ProcessModel.hpp"
+#include "Measurement.hpp"
+#include "Pose.hpp"
 
 namespace rfs{
 
-/** 
- * \class HungarianMethod
- * This class is an implementation of the Hungarian method for a linear assignment
- * problem specified by a NxN cost matrix. It has complexity O(N^3).
- * This code is referenced from the Top Coder tutorial on the Hungarian method: 
- * http://community.topcoder.com/tc?module=Static&d1=tutorials&d2=hungarianAlgorithm 
- * The following pdf is also a good reference for the method:
- * www.cse.ust.hk/~golin/COMP572/Notes/Matching.pdf
- * \brief The Hungarian Method for linear assignmnet
+/**
+ * \class MotionModel_Odometry1d
+ * A 1d odometry motion model with translational displacement
+ * The 1d model is as follows:
+ * \f[ x_{k} = x_{k-1} + \delta x_k\f]
+ * \brief A 1d odometry motion model with translational displacement
+ * \note Currently the updated state from step does not contain valid
+ * covariance information because it is not needed by the RBPHDFilter
  * \author Keith Leung
  */
-class HungarianMethod
+class MotionModel_Odometry1d : public ProcessModel< Pose1d, Odometry1d >
 {
 public:
 
   /** Default constructor */
-  HungarianMethod();
+  MotionModel_Odometry1d(){}
+
+  /** Constructor with process noise input 
+   * \param[in] Q additive zero-mean white Gaussian noise variance
+   */
+  MotionModel_Odometry1d( Pose1d::Mat &Q );
 
   /** Default destructor */
-  ~HungarianMethod();
+  ~MotionModel_Odometry1d(){}
 
-  /**
-   * Run the Hungarian method
-   * \param[in] C square score / cost matrix.
-   * \param[in] n size of cost matrix
-   * \param[out] soln assignment solution, memory needs to be allocated by caller 
-   * \param[out] cost assignment solution cost, memory needs to be allocated by caller 
-   * \param[in] maximize true if we want to find maximum score, false for minimum score
-   * \param[in] debug creates debug printouts if true
-   * \return whether a solution has been found
+   /** 
+   * This overrides the virtual function in the parent class for
+   * determining the position at time-step k from position at time-step k-1
+   * The 1d model is as follows:
+   * \f[ x_{k} = x_{k-1} + \delta x_k\f]
+   * \note Currently the updated state from step does not contain valid
+   * covariance information because it is not needed by the RBPHDFilter
+   * \param[out] s_k position at current time-step k
+   * \param[in] s_km position at previous time-step k-1
+   * \param[in] input_k input to process model
+   * \param[in] dT size of time-step (not used)
    */
-  bool run(double** C, int n, int* soln, double* cost, bool maximize = true, bool debug = false );
-
-
-  /**
-   * Run the Hungarian method
-   * \param[in] C cost matrix
-   * \param[out] soln assignment solution, memory needs to be allocated by caller 
-   * \param[out] cost assignment solution cost, memory needs to be allocated by caller 
-   * \param[in] maximize true if we want to find maximum score, false for minimum score
-   * \return whether a solution has been found
-   */
-  bool run(CostMatrix &C, int* soln, double* cost, bool maximize = true);
-
-private:
-
+  void step( Pose1d &s_k, Pose1d &s_km, Odometry1d &input_k, 
+	     TimeStamp const &dT);
 
 };
 

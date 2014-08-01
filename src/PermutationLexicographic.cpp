@@ -32,6 +32,9 @@
 #include <algorithm>
 #include <stdio.h>
 
+namespace rfs
+{
+
 PermutationLexicographic::PermutationLexicographic(unsigned int nM, 
 						   unsigned int nZ, 
 						   bool includeClutter) : nM_(nM), nZ_(nZ), nP_(0), last_(false)
@@ -89,5 +92,7 @@ unsigned int PermutationLexicographic::next(unsigned int* permutation){
   last_ = !std::next_permutation(o_, o_ + oSize_);
   nP_++;
   return nP_;
+
+}
 
 }

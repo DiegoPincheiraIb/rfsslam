@@ -45,6 +45,8 @@
 #include <boost/random/uniform_01.hpp>
 #include <boost/random/variate_generator.hpp>
 
+using namespace rfs;
+
 int main(int argc, char *argv[])
 {
   printf("4 landmarks and 3 measurements\n");

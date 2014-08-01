@@ -46,6 +46,11 @@
 #include <stdio.h>
 #include "TimeStamp.hpp"
 
+
+namespace rfs
+{
+
+
 double const PI = acos(-1);
 
 /**
@@ -202,7 +207,7 @@ public:
    * Set the time
    * \param[in] t time
    */
-  void setTime( const TimeStamp t ){
+  void setTime( const TimeStamp &t ){
     t_ = t;
   }
 
@@ -221,7 +226,7 @@ public:
    * \param[in] x vector to be set
    * \param[in] t time
    */
-  void set( const VecType &x, const TimeStamp t){
+  void set( const VecType &x, const TimeStamp &t){
     set(x);
     t_ = t;
   }
@@ -232,12 +237,17 @@ public:
    * \param[in] Sx covariance to be set
    * \param[in] t time
    */
-  void set( const VecType &x, const MatType &Sx, const TimeStamp t){
+  void set( const VecType &x, const MatType &Sx, const TimeStamp &t){
     set(x);
     setCov(Sx);
     t_ = t;
   }
 
+  /**
+   * Get the vector
+   * \return x vector
+   */
+  VecType get() const { return x_;}
 
   /** 
    * Get the vector
@@ -245,9 +255,15 @@ public:
    */
   void get( VecType &x ) const {x = x_;}
 
+  /**
+   * Get the covariance matrix
+   * \return Sx covariance representing the uncertainty
+   */
+  MatType getCov() const { return Sx_; }
+
   /** 
    * Get the covariance matrix
-   * \param[out] Sx uncertainty 
+   * \param[out] Sx uncertainty representing the uncertainty 
    */
   void getCov( MatType &Sx) const {
     Sx = Sx_;
@@ -260,7 +276,7 @@ public:
    */
   void getCovCholeskyDecompLower( MatType &Sx_Chol_L){
     if(!isValid_Sx_L_){
-      Eigen::LLT<MatType> cholesky( Sx_ );
+      ::Eigen::LLT<MatType> cholesky( Sx_ );
       Sx_L_ = cholesky.matrixL();
       isValid_Sx_L_ = true;
     }
@@ -380,10 +396,11 @@ public:
 				 double* mDist2 = NULL){
     if(!isValid_Sx_det_){
       Sx_det_ = Sx_.determinant();
+      gaussian_pdf_factor_ = sqrt( pow( 2*PI, nDim_ ) * Sx_det_ );
       isValid_Sx_det_ = true;
     }
     double md2 = mahalanobisDist2( x_eval );
-    double l = ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim_ ) * Sx_det_ ) );
+    double l = ( exp(-0.5 * md2 ) / gaussian_pdf_factor_ );
     if( l != l) //If md2 is very large, l will become NAN;
       l = 0;
     if(mDist2 != NULL)
@@ -401,10 +418,11 @@ public:
 				 double* mDist2 = NULL){
     if(!isValid_Sx_det_){
       Sx_det_ = Sx_.determinant();
+      gaussian_pdf_factor_ = sqrt( pow( 2*PI, nDim_ ) * Sx_det_ );
       isValid_Sx_det_ = true;
     }
     double md2 = mahalanobisDist2( x_eval );
-    double l = ( exp(-0.5 * md2 ) / sqrt( pow( 2*PI, nDim_ ) * Sx_det_ ) );
+    double l = ( exp(-0.5 * md2 ) / gaussian_pdf_factor_ );
     if( l != l) //If md2 is very large, l will become NAN;
       l = 0;
     if(mDist2 != NULL)
@@ -421,15 +439,15 @@ public:
     VecType x_sample, indep_noise;
 
     if(!isValid_Sx_L_){
-      Eigen::LLT<MatType> cholesky( Sx_ );
+      ::Eigen::LLT<MatType> cholesky( Sx_ );
       Sx_L_ = cholesky.matrixL();
       isValid_Sx_L_ = true;
     }
 
     if(gen_ == NULL){
-      gen_ = new boost::variate_generator< boost::mt19937, 
-					   boost::normal_distribution<double> >
-	(boost::mt19937(rand()), boost::normal_distribution<double>());
+      gen_ = new ::boost::variate_generator< ::boost::mt19937, 
+					     ::boost::normal_distribution<double> >
+	(::boost::mt19937(rand()), ::boost::normal_distribution<double>());
     }
     
     int n = Sx_L_.cols();
@@ -450,15 +468,15 @@ public:
     VecType x_sample, indep_noise;
 
     if(!isValid_Sx_L_){
-      Eigen::LLT<MatType> cholesky( Sx_ );
+      ::Eigen::LLT<MatType> cholesky( Sx_ );
       Sx_L_ = cholesky.matrixL();
       isValid_Sx_L_ = true;
     }
 
     if(gen_ == NULL){
-      gen_ = new boost::variate_generator< boost::mt19937, 
-					   boost::normal_distribution<double> >
-	(boost::mt19937(rand()), boost::normal_distribution<double>());
+      gen_ = new ::boost::variate_generator< ::boost::mt19937, 
+					     ::boost::normal_distribution<double> >
+	(::boost::mt19937(rand()), ::boost::normal_distribution<double>());
     }
     
     int n = Sx_L_.cols();
@@ -477,6 +495,7 @@ private:
   MatType Sx_inv_; /**< Inverse covariance */
   bool isValid_Sx_inv_; /**< Inverse covariance is up to date */
   double Sx_det_; /**< Determinant of Sx_ */
+  double gaussian_pdf_factor_; /**< \f[ \sqrt{ (2\pi)^n)|\Sigma| } \f]*/
   bool isValid_Sx_det_; /**< Determinant of Sx_ is up to date */
   MatType Sx_L_; /**< Lower triangular part of Cholesky decomposition on Sx_ */
   bool isValid_Sx_L_; /**< Lower triangular part of Cholesky decomposition on Sx_ is up to date */
@@ -484,8 +503,8 @@ private:
 
   VecType e_; /**< temporary */
 
-  boost::variate_generator< boost::mt19937, 
-			    boost::normal_distribution<double> >* gen_;/**< normal distribution random number generator */ 
+  ::boost::variate_generator< ::boost::mt19937, 
+			      ::boost::normal_distribution<double> >* gen_;/**< normal distribution random number generator */ 
 
   /** Dimensionality check during initialization */
   bool dimCheck(){
@@ -503,5 +522,7 @@ private:
   }
 
 };
+
+} // namespace rfs
 
 #endif

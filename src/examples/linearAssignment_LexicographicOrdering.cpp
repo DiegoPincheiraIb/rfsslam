@@ -37,7 +37,7 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
-#include "LinearAssignment.hpp"
+#include "CostMatrix.hpp"
 #include "PermutationLexicographic.hpp"
 
 #include <boost/timer/timer.hpp>
@@ -47,6 +47,8 @@
 #include <boost/random/uniform_01.hpp>
 #include <boost/random/variate_generator.hpp>
 
+using namespace rfs;
+
 int main(int argc, char *argv[])
 {
 
@@ -55,14 +57,14 @@ int main(int argc, char *argv[])
   printf("A value == 3 in the first 5 columns imply that a landmark was mis-detected\n");
   printf("A value == 3 in the last 3 columns represent that the measurement is an outlier\n\n");
 
-  unsigned int const nM = 5;
-  unsigned int const nZ = 3;
+  unsigned int const nM = 3;
+  unsigned int const nZ = 5;
   uint* ordering = new uint[nM + nZ];
  
   PermutationLexicographic pl(nM, nZ, true);
   unsigned int nPerm = pl.next(ordering);
   while( nPerm != 0){
-    printf("[%d] %d %d %d %d %d | %d %d %d ", nPerm, ordering[0], ordering[1], ordering[2], ordering[3], ordering[4], ordering[5], ordering[6], ordering[7]);
+    printf("[%d] %d %d %d | %d %d %d %d %d ", nPerm, ordering[0], ordering[1], ordering[2], ordering[3], ordering[4], ordering[5], ordering[6], ordering[7]);
 
     printf("| Outliers: ");
     for(int i = nM; i < nM + nZ; i++){

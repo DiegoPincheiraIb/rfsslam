@@ -28,64 +28,47 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HUNGARIAN_METHOD_HPP
-#define HUNGARIAN_METHOD_HPP
-
-#include "CostMatrix.hpp"
-#include <queue>
-#include <vector>
+#include<boost/timer/timer.hpp> 
 
 namespace rfs{
 
 /** 
- * \class HungarianMethod
- * This class is an implementation of the Hungarian method for a linear assignment
- * problem specified by a NxN cost matrix. It has complexity O(N^3).
- * This code is referenced from the Top Coder tutorial on the Hungarian method: 
- * http://community.topcoder.com/tc?module=Static&d1=tutorials&d2=hungarianAlgorithm 
- * The following pdf is also a good reference for the method:
- * www.cse.ust.hk/~golin/COMP572/Notes/Matching.pdf
- * \brief The Hungarian Method for linear assignmnet
- * \author Keith Leung
+ * \class Timer
+ * \brief A wrapper for the boost cpu timer
  */
-class HungarianMethod
+class Timer
 {
 public:
 
   /** Default constructor */
-  HungarianMethod();
-
+  Timer();
   /** Default destructor */
-  ~HungarianMethod();
+  ~Timer();
+  /** Reset and start the timer */
+  void start();
+  /** Stop the timer */
+  void stop();
+  /** Resume the timer after stopping */
+  void resume();
 
-  /**
-   * Run the Hungarian method
-   * \param[in] C square score / cost matrix.
-   * \param[in] n size of cost matrix
-   * \param[out] soln assignment solution, memory needs to be allocated by caller 
-   * \param[out] cost assignment solution cost, memory needs to be allocated by caller 
-   * \param[in] maximize true if we want to find maximum score, false for minimum score
-   * \param[in] debug creates debug printouts if true
-   * \return whether a solution has been found
+  /** 
+   * Get the elapsed time from the timer since the start (as a string)
+   * \output t_wall wall time in nsec
+   * \output t_cpu cpu (system + user) time in nsec
    */
-  bool run(double** C, int n, int* soln, double* cost, bool maximize = true, bool debug = false );
+  void elapsed(std::string &t_wall, std::string &t_cpu);
 
-
-  /**
-   * Run the Hungarian method
-   * \param[in] C cost matrix
-   * \param[out] soln assignment solution, memory needs to be allocated by caller 
-   * \param[out] cost assignment solution cost, memory needs to be allocated by caller 
-   * \param[in] maximize true if we want to find maximum score, false for minimum score
-   * \return whether a solution has been found
+  /** 
+   * Get the elapsed time from the timer since the start
+   * \param[out] t_wall wall time in nsec
+   * \param[out] t_cpu cpu (system + user) time in nsec
    */
-  bool run(CostMatrix &C, int* soln, double* cost, bool maximize = true);
+  void elapsed(long long &t_wall, long long &t_cpu);
 
 private:
 
+  ::boost::timer::cpu_timer timer_;
 
 };
 
 }
-
-#endif
