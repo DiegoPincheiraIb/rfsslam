@@ -105,6 +105,9 @@ TARGET_LINK_LIBRARIES(examples/linearAssignment_LexicographicOrdering ${Boost_LI
 ADD_EXECUTABLE(examples/linearAssignment_MurtyAlgorithm src/examples/linearAssignment_MurtyAlgorithm.cpp)
 TARGET_LINK_LIBRARIES(examples/linearAssignment_MurtyAlgorithm ${Boost_LIBRARIES} rfsslam)
 
+ADD_EXECUTABLE(examples/ospaError src/examples/ospaError.cpp)
+TARGET_LINK_LIBRARIES(examples/ospaError ${Boost_LIBRARIES} rfsslam)
+
 ADD_EXECUTABLE(test/cpu_timer_test src/tests/cpu_timer_info.cpp)
 TARGET_LINK_LIBRARIES(test/cpu_timer_test ${Boost_LIBRARIES})
 
