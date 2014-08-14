@@ -380,6 +380,8 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   nUpdatesSinceResample++;
 
   this->setMeasurements( Z ); // Z gets cleared after this call, measurements now stored in this->measurements_
+  if(this->measurements_.size() == 0)
+    return;
 
   ////////// Map Update //////////
   timer_mapUpdate_.resume();
