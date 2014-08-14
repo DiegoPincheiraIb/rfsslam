@@ -120,7 +120,7 @@ INSTALL(TARGETS rfsslam
 INSTALL(EXPORT rfsslam-targets DESTINATION /usr/local/lib/rfsslam)
 CONFIGURE_FILE(rfsslam-config.cmake.in "rfsslam-config.cmake" @ONLY)
 CONFIGURE_FILE(rfsslam-config-version.cmake.in "rfsslam-config-version.cmake" @ONLY)
-INSTALL(FILES rfsslam-config.cmake rfsslam-config-version.cmake
+INSTALL(FILES ${CMAKE_BINARY_DIR}/rfsslam-config.cmake ${CMAKE_BINARY_DIR}/rfsslam-config-version.cmake
   DESTINATION /usr/local/lib/rfsslam)
 
 FILE(GLOB headerFiles "include/*.hpp")
