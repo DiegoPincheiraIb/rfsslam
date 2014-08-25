@@ -4,8 +4,8 @@
 # cmake -D CMAKE_C_COMPILER=gcc CMAKE_CXX_COMPILER=c++ .
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-#SET(CMAKE_BUILD_TYPE Debug)
-SET(CMAKE_BUILD_TYPE Release)
+SET(CMAKE_BUILD_TYPE Debug)
+#SET(CMAKE_BUILD_TYPE Release)
 PROJECT(RFS_SLAM)
 
 # Explicitly set for colorgcc. By default, they point to gcc and c++ with absolute path
@@ -14,7 +14,7 @@ SET(CMAKE_CXX_COMPILER "c++")
 
 # Disable of edit the following line according to your processor's support for SSE
 # For X86-64 architecture, SSE2 is generally enabled by default
-SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-march=native")
+SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-march=native -fopenmp")
 
 FILE(MAKE_DIRECTORY "bin")
 FILE(MAKE_DIRECTORY "bin/examples")
@@ -27,7 +27,7 @@ set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME ON)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-FIND_PACKAGE(Eigen 3.0.0 REQUIRED)
+FIND_PACKAGE(Eigen  REQUIRED)
 
 # Change the following include directories depending on where gtest is installed
 # If using Ubuntu apt-get to install, go to /usr/src/gtest,

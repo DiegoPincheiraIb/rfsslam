@@ -40,7 +40,7 @@
 #include "KalmanFilter.hpp"
 #include <math.h>
 #include <vector>
-
+#include <omp.h>
 #include <stdio.h>
 
 /**
@@ -428,6 +428,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   const unsigned int stopIdx = this->nParticles_;
   const unsigned int nZ = this->measurements_.size();
 
+#pragma omp parallel for
   for(unsigned int i = startIdx; i < stopIdx; i++){    
 
     //---------- 1. setup / book-keeping ----------
