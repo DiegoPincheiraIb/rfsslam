@@ -137,7 +137,9 @@ public:
    * \param[in] u input 
    * \param[in] Timestamp size of timestep;
    */
-  void predict( TInput u, const TimeStamp &dT);
+  void predict( TInput u, const TimeStamp &dT,
+		bool useModelNoise = true,
+		bool useInputNoise = false);
 
   /**
    * Update the map, calculate importance weighting, and perform resampling if necessary
@@ -270,14 +272,16 @@ LmkProcessModel* FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel,
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::predict( TInput u, 
-                                                  const TimeStamp &dT){
+                                                  const TimeStamp &dT,
+												 bool useModelNoise,
+												 bool useInputNoise){
 
   boost::timer::auto_cpu_timer *timer = NULL;
   if(config.reportTimingInfo_)
     timer = new boost::timer::auto_cpu_timer(6, "Predict time: %ws\n");
 
   // propagate particles
-  this->propagate(u, dT);
+  this->propagate(u, dT, useModelNoise, useInputNoise);
 
   // propagate landmarks
   for( int i = 0; i < this->nParticles_; i++ ){
