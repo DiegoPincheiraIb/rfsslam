@@ -1,7 +1,7 @@
 /*
  * Software License Agreement (New BSD License)
  *
- * Copyright (c) 2013, Keith Leung, Felipe Inostroza
+ * Copyright (c) 2014, Keith Leung, Felipe Inostroza
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -28,63 +28,38 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TREE_HPP
-#define TREE_HPP
-
-#include <cstddef>
-#include <vector>
+#include <boost/shared_ptr.hpp>
+#include "Tree.hpp"
 
 namespace rfs{
 
-/** 
- * \class TreeNode
- * A generic tree node
- * \brief A generic tree node
- */
-class TreeNode{
-
-public:
-
-  /** Constructor 
-   * \param[in] n_children_exp the number of children this node is expected to have,
-   * used for more efficient memory allocation. Not mandatory.
-   */
-  TreeNode(size_t n_children_exp = -1);
+  TreeNode::TreeNode(size_t n_children_exp):parent_(NULL){
+    if(n_children_exp > 0)
+      children_.resize(n_children_exp);
+  }
   
-  /** Destructor, virtual becuase other classes will be derived from this class*/
-  virtual ~TreeNode();
-
-  /** 
-   * Get a pointer to the parent node
-   * \return pointer to parent, or NULL if this node has no parent
-   */
-  TreeNode* getParent();
+  TreeNode::~TreeNode(){}
   
-  /**
-   * Get pointers to a child
-   * \param[in] child index
-   * \return a pointer to the child
-   */ 
-  TreeNode* getChild(size_t idx);
+  TreeNode* TreeNode::getParent(){
+    return parent_;
+  }
+  
+  TreeNode* TreeNode::getChild(size_t idx){
+    if(idx < children_.size())
+      return children_[idx].get();
+    else
+      return NULL;
+  }
 
-  /**
-   * Get the number of children that this node has
-   * \return number of children
-   */
-  size_t getChildrenCount();
+  size_t TreeNode::getChildrenCount(){
+    return children_.size();
+  }
 
-  /**
-   * Add a new child to this node. 
-   * \return pointer to new child node
-   */
-  TreeNode* addChild();
-
-private:
-
-  std::vector< boost::shared_ptr<TreeNode> > children_;
-  TreeNode* parent_;
-};
+  TreeNode* TreeNode::addChild(){
+    boost::shared_ptr<TreeNode> child(new TreeNode);
+    child->parent_ = this;
+    children_.push_back(child);
+    return child.get();
+  }
 
 }
-
-#endif

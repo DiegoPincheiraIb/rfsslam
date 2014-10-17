@@ -56,6 +56,12 @@ public:
   typedef PoseType TPose;
   typedef LandmarkType TLandmark;
   typedef MeasurementType TMeasurement;
+  typedef ::Eigen::Matrix<double, 
+			  MeasurementType::Vec::RowsAtCompileTime ,
+			  LandmarkType::Vec::RowsAtCompileTime> TJacobianLmk;
+  typedef ::Eigen::Matrix<double,
+			  MeasurementType::Vec::RowsAtCompileTime,
+			  PoseType::Vec::RowsAtCompileTime> TJacobianPose;
   
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
