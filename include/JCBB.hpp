@@ -68,8 +68,6 @@ namespace rfs{
      */
     bool operator < (JCBB_TreeNode &other) const;
 
-    /** TODO define < operator for priority queue */
-
     /**
      * Set the data association represented by this node
      */
@@ -163,10 +161,10 @@ namespace rfs{
 
     TPose const *robot_;
     std::vector<TLandmark*> *landmarks_;
-    bool isEstCovDense_;
+    bool isEstCovBlockDiag_;
     ::Eigen::MatrixXd estCovDense_;
 
-    std::queue<JCBB_TreeNode*> branchList_; // priority queue of nodes to branch
+    std::priority_queue<JCBB_TreeNode*> branchList_; // priority queue of nodes to branch
 
     int nAssociations_best;
     double dist_mahalanobist2_best;
@@ -254,16 +252,22 @@ namespace rfs{
     Z_actual_ptr_ = measurements;
     robot_ = robot;
     landmarks_ = landmarks;
-    isEstCovDense_ = false;
+    isEstCovBlockDiag_ = true;
     if(estCovDense != NULL){
-      isEstCovDense_ = true;
+      isEstCovBlockDiag_ = false;
       estCovDense_ = estCovDense;
     }
     nAssociations_best = 0;
     dist_mahalanobist2_best = DBL_MAX;
-    JCBB_TreeNode* node_best;
+    node_best = NULL;
 
     calcExpectedMeasurements();
+
+    branchList_.push(&iTreeRoot_);
+    while(!branchList_.empty()){
+      branch( branchList_.top() );
+      branchList_.pop();
+    }
 
   }
 
@@ -299,7 +303,8 @@ namespace rfs{
   void JCBB<MeasurementModelType>::branch(JCBB_TreeNode *node){
 
     // Check previous associations
-    size_t z_idx, m_idx;
+    size_t z_idx = -1;
+    size_t m_idx;
     JCBB_TreeNode *node_current = node;
     std::vector<int> isUsed_lmk_idx(0, landmarks_.size());
     std::vector<int> used_lmk_indices;
@@ -310,12 +315,10 @@ namespace rfs{
       node_current = node_current->getParent();
     }
     size_t nAssociations = used_lmk_indices.size();
-    ::Eigen::VectorXd *innov_prev = node->getInnovation();
-    ::Eigen::MatrixXd *C_inverse_prev = node->getInnovationCovInv(); 
+    ::Eigen::VectorXd *innov_m = node->getInnovation();
 
     // Branch (for unused landmark indices), if not rejected by gating
     double d2_m = node->getMahalanobisDist2();
-    ::Eigen::VectorXd z_innov_m = node->getInnovation();
     node->getAssociation(z_idx, m_idx);
     z_idx++;
     m_idx = 0;
@@ -329,36 +332,69 @@ namespace rfs{
 	  // innovation
 	  typename TMeasurement::Vec z_actual = Z_actual_ptr_->at(z_idx).get();
 	  typename TMeasurement::Vec z_predict = Z_predict_[m_idx].get();
-	  typename TMeasurement::Vec z_innov = z_actual - z_predict; 
+	  typename TMeasurement::Vec innov = z_actual - z_predict; 
 	  typename TMeasurement::Mat Q = measurementModel_->getNoise();
 
-	  //TPose::Cov robotCov = robot_->getCov();
 	  int robotDim = robot_->getNDim();
 	  int lmkDim = landmarks_->at(0)->getNDim();
 	  int measureDim = z_actual->size();
 	  int nPreviousMeasurements = used_lmk_indices.size();
-	
-	  ::Eigen::MatrixXd P_r_rows = estCovDense_.topRows(robotDim); // Pick off first row-block (robotDim rows) of estimate cov	
-	  ::Eigen::MatrixXd P_lmk_rows = estCovDense_.block(robotDim + m_idx*lmkDim, 0, lmkDim, estCovDense_.cols() ); // Pick off the row-block of landmark m_idx 
-	  ::Eigen::MatrixXd HP = *(jacobians_wrt_pose_[m_idx]) * P_r_rows + *(jacobians_wrt_lmk_[m_idx]) * P_lmk_rows;
-	  ::Eigen::MatrixXd HP_cols_r = HP.leftCols(robotDim); // Pick off first col-block (robotDim cols) of HP
+	  double dist_mahalanobist2 = -1;
 
 	  ::Eigen::MatrixXd W;
 	  W.resize(measureDim, measureDim * nPreviousMeasurements);
-	  int W_block_idx = 0;
-	  BOOST_REVERSE_FOREACH(int m_idx_used, used_lmk_indices){	 
-	    ::Eigen::MatrixXd HP_cols_lmk = HP.block(0, robotDim + m_idx_used*lmkDim, HP.rows(), lmkDim);  // Pick off the col-block of HP for landmark m_idx_used
-	    W.block(0, measureDim * W_block_idx, measureDim, measureDim) = HP_cols_r * jacobians_wrt_pose_[m_idx_used]->transpose() + 
-	      HP_cols_lmk * jacobians_wrt_lmk_[m_idx_used]->transpose() + Q;
-	    W_block_idx++;
+
+	  bool isRobotPoseHasUncertainty = true;
+
+	  if(!isEstCovBlockDiag_){ // Estimate covariance is not block diagonal
+	
+	    ::Eigen::MatrixXd P_r_rows = estCovDense_.topRows(robotDim); // first row-block (robotDim rows) of estimate cov	
+	    ::Eigen::MatrixXd P_lmk_rows = estCovDense_.block(robotDim + m_idx*lmkDim, 0, lmkDim, estCovDense_.cols() ); // the row-block of landmark m_idx 
+	    ::Eigen::MatrixXd HP = *(jacobians_wrt_pose_[m_idx]) * P_r_rows + *(jacobians_wrt_lmk_[m_idx]) * P_lmk_rows;
+	    ::Eigen::MatrixXd HP_cols_r = HP.leftCols(robotDim); // first col-block (robotDim cols) of HP
+
+	    int W_block_idx = 0;
+	    BOOST_REVERSE_FOREACH(int m_idx_used, used_lmk_indices){	 
+	      ::Eigen::MatrixXd HP_cols_lmk = HP.block(0, robotDim + m_idx_used*lmkDim, HP.rows(), lmkDim);  // Pick off the col-block of HP for landmark m_idx_used
+	      W.block(0, measureDim * W_block_idx, measureDim, measureDim) = HP_cols_r * jacobians_wrt_pose_[m_idx_used]->transpose() + 
+		HP_cols_lmk * jacobians_wrt_lmk_[m_idx_used]->transpose() + Q;
+	      W_block_idx++;
+	    }
+	  }else{ // Estimate covariance is block diagonal
+
+	    ::Eigen::Matrix<double, TPose::Vec::RowsAtCompileTime, TPose::Vec::RowsAtCompileTime> P_rr = robot_->getCov();
+	    if(!P_rr.isZero()){
+	      for(int W_block_idx = 0; W_block_idx < nPreviousMeasurements; W_block_idx++){		
+		W.block(0, measureDim * W_block_idx, measureDim, measureDim) = *(jacobians_wrt_pose_[m_idx]) * P_rr * jacobians_wrt_pose_[m_idx]->transpose() + Q;
+	      }
+	    }else{
+	      W.setZero();
+	      isRobotPoseHasUncertainty = false;
+	    }
+
 	  }
 
-	  ::Eigen::Matrix<double,	TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> C_current = *(jacobians_wrt_pose_[m_idx]) * estCovDense_.block(0, 0, robotDim, robotDim) * (jacobians_wrt_pose_[m_idx])->transpose() + *(jacobians_wrt_lmk_[m_idx]) * estCovDense_.block(robotDim + m_idx*lmkDim, robotDim + m_idx*lmkDim, lmkDim, lmkDim) * (jacobians_wrt_lmk_[m_idx])->transpose();
-	  ::Eigen::Matrix<double,	TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> N = ( C_current - W * *C_inverse_prev * W.transpose() ).inverse();	
-	  ::Eigen::MatrixXd L = (-N * W) * *C_inverse_prev;	  
-	  ::Eigen::MatrixXd K = *C_inverse_prev + L.transpose() * N.inverse() * L;
-	  double dist_mahalanobist2 = innov_prev->transpose() * L.transpose() * N * L * *innov_prev 
-	    + 2 * z_innov.transpose() * L * *innov_prev + z_innov * N * z_innov; 
+	  ::Eigen::Matrix<double, TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> C_current = *(jacobians_wrt_pose_[m_idx]) * estCovDense_.block(0, 0, robotDim, robotDim) * (jacobians_wrt_pose_[m_idx])->transpose() + *(jacobians_wrt_lmk_[m_idx]) * estCovDense_.block(robotDim + m_idx*lmkDim, robotDim + m_idx*lmkDim, lmkDim, lmkDim) * (jacobians_wrt_lmk_[m_idx])->transpose();
+
+	  ::Eigen::Matrix<double, TMeasurement::Vec::RowsAtCompileTime, TMeasurement::Vec::RowsAtCompileTime> N;
+	  ::Eigen::MatrixXd L;
+	  ::Eigen::MatrixXd K;
+
+	  if(isRobotPoseHasUncertainty){
+	    
+	    ::Eigen::MatrixXd *C_inverse_m = node->getInnovationCovInv(); 
+	    N = ( C_current - W * *C_inverse_m * W.transpose() ).inverse();	
+	    L = (-N * W) * *C_inverse_m;	  
+	    K = *C_inverse_m + L.transpose() * N.inverse() * L;
+	    dist_mahalanobist2 = d2_m + innov_m->transpose() * L.transpose() * N * L * *innov_m 
+	      + 2 * innov.transpose() * L * *innov_m + innov * N * innov; 
+
+	  }else{ // robot pose has no uncertainty
+
+	    dist_mahalanobist2 = d2_m + innov.transpose() * C_current.inverse() * innov;
+	    isRobotPoseHasUncertainty = false;
+
+	  }
 
 	  // Chi-square gating
 	  int nDof = measureDim * (1 + nPreviousMeasurements);
@@ -369,9 +405,11 @@ namespace rfs{
 	    // gating passed - new node in interpretation tree
 	    JCBB_TreeNode* new_node = node->addChild();
 	    new_node->setAssociation(z_idx, m_idx, dist_mahalanobist2);
-	    *(new_node->getInnovation()) << *innov_prev, z_innov;
-	    *(new_node->getInnovationCovInv()) << K, L.transpose(), L, N;
-	  
+	    *(new_node->getInnovation()) << *innov_m, innov;
+	    if(isRobotPoseHasUncertainty){
+	      *(new_node->getInnovationCovInv()) << K, L.transpose(), L, N;
+	    }
+	    
 	    // add to priority queue
 	    branchList_.push(new_node);
 	    nInsideGate++;
