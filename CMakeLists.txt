@@ -4,8 +4,8 @@
 # cmake -D CMAKE_C_COMPILER=gcc CMAKE_CXX_COMPILER=c++ .
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-SET(CMAKE_BUILD_TYPE Debug)
-#SET(CMAKE_BUILD_TYPE Release)
+#SET(CMAKE_BUILD_TYPE Debug)
+SET(CMAKE_BUILD_TYPE Release)
 PROJECT(RFS_SLAM)
 
 # Explicitly set for colorgcc. By default, they point to gcc and c++ with absolute path
@@ -13,7 +13,7 @@ SET(CMAKE_C_COMPILER "gcc")
 SET(CMAKE_CXX_COMPILER "c++")
 
 # Disable of edit the following line according to your processor's support for SSE
-# For X86-64 architecture, SSE2 is generally enabled by default
+# For X86-64 architecture, SSE2 is generally enabled by default   
 SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-march=native -fopenmp")
 
 FILE(MAKE_DIRECTORY "bin")
