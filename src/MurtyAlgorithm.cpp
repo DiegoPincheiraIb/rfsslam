@@ -32,6 +32,9 @@
 #include <stdio.h>
 #include "MurtyAlgorithm.hpp"
 
+namespace rfs
+{
+
 /// Node class implementation 
 
 Node::Node(int n_children_exp):parent_(NULL), nChildren_(0){
@@ -330,4 +333,6 @@ int Murty::findNextBest( int* &assignment, double* score){
   k_++;
 
   return k_;
+}
+
 }

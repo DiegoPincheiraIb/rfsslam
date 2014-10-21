@@ -39,6 +39,8 @@
 #include <string>
 #include <vector>
 
+using namespace rfs;
+
 /**
  * \class LogFileReader2dSim
  * \brief A class for reading 2d sim log files and for calculating errors
@@ -54,16 +56,19 @@ public:
     std::string filename_gtlmk( logDir );
     std::string filename_pose( logDir );
     std::string filename_lmk( logDir );
+    std::string filename_dr( logDir );
     
     filename_gtpose += "gtPose.dat";
     filename_gtlmk += "gtLandmark.dat";
     filename_pose += "particlePose.dat";
     filename_lmk += "landmarkEst.dat";
+    filename_dr += "deadReckoning.dat";
 
     pGTPoseFile = fopen(filename_gtpose.data(), "r");
     pGTLandmarkFile = fopen(filename_gtlmk.data(), "r");
     pParticlePoseFile = fopen(filename_pose.data(), "r");
     pLandmarkEstFile = fopen(filename_lmk.data(), "r");
+    pDRFile = fopen(filename_dr.data(), "r");
 
     readLandmarkGroundtruth();
 
@@ -85,6 +90,7 @@ public:
     fclose(pGTLandmarkFile);
     fclose(pParticlePoseFile);
     fclose(pLandmarkEstFile);
+    fclose(pDRFile);
     
   }
 
@@ -107,6 +113,9 @@ public:
   double readNextStepData(){
 
     if( fscanf(pGTPoseFile, "%lf %lf %lf %lf\n", &t_currentStep_, &rx_, &ry_, &rz_ ) == 4){
+
+      // Dead reckoning
+      int rval = fscanf(pDRFile, "%lf %lf %lf %lf\n", &dr_t_, &dr_x_, &dr_y_, &dr_z_);
 
       // Particles
       particles_.clear();
@@ -359,10 +368,21 @@ public:
 
   }
 
-  /** Calculate the error for vehicle pose estimate
-   *  \return error 
-   */
-  double calcPoseError(double &err_x, double &err_y, double &err_rot, double &err_dist, bool getAverageError = true){
+  /** Calculate the dead reckoning error */
+  void calcDRError(double &err_x, double &err_y, double &err_rot, double &err_dist){
+    err_x = dr_x_ - rx_;
+    err_y = dr_y_ - ry_;
+    err_rot = dr_z_ - rz_;
+    if(err_rot > PI)
+      err_rot -= 2*PI;
+    else if(err_rot < -PI)
+      err_rot += 2*PI;
+    err_dist = sqrt(err_x * err_x + err_y * err_y);
+  }
+
+
+  /** Calculate the error for vehicle pose estimate */
+  void calcPoseError(double &err_x, double &err_y, double &err_rot, double &err_dist, bool getAverageError = true){
 
     err_x = 0;
     err_y = 0;
@@ -423,6 +443,7 @@ private:
   FILE* pParticlePoseFile; /**< pose estimate file pointer */
   FILE* pLandmarkEstFile;  /**< landmark estimate file pointer */ 
   FILE* pMapEstErrorFile;  /**< landmark estimate error file pointer */
+  FILE* pDRFile;           /**< Dead-reckoning file */
 
   double mx_; /**< landmark x pos */
   double my_; /**< landmark y pos */
@@ -432,6 +453,11 @@ private:
   double rx_;
   double ry_;
   double rz_;
+
+  double dr_x_;
+  double dr_y_;
+  double dr_z_;
+  double dr_t_;
 
   double i_hi_;  /** highest particle weight index */
   double w_sum_; /** particle weight sum */
@@ -476,10 +502,13 @@ int main(int argc, char* argv[]){
 
   std::string filenameLandmarkEstError( logDir );
   std::string filenamePoseEstError( logDir );
+  std::string filenameDREstError( logDir );
   filenameLandmarkEstError += "landmarkEstError.dat";
   filenamePoseEstError += "poseEstError.dat";
+  filenameDREstError += "deadReckoningError.dat";
   FILE* pMapEstErrorFile = fopen(filenameLandmarkEstError.data(), "w");
   FILE* pPoseEstErrorFile = fopen(filenamePoseEstError.data(), "w");
+  FILE* pDREstErrorFile = fopen(filenameDREstError.data(), "w");
 
   LogFileReader2dSim reader(logDir);
 
@@ -489,6 +518,10 @@ int main(int argc, char* argv[]){
     printf("Time: %f\n", k);
     
     double ex, ey, er, ed;
+    
+    reader.calcDRError( ex, ey, er, ed);
+    fprintf(pDREstErrorFile, "%f   %f   %f   %f   %f\n", k, ex, ey, er, ed);
+
     reader.calcPoseError( ex, ey, er, ed, false );
     fprintf(pPoseEstErrorFile, "%f   %f   %f   %f   %f\n", k, ex, ey, er, ed);
 
@@ -506,6 +539,7 @@ int main(int argc, char* argv[]){
   }
   fclose(pPoseEstErrorFile);
   fclose(pMapEstErrorFile);
+  fclose(pDREstErrorFile);
   return 0;
 
 }

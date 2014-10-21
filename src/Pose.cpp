@@ -30,6 +30,8 @@
 
 #include "Pose.hpp"
 
+namespace rfs{
+
 /********** Implementation of 1d vechile position state ***********/
 
 Pose1d::Pose1d(){}
@@ -42,8 +44,8 @@ Pose1d::Pose1d(double x, double Sx, const TimeStamp &t){
   set(state, cov, t);
 }
 
-Pose1d::Pose1d(const Eigen::Matrix<double, 1, 1> &x, const Eigen::Matrix<double, 1, 1> &Sx, const TimeStamp &t):
-  RandomVec< Eigen::Matrix<double, 1, 1>, Eigen::Matrix<double, 1, 1> >(x, Sx, t){}
+Pose1d::Pose1d(const ::Eigen::Matrix<double, 1, 1> &x, const ::Eigen::Matrix<double, 1, 1> &Sx, const TimeStamp &t):
+  RandomVec< ::Eigen::Matrix<double, 1, 1>, ::Eigen::Matrix<double, 1, 1> >(x, Sx, t){}
 
 Pose1d::Pose1d(double x, const TimeStamp &t){
   Vec state;
@@ -51,8 +53,8 @@ Pose1d::Pose1d(double x, const TimeStamp &t){
   set(state, t);
 }
 
-Pose1d::Pose1d(const Eigen::Matrix<double, 1, 1> &x, const TimeStamp &t):
-  RandomVec< Eigen::Matrix<double, 1, 1>, Eigen::Matrix<double, 1, 1> >(x, t){}
+Pose1d::Pose1d(const ::Eigen::Matrix<double, 1, 1> &x, const TimeStamp &t):
+  RandomVec< ::Eigen::Matrix<double, 1, 1>, ::Eigen::Matrix<double, 1, 1> >(x, t){}
 
 
 /********** Implementation of 2d vehicle pose state **********/
@@ -60,10 +62,10 @@ Pose1d::Pose1d(const Eigen::Matrix<double, 1, 1> &x, const TimeStamp &t):
 Pose2d::Pose2d(){}
 
 Pose2d::Pose2d(const Vec &x, const Mat &Sx, const TimeStamp &t) :
-  RandomVec< Eigen::Vector3d, Eigen::Matrix3d >(x, Sx, t){}
+  RandomVec< ::Eigen::Vector3d, ::Eigen::Matrix3d >(x, Sx, t){}
 
 Pose2d::Pose2d(const Vec &x, const TimeStamp &t) :
-  RandomVec< Eigen::Vector3d, Eigen::Matrix3d >(x, t){}
+  RandomVec< ::Eigen::Vector3d, ::Eigen::Matrix3d >(x, t){}
 
 Pose2d::Pose2d( double x, double y, double theta, 
 		double var_x, double var_y, double var_theta,
@@ -79,4 +81,6 @@ Pose2d::Pose2d( double x, double y, double theta,
 }
 
 Pose2d::~Pose2d(){}
+
+}
 

@@ -36,6 +36,9 @@
 
 #include "RandomVec.hpp"
 
+namespace rfs
+{
+
 /** 
  * \class Landmark
  * \brief An abstract class for defining landmark state
@@ -90,11 +93,13 @@ private:
 
 };
 
-typedef Landmark< Eigen::Matrix<double, 1, 1>, Eigen::Matrix<double, 1, 1> >
+  typedef Landmark< ::Eigen::Matrix<double, 1, 1>, ::Eigen::Matrix<double, 1, 1> >
 Landmark1d;
 
-typedef Landmark<Eigen::Vector2d, Eigen::Matrix2d> Landmark2d;
+  typedef Landmark< ::Eigen::Vector2d, ::Eigen::Matrix2d> Landmark2d;
 
-typedef Landmark<Eigen::Vector3d, Eigen::Matrix3d> Landmark3d;
+  typedef Landmark< ::Eigen::Vector3d, ::Eigen::Matrix3d> Landmark3d;
+
+}
 
 #endif

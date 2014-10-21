@@ -1,7 +1,7 @@
 /*
  * Software License Agreement (New BSD License)
  *
- * Copyright (c) 2013, Keith Leung
+ * Copyright (c) 2013, Keith Leung, Felipe Inostroza
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -28,56 +28,59 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PERMUTATION_LEXICOGRAPHIC
-#define PERMUTATION_LEXICOGRAPHIC
+// Class for using the Kalman filter equations
+// Felipe Inostroza 2013, Keith Leung 2014
+
+#ifndef KALMANFILTER_RNGBRG_HPP
+#define KALMANFILTER_RNGBRG_HPP
+
+#include "KalmanFilter.hpp"
+#include "MeasurementModel_RngBrg.hpp"
 
 namespace rfs{
 
 /**
- * \class PermutationLexicographic
- * A class for generating assingments based on lexicographic ordering with or without clutter.
- * This class is mainly intended for assignments of measurements to landmarks, where measurements
- * can be outliers (i.e., non-associated with a landmark), and landmarks can be miss-detected
- * (i.e., not associated with a measurement)
- * \brief Generate lexicographical ordering
+ * \class KalmanFilter_RngBrg
+ * \brief A Kalman filter for updating a 2d landmark position from 
+ * a single range-bearing measurements. This is derived from the base
+ * Kalman Filter to handle innovation involving a rotation (bearing)
  */
-class PermutationLexicographic
-{
+class KalmanFilter_RngBrg : public KalmanFilter <StaticProcessModel<Landmark2d>, MeasurementModel_RngBrg>{
+
+  typedef MeasurementModel_RngBrg::TMeasurement::Vec Vec;
+
 public:
+
+  /** \brief Configuration for this KalmanFilter_RngBrg */
+  struct Config{
+    /** If positive, the innovation threshold above which an update is not processed for stability reasons. */
+    double rangeInnovationThreshold_; 
+    /** If positive, the innovation threshold above which an update is not processed for stability reasons. */
+    double bearingInnovationThreshold_;
+  }config;
+
+  /**
+   * Default constructor
+   */
+  KalmanFilter_RngBrg();
   
   /**
-   * Constructor 
-   * \param[in] nM number of landmarks
-   * \param[in] nZ number of measurements
-   * \param[in] includeClutter if true, considers linear assignments with clutter and miss-detections. 
-   * This will default to true if nM and nZ are not the same
+   * Constructor
+   * \param[in] pMeasurementModel Pointer to the measurement model
+   * \param[in] pProcessModel Pointer to the process model
    */
-  PermutationLexicographic(unsigned int nM, unsigned int nZ, bool includeClutter = true);
+  KalmanFilter_RngBrg(StaticProcessModel<Landmark2d> *pProcessModel,
+			   MeasurementModel_RngBrg *pMeasurementModel);
 
   /**
-   * Destructor 
+   * Function to calculate the innovation 
+   * \param[in] z_exp expected measurement predicted using the measurement model 
+   * \param[in] z_act actual measurement
+   * \param[out] z_innov innovation
    */
-  ~PermutationLexicographic();
+  bool calculateInnovation(Vec &z_exp, Vec &z_act, Vec &z_innov);
 
-  /**
-   * Find the next permutation in the lexicographic ordering
-   * \param[out] permutation pointer to an array for reading the current permutation. 
-   * Memory should be allocated by the caller. The size of the array needs to be nM if includeClutter = false,
-   * and nM + nZ if includeClutter is true.
-   * \return permutation number or 0 if there are no permutations remaining
-   */
-  unsigned int next(unsigned int* permutation);
-
-private:
-
-  unsigned int* o_; /**< ordering */
-  unsigned int oSize_; /**< size of array o_ */
-  unsigned int nM_; /**< number of landmarks */
-  unsigned int nZ_; /**< number of measurements */
-  unsigned int nP_; /**< number of permutations */
-  bool last_; /**< last permutation reached */
 };
 
 }
-
 #endif

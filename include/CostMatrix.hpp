@@ -34,7 +34,10 @@
 #include <cstddef>
 #include <vector>
 
+namespace rfs{
+
 class CostMatrix;
+
 
 /**
  * \class CostMatrixGeneral
@@ -170,5 +173,7 @@ private:
   bool reducedCostMatAvailable_; /**< Flag indicating if the reduced cost matrix has been calculated */
 
 };
+
+}
 
 #endif

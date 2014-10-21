@@ -34,8 +34,9 @@
 #include <algorithm>
 #include <iostream>
 #include "Landmark.hpp"
-#include "RandomVecMathTools.hpp"
 #include <vector>
+
+namespace rfs{
 
 /** 
  * \class GaussianMixture
@@ -530,6 +531,8 @@ void GaussianMixture<Landmark>::sortByWeight(){
 template< class Landmark >
 bool GaussianMixture<Landmark>::weightCompare(Gaussian a, Gaussian b){
   return a.weight > b.weight;
+}
+
 }
 
 #endif

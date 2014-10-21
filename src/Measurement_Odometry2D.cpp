@@ -28,46 +28,41 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "TimeStamp.hpp"
-#include <math.h>
+#include "Measurement.hpp"
 
 namespace rfs
 {
 
-TimeStamp::TimeStamp(){
-  sec = 0;
-  nsec = 0;
+/********** Implementation of example 2d odometry measurement **********/
+
+Odometry2d::Odometry2d(){}
+
+Odometry2d::Odometry2d(Vec &x, Mat &Sx, TimeStamp t) : 
+  RandomVec< Eigen::Vector3d, Eigen::Matrix3d >(x, Sx, t){}
+
+Odometry2d::Odometry2d(Vec &x, TimeStamp t) : 
+  RandomVec< Eigen::Vector3d, Eigen::Matrix3d >(x, t){}
+
+Odometry2d::Odometry2d(double dx_k_km, double dy_k_km, double dtheta_k_km, 
+		       double vardx_k_km, double vardy_k_km, 
+		       double vartheta_k_km, TimeStamp t) {
+  Eigen::Vector3d u;
+  Eigen::Vector3d covu_diag; 
+  Eigen::Matrix3d covu;
+  u << dx_k_km, dy_k_km, dtheta_k_km;
+  covu_diag << vardx_k_km, vardy_k_km, vartheta_k_km;
+  covu = covu_diag.asDiagonal();
+
+  set( u, covu, t);
 }
 
-TimeStamp::TimeStamp(int32_t s, int32_t ns) : sec(s), nsec(ns){
-  normalize();
-}
-
-TimeStamp::TimeStamp(double t){
-  setTime(t);
-}
-
-TimeStamp::~TimeStamp(){}
-
-double TimeStamp::getTimeAsDouble() const{
-  
-  return ( (double)sec + (double)nsec * 1e-9 );
-}
-
-void TimeStamp::setTime(double const t){
-  
-  double intPart, fracPart;
-  fracPart = modf(t, &intPart);
-  sec = (int32_t)intPart;
-  nsec = (int32_t)(fracPart * 1000000000);
-  normalize();
+Odometry2d::~Odometry2d(){}
 
 }
 
-void TimeStamp::setTime(int32_t s, int32_t ns){
-  sec = s;
-  nsec = ns;
-  normalize();
-}
 
-}
+
+
+
+
+

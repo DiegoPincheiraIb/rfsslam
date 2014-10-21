@@ -34,6 +34,9 @@
 #include <stdio.h>
 #include "HungarianMethod.hpp"
 
+namespace rfs
+{
+
 /// Hungarian Method Class Implementation ///
 
 HungarianMethod::HungarianMethod(){}
@@ -569,6 +572,8 @@ bool HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maxim
     }
 
   }
+
+}
 
 }
 

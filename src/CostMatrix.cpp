@@ -4,6 +4,9 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/connected_components.hpp>
 
+namespace rfs
+{
+
 /// General Cost Matrix Implementation
 
 CostMatrixGeneral::CostMatrixGeneral(double** &C, unsigned int nR, unsigned int nC) : nR_(nR),
@@ -92,18 +95,18 @@ unsigned int CostMatrixGeneral::partition(){
     return nPartitions_;
 
   // partitioning using connected-component analysis
-  boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS> G;
+  ::boost::adjacency_list< ::boost::vecS, ::boost::vecS, ::boost::undirectedS> G;
   for(int i = 0; i < nR_; i++){
     for(int j = 0; j < nC_; j++){
       if (C_[i][j] != 0 ){
-	boost::add_edge(i, j+nR_, G);
+	::boost::add_edge(i, j+nR_, G);
       }
     }
   }
-  boost::add_edge(nR_+nC_-1, nR_+nC_-1, G); // add edge to self so the graph has the desired number of vetices
+  ::boost::add_edge(nR_+nC_-1, nR_+nC_-1, G); // add edge to self so the graph has the desired number of vetices
 
   std::vector<int> cc_results( nR_+nC_, -1 );
-  int ncc = boost::connected_components(G, &cc_results[0]);
+  int ncc = ::boost::connected_components(G, &cc_results[0]);
 
   if(components_i != NULL){
     delete[] components_i;
@@ -361,3 +364,4 @@ int CostMatrix::getCostMatrixReduced(double** &C, int* &fixedAssignments, double
   return n_reduced_;
 }
 
+}

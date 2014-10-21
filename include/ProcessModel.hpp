@@ -28,14 +28,13 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// Classes related to motion model
-// Keith Leung 2013
-
 #ifndef PROCESSMODEL_HPP
 #define PROCESSMODEL_HPP
 
-#include "Measurement.hpp"
 #include "Pose.hpp"
+#include "Measurement.hpp"
+
+namespace rfs{
 
 /**
  * \class ProcessModel
@@ -84,6 +83,15 @@ public:
   void setNoise(typename StateType::Mat &Q){
     Q_ = Q;
     inputNoiseDefined_ = true;
+  }
+
+  /** 
+   * Get the additive zero mean Gaussian noise covariance matrix 
+   * \param[in] Q noise covariance
+   */
+  void getNoise(typename StateType::Mat &Q){
+    if(inputNoiseDefined_)
+      Q = Q_;
   }
 
   /** 
@@ -213,128 +221,6 @@ private:
 
 };
 
-
-/************* 2d Odometry Motion Model *************/
-
-/**
- * \class OdometryMotionModel2d
- * A 2d odometry motion model with translational and rotational
- *        displacement
- * The 2d motion model is as follows: 
- * \f[ \mathbf{x}_k = \begin{bmatrix} \mathbf{p} \\ \theta \end{bmatrix}_k =
- * \begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_k =
- * \mathbf{g}(\mathbf{x}_{k-1}, \mathbf{u}_k) + \boldsymbol{\delta} = 
- * \mathbf{g}\left(\begin{bmatrix} \mathbf{p} \\ \theta \end{bmatrix}_{k-1}, 
- * \begin{bmatrix} \delta \mathbf{p} \\ \delta\theta \end{bmatrix}_k \right) + \boldsymbol{\delta} = 
- * \mathbf{g}\left(\begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_{k-1}, 
- * \begin{bmatrix} \delta x \\ \delta y \\ \delta\theta \end{bmatrix}_k \right) + \boldsymbol{\delta},
- * \boldsymbol\delta \sim (\mathbf{0}, \mathbf{Q})
- * \f]
- * Using rotation matrices to represent the rotation, the function \f$\mathbf{g}\f$
- * composes of the following:
- * \f[
- * \mathbf{p}_k = \mathbf{p}_{k-1} + \mathbf{C}_{k-1}^{\mathrm{T}}(\theta_{k-1}) \delta \mathbf{p}_{k-1}
- * \f]
- * \f[
- * \mathbf{C}_k(\mathbf{\theta_k}) = \mathbf{C}_{k,k-1}(\mathbf{\delta\theta_k}) \mathbf{C}_{k-1}(\mathbf{\theta_{k-1}})
- * \f]
- * \brief A 2d odometry motion model with translational and rotational
- *        displacement
- * \note Currently the updated state from step does not contain valid
- * covariance information because it is not needed by the RBPHDFilter
- * \author Keith Leung
- */
-class OdometryMotionModel2d : public ProcessModel< Pose2d, Odometry2d >
-{
-public:
-
-  /** Default constructor */
-  OdometryMotionModel2d();
-
-  /** Constructor with process noise input 
-   * \param Q additive zero-mean white Gaussian noise covariance matrix
-   */
-  OdometryMotionModel2d( Pose2d::Mat &Q );
-
-  /** Default destructor */
-  ~OdometryMotionModel2d();
-
-  /** 
-   * This overrides the virtual function in the parent class for
-   * determining the pose at time-step k from pose at time-step k-1.
-   * The 2d motion model is as follows: 
-   * \f[ \mathbf{x}_k = \begin{bmatrix} \mathbf{p} \\ \theta \end{bmatrix}_k =
-   * \begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_k =
-   * \mathbf{g}(\mathbf{x}_{k-1}, \mathbf{u}_k) + \boldsymbol{\delta} = 
-   * \mathbf{g}\left(\begin{bmatrix} \mathbf{p} \\ \theta \end{bmatrix}_{k-1}, 
-   * \begin{bmatrix} \delta \mathbf{p} \\ \delta\theta \end{bmatrix}_k \right) + \boldsymbol{\delta} = 
-   * \mathbf{g}\left(\begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_{k-1}, 
-   * \begin{bmatrix} \delta x \\ \delta y \\ \delta\theta \end{bmatrix}_k \right) + \boldsymbol{\delta},
-   * \boldsymbol\delta \sim (\mathbf{0}, \mathbf{Q})
-   * \f]
-   * Using rotation matrices to represent the rotation, the function \f$\mathbf{g}\f$
-   * composes of the following:
-   * \f[
-   * \mathbf{p}_k = \mathbf{p}_{k-1} + \mathbf{C}_{k-1}^{\mathrm{T}}(\theta_{k-1}) \delta \mathbf{p}_{k-1}
-   * \f]
-   * \f[
-   * \mathbf{C}_k(\mathbf{\theta_k}) = \mathbf{C}_{k,k-1}(\mathbf{\delta\theta_k}) \mathbf{C}_{k-1}(\mathbf{\theta_{k-1}})
-   * \f]
-   * \note Currently the updated state from step does not contain valid
-   * covariance information because it is not needed by the RBPHDFilter
-   * \param[out] s_k pose at current time-step k
-   * \param[in] s_km pose at previous time-step k-1
-   * \param[in] input_k input to process model
-   * \param[in] dT size of time-step
-   */
-  void step( Pose2d &s_k, Pose2d &s_km, Odometry2d &input_k, 
-	     TimeStamp const &dT);
-  
-};
-
-
-
-/**
- * \class OdometryMotionModel1d
- * A 1d odometry motion model with translational displacement
- * The 1d model is as follows:
- * \f[ x_{k} = x_{k-1} + \delta x_k\f]
- * \brief A 1d odometry motion model with translational displacement
- * \note Currently the updated state from step does not contain valid
- * covariance information because it is not needed by the RBPHDFilter
- * \author Keith Leung
- */
-class OdometryMotionModel1d : public ProcessModel< Pose1d, Odometry1d >
-{
-public:
-
-  /** Default constructor */
-  OdometryMotionModel1d(){}
-
-  /** Constructor with process noise input 
-   * \param[in] Q additive zero-mean white Gaussian noise variance
-   */
-  OdometryMotionModel1d( Pose1d::Mat &Q );
-
-  /** Default destructor */
-  ~OdometryMotionModel1d(){}
-
-   /** 
-   * This overrides the virtual function in the parent class for
-   * determining the position at time-step k from position at time-step k-1
-   * The 1d model is as follows:
-   * \f[ x_{k} = x_{k-1} + \delta x_k\f]
-   * \note Currently the updated state from step does not contain valid
-   * covariance information because it is not needed by the RBPHDFilter
-   * \param[out] s_k position at current time-step k
-   * \param[in] s_km position at previous time-step k-1
-   * \param[in] input_k input to process model
-   * \param[in] dT size of time-step (not used)
-   */
-  void step( Pose1d &s_k, Pose1d &s_km, Odometry1d &input_k, 
-	     TimeStamp const &dT);
-
-};
-
+}
 
 #endif

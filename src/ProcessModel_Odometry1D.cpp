@@ -28,46 +28,29 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "TimeStamp.hpp"
-#include <math.h>
+#include "ProcessModel_Odometry1D.hpp"
 
-namespace rfs
-{
+using namespace rfs;
 
-TimeStamp::TimeStamp(){
-  sec = 0;
-  nsec = 0;
-}
+MotionModel_Odometry1d::MotionModel_Odometry1d( Pose1d::Mat &Q ) : ProcessModel(Q) {}
 
-TimeStamp::TimeStamp(int32_t s, int32_t ns) : sec(s), nsec(ns){
-  normalize();
-}
+void MotionModel_Odometry1d::step ( Pose1d &s_k, Pose1d &s_km, Odometry1d &input_k, 
+				   TimeStamp const &dT){
 
-TimeStamp::TimeStamp(double t){
-  setTime(t);
-}
+  Pose1d::Vec x_km_; /**< position at k-1 */
+  Pose1d::Vec x_k_;  /**< position at k */
+  Odometry1d::Vec u_k_; /**< odometry from k-1 to k */
 
-TimeStamp::~TimeStamp(){}
+  /* k - 1 */
+  s_km.get(x_km_);
 
-double TimeStamp::getTimeAsDouble() const{
-  
-  return ( (double)sec + (double)nsec * 1e-9 );
-}
+  /* odometry */
+  input_k.get(u_k_);
 
-void TimeStamp::setTime(double const t){
-  
-  double intPart, fracPart;
-  fracPart = modf(t, &intPart);
-  sec = (int32_t)intPart;
-  nsec = (int32_t)(fracPart * 1000000000);
-  normalize();
+  /* step forward */
+  x_k_ = x_km_ + u_k_;
 
-}
-
-void TimeStamp::setTime(int32_t s, int32_t ns){
-  sec = s;
-  nsec = ns;
-  normalize();
-}
+  /* write state at k */
+  s_k.set(x_k_);
 
 }

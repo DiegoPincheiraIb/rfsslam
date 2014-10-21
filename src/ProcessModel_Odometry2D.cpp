@@ -28,18 +28,17 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <math.h>
-#include "ProcessModel.hpp"
+#include "ProcessModel_Odometry2D.hpp"
 
-/********** Implementation for a 2D motion model **********/
+using namespace rfs;
 
-OdometryMotionModel2d::OdometryMotionModel2d(){}
+MotionModel_Odometry2d::MotionModel_Odometry2d(){}
 
-OdometryMotionModel2d::OdometryMotionModel2d( Pose2d::Mat &Q ) : ProcessModel(Q) {}
+MotionModel_Odometry2d::MotionModel_Odometry2d( Pose2d::Mat &Q ) : ProcessModel(Q) {}
 
-OdometryMotionModel2d::~OdometryMotionModel2d(){}
+MotionModel_Odometry2d::~MotionModel_Odometry2d(){}
 
-void OdometryMotionModel2d::step(  Pose2d &s_k, 
+void MotionModel_Odometry2d::step(  Pose2d &s_k, 
 				   Pose2d &s_km, 
 				   Odometry2d &input_k, 
 				   TimeStamp const &dT ){
@@ -89,28 +88,3 @@ void OdometryMotionModel2d::step(  Pose2d &s_k,
   s_k.set(x_k_i_, t_k);
 }
 
-
-/************ Implementation of a 1D motion model ***********/
-
-OdometryMotionModel1d::OdometryMotionModel1d( Pose1d::Mat &Q ) : ProcessModel(Q) {}
-
-void OdometryMotionModel1d::step ( Pose1d &s_k, Pose1d &s_km, Odometry1d &input_k, 
-				   TimeStamp const &dT){
-
-  Pose1d::Vec x_km_; /**< position at k-1 */
-  Pose1d::Vec x_k_;  /**< position at k */
-  Odometry1d::Vec u_k_; /**< odometry from k-1 to k */
-
-  /* k - 1 */
-  s_km.get(x_km_);
-
-  /* odometry */
-  input_k.get(u_k_);
-
-  /* step forward */
-  x_k_ = x_km_ + u_k_;
-
-  /* write state at k */
-  s_k.set(x_k_);
-
-}

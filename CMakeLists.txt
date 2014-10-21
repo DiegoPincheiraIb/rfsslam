@@ -6,7 +6,12 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 #SET(CMAKE_BUILD_TYPE Debug)
 SET(CMAKE_BUILD_TYPE Release)
-PROJECT(RFS_SLAM)
+PROJECT(RFSSLAM)
+SET(RFSSLAM_MAJOR_VERSION 1)
+SET(RFSSLAM_MINOR_VERSION 1)
+SET(RFSSLAM_PATCH_VERSION 0)
+SET(RFSSLAM_VERSION ${RFSSLAM_MAJOR_VERSION}.${RFSSLAM_MINOR_VERSION}.${RFSSLAM_PATCH_VERSION})
+message(STATUS "RFSSLAM Version ${RFSSLAM_VERSION}")
 
 # Explicitly set for colorgcc. By default, they point to gcc and c++ with absolute path
 SET(CMAKE_C_COMPILER "gcc")
@@ -16,10 +21,9 @@ SET(CMAKE_CXX_COMPILER "c++")
 # For X86-64 architecture, SSE2 is generally enabled by default   
 SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-march=native -fopenmp")
 
-FILE(MAKE_DIRECTORY "bin")
-FILE(MAKE_DIRECTORY "bin/examples")
-FILE(MAKE_DIRECTORY "lib")
-FILE(MAKE_DIRECTORY "data")
+#FILE(MAKE_DIRECTORY "bin")
+#FILE(MAKE_DIRECTORY "lib")
+#FILE(MAKE_DIRECTORY "data")
 
 FIND_PACKAGE(Boost COMPONENTS math_c99 timer system thread filesystem graph REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
@@ -43,6 +47,9 @@ MESSAGE("CMAKE_RUNTIME_OUTPUT_DIRECTORY = " ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ./lib)
 MESSAGE("CMAKE_ARCHIVE_OUTPUT_DIRECTORY = " ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 
+FILE(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin/examples")
+FILE(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin/test")
+
 #ADD_SUBDIRECTORY()
 INCLUDE_DIRECTORIES(include)
 INCLUDE_DIRECTORIES(src)
@@ -54,15 +61,20 @@ INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
 
 ADD_LIBRARY(rfsslam 
   src/TimeStamp.cpp 
+  src/Timer.cpp
   src/Pose.cpp 
-  src/Measurement.cpp 
-  src/ProcessModel.cpp 
-  src/MeasurementModel.cpp
+  src/Measurement_Odometry2D.cpp 
+  src/ProcessModel_Odometry1D.cpp 
+  src/ProcessModel_Odometry2D.cpp
+  src/MeasurementModel_Rng1D.cpp
+  src/MeasurementModel_RngBrg.cpp
+  src/KalmanFilter_RngBrg.cpp
   src/HungarianMethod.cpp
   src/MurtyAlgorithm.cpp
   src/BruteForceAssignment.cpp
   src/CostMatrix.cpp
-  src/PermutationLexicographic.cpp)
+  src/PermutationLexicographic.cpp
+  )
 
 
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)
@@ -79,6 +91,9 @@ TARGET_LINK_LIBRARIES(fastslam2dSim config++ ${Boost_LIBRARIES} rfsslam)
 ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} rfsslam)
 
+#ADD_EXECUTABLE(hmTest src/test.cpp)
+#TARGET_LINK_LIBRARIES(hmTest LinearAssignment)
+
 ADD_EXECUTABLE(convertLogFiles src/convertLogFiles.cpp)
 TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})
 
@@ -93,14 +108,24 @@ TARGET_LINK_LIBRARIES(examples/linearAssignment_LexicographicOrdering ${Boost_LI
 ADD_EXECUTABLE(examples/linearAssignment_MurtyAlgorithm src/examples/linearAssignment_MurtyAlgorithm.cpp)
 TARGET_LINK_LIBRARIES(examples/linearAssignment_MurtyAlgorithm ${Boost_LIBRARIES} rfsslam)
 
+ADD_EXECUTABLE(examples/ospaError src/examples/ospaError.cpp)
+TARGET_LINK_LIBRARIES(examples/ospaError ${Boost_LIBRARIES} rfsslam)
+
+ADD_EXECUTABLE(test/cpu_timer_test src/tests/cpu_timer_info.cpp)
+TARGET_LINK_LIBRARIES(test/cpu_timer_test ${Boost_LIBRARIES})
+
 # Installation
 
-
-
-INSTALL(TARGETS ${RFSSLAM_LIBRARIES} 
+INSTALL(TARGETS rfsslam
   DESTINATION /usr/local/lib/rfsslam
-  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
-  
+  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+  EXPORT rfsslam-targets)
+INSTALL(EXPORT rfsslam-targets DESTINATION /usr/local/lib/rfsslam)
+CONFIGURE_FILE(rfsslam-config.cmake.in "rfsslam-config.cmake" @ONLY)
+CONFIGURE_FILE(rfsslam-config-version.cmake.in "rfsslam-config-version.cmake" @ONLY)
+INSTALL(FILES ${CMAKE_BINARY_DIR}/rfsslam-config.cmake ${CMAKE_BINARY_DIR}/rfsslam-config-version.cmake
+  DESTINATION /usr/local/lib/rfsslam)
+
 FILE(GLOB headerFiles "include/*.hpp")
 INSTALL(FILES ${headerFiles}
   DESTINATION /usr/local/include/rfsslam

@@ -36,6 +36,8 @@
 #include <queue> 
 #include "HungarianMethod.hpp"
 
+namespace rfs{
+
 /** 
  * \class Node
  * A generic tree node
@@ -206,4 +208,7 @@ private:
 
 };
 
+}
+
 #endif
+
