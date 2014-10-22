@@ -191,7 +191,7 @@ public:
    */
   void step( StateType &s_k, StateType &s_km, 
 	     NullInput &input_k , TimeStamp const &dT){
-    
+    TimeStamp t_; 
     if( this->inputNoiseDefined_ ){
       typename StateType::Vec x;
       typename StateType::Mat S;
@@ -215,9 +215,9 @@ public:
     step(s_k , s_km , input , dT);
   }
 
-private:
 
-  TimeStamp t_; 
+
+  
 
 };
 
