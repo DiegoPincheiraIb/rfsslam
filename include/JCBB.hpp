@@ -133,8 +133,7 @@ namespace rfs{
     typedef typename MeasurementModelType::TJacobianLmk TJacobianLmk;
 
     /**
-     * Constructor
-     * Setup and initiate the JCBB algorithm. For correlated robot and landmark estimates,
+     * Constructor: Setup and initiate the JCBB algorithm. For correlated robot and landmark estimates,
      * use the estCovDense parameter to set the estimate erro covariance matrix. If this 
      * is not set, it is assumed that the covariance matrix is block diagonal, and that
      * the individual robot and landmark covariances can be found in the TPose and 
