@@ -72,4 +72,10 @@ int main(int argc, char* args[]){
     std::cout << n << " --- " << jcbb.getAssociation(n) << "\n";
   } 
 
+  JCBB<MeasurementModel_XY> jcbb2(0.95, &z_model, &Z, &robot, &lmkPtrs, &cov );
+
+  for(int n = 0; n < 6; n++){
+    std::cout << n << " --- " << jcbb2.getAssociation(n) << "\n";
+  } 
+
 } 

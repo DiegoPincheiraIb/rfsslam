@@ -39,8 +39,10 @@ namespace rfs{
 /** 
  * \class TreeNode
  * A generic tree node
- * \brief A generic tree node
+ * \brief A generic tree node, defined using curiously recurring template pattern (CRTP)
+ * \tparam Derived the derived class
  */
+template<class Derived>
 class TreeNode{
 
 public:
@@ -49,7 +51,7 @@ public:
    * \param[in] n_children_exp the number of children this node is expected to have,
    * used for more efficient memory allocation. Not mandatory.
    */
-  TreeNode(size_t n_children_exp = -1);
+  TreeNode(size_t n_children_exp = 0);
   
   /** Destructor, virtual becuase other classes will be derived from this class*/
   virtual ~TreeNode();
@@ -58,14 +60,14 @@ public:
    * Get a pointer to the parent node
    * \return pointer to parent, or NULL if this node has no parent
    */
-  TreeNode* getParent();
+  Derived* getParent();
   
   /**
    * Get pointers to a child
    * \param[in] child index
    * \return a pointer to the child
    */ 
-  TreeNode* getChild(size_t idx);
+  Derived* getChild(size_t idx);
 
   /**
    * Get the number of children that this node has
@@ -77,14 +79,61 @@ public:
    * Add a new child to this node. 
    * \return pointer to new child node
    */
-  TreeNode* addChild();
+  Derived* addChild();
 
 private:
 
-  std::vector< boost::shared_ptr<TreeNode> > children_;
-  TreeNode* parent_;
+  std::vector< boost::shared_ptr<Derived> > children_;
+  Derived* parent_;
 };
 
 }
+
+// Implementation
+
+
+#include <boost/shared_ptr.hpp>
+#include "Tree.hpp"
+
+namespace rfs{
+
+  template<class Derived>
+  TreeNode<Derived>::TreeNode(size_t n_children_exp):parent_(NULL){
+    if(n_children_exp > 0)
+      children_.resize(n_children_exp);
+  }
+  
+  template<class Derived>
+  TreeNode<Derived>::~TreeNode(){}
+  
+  template<class Derived>
+  Derived* TreeNode<Derived>::getParent(){
+    return parent_;
+  }
+  
+  template<class Derived>
+  Derived* TreeNode<Derived>::getChild(size_t idx){
+    if(idx < children_.size())
+      return children_[idx].get();
+    else
+      return NULL;
+  }
+
+  template<class Derived>
+  size_t TreeNode<Derived>::getChildrenCount(){
+    return children_.size();
+  }
+
+  template<class Derived>
+  Derived* TreeNode<Derived>::addChild(){
+    boost::shared_ptr<Derived> child(new Derived);
+    child->parent_ = static_cast<Derived*>(this);
+    children_.push_back(child);
+    return child.get();
+  }
+
+}
+
+
 
 #endif

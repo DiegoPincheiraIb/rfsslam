@@ -70,11 +70,17 @@ namespace rfs{
 
     /**
      * Set the data association represented by this node
+     * \param[in] z_idx measurement index
+     * \param[in] m_idx landmark index
+     * \param[in] dist_mahalanobis2 squared Mahalanobis distance for the associations
+     * represented by this and all parent nodes
      */
     void setAssociation(int z_idx, int m_idx, double dist_mahalanobist2);
 
     /**
      * Get the association represented by this node
+     * \param[out] z_idx measurement index
+     * \param[out] m_idx landmark index
      */ 
     void getAssociation(int &z_idx, int &m_idx);
 
@@ -98,11 +104,11 @@ namespace rfs{
 
   private:
 
-    int z_idx_;
-    int m_idx_;
-    double dist_mahalanobist2_; // joint Mahalanobis distance for all associations up to the root
-    ::Eigen::MatrixXd C_inverse_; // innovation covariance for all associations up to the root
-    ::Eigen::VectorXd innov_; // innovation for all associations up to the root
+    int z_idx_; /**< measurement index */
+    int m_idx_; /**< landmark index */
+    double dist_mahalanobist2_; /**< joint Mahalanobis distance for all associations up to the root */
+    ::Eigen::MatrixXd C_inverse_; /**< inverse innovation covariance for all associations up to the root */
+    ::Eigen::VectorXd innov_; /**< measurement innovation for all associations up to the root */
 
   };
 
@@ -128,11 +134,20 @@ namespace rfs{
 
     /**
      * Constructor
-     */
-    JCBB();
-
-    /**
-     * Constructor
+     * Setup and initiate the JCBB algorithm. For correlated robot and landmark estimates,
+     * use the estCovDense parameter to set the estimate erro covariance matrix. If this 
+     * is not set, it is assumed that the covariance matrix is block diagonal, and that
+     * the individual robot and landmark covariances can be found in the TPose and 
+     * TLandmark objects.
+     * \param[in] confidenceItvl confidence interval for gating
+     * \param[in] measurementModel pointer to the measurement model. The Jacobian of the
+     * meausrement function w.r.t. the robot pose and landmark positions must be defined.
+     * With the exception that if the robot pose estimate covariance is zero, than the 
+     * Jacobian w.r.t the robot pose does not need to be defined.
+     * \param[in] measurements pointer to a vector of measurements
+     * \param[in] robot pointer to the robot / sensor pose.
+     * \param[in] landmarks pointer to a vector of landmark pointers
+     * \param[in] estCovDense the dense estimate error covariance matrix.
      */
     JCBB(double confidenceItvl,
 	 MeasurementModelType *measurementModel,
@@ -156,27 +171,27 @@ namespace rfs{
 
   private:
 
-    double confidence_interval_;
+    double confidence_interval_; /**< Chi-square confidence interval for gating  */
 
-    JCBB_TreeNode iTreeRoot_;
+    JCBB_TreeNode iTreeRoot_; /**< Interpretation tree */
     
-    MeasurementModelType *measurementModel_;
-    std::vector<TMeasurement> *Z_actual_ptr_;
-    std::vector<TMeasurement> Z_predict_;
-    std::vector< boost::shared_ptr< TJacobianPose > > jacobians_wrt_pose_; 
-    std::vector< boost::shared_ptr< TJacobianLmk  > > jacobians_wrt_lmk_; 
+    MeasurementModelType *measurementModel_; /**< measurement model */
+    std::vector<TMeasurement> *Z_actual_ptr_; /**< vector of actual measurements */
+    std::vector<TMeasurement> Z_predict_; /**< vector expected measurements */
+    std::vector< boost::shared_ptr< TJacobianPose > > jacobians_wrt_pose_; /**< Jacobian of of measurement model w.r.t. the robot pose */
+    std::vector< boost::shared_ptr< TJacobianLmk  > > jacobians_wrt_lmk_; /**< Jacobian of the measurement model w.r.t. landmark positions */
 
-    TPose const *robot_;
-    std::vector<TLandmark*> *landmarks_;
-    bool isEstCovBlockDiag_;
-    const ::Eigen::MatrixXd *estCovDense_;
+    TPose const *robot_; /**< robot pose */ 
+    std::vector<TLandmark*> *landmarks_; /**< vector of landmark positions (and covariance) */
+    bool isEstCovBlockDiag_; /**< flag for block diagonal or dense estimate covariance matrix */
+    const ::Eigen::MatrixXd *estCovDense_; /**< Dense estimate covariance matrix */
 
-    std::priority_queue<JCBB_TreeNode*> branchList_; // priority queue of nodes to branch
+    std::priority_queue<JCBB_TreeNode*> branchList_; /**< priority queue of nodes in the interpretation tree to branch */
 
-    int nAssociations_best_;
-    double dist_mahalanobis2_best_;
-    JCBB_TreeNode* node_best_;
-    std::vector<int> hypothesis_best_;
+    int nAssociations_best_; /**< the number of assoications in the best hypothesis */
+    double dist_mahalanobis2_best_; /**< the mahalanobis distance of the best hypothesis */
+    JCBB_TreeNode* node_best_; /**< the node in the interpretation tree associated with the best hypothesis */
+    std::vector<int> hypothesis_best_; /**< data association indices for the best hypothesis */
 
     /**
      * calculate expected measurements and covariance 
@@ -241,11 +256,6 @@ namespace rfs{
 // implementation JCBB
 
 namespace rfs{
-
-  template<class MeasurementModelType>
-  JCBB<MeasurementModelType>::JCBB(){
-
-  }
 
   template<class MeasurementModelType>
   JCBB<MeasurementModelType>::JCBB(double confidenceItvl,
@@ -337,7 +347,6 @@ namespace rfs{
     if(z_idx_current != -1 && z_idx_current + 1 >= Z_actual_ptr_->size()){
       return;
     }
-    std::cout << "Expanding node " << z_idx_current << " --- " << m_idx << " " << node->getMahalanobisDist2() << std::endl;
 
     // Check previous associations
     int z_idx;
@@ -364,9 +373,6 @@ namespace rfs{
     m_idx = 0;;
     BOOST_FOREACH(int isUsed, isUsed_lmk_idx){
       if( isUsed == 0 ){ // m_idx has not been associated with another measurement
-
-	// Check
-	std::cout << "Try node: " << z_idx << " --- " << m_idx << "\n"; 
 	
 	// innovation
 	typename TMeasurement::Vec z_actual = Z_actual_ptr_->at(z_idx).get();
@@ -443,10 +449,6 @@ namespace rfs{
 	  double d2 = 2 * innov.transpose() * L * *innov_m;
 	  double d3 = innov.transpose() * N * innov;
 	  dist_mahalanobist2 = d2_m + d1 + d2 + d3;
-	  if( dist_mahalanobist2 < 0 ){
-	    std::cout << "Mahalanobis dist error\n";
-	    return;
-	  }
 
 	}else{ // robot pose has no uncertainty or we are dealing with the first measurement
 
@@ -458,7 +460,6 @@ namespace rfs{
 	int nDof = measureDim * (1 + nPreviousMeasurements);
 	boost::math::chi_squared_distribution<> chi2Dist(nDof);
 	double threshold = quantile(chi2Dist, confidence_interval_);
-	std::cout << dist_mahalanobist2 << " " << threshold << "\n";
 	if(dist_mahalanobist2 < threshold){
 
 	  // gating passed - new node in interpretation tree 
@@ -476,10 +477,7 @@ namespace rfs{
 	    new_node->getInnovationCovInv()->resize(new_innov_size, new_innov_size);
 	    *(new_node->getInnovationCovInv()) << K, L.transpose(), L, N;
 
-	  }
-
-	  // Check
-	  std::cout << "Add node: " << z_idx << " --- " << m_idx << "\n"; 
+	  } 
 	    
 	  // add to priority queue
 	  if(z_idx + 1 < Z_actual_ptr_->size())
@@ -509,8 +507,6 @@ namespace rfs{
     if(z_idx + 1 < Z_actual_ptr_->size()){
       branchList_.push(new_node);
     }
-
-    std::cout << "Add node: " << z_idx << " --- " << "-1\n"; 
 
     if(  nAssociations_best_ == nAssociations + 1 && dist_mahalanobis2_best_ <= d2_m){
       dist_mahalanobis2_best_ = d2_m;
