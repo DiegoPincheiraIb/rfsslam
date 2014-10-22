@@ -98,8 +98,8 @@ bool MeasurementModel_XY::measure(const Pose2d &pose,
   H_lmk <<  c_RI, s_RI,
            -s_RI, c_RI;
 
-  H_robot << -c_RI, -s_RI,
-              s_RI, -c_RI;
+  H_robot << -c_RI, -s_RI, -dx_I*s_RI + dy_I*c_RI,
+              s_RI, -c_RI, -dx_I*c_RI - dy_I*s_RI;
 
   cov = H_lmk * landmarkUncertainty * H_lmk.transpose() + H_robot * robotUncertainty * H_robot.transpose() + R_;
   measurement.set(mean, cov);

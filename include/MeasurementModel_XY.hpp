@@ -45,7 +45,7 @@ namespace rfs{
  * \begin{bmatrix} z_x \\ z_y \end{bmatrix} =
  * \mathbf{h}(\mathbf{x}, \mathbf{m}) + \mathbf{e} = 
  * \mathbf{h}\left(\begin{bmatrix}x \\ y \\ \theta\end{bmatrix}, \begin{bmatrix}x_m \\ y_m\end{bmatrix}\right) + \mathbf{e} = 
- * \begin{bmatrix} \sqrt{(x_m - x)^2+(y_m - y)^2}) \\ \arctan{\left(\frac{y_m - y}{x_m - x}\right)} - \theta \end{bmatrix} + \mathbf{e} , \quad \mathbf{e} \sim (\mathbf{0}, \mathbf{R}) \f]
+ * \begin{bmatrix} \cos\theta (x_m - x) + \sin\theta (y_m - y) \\ -\sin\theta (x_m - x) + \cos\theta (y_m - y) \end{bmatrix} + \mathbf{e} , \quad \mathbf{e} \sim (\mathbf{0}, \mathbf{R}) \f]
  * where
  * \f$\mathbf{z} = (z_x, z_y)\f$ is the x-y measurement relative to the robot,
  * \f$\mathbf{x} = (x, y, \theta)\f$ is the robot pose,

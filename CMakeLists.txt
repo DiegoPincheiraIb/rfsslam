@@ -29,6 +29,7 @@ FIND_PACKAGE(Boost COMPONENTS math_c99 timer system thread filesystem graph REQU
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON) 
 set(Boost_USE_STATIC_RUNTIME ON)
+MESSAGE(${Boost_LIBRARIES})
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 FIND_PACKAGE(Eigen 3.0.0 REQUIRED)
@@ -68,6 +69,7 @@ ADD_LIBRARY(rfsslam
   src/ProcessModel_Odometry2D.cpp
   src/MeasurementModel_Rng1D.cpp
   src/MeasurementModel_RngBrg.cpp
+  src/MeasurementModel_XY.cpp
   src/KalmanFilter_RngBrg.cpp
   src/HungarianMethod.cpp
   src/MurtyAlgorithm.cpp
@@ -111,6 +113,9 @@ TARGET_LINK_LIBRARIES(examples/ospaError ${Boost_LIBRARIES} rfsslam)
 
 ADD_EXECUTABLE(test/cpu_timer_test src/tests/cpu_timer_info.cpp)
 TARGET_LINK_LIBRARIES(test/cpu_timer_test ${Boost_LIBRARIES})
+
+ADD_EXECUTABLE(test/jcbb_test src/tests/jcbb_test.cpp)
+TARGET_LINK_LIBRARIES(test/jcbb_test ${Boost_LIBRARIES} rfsslam)
 
 # Installation
 
