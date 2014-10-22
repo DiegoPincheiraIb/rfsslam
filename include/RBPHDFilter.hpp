@@ -249,12 +249,12 @@ private:
    * For every landmark-measurement pair with probability of detection > 0,
    * a new landmark will be created. 
    */
-  void updateMap();
+  void updateMap(const int particleIdx);
 
   /** 
    * Importance weighting. Overrides the abstract function in ParticleFilter
    */
-  void importanceWeighting();
+  void importanceWeighting(const int particleIdx);
 
   /**
    * Random Finite Set measurement likelihood evaluation
@@ -400,35 +400,41 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     return;
 
   ////////// Map Update //////////
+  
+  const unsigned int startIdx = 0;
+  const unsigned int stopIdx = this->nParticles_;
+  const unsigned int nZ = this->measurements_.size();
+  
   timer_mapUpdate_.resume();
-  updateMap();
-  timer_mapUpdate_.stop();
+  #pragma omp parallel for
+  for(unsigned int i = startIdx; i < stopIdx; i++){
+  
+  
+
+    updateMap(i);
+  
 
   ////////// Particle Weighintg //////////
-  timer_particleWeighting_.resume();
-  if(!config.useClusterProcess_){
-    importanceWeighting();
-  }
-  timer_particleWeighting_.stop();
+  
+    if(!config.useClusterProcess_){
+      importanceWeighting(i);
+    }
+  
 
   //////////// Merge and prune //////////
-  int maxMapSize = -1;
-  int i_maxMapSize = -1;
-  timer_mapMerge_.resume();
-  for( int i = 0; i < this->nParticles_; i++){ 
+    int maxMapSize = -1;
+    int i_maxMapSize = -1;
+
 
     this->particleSet_[i]->getData()->merge( config.gaussianMergingThreshold_, 
 					     config.gaussianMergingCovarianceInflationFactor_);   
-  } 
-  timer_mapMerge_.stop();
   
-  timer_mapPrune_.resume();
-  for( int i = 0; i < this->nParticles_; i++){ 
+
 
     this->particleSet_[i]->getData()->prune( config.gaussianPruningThreshold_ );    
 
   }
-  timer_mapPrune_.stop();
+  timer_mapUpdate_.stop();
 
   //////////// Particle resampling //////////
   timer_particleResample_.resume();
@@ -447,15 +453,11 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::updateMap(){
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::updateMap(const int particleIdx){
 
-  const unsigned int startIdx = 0;
-  const unsigned int stopIdx = this->nParticles_;
-  const unsigned int nZ = this->measurements_.size();
-
-#pragma omp parallel for
-  for(unsigned int i = startIdx; i < stopIdx; i++){    
-
+    const unsigned int i = particleIdx;
+    const unsigned int nZ = this->measurements_.size();
+    
     int threadnum = omp_get_thread_num();
     //---------- 1. setup / book-keeping ----------
    
@@ -465,7 +467,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       for(int z = 0; z < nZ; z++){
 	unused_measurements_[i].push_back( z );
       }
-      continue; // goto next particle
+      return; // goto next particle
     }
     double Pd[nM];
     int landmarkCloseToSensingLimit[nM];
@@ -609,16 +611,16 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     }
 
 
-  }
+  
 
 }
 
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::importanceWeighting(){
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::importanceWeighting(const int particleIdx){
 
-  for(int i = 0; i < this->nParticles_; i++){
-
+  
+    int i = particleIdx;
     TPose x;
     this->particleSet_[i]->getPose( x );
 
@@ -631,7 +633,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     evalPointPd.reserve(nEvalPoints);
     if( nEvalPoints == 0 ){
       this->particleSet_[i]->setWeight( std::numeric_limits<double>::denorm_min() );
-      continue;
+      return;
     }
     this->particleSet_[i]->getData()->sortByWeight(); // sort by weight so that we can pick off the top nEvalPoints Gaussians
     for(int m = 0; m < nM; m++){
@@ -702,7 +704,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     this->particleSet_[i]->setWeight( overall_weight * prev_weight );
     //printf("Particle %d overall weight = %f\n\n", i, overall_weight);
 
-  }
+  
 
 }
 
