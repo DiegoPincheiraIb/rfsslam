@@ -118,6 +118,9 @@ public:
       	       bool useAdditiveWhiteGaussianNoise = true,		       
 	       bool usePoseWhiteGaussianNoise = false,
 	       bool useLandmarkWhiteGaussianNoise = false){
+	      
+    PoseType pose_sample_; /**< Sampled pose*/
+    LandmarkType landmark_sample_; /**< Sampled landmark*/
     
     if(usePoseWhiteGaussianNoise){
       pose.sample(pose_sample_);
@@ -206,8 +209,7 @@ protected:
 
 private:
 
-  PoseType pose_sample_; /**< Sampled pose*/
-  LandmarkType landmark_sample_; /**< Sampled landmark*/
+
 
 };
 
