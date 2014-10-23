@@ -214,12 +214,12 @@ private:
 
   
   double ***weightingTables_; /**< Weighting table used during map update */
-  int nWeightingTables_;
+  int nThreads_;
   int *weightingTableNRows_; /**< Number of rows in the weighting table */
   int *weightingTableNCols_; /**< Number of cols in the weighting table */
   TLandmark**** newLandmarkTables_; /**< Table for initiating new landmarks */
 
-  KalmanFilter *kfPtr_; /**< pointer to the Kalman filter */
+  KalmanFilter *kfs_; /**< array containing the Kalman filters (one for each thread)*/
   LmkProcessModel *lmkModelPtr_; /**< pointer to landmark process model */
   double threshold_mahalanobisDistance2_mapUpdate_; /**< Mahalanobis distance squared threshold, above which Kalman Filter update will not occur*/
 
@@ -300,9 +300,15 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
 : ParticleFilter<RobotProcessModel, MeasurementModel, 
 		 GaussianMixture< typename MeasurementModel::TLandmark > >(n)
 {
-
+  nThreads_= omp_get_max_threads();
+  
   lmkModelPtr_ = new LmkProcessModel;
-  kfPtr_ = new KalmanFilter(lmkModelPtr_, this->getMeasurementModel());
+  kfs_ = new KalmanFilter[nThreads_];
+  KalmanFilter kf(lmkModelPtr_ , this->getMeasurementModel());
+  for(int i = 0 ; i < nThreads_ ; i++){
+    kfs_[i] = kf;
+  }
+
   
   for(int i = 0; i < n; i++){
     // printf("Creating map structure for particle %d\n", i);
@@ -320,17 +326,17 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   config.minUpdatesBeforeResample_ = 1;
   
   nUpdatesSinceResample = 0;
-  nWeightingTables_= omp_get_max_threads();
-  weightingTableNRows_ = new int[nWeightingTables_];
-  weightingTableNCols_ = new int[nWeightingTables_];
-  for(int i = 0 ; i < nWeightingTables_ ; i++){
+  
+  weightingTableNRows_ = new int[nThreads_];
+  weightingTableNCols_ = new int[nThreads_];
+  for(int i = 0 ; i < nThreads_ ; i++){
     weightingTableNRows_[i] = 100; 
     weightingTableNCols_[i] = 100;
   }
   
-  weightingTables_ = new double**[nWeightingTables_];
-  newLandmarkTables_ = new TLandmark***[nWeightingTables_];
-  for(int i = 0 ; i < nWeightingTables_ ; i++){
+  weightingTables_ = new double**[nThreads_];
+  newLandmarkTables_ = new TLandmark***[nThreads_];
+  for(int i = 0 ; i < nThreads_ ; i++){
   
     weightingTables_[i] = new double*[weightingTableNRows_[i]];
     newLandmarkTables_[i] = new TLandmark**[weightingTableNRows_[i]];
@@ -347,14 +353,15 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   for(int i = 0; i < this->nParticles_; i++){
     this->particleSet_[i]->deleteData();
   }
-  delete kfPtr_;
+  
   delete lmkModelPtr_;
-  for(int i = 0 ; i < nWeightingTables_ ; i++){
+  for(int i = 0 ; i < nThreads_ ; i++){
     for(int n = 0; n < weightingTableNRows_[i]; n++ ){
       delete[] weightingTables_[i][n];
     }
     delete[] weightingTables_[i];
   }
+  delete[] kfs_;
   delete[] weightingTables_;
 }
 
@@ -406,6 +413,11 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   const unsigned int nZ = this->measurements_.size();
   
   timer_mapUpdate_.resume();
+  if(nThreads_>1 && !(kfs_[0]==kfs_[1])){
+    for(int j=1;j<nThreads_;j++){
+      kfs_[j]=kfs_[0];
+    }
+  }
   #pragma omp parallel for
   for(unsigned int i = startIdx; i < stopIdx; i++){
   
@@ -515,7 +527,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	// RUN KF, create new landmark for likely updates but do not add to map_[i] yet
 	// because we cannot determine actual weight until the entire weighting table is
 	// filled in
-	kfPtr_->correct(*pose, this->measurements_, *lm, lmNew, &innovationLikelihood, &innovationMahalanobisDist2);
+	kfs_[threadnum].correct(*pose, this->measurements_, *lm, lmNew, &innovationLikelihood, &innovationMahalanobisDist2);
 	
 	for(int z = 0; z < nZ; z++){
 
@@ -1022,8 +1034,9 @@ setParticlePose(int i, TPose &p){
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 KalmanFilter* RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::getKalmanFilter(){
-  return kfPtr_;
+  return kfs_;
 }
+
 
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
