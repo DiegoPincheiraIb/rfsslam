@@ -183,6 +183,8 @@ def animateInit():
     txt.set_text("Time: ");
     gtPoseCurrentPos.set_data([],[]);
     gtPoseCurrentDir.set_data([],[]);
+    gtPoseHandle.set_data([],[]);
+    gtMapHandle.set_data([],[]);
     particles.set_data([],[]);
     for i in range(0, nMeasurementsDrawMax) :
         measurements[i].set_data([],[]);
@@ -213,6 +215,9 @@ def animate(i):
     gtPoseHead = [gtPose_x[i] + 0.3*np.cos(gtPose_r[i]), gtPose_y[i] + 0.3*np.sin(gtPose_r[i]) ];
     gtPoseCurrentDir.set_xdata([gtPose_x[i], gtPoseHead[0]]);
     gtPoseCurrentDir.set_ydata([gtPose_y[i], gtPoseHead[1]]); # Append to drawn objects later so it shows above measurements
+
+    gtPoseHandle.set_data(gtPose_x, gtPose_y);
+    gtMapHandle.set_data(gtMap_x, gtMap_y);
 
     # Particles
     p_idx = 0;
@@ -290,6 +295,8 @@ def animate(i):
     
     drawnObjects.append(gtPoseCurrentPos);
     drawnObjects.append(gtPoseCurrentDir);
+    drawnObjects.append(gtPoseHandle);
+    drawnObjects.append(gtMapHandle);
     drawnObjects.append(particles);
 
     return drawnObjects;
