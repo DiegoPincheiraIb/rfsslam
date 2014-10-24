@@ -129,10 +129,16 @@ public:
 		  bool useInputNoise = false);
 
   /**
-   * Calculate and update importance weights for all particles;
+   * Calculate and update importance weights for one particle.
    * Derived class needs to implement this method
+   * \param[in] idx index number for particle to perform importance weighting
    */
-  virtual void importanceWeighting();
+  virtual void importanceWeighting(const uint idx) = 0;
+
+  /**
+   * Calculate and update importance weights for all particles.
+   */
+  void importanceWeighting();
 
   /** 
    * Get the number of particles
@@ -318,6 +324,10 @@ void ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::propagat
 
 template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
 void ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::importanceWeighting(){
+  
+  for(uint i = 0; i < nParticles_; i++){
+    importanceWeighting(i);
+  }
   return;
 }
 
