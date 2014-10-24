@@ -40,7 +40,7 @@
 #include "KalmanFilter.hpp"
 #include <math.h>
 #include <vector>
-
+#include <omp.h>
 #include <stdio.h>
 
 namespace rfs{
@@ -212,12 +212,14 @@ public:
 
 private:
 
-  double **weightingTable_; /**< Weighting table used during map update */
-  int weightingTableNRows_; /**< Number of rows in the weighting table */
-  int weightingTableNCols_; /**< Number of cols in the weighting table */
-  TLandmark*** newLandmarkTable_; /**< Table for initiating new landmarks */
+  
+  double ***weightingTables_; /**< Weighting table used during map update */
+  int nThreads_;
+  int *weightingTableNRows_; /**< Number of rows in the weighting table */
+  int *weightingTableNCols_; /**< Number of cols in the weighting table */
+  TLandmark**** newLandmarkTables_; /**< Table for initiating new landmarks */
 
-  KalmanFilter *kfPtr_; /**< pointer to the Kalman filter */
+  KalmanFilter *kfs_; /**< array containing the Kalman filters (one for each thread)*/
   LmkProcessModel *lmkModelPtr_; /**< pointer to landmark process model */
   double threshold_mahalanobisDistance2_mapUpdate_; /**< Mahalanobis distance squared threshold, above which Kalman Filter update will not occur*/
 
@@ -247,12 +249,12 @@ private:
    * For every landmark-measurement pair with probability of detection > 0,
    * a new landmark will be created. 
    */
-  void updateMap();
+  void updateMap(const int particleIdx);
 
   /** 
    * Importance weighting. Overrides the abstract function in ParticleFilter
    */
-  void importanceWeighting();
+  void importanceWeighting(const int particleIdx);
 
   /**
    * Random Finite Set measurement likelihood evaluation
@@ -283,10 +285,11 @@ private:
   bool checkMapIntegrity();
 
   /** Ensure that sufficient memory is allocated for the weighting table
+   *  \param[in] nTable table number to check
    *  \param[in] nRows desired number of rows
    *  \param[in] nCols desired number of columns
    */
-  void checkWeightingTableSize(int nRows, int nCols);
+  void checkWeightingTableSize(int nTable, int nRows, int nCols);
 
 };
 
@@ -297,9 +300,15 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
 : ParticleFilter<RobotProcessModel, MeasurementModel, 
 		 GaussianMixture< typename MeasurementModel::TLandmark > >(n)
 {
-
+  nThreads_= omp_get_max_threads();
+  
   lmkModelPtr_ = new LmkProcessModel;
-  kfPtr_ = new KalmanFilter(lmkModelPtr_, this->getMeasurementModel());
+  kfs_ = new KalmanFilter[nThreads_];
+  KalmanFilter kf(lmkModelPtr_ , this->getMeasurementModel());
+  for(int i = 0 ; i < nThreads_ ; i++){
+    kfs_[i] = kf;
+  }
+
   
   for(int i = 0; i < n; i++){
     // printf("Creating map structure for particle %d\n", i);
@@ -317,14 +326,24 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   config.minUpdatesBeforeResample_ = 1;
   
   nUpdatesSinceResample = 0;
-
-  weightingTableNRows_ = 100; 
-  weightingTableNCols_ = 100;
-  weightingTable_ = new double*[weightingTableNRows_];
-  newLandmarkTable_ = new TLandmark**[weightingTableNRows_];
-  for(int n = 0; n < weightingTableNRows_; n++){
-    weightingTable_[n] = new double[weightingTableNCols_];
-    newLandmarkTable_[n] = new TLandmark*[weightingTableNCols_];
+  
+  weightingTableNRows_ = new int[nThreads_];
+  weightingTableNCols_ = new int[nThreads_];
+  for(int i = 0 ; i < nThreads_ ; i++){
+    weightingTableNRows_[i] = 100; 
+    weightingTableNCols_[i] = 100;
+  }
+  
+  weightingTables_ = new double**[nThreads_];
+  newLandmarkTables_ = new TLandmark***[nThreads_];
+  for(int i = 0 ; i < nThreads_ ; i++){
+  
+    weightingTables_[i] = new double*[weightingTableNRows_[i]];
+    newLandmarkTables_[i] = new TLandmark**[weightingTableNRows_[i]];
+    for(int n = 0; n < weightingTableNRows_[i]; n++){
+      weightingTables_[i][n] = new double[weightingTableNCols_[i]];
+      newLandmarkTables_[i][n] = new TLandmark*[weightingTableNCols_[i]];
+    }
   }
 }
 
@@ -334,13 +353,16 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   for(int i = 0; i < this->nParticles_; i++){
     this->particleSet_[i]->deleteData();
   }
-  delete kfPtr_;
+  
   delete lmkModelPtr_;
-
-  for(int n = 0; n < weightingTableNRows_; n++ ){
-    delete[] weightingTable_[n];
+  for(int i = 0 ; i < nThreads_ ; i++){
+    for(int n = 0; n < weightingTableNRows_[i]; n++ ){
+      delete[] weightingTables_[i][n];
+    }
+    delete[] weightingTables_[i];
   }
-  delete[] weightingTable_;
+  delete[] kfs_;
+  delete[] weightingTables_;
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
@@ -377,6 +399,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z){
 
+  
   nUpdatesSinceResample++;
 
   this->setMeasurements( Z ); // Z gets cleared after this call, measurements now stored in this->measurements_
@@ -384,33 +407,46 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     return;
 
   ////////// Map Update //////////
+  
+  const unsigned int startIdx = 0;
+  const unsigned int stopIdx = this->nParticles_;
+  const unsigned int nZ = this->measurements_.size();
+  
   timer_mapUpdate_.resume();
-  updateMap();
-  timer_mapUpdate_.stop();
+  if(nThreads_>1 && !(kfs_[0]==kfs_[1])){
+    for(int j=1;j<nThreads_;j++){
+      kfs_[j]=kfs_[0];
+    }
+  }
+  #pragma omp parallel for
+  for(unsigned int i = startIdx; i < stopIdx; i++){
+  
+  
+
+    updateMap(i);
+  
 
   ////////// Particle Weighintg //////////
-  timer_particleWeighting_.resume();
-  if(!config.useClusterProcess_){
-    importanceWeighting();
-  }
-  timer_particleWeighting_.stop();
+  
+    if(!config.useClusterProcess_){
+      importanceWeighting(i);
+    }
+  
 
   //////////// Merge and prune //////////
-  int maxMapSize = -1;
-  int i_maxMapSize = -1;
-  timer_mapMerge_.resume();
-  for( int i = 0; i < this->nParticles_; i++){ 
+    int maxMapSize = -1;
+    int i_maxMapSize = -1;
+
 
     this->particleSet_[i]->getData()->merge( config.gaussianMergingThreshold_, 
 					     config.gaussianMergingCovarianceInflationFactor_);   
-  } 
-  timer_mapMerge_.stop();
   
-  timer_mapPrune_.resume();
-  for( int i = 0; i < this->nParticles_; i++){ 
+
+
     this->particleSet_[i]->getData()->prune( config.gaussianPruningThreshold_ );    
+
   }
-  timer_mapPrune_.stop();
+  timer_mapUpdate_.stop();
 
   //////////// Particle resampling //////////
   timer_particleResample_.resume();
@@ -429,23 +465,21 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::updateMap(){
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::updateMap(const int particleIdx){
 
-  const unsigned int startIdx = 0;
-  const unsigned int stopIdx = this->nParticles_;
-  const unsigned int nZ = this->measurements_.size();
-
-  for(unsigned int i = startIdx; i < stopIdx; i++){    
-
-    //---------- 1. setup / book-keeping ----------
+    const unsigned int i = particleIdx;
+    const unsigned int nZ = this->measurements_.size();
     
+    int threadnum = omp_get_thread_num();
+    //---------- 1. setup / book-keeping ----------
+   
     const unsigned int nM = this->particleSet_[i]->getData()->getGaussianCount();
     unused_measurements_[i].clear();    
     if(nM == 0){ // No existing landmark case -> flag all measurements as unused and go to next particles
       for(int z = 0; z < nZ; z++){
 	unused_measurements_[i].push_back( z );
       }
-      continue; // goto next particle
+      return; // goto next particle
     }
     double Pd[nM];
     int landmarkCloseToSensingLimit[nM];
@@ -460,12 +494,12 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     }
 
     // nM x nZ table for Gaussian weighting
-    checkWeightingTableSize(nM, nZ);
+    checkWeightingTableSize(threadnum, nM, nZ);
 
 
     //----------  2. Kalman Filter map update ----------
 
-    timer_mapUpdate_kf_.resume();
+    //timer_mapUpdate_kf_.resume();
     const TPose *pose = this->particleSet_[i]->getPose();
     threshold_mahalanobisDistance2_mapUpdate_ = config.newGaussianCreateInnovMDThreshold_ * config.newGaussianCreateInnovMDThreshold_;
 
@@ -493,24 +527,24 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	// RUN KF, create new landmark for likely updates but do not add to map_[i] yet
 	// because we cannot determine actual weight until the entire weighting table is
 	// filled in
-	kfPtr_->correct(*pose, this->measurements_, *lm, lmNew, &innovationLikelihood, &innovationMahalanobisDist2);
+	kfs_[threadnum].correct(*pose, this->measurements_, *lm, lmNew, &innovationLikelihood, &innovationMahalanobisDist2);
 	
 	for(int z = 0; z < nZ; z++){
 
 	  if ( innovationLikelihood[z] == 0 || innovationMahalanobisDist2[z] > threshold_mahalanobisDistance2_mapUpdate_ ){
-	    newLandmarkTable_[m][z] = NULL;
-	    weightingTable_[m][z] = 0;
+	    newLandmarkTables_[threadnum][m][z] = NULL;
+	    weightingTables_[threadnum][m][z] = 0;
 	  }else{
-	    newLandmarkTable_[m][z] = new TLandmark( lmNew[z] );
-	    weightingTable_[m][z] = Pd_times_w_km * innovationLikelihood[z];
+	    newLandmarkTables_[threadnum][m][z] = new TLandmark( lmNew[z] );
+	    weightingTables_[threadnum][m][z] = Pd_times_w_km * innovationLikelihood[z];
 	  }	
 
 	} // z forloop end
 
       }else{ // Pd = 0
 	for(int z = 0; z < nZ; z++){
-	  newLandmarkTable_[m][z] = NULL;
-	  weightingTable_[m][z] = 0;
+	  newLandmarkTables_[threadnum][m][z] = NULL;
+	  weightingTables_[threadnum][m][z] = 0;
 	}
       }
 
@@ -522,7 +556,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       double clutter = this->pMeasurementModel_->clutterIntensity( this->measurements_[z], nZ );
       double sum = clutter;
       for(unsigned int m = 0; m < nM; m++){
-	sum += weightingTable_[m][z];
+	sum += weightingTables_[threadnum][m][z];
       }
 
       if(config.useClusterProcess_){
@@ -530,24 +564,23 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       }
 
       for(unsigned int m = 0; m < nM; m++){
-	weightingTable_[m][z] = weightingTable_[m][z] / sum;
+	weightingTables_[threadnum][m][z] = weightingTables_[threadnum][m][z] / sum;
       }
     }
-    
     if(config.useClusterProcess_){
       double prev_particle_i_weight = this->particleSet_[i]->getWeight();
       this->particleSet_[i]->setWeight( exp(w_km_sum) * likelihoodProd);
     }
 
-    timer_mapUpdate_kf_.stop();
+    //timer_mapUpdate_kf_.stop();
 
     // ---------- 3. Add new Gaussians to map  ----------
     // New Gaussians will have indices >= nM 
     for(int m = 0; m < nM; m++){
       for(int z = 0; z < nZ; z++){
-	if(newLandmarkTable_[m][z] != NULL && weightingTable_[m][z] > 0){
-	  this->particleSet_[i]->getData()->addGaussian( newLandmarkTable_[m][z],  weightingTable_[m][z]);  
-	  newLandmarkTable_[m][z] = NULL;
+	if(newLandmarkTables_[threadnum][m][z] != NULL && weightingTables_[threadnum][m][z] > 0){
+	  this->particleSet_[i]->getData()->addGaussian( newLandmarkTables_[threadnum][m][z],  weightingTables_[threadnum][m][z]);  
+	  newLandmarkTables_[threadnum][m][z] = NULL;
 	}
       }
     }
@@ -562,7 +595,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       if (landmarkCloseToSensingLimit[m] == 1 && w_km > config.birthGaussianWeight_){
 	double weight_sum_m = 0;
 	for(int z = 0; z < nZ; z++){
-	  weight_sum_m += weightingTable_[m][z];
+	  weight_sum_m += weightingTables_[threadnum][m][z];
 	}
 	double delta_w = Pd[m] * w_km - weight_sum_m;
 	if( delta_w > 0 ){
@@ -580,7 +613,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     for(int z = 0; z < nZ; z++){
       bool is_measurement_used = false;
       for(int m = 0; m < nM; m++){
-	if (weightingTable_[m][z] != 0){
+	if (weightingTables_[threadnum][m][z] != 0){
 	  is_measurement_used = true;
 	  break;
 	}
@@ -589,16 +622,17 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	unused_measurements_[i].push_back( z );
     }
 
-  }
+
+  
 
 }
 
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::importanceWeighting(){
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::importanceWeighting(const int particleIdx){
 
-  for(int i = 0; i < this->nParticles_; i++){
-
+  
+    int i = particleIdx;
     TPose x;
     this->particleSet_[i]->getPose( x );
 
@@ -611,7 +645,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     evalPointPd.reserve(nEvalPoints);
     if( nEvalPoints == 0 ){
       this->particleSet_[i]->setWeight( std::numeric_limits<double>::denorm_min() );
-      continue;
+      return;
     }
     this->particleSet_[i]->getData()->sortByWeight(); // sort by weight so that we can pick off the top nEvalPoints Gaussians
     for(int m = 0; m < nM; m++){
@@ -682,7 +716,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     this->particleSet_[i]->setWeight( overall_weight * prev_weight );
     //printf("Particle %d overall weight = %f\n\n", i, overall_weight);
 
-  }
+  
 
 }
 
@@ -1000,55 +1034,64 @@ setParticlePose(int i, TPose &p){
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 KalmanFilter* RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::getKalmanFilter(){
-  return kfPtr_;
+  return kfs_;
 }
 
 
+
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::checkWeightingTableSize(int nRows, int nCols){
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::checkWeightingTableSize( int nTable, int nRows, int nCols){
 
   nRows *= 1.2; // expand number of rows by a factor of 1.2
   nCols *= 1.2; // expand number of cols by a factor of 1.2
-  if( weightingTableNRows_ < nRows ){ // Row and Col need to increase
-    if( weightingTableNCols_ < nCols ){
-      for(int m = 0; m < weightingTableNRows_; m++ ){
-	delete[] weightingTable_[m];
-	delete[] newLandmarkTable_[m];
+  if( weightingTableNRows_[nTable] < nRows ){ // Row and Col need to increase
+    if( weightingTableNCols_[nTable] < nCols ){
+      
+      for(int m = 0; m < weightingTableNRows_[nTable]; m++ ){
+	delete[] weightingTables_[nTable][m];
+	delete[] newLandmarkTables_[nTable][m];
       }
-      delete[] weightingTable_;
-      delete[] newLandmarkTable_;
-      weightingTable_ = new double* [nRows];
-      newLandmarkTable_ = new TLandmark** [nRows];
+      delete[] weightingTables_[nTable];
+      delete[] newLandmarkTables_[nTable];
+      weightingTables_[nTable] = new double* [nRows];
+      newLandmarkTables_[nTable] = new TLandmark** [nRows];
       for(int m = 0; m < nRows ; m++ ){
-	weightingTable_[m] = new double [nCols];
-	newLandmarkTable_[m] = new TLandmark* [nCols];
+	weightingTables_[nTable][m] = new double [nCols];
+	newLandmarkTables_[nTable][m] = new TLandmark* [nCols];
       }
-      weightingTableNRows_ = nRows;
-      weightingTableNCols_ = nCols; 
+      
+      weightingTableNRows_[nTable] = nRows;
+      weightingTableNCols_[nTable] = nCols; 
+      
     }else{ // Only increase row
-      double** weightingTableOld = weightingTable_;
-      TLandmark*** newLandmarkTableOld = newLandmarkTable_;
-      weightingTable_ = new double* [nRows];
-      newLandmarkTable_ = new TLandmark** [nRows];
+      
+      double** weightingTableOld = weightingTables_[nTable];
+      TLandmark*** newLandmarkTableOld = newLandmarkTables_[nTable];
+      weightingTables_[nTable] = new double* [nRows];
+      newLandmarkTables_[nTable] = new TLandmark**[nRows];
       for(int m = 0; m < nRows ; m++ ){
-	if( m < weightingTableNRows_){
-	  weightingTable_[m] = weightingTableOld[m];
-	  newLandmarkTable_[m] = newLandmarkTableOld[m];
+	if( m < weightingTableNRows_[nTable]){
+	  weightingTables_[nTable][m] = weightingTableOld[m];
+          newLandmarkTables_[nTable][m] = newLandmarkTableOld[m];
 	}else{
-	  weightingTable_[m] = new double [weightingTableNCols_];
-	  newLandmarkTable_[m] = new TLandmark* [weightingTableNCols_];
+	  weightingTables_[nTable][m] = new double [weightingTableNCols_[nTable]];
+	  newLandmarkTables_[nTable][m] = new TLandmark* [weightingTableNCols_[nTable]];
 	}
       }
-      weightingTableNRows_ = nRows;
+      
+      weightingTableNRows_[nTable] = nRows;
+      
     }
-  }else if(weightingTableNCols_ < nCols){ // Only increase Col
-    for(int m = 0; m < weightingTableNRows_; m++ ){
-      delete[] weightingTable_[m];
-      delete[] newLandmarkTable_[m];
-      weightingTable_[m] = new double[nCols];
-      newLandmarkTable_[m] = new TLandmark* [nCols];
+      }else if(weightingTableNCols_[nTable] < nCols){ // Only increase Col
+      
+    for(int m = 0; m < weightingTableNRows_[nTable]; m++ ){
+      delete[] weightingTables_[nTable][m];
+      delete[] newLandmarkTables_[nTable][m];
+      weightingTables_[nTable][m] = new double[nCols];
+      newLandmarkTables_[nTable][m] = new TLandmark* [nCols];
     }
-    weightingTableNCols_ = nCols;
+    
+    weightingTableNCols_[nTable] = nCols;
   }
 
 }

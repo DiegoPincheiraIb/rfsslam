@@ -131,20 +131,23 @@ public:
       	       bool useAdditiveWhiteGaussianNoise = true,		       
 	       bool usePoseWhiteGaussianNoise = false,
 	       bool useLandmarkWhiteGaussianNoise = false){
+	      
+    PoseType pose_sample; /**< Sampled pose*/
+    LandmarkType landmark_sample; /**< Sampled landmark*/
     
     if(usePoseWhiteGaussianNoise){
-      pose.sample(pose_sample_);
+      pose.sample(pose_sample);
     }else{
-      pose_sample_ = pose;
+      pose_sample = pose;
     }
 
     if(useLandmarkWhiteGaussianNoise){
-      landmark.sample(landmark_sample_);
+      landmark.sample(landmark_sample);
     }else{
-      landmark_sample_ = landmark;
+      landmark_sample = landmark;
     }
 
-    bool success = this->measure( pose_sample_, landmark_sample_, measurement);
+    bool success = this->measure( pose_sample, landmark_sample, measurement);
 
     if(success && useAdditiveWhiteGaussianNoise){
       measurement.setCov(R_);
@@ -161,7 +164,7 @@ public:
    * where \f$\mathbf{z}\f$ is a measurement, \f$\mathbf{x}\f$ is the robot pose, \f$\mathbf{m}\f$ is a landmark position
    * \note This must be implemented in a derived class, and both the mean and the covariance of \f$\mathbf{m}\f$ should 
    * be calculated. This is used in the RBPHDFilter for generating birth Gaussians
-   * \param[in] pose \f$\mathbf{x}\f$, robot pose (the uncertainty is not used here because the 
+   * \param[in] pose \f$\mathbf{x}\f$, robot pose (the uncertainty is not used here because the pose_sample_
    * RBPHDFilter represents robot pose estimates with particles)
    * \param[in] measurement  \f$\mathbf{z}\f$ measurement, for which the uncertainty is \f$\mathbf{R}\f$
    * \param[out] landmark  \f$\mathbf{m}\f$, predicted landmark position with uncertainty
@@ -217,10 +220,9 @@ protected:
 
   typename MeasurementType::Mat R_; /**< additive zero-mean Gaussian noise covariance */
 
-private:
 
-  PoseType pose_sample_; /**< Sampled pose*/
-  LandmarkType landmark_sample_; /**< Sampled landmark*/
+
+
 
 };
 

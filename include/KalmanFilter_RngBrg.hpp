@@ -79,6 +79,19 @@ public:
    * \param[out] z_innov innovation
    */
   bool calculateInnovation(Vec &z_exp, Vec &z_act, Vec &z_innov);
+  
+    /**
+   * Assignment operator to make copies identical copies of the Kalman filter
+   * \param[in] rhs Kalman filter to copy (right hand side of assignment)
+   * \return Copy of rhs
+   */	
+  KalmanFilter_RngBrg& operator=(const KalmanFilter<StaticProcessModel<Landmark2d>, MeasurementModel_RngBrg>& rhs) override;
+  /**
+   * Equality check, should return false if models or configuration are different.
+   * \param[in] rhs Kalman filter to compare
+   * \return True if Kalman filters are equal
+   */	  
+  bool operator==(const KalmanFilter<StaticProcessModel<Landmark2d>, MeasurementModel_RngBrg>& rhs) override;
 
 };
 

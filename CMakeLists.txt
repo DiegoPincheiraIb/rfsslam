@@ -19,8 +19,8 @@ SET(CMAKE_C_COMPILER "gcc")
 SET(CMAKE_CXX_COMPILER "c++")
 
 # Disable of edit the following line according to your processor's support for SSE
-# For X86-64 architecture, SSE2 is generally enabled by default
-SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-march=native")
+# For X86-64 architecture, SSE2 is generally enabled by default   
+SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-march=native -fopenmp")
 
 #FILE(MAKE_DIRECTORY "bin")
 #FILE(MAKE_DIRECTORY "lib")
@@ -33,7 +33,7 @@ set(Boost_USE_STATIC_RUNTIME ON)
 MESSAGE(${Boost_LIBRARIES})
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-FIND_PACKAGE(Eigen 3.0.0 REQUIRED)
+FIND_PACKAGE(Eigen  REQUIRED)
 
 # Change the following include directories depending on where gtest is installed
 # If using Ubuntu apt-get to install, go to /usr/src/gtest,
@@ -79,6 +79,7 @@ ADD_LIBRARY(rfsslam
   src/PermutationLexicographic.cpp
   )
 
+
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dSim config++ ${Boost_LIBRARIES} rfsslam)
 
@@ -88,6 +89,7 @@ TARGET_LINK_LIBRARIES(fastslam2dSim config++ ${Boost_LIBRARIES} rfsslam)
 #ADD_EXECUTABLE(unitTest test/test.cpp src/Measurement.cpp src/Pose.cpp)
 #TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread TimeStamp MeasurementModel ProcessModel LinearAssignment)
 #ADD_TEST(unitTest bin/unitTest)
+
 
 ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp src/Pose.cpp)
 TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} rfsslam)

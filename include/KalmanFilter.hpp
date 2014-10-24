@@ -150,6 +150,18 @@ public:
   virtual bool calculateInnovation(::Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_exp, 
 				   ::Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_act,
 				   ::Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_innov);
+  /**
+   * Assignment operator to make copies identical copies of the Kalman filter
+   * \param[in] rhs Kalman filter to copy (right hand side of assignment)
+   * \return Copy of rhs
+   */	
+  virtual KalmanFilter& operator=(const KalmanFilter& rhs);
+  /**
+   * Equality check, should return false if models or configuration are different.
+   * \param[in] rhs Kalman filter to compare
+   * \return True if Kalman filters are equal
+   */	  
+  virtual bool operator==(const KalmanFilter& rhs);
 
 protected:
 
@@ -161,7 +173,7 @@ protected:
 };
 
 //********** Implementation of the standard Kalman Filter  **********/
-// Felipe Inostroza 2013, Keith Leung 2014
+// Felipe Inostroza 2014, Keith Leung 2014
 
 template <class ProcessModelType, class MeasurementModelType> 
 KalmanFilter<ProcessModelType, MeasurementModelType>::
@@ -170,6 +182,22 @@ KalmanFilter()
   pMeasurementModel_ = NULL;
   pProcessModel_ = NULL;
   I.setIdentity();
+}
+
+template <class ProcessModelType, class MeasurementModelType> 
+KalmanFilter<ProcessModelType, MeasurementModelType>& KalmanFilter<ProcessModelType, MeasurementModelType>::
+operator=(const KalmanFilter<ProcessModelType, MeasurementModelType>& rhs) 
+{
+  pMeasurementModel_ = rhs.pMeasurementModel_;
+  pProcessModel_ = rhs.pProcessModel_;
+  I.setIdentity();
+}
+
+template <class ProcessModelType, class MeasurementModelType> 
+bool KalmanFilter<ProcessModelType, MeasurementModelType>::
+operator==(const KalmanFilter<ProcessModelType, MeasurementModelType>& rhs) 
+{
+  return pMeasurementModel_ == rhs.pMeasurementModel_ &&  pProcessModel_ == rhs.pProcessModel_;
 }
 
 template <class ProcessModelType, class MeasurementModelType> 

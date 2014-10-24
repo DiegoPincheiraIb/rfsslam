@@ -49,6 +49,21 @@ KalmanFilter_RngBrg::KalmanFilter_RngBrg(StaticProcessModel<Landmark2d> *pProces
   config.bearingInnovationThreshold_ = -1;
 }
 
+KalmanFilter_RngBrg& KalmanFilter_RngBrg::operator=(const KalmanFilter<StaticProcessModel<Landmark2d>, MeasurementModel_RngBrg>& rhs){
+  const KalmanFilter_RngBrg& rhs_casted = dynamic_cast<const KalmanFilter_RngBrg&>(rhs);
+  pMeasurementModel_ = rhs_casted.pMeasurementModel_;
+  pProcessModel_ = rhs_casted.pProcessModel_;
+  config.rangeInnovationThreshold_ = rhs_casted.config.rangeInnovationThreshold_;
+  config.bearingInnovationThreshold_ = rhs_casted.config.bearingInnovationThreshold_;
+  I.setIdentity();
+}
+bool KalmanFilter_RngBrg::operator==(const KalmanFilter<StaticProcessModel<Landmark2d>, MeasurementModel_RngBrg>& rhs){
+  const KalmanFilter_RngBrg& rhs_casted = dynamic_cast<const KalmanFilter_RngBrg&>(rhs);
+  return pMeasurementModel_ == rhs_casted.pMeasurementModel_ &&  pProcessModel_ == rhs_casted.pProcessModel_ && 
+  config.rangeInnovationThreshold_ == rhs_casted.config.rangeInnovationThreshold_ && 
+  config.bearingInnovationThreshold_ == rhs_casted.config.bearingInnovationThreshold_;
+
+}
 bool KalmanFilter_RngBrg::calculateInnovation(Vec &z_exp, Vec &z_act, Vec &z_innov){
     
   z_innov = z_act - z_exp;
