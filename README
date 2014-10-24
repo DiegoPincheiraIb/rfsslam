@@ -61,6 +61,9 @@ Prerequisite Libraries:
   Boost (version 1.53 minimum) with components:
     math_c99, timer, system, thread, filesystem, graph 
   Eigen (version 3.0.0 minimum)
+  gtest (If using Ubuntu apt-get to install, go to /usr/src/gtest,
+         run cmake . and make  . After compiling ,move 
+	 libgtest_main.a and libgtest.a to /usr/lib)
 
 Optional Libraries:
   libconfig (for the 2-D SLAM simulators)
