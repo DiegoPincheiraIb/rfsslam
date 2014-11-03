@@ -17,6 +17,10 @@ when any related work is published. Any feedback will be appreciated.
 
 ### Installation ###
 
+#### Source ####
+
+Obtain from git repository: `https://kykleung@bitbucket.org/kykleung/phdfilter.git`
+
 #### C++ Library Dependencies ####
 
 * Boost (version 1.53 minimum) with components:
