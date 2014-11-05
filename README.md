@@ -42,8 +42,6 @@ Obtain from git repository: `https://kykleung@bitbucket.org/kykleung/phdfilter.g
     5. `sudo mv libgtest_main.a /usr/lib/`
     6. `sudo mv libgtest.a /usr/lib/`
 
-* libconfig (optional, for the 2-D SLAM simulators )
-
 #### Other Dependencies ####
 
 For visualizing 2-D SLAM results

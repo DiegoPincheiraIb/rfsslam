@@ -80,10 +80,10 @@ ADD_LIBRARY(rfsslam
   )
 
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)
-TARGET_LINK_LIBRARIES(rbphdslam2dSim config++ ${Boost_LIBRARIES} rfsslam)
+TARGET_LINK_LIBRARIES(rbphdslam2dSim ${Boost_LIBRARIES} rfsslam)
 
 ADD_EXECUTABLE(fastslam2dSim src/fastslam2dSim.cpp)
-TARGET_LINK_LIBRARIES(fastslam2dSim config++ ${Boost_LIBRARIES} rfsslam)
+TARGET_LINK_LIBRARIES(fastslam2dSim ${Boost_LIBRARIES} rfsslam)
 
 #ADD_EXECUTABLE(unitTest test/test.cpp src/Measurement.cpp src/Pose.cpp)
 #TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread TimeStamp MeasurementModel ProcessModel LinearAssignment)
