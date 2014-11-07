@@ -170,6 +170,8 @@ public:
     t_ = rhs.t_;
 
     gen_ = NULL;
+
+    return *this;
   }
 
   /** Default destructor */

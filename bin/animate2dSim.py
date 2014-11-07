@@ -36,7 +36,7 @@ import os.path
 import numpy as np
 
 import matplotlib
-#matplotlib.use("AGG");
+matplotlib.use("TKAgg");
 #print matplotlib.__version__
 
 import matplotlib.pyplot as plt

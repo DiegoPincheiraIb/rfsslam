@@ -123,7 +123,7 @@ int main(int argc, char *argv[]){
   set2.push_back(Pos2d(247, 578));
   set2.push_back(Pos2d(724, 541));
   set2.push_back(Pos2d(665, 739));
-  /* */
+  */
 
 
   /* Set 3 
@@ -131,7 +131,7 @@ int main(int argc, char *argv[]){
 
   set2.push_back(Pos2d(300, 499));
   set2.push_back(Pos2d(300, 501));
-  /* */
+  */
 
   /* Set 4 
   set1.push_back(Pos2d(300, 500));
@@ -140,7 +140,7 @@ int main(int argc, char *argv[]){
   set2.push_back(Pos2d(300, 499));
   set2.push_back(Pos2d(300, 501));
   set2.push_back(Pos2d(700, 499));
-  /* */
+  */
 
   /* Set 5 
   set1.push_back(Pos2d(300, 500));
@@ -150,7 +150,7 @@ int main(int argc, char *argv[]){
   set2.push_back(Pos2d(300, 501));
   set2.push_back(Pos2d(700, 499));
   set2.push_back(Pos2d(700, 501));
-  /* */
+  */
 
   rfs::OSPA<Pos2d> ospa(set1, set2, cutoff, order);
   ospa.calcError(true);

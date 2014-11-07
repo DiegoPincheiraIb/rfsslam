@@ -1,4 +1,4 @@
-# Keith Leung 2013
+	# Keith Leung 2013
 
 # Note: to change compiler, use...
 # cmake -D CMAKE_C_COMPILER=gcc CMAKE_CXX_COMPILER=c++ .
@@ -45,7 +45,8 @@ find_package(GTest REQUIRED)
 
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 MESSAGE("CMAKE_RUNTIME_OUTPUT_DIRECTORY = " ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-
+SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./lib)
+MESSAGE("CMAKE_LIBRARY_OUTPUT_DIRECTORY = " ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ./lib)
 MESSAGE("CMAKE_ARCHIVE_OUTPUT_DIRECTORY = " ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 
@@ -100,23 +101,38 @@ TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})
 
 # Examples
 
-ADD_EXECUTABLE(examples/linearAssignment_CostMatrixPartitioning src/examples/linearAssignment_CostMatrixPartitioning.cpp)
-TARGET_LINK_LIBRARIES(examples/linearAssignment_CostMatrixPartitioning ${Boost_LIBRARIES} rfsslam)
+ADD_EXECUTABLE(linearAssignment_CostMatrixPartitioning src/examples/linearAssignment_CostMatrixPartitioning.cpp)
+TARGET_LINK_LIBRARIES(linearAssignment_CostMatrixPartitioning
+${Boost_LIBRARIES} rfsslam)
 
-ADD_EXECUTABLE(examples/linearAssignment_LexicographicOrdering src/examples/linearAssignment_LexicographicOrdering.cpp)
-TARGET_LINK_LIBRARIES(examples/linearAssignment_LexicographicOrdering ${Boost_LIBRARIES} rfsslam)
+ADD_EXECUTABLE(linearAssignment_LexicographicOrdering src/examples/linearAssignment_LexicographicOrdering.cpp)
+TARGET_LINK_LIBRARIES(linearAssignment_LexicographicOrdering ${Boost_LIBRARIES} rfsslam)
 
-ADD_EXECUTABLE(examples/linearAssignment_MurtyAlgorithm src/examples/linearAssignment_MurtyAlgorithm.cpp)
-TARGET_LINK_LIBRARIES(examples/linearAssignment_MurtyAlgorithm ${Boost_LIBRARIES} rfsslam)
+ADD_EXECUTABLE(linearAssignment_MurtyAlgorithm src/examples/linearAssignment_MurtyAlgorithm.cpp)
+TARGET_LINK_LIBRARIES(linearAssignment_MurtyAlgorithm ${Boost_LIBRARIES} rfsslam)
 
-ADD_EXECUTABLE(examples/ospaError src/examples/ospaError.cpp)
-TARGET_LINK_LIBRARIES(examples/ospaError ${Boost_LIBRARIES} rfsslam)
+ADD_EXECUTABLE(ospaError src/examples/ospaError.cpp)
+TARGET_LINK_LIBRARIES(ospaError ${Boost_LIBRARIES} rfsslam)
 
-ADD_EXECUTABLE(test/cpu_timer_test src/tests/cpu_timer_info.cpp)
-TARGET_LINK_LIBRARIES(test/cpu_timer_test ${Boost_LIBRARIES})
+ADD_EXECUTABLE(cpu_timer_test src/tests/cpu_timer_info.cpp)
+TARGET_LINK_LIBRARIES(cpu_timer_test ${Boost_LIBRARIES})
 
-ADD_EXECUTABLE(test/jcbb_test src/tests/jcbb_test.cpp)
-TARGET_LINK_LIBRARIES(test/jcbb_test ${Boost_LIBRARIES} rfsslam)
+ADD_EXECUTABLE(jcbb_test src/tests/jcbb_test.cpp)
+TARGET_LINK_LIBRARIES(jcbb_test ${Boost_LIBRARIES} rfsslam)
+
+set_target_properties(linearAssignment_CostMatrixPartitioning
+	linearAssignment_LexicographicOrdering
+	linearAssignment_MurtyAlgorithm 
+	ospaError
+	PROPERTIES
+	RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/examples"
+)
+
+set_target_properties(cpu_timer_test jcbb_test
+	PROPERTIES
+	RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tests"
+)
+
 
 # Installation
 

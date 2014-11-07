@@ -14,6 +14,7 @@ when any related work is published. Any feedback will be appreciated.
 * License: New BSD
 * Version: 1.1.0
 * Compiles with gcc on Linux (Ubuntu 13.04, 13.10, 14.04)
+* Compiles with llvm on Mac (OSX 10.10)
 
 ### Installation ###
 
@@ -112,6 +113,8 @@ Set `saveMoive=True` to generate a mp4 file.
 * Latest
     - Implementation of joint compatibility branch and bound (JCBB) 
       for data association in vector-based methods
+    - Removed dependency on the libconfig library for simulation configuration
+    - OSX compatible
 
 ### Future Work ###
 
