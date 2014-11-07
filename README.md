@@ -115,7 +115,6 @@ Set `saveMoive=True` to generate a mp4 file.
 
 ### Future Work ###
 
-- Remove dependency on libconfig, and switch to boost::program_option
 - Multi-threaded versions of SLAM algorithms
 - Cardinalized Probability Hypothesis Density (CPHD) filter
 - Multi-Bernoulli filter
