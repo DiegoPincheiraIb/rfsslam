@@ -222,7 +222,7 @@ private:
    * mapUpdate() to be a little more efficient. Therefore, this function is 
    * not called at all. However, we still need to overwrite the virtual function.
    */
-  void importanceWeighting(){}
+  void importanceWeighting(const uint idx){};
 
 };
 
