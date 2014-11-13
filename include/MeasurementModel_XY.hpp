@@ -29,8 +29,8 @@
  */
 
 
-#ifndef MEASUREMENTMODEL_RNGBRG_HPP
-#define MEASUREMENTMODEL_RNGBRG_HPP
+#ifndef MEASUREMENTMODEL_XY_HPP
+#define MEASUREMENTMODEL_XY_HPP
 
 #include "MeasurementModel.hpp"
 
@@ -39,29 +39,29 @@ namespace rfs{
 ////////// 2d Range-Bearing Measurement Model //////////
 
 /** 
- * \class MeasurementModel_RngBrg
+ * \class MeasurementModel_XY
  * A range and bearing measurement model for 2d point landmarks, with Gaussian noise.
  * \f[ \mathbf{z} = 
- * \begin{bmatrix} r \\ b \end{bmatrix} =
+ * \begin{bmatrix} z_x \\ z_y \end{bmatrix} =
  * \mathbf{h}(\mathbf{x}, \mathbf{m}) + \mathbf{e} = 
  * \mathbf{h}\left(\begin{bmatrix}x \\ y \\ \theta\end{bmatrix}, \begin{bmatrix}x_m \\ y_m\end{bmatrix}\right) + \mathbf{e} = 
- * \begin{bmatrix} \sqrt{(x_m - x)^2+(y_m - y)^2}) \\ \arctan{\left(\frac{y_m - y}{x_m - x}\right)} - \theta \end{bmatrix} + \mathbf{e} , \quad \mathbf{e} \sim (\mathbf{0}, \mathbf{R}) \f]
+ * \begin{bmatrix} \cos\theta (x_m - x) + \sin\theta (y_m - y) \\ -\sin\theta (x_m - x) + \cos\theta (y_m - y) \end{bmatrix} + \mathbf{e} , \quad \mathbf{e} \sim (\mathbf{0}, \mathbf{R}) \f]
  * where
- * \f$\mathbf{z} = (r, b)\f$ is the range and bearing measurement,
+ * \f$\mathbf{z} = (z_x, z_y)\f$ is the x-y measurement relative to the robot,
  * \f$\mathbf{x} = (x, y, \theta)\f$ is the robot pose,
  * \f$\mathbf{m} = (x_m, y_m)\f$ is the landmark position, and
  * \f$\mathbf{e}\f$ is the noise with covariance \f$\mathbf{R}\f$
- * \brief A 2d range-bearing measurement model
+ * \brief A 2d x-y measurement model
  * \author Felipe Inostroza, Keith Leung 
  */
                                                                
-class MeasurementModel_RngBrg : public MeasurementModel <Pose2d, Landmark2d, Measurement2d>{
+class MeasurementModel_XY : public MeasurementModel <Pose2d, Landmark2d, Measurement2d>{
 
 public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-  /** \brief Configuration for this 2d MeasurementModel_RngBrg */
+  /** \brief Configuration for this 2d MeasurementModel_XY */
   struct Config{
     double probabilityOfDetection_; /**< probability of detection, \f$ P_D \f$ */
     double uniformClutterIntensity_; /**< clutter intensity, \f$ c \f$, assumed to be constant over the sensing area */
@@ -71,25 +71,25 @@ public:
   }config;
 
  /** Default constructor */
-  MeasurementModel_RngBrg();
+  MeasurementModel_XY();
 
  /**
   * Constructor that sets the uncertainty (covariance) of the measurement model, \f$\mathbf{R}\f$
   * \param covZ measurement covariance, \f$\mathbf{R}\f$
   */
-  MeasurementModel_RngBrg(::Eigen::Matrix2d &covZ);
+  MeasurementModel_XY(::Eigen::Matrix2d &covZ);
 
  /**
   * Constructor that sets the uncertainty (covariance) of the measurement model, 
-  * \f[\mathbf{R} = \begin{bmatrix} \sigma_r^2 & 0 \\ 0 & \sigma_b^2 \end{bmatrix}\f]
+  * \f[\mathbf{R} = \begin{bmatrix} \sigma_{z_x}^2 & 0 \\ 0 & \sigma_{z_y}^2 \end{bmatrix}\f]
   * range and bearing are assumed to be uncorrelated
-  * \param Sr Range variance \f$\sigma_r^2\f$
-  * \param Sb Bearing variance \f$\sigma_b^2\f$
+  * \param Sx x variance \f$\sigma_{z_x}^2\f$
+  * \param Sy y variance \f$\sigma_{z_y}^2\f$
   */
-  MeasurementModel_RngBrg(double Sr, double Sb);
+  MeasurementModel_XY(double Sx, double Sy);
 
  /** Default destructor */
-  ~MeasurementModel_RngBrg();
+  ~MeasurementModel_XY();
 
   /** 
    * Obtain a measurement from a given robot pose and landmark position
@@ -114,8 +114,7 @@ public:
   /** 
    * \f[ \mathbf{m} = \mathbf{h}^{-1}(\mathbf{x}, \mathbf{z} )\f] 
    * where \f$\mathbf{z}\f$ is a measurement, \f$\mathbf{x}\f$ is the robot pose, \f$\mathbf{m}\f$ is a landmark position
-   * \param[in] pose \f$\mathbf{x}\f$, robot pose (the uncertainty is not used here because the 
-   * RBPHDFilter represents robot pose estimates with particles)
+   * \param[in] pose \f$\mathbf{x}\f$, robot pose
    * \param[in] measurement  \f$\mathbf{z}\f$ measurement, for which the uncertainty is \f$\mathbf{R}\f$
    * \param[out] landmark  \f$\mathbf{m}\f$, predicted landmark position with uncertainty
    */

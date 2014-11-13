@@ -253,8 +253,9 @@ private:
 
   /** 
    * Importance weighting. Overrides the abstract function in ParticleFilter
+   * \param[in] idx particle index
    */
-  void importanceWeighting(const int particleIdx);
+  void importanceWeighting(const uint idx);
 
   /**
    * Random Finite Set measurement likelihood evaluation
@@ -420,29 +421,17 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   }
   #pragma omp parallel for
   for(unsigned int i = startIdx; i < stopIdx; i++){
-  
-  
-
+ 
     updateMap(i);
   
-
-  ////////// Particle Weighintg //////////
-  
+    ////////// Particle Weighintg ////////// 
     if(!config.useClusterProcess_){
       importanceWeighting(i);
     }
-  
 
-  //////////// Merge and prune //////////
-    int maxMapSize = -1;
-    int i_maxMapSize = -1;
-
-
+    //////////// Merge and prune //////////
     this->particleSet_[i]->getData()->merge( config.gaussianMergingThreshold_, 
 					     config.gaussianMergingCovarianceInflationFactor_);   
-  
-
-
     this->particleSet_[i]->getData()->prune( config.gaussianPruningThreshold_ );    
 
   }
@@ -629,30 +618,30 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::importanceWeighting(const int particleIdx){
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::importanceWeighting(const uint idx){
 
   
-    int i = particleIdx;
+    const uint particleIdx = idx;
     TPose x;
-    this->particleSet_[i]->getPose( x );
+    this->particleSet_[particleIdx]->getPose( x );
 
     // 1. select evaluation points from highest-weighted Gaussians after update, that are within sensor FOV
-    const unsigned int nM = this->particleSet_[i]->getData()->getGaussianCount();
+    const unsigned int nM = this->particleSet_[particleIdx]->getData()->getGaussianCount();
     int nEvalPoints = config.importanceWeightingEvalPointCount_ > nM ? nM : config.importanceWeightingEvalPointCount_ ;
     std::vector<unsigned int> evalPointIdx;
     std::vector<double> evalPointPd;
     evalPointIdx.reserve(nEvalPoints);
     evalPointPd.reserve(nEvalPoints);
     if( nEvalPoints == 0 ){
-      this->particleSet_[i]->setWeight( std::numeric_limits<double>::denorm_min() );
+      this->particleSet_[particleIdx]->setWeight( std::numeric_limits<double>::denorm_min() );
       return;
     }
-    this->particleSet_[i]->getData()->sortByWeight(); // sort by weight so that we can pick off the top nEvalPoints Gaussians
+    this->particleSet_[particleIdx]->getData()->sortByWeight(); // sort by weight so that we can pick off the top nEvalPoints Gaussians
     for(int m = 0; m < nM; m++){
       TLandmark* plm_temp;
       double w, w_prev;
       bool closeToSensingLim;
-      this->particleSet_[i]->getData()->getGaussian(m, plm_temp, w, w_prev);
+      this->particleSet_[particleIdx]->getData()->getGaussian(m, plm_temp, w, w_prev);
       if(w < config.importanceWeightingEvalPointGuassianWeight_)
 	break;
       double Pd = this->pMeasurementModel_->probabilityOfDetection(x, *plm_temp, closeToSensingLim);
@@ -671,7 +660,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     for(int m = 0; m < nM; m++){
       TLandmark* plm_temp;
       double w, w_prev;
-      this->particleSet_[i]->getData()->getGaussian(m, plm_temp, w, w_prev); // for newly created Gaussians, w_prev = 0
+      this->particleSet_[particleIdx]->getData()->getGaussian(m, plm_temp, w, w_prev); // for newly created Gaussians, w_prev = 0
       gaussianWeightSumBeforeUpdate += w_prev;
       gaussianWeightSumAfterUpdate += w;
     }
@@ -684,7 +673,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       int p = evalPointIdx[e];
       TLandmark* lm_evalPt;
       double w_temp;
-      this->particleSet_[i]->getData()->getGaussian(p, lm_evalPt, w_temp);
+      this->particleSet_[particleIdx]->getData()->getGaussian(p, lm_evalPt, w_temp);
 
       double intensity_at_evalPt_beforeUpdate = std::numeric_limits<double>::denorm_min();
       double intensity_at_evalPt_afterUpdate = std::numeric_limits<double>::denorm_min();
@@ -692,7 +681,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       for(int m = 0; m < nM; m++){
 	TLandmark* plm;
 	double w, w_prev;
-	this->particleSet_[i]->getData()->getGaussian(m, plm, w, w_prev);
+	this->particleSet_[particleIdx]->getData()->getGaussian(m, plm, w, w_prev);
 	// New Gaussians from update will have w_prev = 0
 	// Old Gaussians (missed-detection) will not have been updated, but weights will have changed
 	double likelihood = plm->evalGaussianLikelihood( *lm_evalPt );
@@ -704,16 +693,16 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     }
 
     // 4. calculate measurement likelihood at eval points
-    // note that rfsMeasurementLikelihood uses maps_[i] which is already sorted by weight
-    double measurementLikelihood = rfsMeasurementLikelihood( i, evalPointIdx, evalPointPd );
+    // note that rfsMeasurementLikelihood uses maps_[particleIdx] which is already sorted by weight
+    double measurementLikelihood = rfsMeasurementLikelihood( particleIdx, evalPointIdx, evalPointPd );
     //printf("Particle %d measurement likelihood = %f\n", i, measurementLikelihood);
 
     // 5. calculate overall weight
     double overall_weight = measurementLikelihood * intensityProd_beforeUpdate / intensityProd_afterUpdate *
       exp( gaussianWeightSumAfterUpdate - gaussianWeightSumBeforeUpdate); 
     
-    double prev_weight = this->particleSet_[i]->getWeight();
-    this->particleSet_[i]->setWeight( overall_weight * prev_weight );
+    double prev_weight = this->particleSet_[particleIdx]->getWeight();
+    this->particleSet_[particleIdx]->setWeight( overall_weight * prev_weight );
     //printf("Particle %d overall weight = %f\n\n", i, overall_weight);
 
   

@@ -56,6 +56,12 @@ public:
   typedef PoseType TPose;
   typedef LandmarkType TLandmark;
   typedef MeasurementType TMeasurement;
+  typedef ::Eigen::Matrix<double, 
+			  MeasurementType::Vec::RowsAtCompileTime ,
+			  LandmarkType::Vec::RowsAtCompileTime> TJacobianLmk;
+  typedef ::Eigen::Matrix<double,
+			  MeasurementType::Vec::RowsAtCompileTime,
+			  PoseType::Vec::RowsAtCompileTime> TJacobianPose;
   
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -89,17 +95,24 @@ public:
    * \param[in] pose \f$\mathbf{x}\f$, robot pose from which the measurement is made
    * \param[in] landmark \f$\mathbf{m}\f$, the measured landmark
    * \param[out] measurement \f$\mathbf{x}\f$, the measurement
-   * \param[out] jacobian if not NULL, the pointed-to matrix is overwritten 
-   * by the Jacobian of the measurement model, \f$\mathbf{H}\f$, evaluated at \f$\mathbf{x}\f$ and \f$\mathbf{m}\f$
+   * \param[out] jacobian_wrt_lmk if not NULL, the pointed-to matrix is overwritten 
+   * by the Jacobian of the measurement model w.r.t. the landmark state evaluated at 
+   * \f$\mathbf{x}\f$ and \f$\mathbf{m}\f$
+   * \param[out] jacobian_wrt_pose if not NULL, the pointed-to matrix is overwritten 
+   * by the Jacobian of the measurement model w.r.t. the robot state evaluated at 
+   * \f$\mathbf{x}\f$ and \f$\mathbf{m}\f$
    * \return true if a valid measurement is produced
    */
   virtual bool measure( const PoseType &pose, 
 			const LandmarkType &landmark, 
 			MeasurementType &measurement, 
-			::Eigen::Matrix<double , 
-				      MeasurementType::Vec::RowsAtCompileTime ,
-				      LandmarkType::Vec::RowsAtCompileTime > 
-			*jacobian = NULL ) = 0;
+			::Eigen::Matrix<double, 
+					MeasurementType::Vec::RowsAtCompileTime ,
+					LandmarkType::Vec::RowsAtCompileTime> *jacobian_wrt_lmk = NULL,
+			::Eigen::Matrix<double,
+			                MeasurementType::Vec::RowsAtCompileTime,
+					PoseType::Vec::RowsAtCompileTime> *jacobian_wrt_pose = NULL 
+			) = 0;
   
   /**
    * Sample a measurement with noise parameters from the model, robot pose, and landmark position.
