@@ -277,9 +277,9 @@ correct(const TPose &pose, const TMeasurement &measurement,
   if(zLikelihood != NULL){
     innov.set(z_exp, S);
     if(mahalanobisDist2 != NULL)
-      *zLikelihood = innov.evalGaussianLikelihood( z_act, mahalanobisDist2 );   
+      *zLikelihood = innov.evalGaussianLikelihood( measurement, mahalanobisDist2 );   
     else
-      *zLikelihood = innov.evalGaussianLikelihood( z_act ); 
+      *zLikelihood = innov.evalGaussianLikelihood( measurement ); 
     if(*zLikelihood != *zLikelihood) // When likelihood is so small that it becomes NAN
       *zLikelihood = 0;  
   }
@@ -332,11 +332,11 @@ correct(const TPose &pose,
 	if(zLikelihood != NULL){
 	  innov.set(z_exp, S);
 	  if(mahalanobisDist2 != NULL){
-	    zl = innov.evalGaussianLikelihood( z_act, &md2 );
+	    zl = innov.evalGaussianLikelihood( measurement[i], &md2 );
 	    mahalanobisDist2->at(i) = md2;
 	  }
 	  else
-	    zl = innov.evalGaussianLikelihood( z_act ); 
+	    zl = innov.evalGaussianLikelihood( measurement[i] ); 
 	  if(zl != zl) // When likelihood is so small that it becomes NAN
 	    zl = 0;
 	  zLikelihood->at(i) = zl;
@@ -352,11 +352,11 @@ correct(const TPose &pose,
 
       if(zLikelihood != NULL){
 	if(mahalanobisDist2 != NULL){
-	  zl = measurement_exp.evalGaussianLikelihood( z_act, &md2 );
+	  zl = measurement_exp.evalGaussianLikelihood( measurement[i], &md2 );
 	  mahalanobisDist2->at(i) = md2;
 	}
 	else
-	  zl = measurement_exp.evalGaussianLikelihood( z_act ); 
+	  zl = measurement_exp.evalGaussianLikelihood( measurement[i] ); 
 	if(zl != zl) // When likelihood is so small that it becomes NAN
 	  zl = 0;
 	zLikelihood->at(i) = zl;
