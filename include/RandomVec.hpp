@@ -366,7 +366,7 @@ public:
    * Calculate the squared Mahalanobis distance to another random vector of the same type
    * \param[in] to the RandomVec containing the vector we are measuring to 
    */
-  double mahalanobisDist2( RandomVec<VecType, MatType> &to ){
+  double mahalanobisDist2( const RandomVec<VecType, MatType> &to ){
     if(!isValid_Sx_inv_){
       Sx_inv_ = Sx_.inverse(); 
       isValid_Sx_inv_ = true;
@@ -379,7 +379,7 @@ public:
    * Calculate the squared Mahalanobis distance to another random vector of the same type
    * \param[in] to_x the vector we are measuring to 
    */
-  double mahalanobisDist2( typename RandomVec<VecType, MatType>::Vec &to_x ){
+  double mahalanobisDist2( const typename RandomVec<VecType, MatType>::Vec &to_x ){
     if(!isValid_Sx_inv_){
       Sx_inv_ = Sx_.inverse();
       isValid_Sx_inv_ = true;
@@ -394,7 +394,7 @@ public:
    * \param[out] mDist2 if not NULL, the pointed to variable will be overwritten by the 
    * squared mahalanobis distance used to calculate the likelihood
    */ 
-  double evalGaussianLikelihood( RandomVec<VecType, MatType> &x_eval,
+  double evalGaussianLikelihood( const RandomVec<VecType, MatType> &x_eval,
 				 double* mDist2 = NULL){
     if(!isValid_Sx_det_){
       Sx_det_ = Sx_.determinant();
@@ -416,7 +416,7 @@ public:
    * \param[out] mDist2 if not NULL, the pointed to variable will be overwritten by the 
    * squared mahalanobis distance used to calculate the likelihood
    */ 
-  double evalGaussianLikelihood( typename RandomVec<VecType, MatType>::Vec &x_eval,
+  double evalGaussianLikelihood( const typename RandomVec<VecType, MatType>::Vec &x_eval,
 				 double* mDist2 = NULL){
     if(!isValid_Sx_det_){
       Sx_det_ = Sx_.determinant();
