@@ -113,7 +113,7 @@ public:
     minLogMeasurementLikelihood_ = pt.get("config.filter.weighting.minLogMeasurementLikelihood",-10.0);
 
     effNParticleThreshold_ = pt.get("config.filter.resampling.effNParticle", nParticles_);
-    minUpdatesBeforeResample_ = pt.get("config.filter.resampling.minTimsteps", 1);
+    minUpdatesBeforeResample_ = pt.get("config.filter.resampling.minTimesteps", 1);
     
     landmarkExistencePruningThreshold_ = pt.get("config.filter.prune.threshold", -5.0);
 

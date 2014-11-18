@@ -100,7 +100,7 @@ public:
     c_ = pt.get<double>("config.measurements.clutterIntensity");
     varzr_ = pt.get<double>("config.measurements.varzr");
     varzb_ = pt.get<double>("config.measurements.varzb");
-   
+
     nParticles_ = pt.get("config.filter.nParticles", 200);
 
     pNoiseInflation_ = pt.get("config.filter.predict.processNoiseInflationFactor", 1.0);
@@ -119,7 +119,7 @@ public:
       useClusterProcess_ = true;
 
     effNParticleThreshold_ = pt.get("config.filter.resampling.effNParticle", nParticles_);
-    minUpdatesBeforeResample_ = pt.get("config.filter.resampling.minTimsteps", 1);
+    minUpdatesBeforeResample_ = pt.get("config.filter.resampling.minTimesteps", 1);
     
     gaussianMergingThreshold_ = pt.get<double>("config.filter.merge.threshold");
     gaussianMergingCovarianceInflationFactor_ = pt.get("config.filter.merge.covInflationFactor", 1.0);
