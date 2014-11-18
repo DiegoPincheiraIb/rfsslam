@@ -12,7 +12,6 @@ int main(int argc, char* args[]){
   typedef MeasurementModel_XY::TMeasurement TZ;
 
   MeasurementModel_XY z_model(1,1);
-  z_model.config;
 
   Eigen::MatrixXd cov;
   unsigned int cov_dim = TPose::Vec::RowsAtCompileTime + TLandmark::Vec::RowsAtCompileTime * 5;

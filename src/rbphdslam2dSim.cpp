@@ -30,7 +30,8 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
-#include <libconfig.h++>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/xml_parser.hpp>
 #include "ProcessModel_Odometry2D.hpp"
 #include "RBPHDFilter.hpp"
 #include "KalmanFilter_RngBrg.hpp"
@@ -40,21 +41,21 @@
 using namespace rfs;
 
 /**
- * \class Simulator2d
+ * \class Simulator_RBPHDSLAM_2d
  * \brief A 2d SLAM Simulator using the RB-PHD Filter
  * \author Keith Leung
  */
-class Simulator2d{
+class Simulator_RBPHDSLAM_2d{
 
 public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-  Simulator2d(){
+  Simulator_RBPHDSLAM_2d(){
     pFilter_ = NULL;
   }
   
-  ~Simulator2d(){
+  ~Simulator_RBPHDSLAM_2d(){
     
     if(pFilter_ != NULL){
       delete pFilter_;
@@ -67,61 +68,63 @@ public:
     
     cfgFileName_ = fileName;
 
-    try{
-      cfg_.readFile( fileName );
-    }catch( libconfig::FileIOException &ex){
-      printf("\nCannot read file: %s\n\n", fileName);
-      return false;
-    }catch( libconfig::ParseException &ex){
-      const char* error = ex.getError();
-      int line = ex.getLine();
-      printf("\n%s LINE %d\n\n", error, line);
-      return false;
-    }
-    kMax_ = cfg_.lookup("timesteps");
-    dT_ = cfg_.lookup("sec_per_timestep");
+    boost::property_tree::ptree pt;
+    boost::property_tree::xml_parser::read_xml(fileName, pt);
+
+    logToFile_ = false;
+    if( pt.get("config.logging.logToFile", 0) == 1 )
+      logToFile_ = true;
+    logDirPrefix_ = pt.get<std::string>("config.logging.logDirPrefix", "./");
+
+    kMax_ = pt.get<int>("config.timesteps");
+    dT_ = pt.get<double>("config.sec_per_timestep");
     dTimeStamp_ = TimeStamp(dT_);
+
+    nSegments_ = pt.get<int>("config.trajectory.nSegments");
+    max_dx_ = pt.get<double>("config.trajectory.max_dx_per_sec");
+    max_dy_ = pt.get<double>("config.trajectory.max_dy_per_sec");
+    max_dz_ = pt.get<double>("config.trajectory.max_dz_per_sec");
+    min_dx_ = pt.get<double>("config.trajectory.min_dx_per_sec");
+    vardx_ = pt.get<double>("config.trajectory.vardx");
+    vardy_ = pt.get<double>("config.trajectory.vardy");
+    vardz_ = pt.get<double>("config.trajectory.vardz");    
+
+    nLandmarks_ = pt.get<int>("config.landmarks.nLandmarks");
+    varlmx_ = pt.get<double>("config.landmarks.varlmx");
+    varlmy_ = pt.get<double>("config.landmarks.varlmy");
+
+    rangeLimitMax_ = pt.get<double>("config.measurements.rangeLimitMax");
+    rangeLimitMin_ = pt.get<double>("config.measurements.rangeLimitMin");
+    rangeLimitBuffer_ = pt.get<double>("config.measurements.rangeLimitBuffer");
+    Pd_ = pt.get<double>("config.measurements.probDetection");
+    c_ = pt.get<double>("config.measurements.clutterIntensity");
+    varzr_ = pt.get<double>("config.measurements.varzr");
+    varzb_ = pt.get<double>("config.measurements.varzb");
+
+    nParticles_ = pt.get("config.filter.nParticles", 200);
+
+    pNoiseInflation_ = pt.get("config.filter.predict.processNoiseInflationFactor", 1.0);
+    birthGaussianWeight_ = pt.get("config.filter.predict.birthGaussianWeight", 0.01);
+
+    zNoiseInflation_ = pt.get("config.filter.update.measurementNoiseInflationFactor", 1.0);
+    innovationRangeThreshold_ = pt.get<double>("config.filter.update.KalmanFilter.innovationThreshold.range");
+    innovationBearingThreshold_ = pt.get<double>("config.filter.update.KalmanFilter.innovationThreshold.bearing");
+    newGaussianCreateInnovMDThreshold_ = pt.get<double>("config.filter.update.GaussianCreateInnovMDThreshold");
+
+    importanceWeightingEvalPointCount_ = pt.get("config.filter.weighting.nEvalPt", 15);
+    importanceWeightingEvalPointGuassianWeight_ = pt.get("config.filter.weighting.minWeight", 0.75);
+    importanceWeightingMeasurementLikelihoodMDThreshold_ = pt.get("config.filter.weighting.threshold", 3.0);
+    useClusterProcess_ = false;
+    if( pt.get("config.filter.weighting.useClusterProcess", 0) == 1 )
+      useClusterProcess_ = true;
+
+    effNParticleThreshold_ = pt.get("config.filter.resampling.effNParticle", nParticles_);
+    minUpdatesBeforeResample_ = pt.get("config.filter.resampling.minTimesteps", 1);
     
-    nSegments_ = cfg_.lookup("Trajectory.nSegments");
-    max_dx_ = cfg_.lookup("Trajectory.max_dx_per_sec");
-    max_dy_ = cfg_.lookup("Trajectory.max_dy_per_sec");
-    max_dz_ = cfg_.lookup("Trajectory.max_dz_per_sec");
-    min_dx_ = cfg_.lookup("Trajectory.min_dx_per_sec");
-    vardx_ = cfg_.lookup("Trajectory.vardx");
-    vardy_ = cfg_.lookup("Trajectory.vardy");
-    vardz_ = cfg_.lookup("Trajectory.vardz");
-
-    nLandmarks_ = cfg_.lookup("Landmarks.nLandmarks");
-    varlmx_ = cfg_.lookup("Landmarks.varlmx");
-    varlmy_ = cfg_.lookup("Landmarks.varlmy");
-
-    rangeLimitMax_ = cfg_.lookup("Measurement.rangeLimitMax");
-    rangeLimitMin_ = cfg_.lookup("Measurement.rangeLimitMin");
-    rangeLimitBuffer_ = cfg_.lookup("Measurement.rangeLimitBuffer");
-    Pd_ = cfg_.lookup("Measurement.probDetection");
-    c_ = cfg_.lookup("Measurement.clutterIntensity");
-    varzr_ = cfg_.lookup("Measurement.varzr");
-    varzb_ = cfg_.lookup("Measurement.varzb");
-
-    nParticles_ = cfg_.lookup("Filter.nParticles");
-    pNoiseInflation_ = cfg_.lookup("Filter.processNoiseInflationFactor");
-    zNoiseInflation_ = cfg_.lookup("Filter.measurementNoiseInflationFactor");
-    innovationRangeThreshold_ = cfg_.lookup("Filter.innovationRangeThreshold");
-    innovationBearingThreshold_ = cfg_.lookup("Filter.innovationBearingThreshold");
-    birthGaussianWeight_ = cfg_.lookup("Filter.birthGaussianWeight");
-    newGaussianCreateInnovMDThreshold_ = cfg_.lookup("Filter.newGaussianCreateInnovMDThreshold");
-    importanceWeightingMeasurementLikelihoodMDThreshold_ = cfg_.lookup("Filter.importanceWeightingMeasurementLikelihoodMDThreshold");
-    effNParticleThreshold_ = cfg_.lookup("Filter.effectiveNumberOfParticlesThreshold");
-    minUpdatesBeforeResample_ = cfg_.lookup("Filter.minUpdatesBeforeResample");
-    gaussianMergingThreshold_ = cfg_.lookup("Filter.gaussianMergingThreshold");
-    gaussianMergingCovarianceInflationFactor_ = cfg_.lookup("Filter.gaussianMergingCovarianceInflationFactor");
-    gaussianPruningThreshold_ = cfg_.lookup("Filter.gaussianPruningThreshold");
-    importanceWeightingEvalPointCount_ = cfg_.lookup("Filter.importanceWeightingEvalPointCount");
-    importanceWeightingEvalPointGuassianWeight_ = cfg_.lookup("Filter.importanceWeightingEvalPointGuassianWeight");
-    useClusterProcess_ = cfg_.lookup("Filter.useClusterProcess");
-
-    logToFile_ = cfg_.lookup("Computation.logToFile");
-    logDirPrefix_ = cfg_.lookup("Computation.logDirPrefix");
+    gaussianMergingThreshold_ = pt.get<double>("config.filter.merge.threshold");
+    gaussianMergingCovarianceInflationFactor_ = pt.get("config.filter.merge.covInflationFactor", 1.0);
+    
+    gaussianPruningThreshold_ = pt.get("config.filter.prune.threshold", birthGaussianWeight_);
     
     return true;   
   }
@@ -615,7 +618,6 @@ public:
 
 private:
 
-  libconfig::Config cfg_;
   const char* cfgFileName_;
 
   int kMax_; /**< number of timesteps */
@@ -677,7 +679,9 @@ private:
   bool useClusterProcess_;
 
   bool logToFile_;
-  const char *logDirPrefix_;
+
+public:
+  std::string logDirPrefix_;
 };
 
 
@@ -693,23 +697,23 @@ private:
 int main(int argc, char* argv[]){
 
   int initRandSeed = 0;
-  const char* logFileName = "cfg/rbphdslam2dSim.cfg";
+  const char* cfgFileName = "cfg/rbphdslam2dSim.xml";
   if( argc >= 2 ){
     initRandSeed = boost::lexical_cast<int>(argv[1]);
   }
   if( argc >= 3 ){
-    logFileName = argv[2];
+    cfgFileName = argv[2];
   }
 
-  Simulator2d sim;
-  if( !sim.readConfigFile( logFileName ) ){
+  Simulator_RBPHDSLAM_2d sim;
+  if( !sim.readConfigFile( cfgFileName ) ){
     return -1;
   }
   sim.generateTrajectory( initRandSeed );
   sim.generateLandmarks();
-
   sim.generateOdometry();
   sim.generateMeasurements();
+
   sim.exportSimData();
  
   sim.setupRBPHDFilter();

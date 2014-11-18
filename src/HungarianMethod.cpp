@@ -74,7 +74,7 @@ bool HungarianMethod::run (CostMatrix &C, int* soln, double* cost, bool maximize
     // no reduction on C was performed
     return run(C_full, nRowsFull, soln, cost, maximize);
   }
-
+  return false;
 }
 
 bool HungarianMethod::run(double** C, int n, int* soln, double* cost, bool maximize, bool debug){

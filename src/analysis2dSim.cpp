@@ -97,7 +97,7 @@ public:
   /** Read landmark groundtruth data 
    *  \return number of landmarks 
    */
-  int readLandmarkGroundtruth(){
+  void readLandmarkGroundtruth(){
     double x, y, t;
     Landmark2d::Vec vm;
     while( fscanf(pGTLandmarkFile, "%lf %lf %lf", &x, &y, &t) == 3){

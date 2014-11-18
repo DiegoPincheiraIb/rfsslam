@@ -221,8 +221,9 @@ private:
    * \note For this FastSLAM algorithm, we perform weighting as part of 
    * mapUpdate() to be a little more efficient. Therefore, this function is 
    * not called at all. However, we still need to overwrite the virtual function.
+   * \param[in] idx particle index
    */
-  void importanceWeighting(const uint idx){};
+  void importanceWeighting(const uint idx){}
 
 };
 

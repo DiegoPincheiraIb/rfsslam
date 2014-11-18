@@ -115,6 +115,7 @@ namespace rfs{
   /**
    * \class JCBB
    * \brief Joint compatibility branch and bound data association algorithm
+   *
    * An implementation of the Joint compatibility branch and bound data association algorithm
    * Reference:  Neira, J. Tardos; Tardos, J.D. (2001), "Data association in stochastic mapping 
    * using the joint compatibility test", Robotics and Automation, IEEE Transactions on 17 (6): 
