@@ -40,8 +40,11 @@
 #include "KalmanFilter.hpp"
 #include <math.h>
 #include <vector>
-#include <omp.h>
 #include <stdio.h>
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 namespace rfs{
 
@@ -212,14 +215,14 @@ public:
 
 private:
 
+  int nThreads_; /**< Number of threads for running map update for all particles */
   
-  double ***weightingTables_; /**< Weighting table used during map update */
-  int nThreads_;
-  int *weightingTableNRows_; /**< Number of rows in the weighting table */
-  int *weightingTableNCols_; /**< Number of cols in the weighting table */
-  TLandmark**** newLandmarkTables_; /**< Table for initiating new landmarks */
+  std::vector<double**> weightingTables_; /**< Weighting table used during map update */
+  std::vector<int> weightingTableNRows_; /**< Number of rows in the weighting table */
+  std::vector<int> weightingTableNCols_; /**< Number of cols in the weighting table */
+  std::vector<TLandmark***> newLandmarkTables_; /**< Table for initiating new landmarks */
 
-  KalmanFilter *kfs_; /**< array containing the Kalman filters (one for each thread)*/
+  std::vector<KalmanFilter> kfs_; /**< Kalman filters (one for each thread)*/
   LmkProcessModel *lmkModelPtr_; /**< pointer to landmark process model */
   double threshold_mahalanobisDistance2_mapUpdate_; /**< Mahalanobis distance squared threshold, above which Kalman Filter update will not occur*/
 
@@ -301,16 +304,16 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
 : ParticleFilter<RobotProcessModel, MeasurementModel, 
 		 GaussianMixture< typename MeasurementModel::TLandmark > >(n)
 {
-  nThreads_= omp_get_max_threads();
-  
-  lmkModelPtr_ = new LmkProcessModel;
-  kfs_ = new KalmanFilter[nThreads_];
-  KalmanFilter kf(lmkModelPtr_ , this->getMeasurementModel());
-  for(int i = 0 ; i < nThreads_ ; i++){
-    kfs_[i] = kf;
-  }
+  nThreads_= 1;
 
-  
+  #ifdef _OPENMP
+  nThreads_ = omp_get_max_threads();
+  #endif
+
+  lmkModelPtr_ = new LmkProcessModel;
+  kfs_ = std::vector<KalmanFilter>(nThreads_, 
+				   KalmanFilter(lmkModelPtr_, this->getMeasurementModel() ) );
+
   for(int i = 0; i < n; i++){
     // printf("Creating map structure for particle %d\n", i);
     this->particleSet_[i]->setData( new GaussianMixture<TLandmark>() );
@@ -328,17 +331,17 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   
   nUpdatesSinceResample = 0;
   
-  weightingTableNRows_ = new int[nThreads_];
-  weightingTableNCols_ = new int[nThreads_];
+  weightingTableNRows_ = std::vector<int>(nThreads_);
+  weightingTableNCols_ = std::vector<int>(nThreads_);
   for(int i = 0 ; i < nThreads_ ; i++){
     weightingTableNRows_[i] = 100; 
     weightingTableNCols_[i] = 100;
   }
-  
-  weightingTables_ = new double**[nThreads_];
-  newLandmarkTables_ = new TLandmark***[nThreads_];
-  for(int i = 0 ; i < nThreads_ ; i++){
-  
+ 
+  weightingTables_ = std::vector<double**>(nThreads_);
+  newLandmarkTables_ = std::vector<TLandmark***>(nThreads_);
+
+  for(int i = 0 ; i < nThreads_ ; i++){  
     weightingTables_[i] = new double*[weightingTableNRows_[i]];
     newLandmarkTables_[i] = new TLandmark**[weightingTableNRows_[i]];
     for(int n = 0; n < weightingTableNRows_[i]; n++){
@@ -354,16 +357,15 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   for(int i = 0; i < this->nParticles_; i++){
     this->particleSet_[i]->deleteData();
   }
-  
   delete lmkModelPtr_;
   for(int i = 0 ; i < nThreads_ ; i++){
     for(int n = 0; n < weightingTableNRows_[i]; n++ ){
       delete[] weightingTables_[i][n];
+      delete[] newLandmarkTables_[i][n];
     }
     delete[] weightingTables_[i];
+    delete[] newLandmarkTables_[i];
   }
-  delete[] kfs_;
-  delete[] weightingTables_;
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
@@ -406,36 +408,76 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   this->setMeasurements( Z ); // Z gets cleared after this call, measurements now stored in this->measurements_
   if(this->measurements_.size() == 0)
     return;
-
-  ////////// Map Update //////////
   
   const unsigned int startIdx = 0;
   const unsigned int stopIdx = this->nParticles_;
   const unsigned int nZ = this->measurements_.size();
-  
-  timer_mapUpdate_.resume();
-  if(nThreads_>1 && !(kfs_[0]==kfs_[1])){
-    for(int j=1;j<nThreads_;j++){
+
+  // make sure any setting changes to the Kalman Filter are set for all threads
+  if(nThreads_>1){
+    for(int j = 1; j < nThreads_; j++){
       kfs_[j]=kfs_[0];
     }
   }
-  #pragma omp parallel for
-  for(unsigned int i = startIdx; i < stopIdx; i++){
- 
-    updateMap(i);
-  
-    ////////// Particle Weighintg ////////// 
-    if(!config.useClusterProcess_){
-      importanceWeighting(i);
+
+  if(nThreads_ > 1){
+    timer_mapUpdate_.resume();
+  }
+  #pragma omp parallel 
+  {
+    ////////// Map Update //////////
+    if(nThreads_ == 1){
+      timer_mapUpdate_.resume();
+    }
+    #pragma omp for
+    for(unsigned int i = startIdx; i < stopIdx; i++){
+      updateMap(i);
+    }
+    if(nThreads_ == 1){
+      timer_mapUpdate_.stop();
     }
 
+    ////////// Particle Weighintg ////////// 
+    if(!config.useClusterProcess_){
+      if(nThreads_ == 1){
+	timer_particleWeighting_.resume();
+      }
+      #pragma omp for
+      for(unsigned int i = startIdx; i < stopIdx; i++){
+	importanceWeighting(i);
+      }
+      if(nThreads_ == 1){
+	timer_particleWeighting_.stop();
+      }
+    }
+      
     //////////// Merge and prune //////////
-    this->particleSet_[i]->getData()->merge( config.gaussianMergingThreshold_, 
-					     config.gaussianMergingCovarianceInflationFactor_);   
-    this->particleSet_[i]->getData()->prune( config.gaussianPruningThreshold_ );    
-
+    if(nThreads_ == 1){
+      timer_mapMerge_.resume();
+    }
+    #pragma omp for
+    for(unsigned int i = startIdx; i < stopIdx; i++){
+      this->particleSet_[i]->getData()->merge( config.gaussianMergingThreshold_, 
+					       config.gaussianMergingCovarianceInflationFactor_);
+    }
+    if(nThreads_ == 1){
+      timer_mapMerge_.stop();
+    }
+    
+    if(nThreads_ == 1){
+      timer_mapPrune_.resume();
+    }
+    #pragma omp for
+    for(unsigned int i = startIdx; i < stopIdx; i++){
+      this->particleSet_[i]->getData()->prune( config.gaussianPruningThreshold_ );     
+    }
+    if(nThreads_ == 1){
+      timer_mapPrune_.stop();
+    }
   }
-  timer_mapUpdate_.stop();
+  if(nThreads_ > 1){
+    timer_mapUpdate_.stop();
+  }
 
   //////////// Particle resampling //////////
   timer_particleResample_.resume();
@@ -459,7 +501,11 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     const unsigned int i = particleIdx;
     const unsigned int nZ = this->measurements_.size();
     
-    int threadnum = omp_get_thread_num();
+    int threadnum = 0;
+    #ifdef _OPENMP
+    threadnum = omp_get_thread_num();
+    #endif
+
     //---------- 1. setup / book-keeping ----------
    
     const unsigned int nM = this->particleSet_[i]->getData()->getGaussianCount();
@@ -488,7 +534,8 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
     //----------  2. Kalman Filter map update ----------
 
-    //timer_mapUpdate_kf_.resume();
+    if(nThreads_ == 1)
+      timer_mapUpdate_kf_.resume();
     const TPose *pose = this->particleSet_[i]->getPose();
     threshold_mahalanobisDistance2_mapUpdate_ = config.newGaussianCreateInnovMDThreshold_ * config.newGaussianCreateInnovMDThreshold_;
 
@@ -561,14 +608,16 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       this->particleSet_[i]->setWeight( exp(w_km_sum) * likelihoodProd);
     }
 
-    //timer_mapUpdate_kf_.stop();
+    if(nThreads_ == 1)
+      timer_mapUpdate_kf_.stop();
 
     // ---------- 3. Add new Gaussians to map  ----------
     // New Gaussians will have indices >= nM 
     for(int m = 0; m < nM; m++){
       for(int z = 0; z < nZ; z++){
 	if(newLandmarkTables_[threadnum][m][z] != NULL && weightingTables_[threadnum][m][z] > 0){
-	  this->particleSet_[i]->getData()->addGaussian( newLandmarkTables_[threadnum][m][z],  weightingTables_[threadnum][m][z]);  
+	  this->particleSet_[i]->getData()->addGaussian( newLandmarkTables_[threadnum][m][z],  
+							 weightingTables_[threadnum][m][z]);  
 	  newLandmarkTables_[threadnum][m][z] = NULL;
 	}
       }
@@ -741,14 +790,12 @@ rfsMeasurementLikelihood( const int particleIdx,
     this->particleSet_[i]->getData()->getGaussian( evalPtIdx[m], evalPt ); // get location of m
     evalPt_copy = *evalPt; // so that we don't change the actual data //
     evalPt_copy.setCov(MeasurementModel::TLandmark::Mat::Zero()); //
-    //this->pMeasurementModel_->measure( x, *evalPt, expected_z); // get expected measurement for m
     this->pMeasurementModel_->measure( x, evalPt_copy, expected_z); // get expected measurement for m
     double Pd = evalPtPd[m]; // get the prob of detection of m
 
     for(int n = 0; n < nZ; n++){
 
       // calculate measurement likelihood with detection statistics
-      // L[m][n] = this->measurements_[n].evalGaussianLikelihood( expected_z, &md2) * Pd;
       L[m][n] = expected_z.evalGaussianLikelihood( this->measurements_[n], &md2) * Pd; // new line 
       if( md2 > threshold ){
 	L[m][n] = 0;
@@ -1023,7 +1070,7 @@ setParticlePose(int i, TPose &p){
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 KalmanFilter* RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::getKalmanFilter(){
-  return kfs_;
+  return &(kfs_[0]);
 }
 
 
