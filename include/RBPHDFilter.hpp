@@ -904,7 +904,7 @@ rfsMeasurementLikelihood( const int particleIdx,
 	partition_likelihood = 0;
 	double permutation_log_likelihood = 0; 
 
-	uint* o = new uint[nRows + nCols];
+	uint o[nRows + nCols];
  
 	PermutationLexicographic pl(nRows, nCols, true);
 	unsigned int nPerm = pl.next(o);
