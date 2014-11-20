@@ -1,4 +1,3 @@
-	# Keith Leung 2013
 
 # Note: to change compiler, use...
 # cmake -D CMAKE_C_COMPILER=gcc CMAKE_CXX_COMPILER=c++ .

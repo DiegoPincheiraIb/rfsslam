@@ -96,7 +96,7 @@ public:
    * \param[in] weight if non-negative, this weight is assigned to the origin and newly copied particles
    * \return the number of particles currently used by the filter after adding
    */
-  unsigned int copyParticle(int idx, int n, double weight = -1);
+  unsigned int copyParticle(unsigned int idx, unsigned int n, double weight = -1);
 
   /** 
    * Get the process model pointer
@@ -259,18 +259,20 @@ addParticles(int n, TPose* initState, double initWeight){
 
 template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
 unsigned int ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::
-copyParticle(int idx, int n, double weight){
+copyParticle(unsigned int idx, unsigned int n, double weight){
   
   // initiate particles
+  unsigned int nParticles0 = nParticles_;
   nParticles_ += n;
-  particleSet_.reserve(nParticles_);
+  particleSet_.resize(nParticles_);
+  
   if( weight < 0 )
     weight = particleSet_[idx]->getWeight();
   else
     particleSet_[idx]->setWeight(weight);
-  for( int i = 0 ; i < n ; i++ ){			
-    particleSet_.push_back( new Particle<TPose, ParticleExtraData>() );	       
-    int idxNew = particleSet_.size() - 1;
+  for( uint i = 0 ; i < n ; i++ ){
+    unsigned int idxNew = nParticles0 + i;
+    particleSet_[idxNew] = new Particle<TPose, ParticleExtraData>();
     particleSet_[idxNew]->setWeight( weight );
     particleSet_[idxNew]->setId( idxNew );
     particleSet_[idxNew]->setParentId( particleSet_[idx]->getParentId() );

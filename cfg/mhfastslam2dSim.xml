@@ -29,7 +29,7 @@
 
   <measurements>
     <rangeLimitMax>2.5</rangeLimitMax> <!-- measurement range limit -->
-    <rangeLimitMin>0.5</rangeLimitMin> <!-- measurement range limit				 -->
+    <rangeLimitMin>0.5</rangeLimitMin> <!-- measurement range limit -->
     <rangeLimitBuffer>0.05</rangeLimitBuffer> <!-- buffer zone around range limit in which negative information has no effects -->
     <probDetection>0.90</probDetection> <!-- probability of detection -->
     <clutterIntensity>0.01</clutterIntensity> <!-- uniform clutter intensity -->
@@ -47,7 +47,7 @@
     <update>
       <measurementNoiseInflationFactor>10.0</measurementNoiseInflationFactor> <!-- inflation factor of measurement covariance -->
       <maxNDataAssocHypotheses>3</maxNDataAssocHypotheses> <!-- max number of hypotheses per particle -->
-      <maxDataAssocLogLikelihoodDiff>2.0</maxDataAssocLogLikelihoodDiff> <!-- When <maxNDataAssocHypotheses> > 1, maximum difference in log likelihood to the next best hypothesis for it to be considered valid for data association -->    
+      <maxDataAssocLogLikelihoodDiff>3.0</maxDataAssocLogLikelihoodDiff> <!-- When <maxNDataAssocHypotheses> > 1, maximum difference in log likelihood to the next best hypothesis for it to be considered valid for data association -->    
       <KalmanFilter>
 	<innovationThreshold> <!-- exceeding innovation will cause Kalman Filter update to not occur, set this according to noise -->
 	  <range>1.0</range>  
@@ -68,8 +68,6 @@
     <prune>
       <threshold>-5.0</threshold> <!-- The log odds threshold for eliminating a landmark from the map -->
     </prune>   
-
-    <reportTimingInfo>1</reportTimingInfo> 
 
   </filter>
 

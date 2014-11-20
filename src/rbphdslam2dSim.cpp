@@ -497,10 +497,7 @@ public:
       }   
     }
 
-    boost::timer::auto_cpu_timer *stepTimer = NULL;
-    boost::timer::auto_cpu_timer *processTimer = NULL;
-    
-    processTimer = new boost::timer::auto_cpu_timer(6, "Total run time: %ws\n");
+  
     /////////// Run simulator from k = 1 to kMax_ /////////
 
     TimeStamp time;
@@ -576,9 +573,6 @@ public:
       }
 
     }
-
-    delete processTimer;
-
     
     printf("Elapsed Timing Information [nsec]\n");
     printf("Prediction    -- wall: %lld   cpu: %lld\n", 

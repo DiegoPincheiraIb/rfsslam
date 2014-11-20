@@ -33,6 +33,8 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include "FastSLAM.hpp"
+#include "KalmanFilter_RngBrg.hpp"
+#include "MeasurementModel_RngBrg.hpp"
 #include "ProcessModel_Odometry2D.hpp"
 #include <stdio.h>
 #include <string>
@@ -105,10 +107,11 @@ public:
     pNoiseInflation_ = pt.get("config.filter.predict.processNoiseInflationFactor", 1.0);
 
     zNoiseInflation_ = pt.get("config.filter.update.measurementNoiseInflationFactor", 1.0);
+    maxNDataAssocHypotheses_ = pt.get<int>("config.filter.update.maxNDataAssocHypotheses", 1);
+    maxDataAssocLogLikelihoodDiff_ = pt.get("config.filter.update.maxDataAssocLogLikelihoodDiff", 3.0);
+
     innovationRangeThreshold_ = pt.get<double>("config.filter.update.KalmanFilter.innovationThreshold.range");
     innovationBearingThreshold_ = pt.get<double>("config.filter.update.KalmanFilter.innovationThreshold.bearing");
-    maxNDataAssocHypotheses_ = pt.get("config.filter.update.KalmanFilter.innovationThreshold.bearing", 1);
-    maxDataAssocLogLikelihoodDiff_ = pt.get("config.filter.update.KalmanFilter.maxDataAssocLogLikelihoodDiff", 3.0);
 
     minLogMeasurementLikelihood_ = pt.get("config.filter.weighting.minLogMeasurementLikelihood",-10.0);
 
@@ -116,10 +119,6 @@ public:
     minUpdatesBeforeResample_ = pt.get("config.filter.resampling.minTimesteps", 1);
     
     landmarkExistencePruningThreshold_ = pt.get("config.filter.prune.threshold", -5.0);
-
-    reportTimingInfo_ = false;
-    if( pt.get("config.filter.reportTimingInfo",0) == 1)
-      reportTimingInfo_ = true;
 
     return true;   
   }
@@ -461,7 +460,6 @@ public:
     pFilter_->config.maxDataAssocLogLikelihoodDiff_ = maxDataAssocLogLikelihoodDiff_;
     pFilter_->config.mapExistencePruneThreshold_ = landmarkExistencePruningThreshold_;
     pFilter_->config.landmarkExistencePrior_ = 0.5;
-    pFilter_->config.reportTimingInfo_ = reportTimingInfo_;
   }
 
   /** Run the simulator */
@@ -493,11 +491,7 @@ public:
       }  
     }
 
-    boost::timer::auto_cpu_timer *stepTimer = NULL;
-    boost::timer::auto_cpu_timer *processTimer = NULL;
-    if(reportTimingInfo_){
-      processTimer = new boost::timer::auto_cpu_timer(6, "Total run time: %ws\n");
-    }
+
     /////////// Run simulator from k = 1 to kMax_ /////////
 
     TimeStamp time;
@@ -505,12 +499,8 @@ public:
     for(int k = 1; k < kMax_; k++){
 
       time += dTimeStamp_;
-
-      if(reportTimingInfo_){
-	stepTimer = new boost::timer::auto_cpu_timer(6, "Step time: %ws\n");
-      }
-      
-      if( k % 1 == 0)
+ 
+      if( k % 100 == 0)
 	printf("k = %d\n", k);
  
       
@@ -576,18 +566,23 @@ public:
 	  }
 	}
       }
-
-      if(reportTimingInfo_){
-	delete stepTimer;
-	stepTimer = NULL;
-      }
-
     }
 
-    if(reportTimingInfo_){
-      delete processTimer;
-      processTimer = NULL;
-    }
+        printf("Elapsed Timing Information [nsec]\n");
+    printf("Prediction    -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->predict_wall, pFilter_->getTimingInfo()->predict_cpu);
+    printf("Map Update    -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->mapUpdate_wall, pFilter_->getTimingInfo()->mapUpdate_cpu);
+    printf("Resampling    -- wall: %lld   cpu: %lld\n", 
+	   pFilter_->getTimingInfo()->particleResample_wall, pFilter_->getTimingInfo()->particleResample_cpu);
+    printf("Total         -- wall: %lld   cpu: %lld\n",
+	   pFilter_->getTimingInfo()->predict_wall +
+	   pFilter_->getTimingInfo()->mapUpdate_wall +
+	   pFilter_->getTimingInfo()->particleResample_wall,
+	   pFilter_->getTimingInfo()->predict_cpu +
+	   pFilter_->getTimingInfo()->mapUpdate_cpu +
+	   pFilter_->getTimingInfo()->particleResample_cpu);
+    printf("\n");
 
     if(logToFile_){
       fclose(pParticlePoseFile);
@@ -651,7 +646,6 @@ private:
   int maxNDataAssocHypotheses_;
   double maxDataAssocLogLikelihoodDiff_;
   double landmarkExistencePruningThreshold_;
-  bool reportTimingInfo_;
   
   bool logToFile_;
   std::string logDirPrefix_;
@@ -685,7 +679,11 @@ int main(int argc, char* argv[]){
 
   srand48( time(NULL) );
 
+  boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
+
   sim.run();
+
+  delete timer;
 
   return 0;
 

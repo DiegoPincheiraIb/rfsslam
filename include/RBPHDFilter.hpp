@@ -211,6 +211,9 @@ public:
    */
   void setParticlePose(int i, TPose &p);
 
+  /** 
+   * Get elapsed timing information for various steps of the filter 
+   */
   TimingInfo* getTimingInfo();
 
 private:
@@ -251,8 +254,9 @@ private:
    * mixture weight reduced to account for missed detection.
    * For every landmark-measurement pair with probability of detection > 0,
    * a new landmark will be created. 
+   * \param[in] particleIdx index of the particle for which the map will be updated
    */
-  void updateMap(const int particleIdx);
+  void updateMap(const uint particleIdx);
 
   /** 
    * Importance weighting. Overrides the abstract function in ParticleFilter
@@ -496,7 +500,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::updateMap(const int particleIdx){
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::updateMap(const uint particleIdx){
 
     const unsigned int i = particleIdx;
     const unsigned int nZ = this->measurements_.size();
