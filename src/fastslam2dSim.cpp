@@ -347,7 +347,7 @@ public:
       return;
 
     boost::filesystem::path dir(logDirPrefix_);
-    boost::filesystem::create_directory(dir);
+    boost::filesystem::create_directories(dir);
 
     boost::filesystem::path cfgFilePathSrc( cfgFileName_ );
     std::string cfgFileDst( logDirPrefix_ );
