@@ -115,13 +115,14 @@ Set `saveMoive=True` to generate a mp4 file.
     - Removed dependency on the libconfig library for simulation configuration
     - OSX compatible when compiling with Clang/LLVM
     - Multi-threaded versions of SLAM algorithms using OpenMP
-        + multithreading with OpenMP is currently not supported by Clang/LLVM 
-	+ An OpenMP-supported LLVM compiler is available at: [http://clang-omp.github.io/](http://clang-omp.github.io/)
+        - multithreading with OpenMP is currently not supported by Clang/LLVM 
+        - An OpenMP-supported LLVM compiler is available at: [http://clang-omp.github.io/](http://clang-omp.github.io/)	
 
 ### Future Work ###
 
 - Cardinalized Probability Hypothesis Density (CPHD) filter
 - Cardinality Balanced Multi-Bernoulli filter
+- Reimplementation of the data stuctures for Gaussian mixtures (map/landmarks)
 
 ### Contact ###
 
