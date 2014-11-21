@@ -28,7 +28,6 @@ Obtain from git repository: `https://kykleung@bitbucket.org/kykleung/phdfilter.g
     * math_c99
     * timer
     * system
-    * thread
     * filesystem
     * graph 
 * Eigen (version 3.0.0 minimum)
@@ -56,9 +55,9 @@ For out-of-source build of the library and the 2D simulator:
 
 * `mkdir build`
 * `cd build`
-* `cmake ..`
+* `cmake ..`  or `ccmake ..`
 * `make`
-* `make install` (option, and produces install_manifest.txt)
+* `make install` (optional, and produces install_manifest.txt)
 
 #### Documentation ####
 
@@ -114,13 +113,15 @@ Set `saveMoive=True` to generate a mp4 file.
     - Implementation of joint compatibility branch and bound (JCBB) 
       for data association in vector-based methods
     - Removed dependency on the libconfig library for simulation configuration
-    - OSX compatible
+    - OSX compatible when compiling with Clang/LLVM
+    - Multi-threaded versions of SLAM algorithms using OpenMP
+        + multithreading with OpenMP is currently not supported by Clang/LLVM 
+	+ An OpenMP-supported LLVM compiler is available at: [http://clang-omp.github.io/](http://clang-omp.github.io/)
 
 ### Future Work ###
 
-- Multi-threaded versions of SLAM algorithms
 - Cardinalized Probability Hypothesis Density (CPHD) filter
-- Multi-Bernoulli filter
+- Cardinality Balanced Multi-Bernoulli filter
 
 ### Contact ###
 
