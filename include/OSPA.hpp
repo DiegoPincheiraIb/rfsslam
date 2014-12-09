@@ -67,11 +67,13 @@ public:
   /** Destructor */
   ~OSPA();
 
-  /** Calculate the OSPA error 
-   * \param report True to generate report to stdout
+  /** Calculate the OSPA error
+   * \param[out] distance error component (before raising to power p_ and averaging over n_) 
+   * \param[out] cardinality error component (before raising to power p_ and averaging over n_)
+   * \param[in] report True to generate report to stdout
    * \return OSPA error
    */
-  double calcError(bool report = false);
+  double calcError(double *e_dist = NULL, double *e_card = NULL, bool report = false);
 
 private:
 
@@ -141,7 +143,7 @@ OSPA<SetElementType>::~OSPA(){
 
 
 template<class SetElementType>
-double OSPA<SetElementType>::calcError(bool report){
+double OSPA<SetElementType>::calcError(double *e_dist, double *e_card, bool report){
   
   rfs::HungarianMethod hm;
   int soln[n_];
@@ -152,9 +154,16 @@ double OSPA<SetElementType>::calcError(bool report){
     printf("Assignment Results:\n\n");
   }
 
+  *e_dist = 0;
+  *e_card = 0;
   cost = 0; // OSPA cost is different than Hungarian method cost due to cutoff threshold
   for(int i = 0; i < n_; i++){
     unsigned int j = soln[i];
+    if( C_[i][j] == c_ && e_card != NULL){
+      *e_card += C_[i][j];
+    }else if(e_dist != NULL){
+      *e_dist += C_[i][j];
+    }
     cost += pow(C_[i][j], p_);
 
     if(report){

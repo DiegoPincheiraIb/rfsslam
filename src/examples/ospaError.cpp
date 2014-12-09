@@ -28,7 +28,7 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
+#include <iostream>
 #include <math.h>
 #include <vector>
 #include "OSPA.hpp"
@@ -153,6 +153,10 @@ int main(int argc, char *argv[]){
   */
 
   rfs::OSPA<Pos2d> ospa(set1, set2, cutoff, order);
-  ospa.calcError(true);
+  double e, e_d, e_c;
+  e = ospa.calcError(&e_d, &e_c, true);
+  std::cout << "OSPA error:        " << e << std::endl;
+  std::cout << "distance error:    " << e_d << std::endl;
+  std::cout << "cardinality error: " << e_c << std::endl;
 
 };
