@@ -31,20 +31,22 @@
 #ifndef RBPHDFILTER_HPP
 #define RBPHDFILTER_HPP
 
-#include "Timer.hpp"
-#include <Eigen/Core>
-#include "GaussianMixture.hpp"
-#include "MurtyAlgorithm.hpp"
-#include "ParticleFilter.hpp"
-#include "PermutationLexicographic.hpp"
-#include "KalmanFilter.hpp"
-#include <math.h>
-#include <vector>
-#include <stdio.h>
-
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+
+#include <boost/multi_array.hpp>
+#include <Eigen/Core>
+#include <math.h>
+#include <stdio.h>
+#include <vector>
+
+#include "GaussianMixture.hpp"
+#include "KalmanFilter.hpp"
+#include "MurtyAlgorithm.hpp"
+#include "ParticleFilter.hpp"
+#include "PermutationLexicographic.hpp"
+#include "Timer.hpp"
 
 namespace rfs{
 
@@ -219,12 +221,12 @@ public:
 
 private:
 
+  typedef boost::multi_array<double, 2> W_Table; /**< \brief weighting table */
+  typedef boost::multi_array<TLandmark*, 2> M_Table; /**< \brief landmark table */
+  std::vector<W_Table> wTables_; /**< \brief Weighting table used during map update, one for each thread */
+  std::vector<M_Table> mTables_; /**< Table for initiating new landmarks during map update, one for each thread */
+
   int nThreads_; /**< Number of threads for running map update for all particles */
-  
-  std::vector<double**> weightingTables_; /**< Weighting table used during map update */
-  std::vector<int> weightingTableNRows_; /**< Number of rows in the weighting table */
-  std::vector<int> weightingTableNCols_; /**< Number of cols in the weighting table */
-  std::vector<TLandmark***> newLandmarkTables_; /**< Table for initiating new landmarks */
 
   std::vector<KalmanFilter> kfs_; /**< Kalman filters (one for each thread)*/
   LmkProcessModel *lmkModelPtr_; /**< pointer to landmark process model */
@@ -293,12 +295,12 @@ private:
    */
   bool checkMapIntegrity();
 
-  /** Ensure that sufficient memory is allocated for the weighting table
-   *  \param[in] nTable table number to check
+  /** \brief Ensure that Weighting tables have sufficient capacity
+   *  \param[in] threadNum thread number of table
    *  \param[in] nRows desired number of rows
    *  \param[in] nCols desired number of columns
    */
-  void checkWeightingTableSize(int nTable, int nRows, int nCols);
+  void checkWeightingTableSize(unsigned int const threadNum, unsigned int nRows, unsigned int nCols);
 
 };
 
@@ -338,24 +340,14 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   
   nUpdatesSinceResample = 0;
   
-  weightingTableNRows_ = std::vector<int>(nThreads_);
-  weightingTableNCols_ = std::vector<int>(nThreads_);
+  wTables_.reserve(nThreads_);
+  mTables_.reserve(nThreads_);
+  double const TABLE_INIT_SIZE = 100;
   for(int i = 0 ; i < nThreads_ ; i++){
-    weightingTableNRows_[i] = 100; 
-    weightingTableNCols_[i] = 100;
+    wTables_.push_back( W_Table(boost::extents[TABLE_INIT_SIZE][TABLE_INIT_SIZE]) );
+    mTables_.push_back( M_Table(boost::extents[TABLE_INIT_SIZE][TABLE_INIT_SIZE]) ); 
   }
  
-  weightingTables_ = std::vector<double**>(nThreads_);
-  newLandmarkTables_ = std::vector<TLandmark***>(nThreads_);
-
-  for(int i = 0 ; i < nThreads_ ; i++){  
-    weightingTables_[i] = new double*[weightingTableNRows_[i]]; // mem leak detected 
-    newLandmarkTables_[i] = new TLandmark**[weightingTableNRows_[i]]; // mem leak detected 
-    for(int n = 0; n < weightingTableNRows_[i]; n++){
-      weightingTables_[i][n] = new double[weightingTableNCols_[i]];
-      newLandmarkTables_[i][n] = new TLandmark*[weightingTableNCols_[i]];
-    }
-  }
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
@@ -365,14 +357,7 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
     this->particleSet_[i]->deleteData();
   }
   delete lmkModelPtr_;
-  for(int i = 0 ; i < nThreads_ ; i++){
-    for(int n = 0; n < weightingTableNRows_[i]; n++ ){
-      delete[] weightingTables_[i][n];
-      delete[] newLandmarkTables_[i][n];
-    }
-    delete[] weightingTables_[i];
-    delete[] newLandmarkTables_[i];
-  }
+
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
@@ -575,19 +560,19 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	for(int z = 0; z < nZ; z++){
 
 	  if ( innovationLikelihood[z] == 0 || innovationMahalanobisDist2[z] > threshold_mahalanobisDistance2_mapUpdate_ ){
-	    newLandmarkTables_[threadnum][m][z] = NULL;
-	    weightingTables_[threadnum][m][z] = 0;
+	    mTables_[threadnum][m][z] = NULL;
+	    wTables_[threadnum][m][z] = 0;
 	  }else{
-	    newLandmarkTables_[threadnum][m][z] = new TLandmark( lmNew[z] );
-	    weightingTables_[threadnum][m][z] = Pd_times_w_km * innovationLikelihood[z];
+	    mTables_[threadnum][m][z] = new TLandmark( lmNew[z] );
+	    wTables_[threadnum][m][z] = Pd_times_w_km * innovationLikelihood[z];
 	  }	
 
 	} // z forloop end
 
       }else{ // Pd = 0
 	for(int z = 0; z < nZ; z++){
-	  newLandmarkTables_[threadnum][m][z] = NULL;
-	  weightingTables_[threadnum][m][z] = 0;
+	  mTables_[threadnum][m][z] = NULL;
+	  wTables_[threadnum][m][z] = 0;
 	}
       }
 
@@ -599,7 +584,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       double clutter = this->pMeasurementModel_->clutterIntensity( this->measurements_[z], nZ );
       double sum = clutter;
       for(unsigned int m = 0; m < nM; m++){
-	sum += weightingTables_[threadnum][m][z];
+	sum += wTables_[threadnum][m][z];
       }
 
       if(config.useClusterProcess_){
@@ -607,7 +592,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       }
 
       for(unsigned int m = 0; m < nM; m++){
-	weightingTables_[threadnum][m][z] = weightingTables_[threadnum][m][z] / sum;
+	wTables_[threadnum][m][z] = wTables_[threadnum][m][z] / sum;
       }
     }
     if(config.useClusterProcess_){
@@ -622,10 +607,10 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     // New Gaussians will have indices >= nM 
     for(int m = 0; m < nM; m++){
       for(int z = 0; z < nZ; z++){
-	if(newLandmarkTables_[threadnum][m][z] != NULL && weightingTables_[threadnum][m][z] > 0){
-	  this->particleSet_[i]->getData()->addGaussian( newLandmarkTables_[threadnum][m][z],  
-							 weightingTables_[threadnum][m][z]);  
-	  newLandmarkTables_[threadnum][m][z] = NULL;
+	if(mTables_[threadnum][m][z] != NULL && wTables_[threadnum][m][z] > 0){
+	  this->particleSet_[i]->getData()->addGaussian( mTables_[threadnum][m][z],  
+							 wTables_[threadnum][m][z]);  
+	  mTables_[threadnum][m][z] = NULL;
 	}
       }
     }
@@ -640,7 +625,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       if (landmarkCloseToSensingLimit[m] == 1 && w_km > config.birthGaussianWeight_){
 	double weight_sum_m = 0;
 	for(int z = 0; z < nZ; z++){
-	  weight_sum_m += weightingTables_[threadnum][m][z];
+	  weight_sum_m += wTables_[threadnum][m][z];
 	}
 	double delta_w = Pd[m] * w_km - weight_sum_m;
 	if( delta_w > 0 ){
@@ -658,7 +643,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     for(int z = 0; z < nZ; z++){
       bool is_measurement_used = false;
       for(int m = 0; m < nM; m++){
-	if (weightingTables_[threadnum][m][z] != 0){
+	if (wTables_[threadnum][m][z] != 0){
 	  is_measurement_used = true;
 	  break;
 	}
@@ -1083,60 +1068,26 @@ KalmanFilter* RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel,
 
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
-void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::checkWeightingTableSize( int nTable, int nRows, int nCols){
+void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::checkWeightingTableSize( unsigned int const threadNum, unsigned int nRows, unsigned int nCols){
 
-  nRows *= 1.2; // expand number of rows by a factor of 1.2
-  nCols *= 1.2; // expand number of cols by a factor of 1.2
-  if( weightingTableNRows_[nTable] < nRows ){ // Row and Col need to increase
-    if( weightingTableNCols_[nTable] < nCols ){
-      
-      for(int m = 0; m < weightingTableNRows_[nTable]; m++ ){
-	delete[] weightingTables_[nTable][m];
-	delete[] newLandmarkTables_[nTable][m];
-      }
-      delete[] weightingTables_[nTable];
-      delete[] newLandmarkTables_[nTable];
-      weightingTables_[nTable] = new double* [nRows];
-      newLandmarkTables_[nTable] = new TLandmark** [nRows];
-      for(int m = 0; m < nRows ; m++ ){
-	weightingTables_[nTable][m] = new double [nCols];
-	newLandmarkTables_[nTable][m] = new TLandmark* [nCols];
-      }
-      
-      weightingTableNRows_[nTable] = nRows;
-      weightingTableNCols_[nTable] = nCols; 
-      
-    }else{ // Only increase row
-      
-      double** weightingTableOld = weightingTables_[nTable];
-      TLandmark*** newLandmarkTableOld = newLandmarkTables_[nTable];
-      weightingTables_[nTable] = new double* [nRows]; // mem leak detected
-      newLandmarkTables_[nTable] = new TLandmark**[nRows]; // mem leak detected
-      for(int m = 0; m < nRows ; m++ ){
-	if( m < weightingTableNRows_[nTable]){
-	  weightingTables_[nTable][m] = weightingTableOld[m];
-          newLandmarkTables_[nTable][m] = newLandmarkTableOld[m];
-	}else{
-	  weightingTables_[nTable][m] = new double [weightingTableNCols_[nTable]];
-	  newLandmarkTables_[nTable][m] = new TLandmark* [weightingTableNCols_[nTable]];
-	}
-      }
-      
-      weightingTableNRows_[nTable] = nRows;
-      
-    }
-      }else if(weightingTableNCols_[nTable] < nCols){ // Only increase Col
-      
-    for(int m = 0; m < weightingTableNRows_[nTable]; m++ ){
-      delete[] weightingTables_[nTable][m];
-      delete[] newLandmarkTables_[nTable][m];
-      weightingTables_[nTable][m] = new double[nCols];
-      newLandmarkTables_[nTable][m] = new TLandmark* [nCols];
-    }
-    
-    weightingTableNCols_[nTable] = nCols;
+  bool resize = false;
+  if( wTables_[threadNum].shape()[0] <= nRows ){
+    nRows *= 1.2; // expand number of rows by a factor of 1.2
+    resize = true;
+  }else{
+    nRows = wTables_[threadNum].shape()[0];
   }
-
+  if( wTables_[threadNum].shape()[1] <= nCols ){
+    nCols *= 1.2; // expand number of cols by a factor of 1.2
+    resize = true;
+  }else{
+    nCols = wTables_[threadNum].shape()[1];
+  }
+  if(resize){
+    wTables_[threadNum].resize( boost::extents[nRows][nCols] );
+    mTables_[threadNum].resize( boost::extents[nRows][nCols] );
+  }
+  
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
