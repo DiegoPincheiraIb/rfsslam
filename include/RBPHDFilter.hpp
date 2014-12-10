@@ -77,7 +77,8 @@ public:
   typedef typename RobotProcessModel::TInput TInput;
   typedef typename MeasurementModel::TLandmark TLandmark;
   typedef typename MeasurementModel::TMeasurement TMeasurement;
-  typedef typename GaussianMixture<TLandmark>::Gaussian TGaussian;
+  typedef GaussianMixture<TLandmark> TGM;
+  typedef typename TGM::Gaussian TGaussian;
 
   /** 
    * \brief Configurations for this RBPHDFilter 
@@ -319,8 +320,10 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
 				   KalmanFilter(lmkModelPtr_, this->getMeasurementModel() ) );
 
   for(int i = 0; i < n; i++){
-    // printf("Creating map structure for particle %d\n", i);
-    this->particleSet_[i]->setData( new GaussianMixture<TLandmark>() );
+    this->particleSet_[i]->setData( boost::shared_ptr<TGM>( new TGM() ) );
+  }
+
+  for(int i = 0; i < n; i++){
     unused_measurements_.push_back( std::vector<unsigned int>() );
   }
   
@@ -346,8 +349,8 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   newLandmarkTables_ = std::vector<TLandmark***>(nThreads_);
 
   for(int i = 0 ; i < nThreads_ ; i++){  
-    weightingTables_[i] = new double*[weightingTableNRows_[i]];
-    newLandmarkTables_[i] = new TLandmark**[weightingTableNRows_[i]];
+    weightingTables_[i] = new double*[weightingTableNRows_[i]]; // mem leak detected 
+    newLandmarkTables_[i] = new TLandmark**[weightingTableNRows_[i]]; // mem leak detected 
     for(int n = 0; n < weightingTableNRows_[i]; n++){
       weightingTables_[i][n] = new double[weightingTableNCols_[i]];
       newLandmarkTables_[i][n] = new TLandmark*[weightingTableNCols_[i]];
@@ -1107,8 +1110,8 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       
       double** weightingTableOld = weightingTables_[nTable];
       TLandmark*** newLandmarkTableOld = newLandmarkTables_[nTable];
-      weightingTables_[nTable] = new double* [nRows];
-      newLandmarkTables_[nTable] = new TLandmark**[nRows];
+      weightingTables_[nTable] = new double* [nRows]; // mem leak detected
+      newLandmarkTables_[nTable] = new TLandmark**[nRows]; // mem leak detected
       for(int m = 0; m < nRows ; m++ ){
 	if( m < weightingTableNRows_[nTable]){
 	  weightingTables_[nTable][m] = weightingTableOld[m];

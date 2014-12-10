@@ -55,6 +55,7 @@ public:
   typedef typename ProcessModel::TState TPose;
   typedef typename ProcessModel::TInput TInput;
   typedef typename MeasurementModel::TMeasurement TMeasure;
+  typedef Particle<TPose, ParticleExtraData> TParticle;
   typedef Particle<TPose, ParticleExtraData>* pParticle;
   typedef std::vector<pParticle> TParticleSet;
 
@@ -272,12 +273,12 @@ copyParticle(unsigned int idx, unsigned int n, double weight){
     particleSet_[idx]->setWeight(weight);
   for( uint i = 0 ; i < n ; i++ ){
     unsigned int idxNew = nParticles0 + i;
-    particleSet_[idxNew] = new Particle<TPose, ParticleExtraData>();
+
+    particleSet_[idxNew] = new TParticle( particleSet_[idx]->copy() ); 
     particleSet_[idxNew]->setWeight( weight );
     particleSet_[idxNew]->setId( idxNew );
     particleSet_[idxNew]->setParentId( particleSet_[idx]->getParentId() );
-    particleSet_[idx]->copyStateTo( particleSet_[idxNew] );
-    particleSet_[idx]->copyDataTo( particleSet_[idxNew] );
+
   } 
   return nParticles_;
 }
@@ -440,10 +441,8 @@ bool ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::resample
 	  next_unsampled_idx++;
       }
 
+      *(particleSet_[next_unsampled_idx]) = particleSet_[idx]->copy();
       particleSet_[next_unsampled_idx]->setParentId( particleSet_[idx]->getId() );
-      particleSet_[idx]->copyStateTo( particleSet_[next_unsampled_idx] );
-      particleSet_[next_unsampled_idx]->deleteData();
-      particleSet_[idx]->copyDataTo( particleSet_[next_unsampled_idx] );
 
       next_unsampled_idx++;
     }      

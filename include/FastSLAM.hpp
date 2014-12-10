@@ -85,7 +85,11 @@ public:
   typedef typename RobotProcessModel::TInput TInput;
   typedef typename MeasurementModel::TLandmark TLandmark;
   typedef typename MeasurementModel::TMeasurement TMeasurement;
-  typedef typename GaussianMixture<TLandmark>::Gaussian TGaussian;
+  typedef GaussianMixture<TLandmark> TGM;
+  typedef typename TGM::Gaussian TGaussian;
+  typedef ParticleFilter<RobotProcessModel, MeasurementModel, TGM > TPF;
+  typedef typename TPF::TParticle TParticle;
+  typedef typename TPF::TParticleSet TParticleSet;
 
   /** 
    * \brief Configurations for this RBPHDFilter 
@@ -273,7 +277,7 @@ FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
   nParticles_init_ = n;
   
   for(int i = 0; i < n; i++){
-    this->particleSet_[i]->setData( new GaussianMixture<TLandmark>() );
+    this->particleSet_[i]->setData( typename TParticle::PtrData( new GaussianMixture<TLandmark>() ) );
   }
 
   config.minUpdatesBeforeResample_ = 1;
