@@ -56,7 +56,7 @@ public:
   typedef typename ProcessModel::TInput TInput;
   typedef typename MeasurementModel::TMeasurement TMeasure;
   typedef Particle<TPose, ParticleExtraData> TParticle;
-  typedef Particle<TPose, ParticleExtraData>* pParticle;
+  typedef boost::shared_ptr<TParticle> pParticle;
   typedef std::vector<pParticle> TParticleSet;
 
 
@@ -248,7 +248,7 @@ addParticles(int n, TPose* initState, double initWeight){
   if(initWeight < 0)
     initWeight = 0;
   for( int i = 0 ; i < n ; i++ ){
-    particleSet_.push_back( new Particle<TPose, ParticleExtraData>(i, *initState, initWeight) );
+    particleSet_.push_back( pParticle( new Particle<TPose, ParticleExtraData>(i, *initState, initWeight) ) ); 
   }
 
   if( noInitState ){
@@ -274,7 +274,7 @@ copyParticle(unsigned int idx, unsigned int n, double weight){
   for( uint i = 0 ; i < n ; i++ ){
     unsigned int idxNew = nParticles0 + i;
 
-    particleSet_[idxNew] = new TParticle( particleSet_[idx]->copy() ); 
+    particleSet_[idxNew] = particleSet_[idx]->copy(); 
     particleSet_[idxNew]->setWeight( weight );
     particleSet_[idxNew]->setId( idxNew );
     particleSet_[idxNew]->setParentId( particleSet_[idx]->getParentId() );
@@ -287,9 +287,6 @@ copyParticle(unsigned int idx, unsigned int n, double weight){
 template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
 ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::~ParticleFilter(){
   
-  for( int i = 0 ; i < nParticles_ ; i++ ){
-    delete particleSet_[i];
-  }
   delete pProcessModel_;
   delete pMeasurementModel_;
 }
@@ -441,7 +438,7 @@ bool ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::resample
 	  next_unsampled_idx++;
       }
 
-      *(particleSet_[next_unsampled_idx]) = particleSet_[idx]->copy();
+      particleSet_[next_unsampled_idx] = particleSet_[idx]->copy();
       particleSet_[next_unsampled_idx]->setParentId( particleSet_[idx]->getId() );
 
       next_unsampled_idx++;
@@ -449,9 +446,6 @@ bool ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::resample
   }
 
   // Delete all particles with idx >= n
-  for( int i = n; i < nParticles_; i++ ){
-    delete particleSet_[i];
-  }
   nParticles_ = n;
   particleSet_.resize(nParticles_);
 

@@ -51,6 +51,7 @@ public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
+  typedef boost::shared_ptr< Particle<PoseType, DataType> > Ptr;
   typedef PoseType tPose;
   typedef boost::shared_ptr<DataType> PtrData;
 
@@ -129,9 +130,9 @@ public:
 
   /** 
    * \brief Copy this particle, and perform a deep copy of data_.
-   * \return copied particle
+   * \return shared pointer to copied particle
    */
-  Particle<PoseType, DataType> copy();
+  Ptr copy();
 
   /** 
    * \brief Get the extra data pointer.
@@ -239,10 +240,10 @@ void Particle<PoseType, DataType>::setParentId( unsigned int id ){
 }
 
 template< class PoseType, class DataType >
-Particle<PoseType, DataType> Particle<PoseType, DataType>::copy(){
+typename Particle<PoseType, DataType>::Ptr Particle<PoseType, DataType>::copy(){
 
-  Particle<PoseType, DataType> c = *this;
-  c.data_.reset(new DataType( *data_ ) );
+  Ptr c(new Particle<PoseType, DataType>(*this) );
+  c->data_.reset(new DataType( *data_ ) );
   return c;
 }
 
