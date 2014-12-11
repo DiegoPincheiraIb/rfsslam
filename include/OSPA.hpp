@@ -154,8 +154,12 @@ double OSPA<SetElementType>::calcError(double *e_dist, double *e_card, bool repo
     printf("Assignment Results:\n\n");
   }
 
-  *e_dist = 0;
-  *e_card = 0;
+  if(e_dist != NULL)
+    *e_dist = 0;
+
+  if(e_card != NULL)
+    *e_card = 0;
+  
   cost = 0; // OSPA cost is different than Hungarian method cost due to cutoff threshold
   for(int i = 0; i < n_; i++){
     unsigned int j = soln[i];
