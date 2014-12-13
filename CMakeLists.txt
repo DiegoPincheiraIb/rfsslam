@@ -73,8 +73,6 @@ INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
 ADD_LIBRARY(rfsslam 
   src/TimeStamp.cpp 
   src/Timer.cpp
-  src/Pose.cpp 
-  src/Measurement_Odometry2D.cpp 
   src/ProcessModel_Odometry1D.cpp 
   src/ProcessModel_Odometry2D.cpp
   src/MeasurementModel_Rng1D.cpp
@@ -100,7 +98,7 @@ TARGET_LINK_LIBRARIES(fastslam2dSim ${Boost_LIBRARIES} rfsslam)
 #ADD_TEST(unitTest bin/unitTest)
 
 
-ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp src/Pose.cpp)
+ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp)
 TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} rfsslam)
 
 #ADD_EXECUTABLE(hmTest src/test.cpp)

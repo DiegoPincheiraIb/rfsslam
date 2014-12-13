@@ -140,9 +140,9 @@ public:
     MotionModel_Odometry2d::TState::Mat Q;
     Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
     MotionModel_Odometry2d motionModel(Q);
-    MotionModel_Odometry2d::TInput input_k(0, 0, 0, 0, 0, 0, t);
-    MotionModel_Odometry2d::TState pose_k(0, 0, 0, 0, 0, 0, t);
-    MotionModel_Odometry2d::TState pose_km(0, 0, 0, 0, 0, 0, t);
+    MotionModel_Odometry2d::TInput input_k(t);
+    MotionModel_Odometry2d::TState pose_k(t);
+    MotionModel_Odometry2d::TState pose_km(t);
     groundtruth_displacement_.reserve( kMax_ );
     groundtruth_pose_.reserve( kMax_ );
     groundtruth_displacement_.push_back(input_k);
@@ -156,8 +156,11 @@ public:
 	double dx = 0;
 	double dy = 0;
 	double dz = 0;
-	input_k = MotionModel_Odometry2d::TInput(dx, dy, dz, 
-						0, 0, 0, k);
+	MotionModel_Odometry2d::TInput::Vec d;
+	MotionModel_Odometry2d::TInput::Vec dCovDiag;
+	d << dx, dy, dz;
+	dCovDiag << 0, 0, 0;
+	input_k = MotionModel_Odometry2d::TInput(d, dCovDiag.asDiagonal(), k);
       }else if( k >= kMax_ / nSegments_ * seg ){
 	seg++;
 	double dx = drand48() * max_dx_ * dT_;
@@ -165,9 +168,12 @@ public:
 	  dx = drand48() * max_dx_ * dT_;
 	}
 	double dy = (drand48() * max_dy_ * 2 - max_dy_) * dT_;
-	double dz = (drand48() * max_dz_ * 2 - max_dz_) * dT_; 
-	input_k = MotionModel_Odometry2d::TInput(dx, dy, dz, 
-						Q(0,0), Q(1,1), Q(2,2), k);  
+	double dz = (drand48() * max_dz_ * 2 - max_dz_) * dT_;
+	MotionModel_Odometry2d::TInput::Vec d;
+	MotionModel_Odometry2d::TInput::Vec dCovDiag;
+	d << dx, dy, dz;
+	dCovDiag << Q(0,0), Q(1,1), Q(2,2);
+	input_k = MotionModel_Odometry2d::TInput(d, dCovDiag.asDiagonal(), k);  
       }
 
       groundtruth_displacement_.push_back(input_k);
