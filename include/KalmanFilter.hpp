@@ -285,10 +285,10 @@ correct(const TPose &pose,
   if(!pMeasurementModel_->measure( pose , landmark_current , measurement_exp , &H)){
     for(int i = 0; i < measurement.size(); i++){
       if(zLikelihood != NULL){ 
-	mahalanobisDist2->at(i) = 0;
+        zLikelihood->at(i) = 0;
       }
       if(mahalanobisDist2 != NULL){
-	zLikelihood->at(i) = 0;
+        mahalanobisDist2->at(i) = 0;
       }
     }
     return false; // invalid expected measurement produced
@@ -327,24 +327,14 @@ correct(const TPose &pose,
 	}
       }else{
 	if(zLikelihood != NULL){ 
-	  mahalanobisDist2->at(i) = 0;
+          zLikelihood->at(i) = 0;
 	}
 	if(mahalanobisDist2 != NULL){
-	  zLikelihood->at(i) = 0;
+          mahalanobisDist2->at(i) = 0;
 	}
       }
 
-      if(zLikelihood != NULL){
-	if(mahalanobisDist2 != NULL){
-	  zl = measurement_exp.evalGaussianLikelihood( measurement[i], &md2 );
-	  mahalanobisDist2->at(i) = md2;
-	}
-	else
-	  zl = measurement_exp.evalGaussianLikelihood( measurement[i] ); 
-	if(zl != zl) // When likelihood is so small that it becomes NAN
-	  zl = 0;
-	zLikelihood->at(i) = zl;
-      }
+
   } 
  
   return true;
