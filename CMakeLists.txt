@@ -73,6 +73,7 @@ INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
 ADD_LIBRARY(rfsslam 
   src/TimeStamp.cpp 
   src/Timer.cpp
+  src/Frame.cpp
   src/ProcessModel_Odometry1D.cpp 
   src/ProcessModel_Odometry2D.cpp
   src/MeasurementModel_Rng1D.cpp
