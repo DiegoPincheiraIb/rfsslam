@@ -38,6 +38,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <vector>
+#include <iostream>
+#include <iomanip>
 
 #include "HungarianMethod.hpp"
 
@@ -90,8 +92,18 @@ namespace rfs{
     /** Report the optimal assignment using std::cout */
     void reportSoln();
 
-    /** Get the optimal assignment */
+    /** Get all the optimal assignments */
     SolnArr getOptAssignment();
+
+    /** Get the cost matrix */
+    CostMat getCostMat();
+
+    /** Get an optimal assignment 
+     *  \param[in] set1Idx index for set 1
+     *  \param[out] cost The cost associated with the assignment. 
+     *  \return the corresponding assignment from set 2, or -1 if not assigned or if set1Idx is invalid .
+     */
+    int getOptAssignment(unsigned int set1Idx, double *cost);
 
   private:
     
@@ -123,10 +135,10 @@ namespace rfs{
     n_ = std::max(n1_, n2_);
 
     // Construct cost matrix
-    C_ = CostMat(boost::extents[n_][n_]);
+    C_.resize(boost::extents[n_][n_]); 
     for( Idx i = 0; i < n1_; i++ ){
       for( Idx j = 0; j < n2_; j++){ 
-	C_[i][j] = fabs(set1[i] - set2[j]);
+	C_[i][j] = fabs(set1[i] - set2[j]); 
 	if(C_[i][j] > c_)
 	  C_[i][j] = c_;
       }
@@ -144,6 +156,13 @@ namespace rfs{
 	}
       }
     }
+
+    /*for( Idx i = 0; i < n_; i++ ){
+      for( Idx j = 0; j < n_; j++){ 
+	std::cout << std::setw(10) << C_[i][j];
+      }
+      std::cout << std::endl;
+      }*/
 
     // Use the Hungarian method to find optimal assignment
     rfs::HungarianMethod hm;
@@ -187,13 +206,14 @@ namespace rfs{
     for(Idx i = 0; i < n_; i++){
       Idx j = soln_[i];
       if(i >= n1_){
-	printf("n/a -- %03d [%f]\n", j, C_[i][j]);
+	printf("n/a -- %03ld [%lf]\n", j, C_[i][j]);
       }else if(j >= n2_){
-	printf("%03d -- n/a [%f]\n", i, C_[i][j]);
+	printf("%03ld -- n/a [%lf]\n", i, C_[i][j]);
       }else{
-	printf("%03d -- %03d [%f]\n", i, j, C_[i][j]);
+	printf("%03ld -- %03ld [%lf]\n", i, j, C_[i][j]);
       }
     }
+    calcError();
     printf("\nOSPA Error: %f\n", cost_);
     
   }
@@ -203,6 +223,26 @@ namespace rfs{
 
     return soln_; 
 
+  }
+
+  template<class SetElementType>
+  int OSPA<SetElementType>::getOptAssignment(unsigned int set1Idx, double *cost){
+
+    if(set1Idx >= n1_)
+      return -1;
+    Idx j = soln_[set1Idx];
+    if(j >= n2_){
+      return -1;
+    }else{
+      *cost = C_[set1Idx][j];
+      return j;
+    }
+    
+  }
+  
+  template<class SetElementType>
+  typename OSPA<SetElementType>::CostMat OSPA<SetElementType>::getCostMat(){
+    return C_;
   }
 
 } // namespace rfs
