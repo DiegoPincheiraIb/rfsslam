@@ -115,7 +115,7 @@ namespace rfs{
      *  \param[out] position vector 
      */
     void getPos(PosVec &x) const {
-      x = this->x_.head<nPosDim>(nPosDim);
+      x = this->x_.template head<nPosDim>();
     }
 
     /** \brief Get the position vector with the time stamp 
@@ -123,7 +123,7 @@ namespace rfs{
      *  \param[out] t timestamp 
      */
     void getPos(PosVec &x, TimeStamp &t) const{
-      x = this->x_.head<nPosDim>(nPosDim);
+      x = this->x_.template head<nPosDim>();
       t = this->t_;
     }
 
@@ -131,14 +131,14 @@ namespace rfs{
      *  \return position vector 
      */
     PosVec getPos() const{
-      return this->x_.head<nPosDim>(nPosDim);
+      return this->x_.template head<nPosDim>();
     }
 
     /** \brief Get the rotation vector 
      *  \param[out] r rotation vector
      */
     void getRot(RotVec &r) const{
-      r = this->x_.segment<nRotDim>(nPosDim, nRotDim);
+      r = this->x_.template segment<nRotDim>(nPosDim);
     }
 
     /** \brief Get the rotation vector with the time stamp 
@@ -146,7 +146,7 @@ namespace rfs{
      *  \param[out] t timestamp
      */
     void getRot(RotVec &r, TimeStamp &t) const{
-      r = this->x_.segment<nRotDim>(nPosDim, nRotDim);
+      r = this->x_.template segment<nRotDim>(nPosDim);
       t = this->t_;
     }
 
@@ -154,7 +154,7 @@ namespace rfs{
      *  \return rotation vector
      */
     RotVec getRot() const{
-      return this->x_.segment<nRotDim>(nPosDim, nRotDim);
+      return this->x_.template segment<nRotDim>(nPosDim);
     }
     
   private:
@@ -232,7 +232,7 @@ namespace rfs{
      *  \param[out] r rotation vector
      */
     void getRot(RotVec &r) const{
-      r = this->x_.head<nRotDim>(nRotDim);
+      r = this->x_.template head<nRotDim>();
     }
 
     /** \brief Get the rotation vector with the time stamp 
@@ -240,7 +240,7 @@ namespace rfs{
      *  \param[out] t timestamp
      */
     void getRot(RotVec &r, TimeStamp &t) const{
-      r = this->x_.head<nRotDim>(nRotDim);
+      r = this->x_.template head<nRotDim>();
       t = this->t_;
     }
 
@@ -248,7 +248,7 @@ namespace rfs{
      *  \return rotation vector
      */
     RotVec getRot() const{
-      return this->x_.head<nRotDim>(nRotDim);
+      return this->x_.template head<nRotDim>();
     }
     
   private:
@@ -324,7 +324,7 @@ namespace rfs{
      *  \param[out] position vector 
      */
     void getPos(PosVec &x) const{
-      x = this->x_.head<nPosDim>(nPosDim);
+      x = this->x_.template head<nPosDim>();
     }
 
     /** \brief Get the position vector with the time stamp 
@@ -332,7 +332,7 @@ namespace rfs{
      *  \param[out] t timestamp 
      */
     void getPos(PosVec &x, TimeStamp &t) const{
-      x = this->x_.head<nPosDim>(nPosDim);
+      x = this->x_.template head<nPosDim>();
       t = this->t_;
     }
 
@@ -340,7 +340,7 @@ namespace rfs{
      *  \return position vector 
      */
     PosVec getPos() const{
-      return this->x_.head<nPosDim>(nPosDim);
+      return this->x_.template head<nPosDim>();
     }
     
   private:

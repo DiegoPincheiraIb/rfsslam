@@ -69,6 +69,7 @@ namespace rfs
 
     typedef ::Eigen::Matrix<double, nDim, 1> Vec;
     typedef ::Eigen::Matrix<double, nDim, nDim> Mat;
+    typedef Mat Cov;
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
@@ -83,8 +84,6 @@ namespace rfs
 
       x_.setZero();
       Sx_.setZero();
-      t_.sec = -1;
-      t_.nsec = 0;
 
     }
 
