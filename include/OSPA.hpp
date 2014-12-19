@@ -82,8 +82,8 @@ namespace rfs{
     ~OSPA();
 
     /** Calculate the OSPA error
-     * \param[out] distance error component (before raising to power p_ and averaging over n_) 
-     * \param[out] cardinality error component (before raising to power p_ and averaging over n_)
+     * \param[out] e_dist distance error component (before raising to power p_ and averaging over n_) 
+     * \param[out] e_card cardinality error component (before raising to power p_ and averaging over n_)
      * \param[in] report True to generate report to stdout
      * \return OSPA error
      */

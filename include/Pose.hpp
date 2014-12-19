@@ -96,7 +96,6 @@ namespace rfs{
     /**
      * \brief Constructor 
      * \param[in] x Vector
-     * \param[in] Sx Covariance matrix
      * \param[in] t Timestamp
      */
     Pose(Vec const &x, const TimeStamp &t = TimeStamp() ) : RandomVec<Vec::RowsAtCompileTime>(x, t) {}
@@ -112,7 +111,7 @@ namespace rfs{
     ~Pose(){}
 
     /** \brief Get the position vector 
-     *  \param[out] position vector 
+     *  \param[out] x position vector 
      */
     void getPos(PosVec &x) const {
       x = this->x_.template head<nPosDim>();
@@ -168,7 +167,9 @@ namespace rfs{
 
   };
 
-  // Partial template specialization
+  /** 
+   * \brief Partial template specialization for Pose with only rotation and without position.
+   */
   template<unsigned int nDim, unsigned int nRotDim>
   class Pose<nDim, 0, nRotDim> : public RandomVec< nDim >
   {
@@ -214,7 +215,6 @@ namespace rfs{
     /**
      * \brief Constructor 
      * \param[in] x Vector
-     * \param[in] Sx Covariance matrix
      * \param[in] t Timestamp
      */
     Pose(Vec const &x, const TimeStamp &t = TimeStamp() ) : RandomVec<Vec::RowsAtCompileTime>(x, t) {}
@@ -260,7 +260,9 @@ namespace rfs{
 
   };
 
-  // Template specialization
+  /** 
+   * \brief Partial template specialization for Pose with only position and without rotation.
+   */
   template<unsigned int nDim, unsigned int nPosDim>
   class Pose<nDim, nPosDim, 0> : public RandomVec< nDim >
   {
@@ -272,7 +274,7 @@ namespace rfs{
     /** \brief the full covariance matrix */
     typedef typename RandomVec<nDim>::Mat Cov;
 
-        /** \brief the full covariance matrix */
+    /** \brief the full covariance matrix */
     typedef typename RandomVec<nDim>::Mat Mat;
     
     /** \brief Position vector */
@@ -306,7 +308,6 @@ namespace rfs{
     /**
      * \brief Constructor 
      * \param[in] x Vector
-     * \param[in] Sx Covariance matrix
      * \param[in] t Timestamp
      */
     Pose(Vec const &x, const TimeStamp &t = TimeStamp() ) : RandomVec<Vec::RowsAtCompileTime>(x, t) {}
@@ -321,7 +322,7 @@ namespace rfs{
     ~Pose(){}
 
     /** \brief Get the position vector 
-     *  \param[out] position vector 
+     *  \param[out] x position vector 
      */
     void getPos(PosVec &x) const{
       x = this->x_.template head<nPosDim>();

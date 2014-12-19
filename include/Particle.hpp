@@ -81,7 +81,7 @@ public:
 
   /**
    *  \brief Get particle pose.
-   *  \param[out] x_k_i pose
+   *  \param[out] x pose
    */
   void getPose( PoseType &x ) const;
 

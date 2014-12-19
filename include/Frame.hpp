@@ -58,7 +58,7 @@ namespace rfs{
 
     /**
      * \brief Concatenate this frame F_b_c with another frame F_c_d.
-     * \param[in] other frame F_c_d
+     * \param[in] F_c_d other frame F_c_d
      * \return resulting frame F_b_d
      */
     Frame2d operator*(Frame2d const &F_c_d);

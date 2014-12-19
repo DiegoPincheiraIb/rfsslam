@@ -43,7 +43,7 @@ MeasurementModel_XY::MeasurementModel_XY(){
 }
 
 
-MeasurementModel_XY::MeasurementModel_XY(Eigen::Matrix2d &covZ){
+MeasurementModel_XY::MeasurementModel_XY(::Eigen::Matrix2d &covZ){
 
   setNoise(covZ);
   config.probabilityOfDetection_ = 0.95;

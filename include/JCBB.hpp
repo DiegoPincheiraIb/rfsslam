@@ -75,7 +75,7 @@ namespace rfs{
      * \param[in] dist_mahalanobis2 squared Mahalanobis distance for the associations
      * represented by this and all parent nodes
      */
-    void setAssociation(int z_idx, int m_idx, double dist_mahalanobist2);
+    void setAssociation(int z_idx, int m_idx, double dist_mahalanobis2);
 
     /**
      * Get the association represented by this node
@@ -106,7 +106,7 @@ namespace rfs{
 
     int z_idx_; /**< measurement index */
     int m_idx_; /**< landmark index */
-    double dist_mahalanobist2_; /**< joint Mahalanobis distance for all associations up to the root */
+    double dist_mahalanobis2_; /**< joint Mahalanobis distance for all associations up to the root */
     ::Eigen::MatrixXd C_inverse_; /**< inverse innovation covariance for all associations up to the root */
     ::Eigen::VectorXd innov_; /**< measurement innovation for all associations up to the root */
 
@@ -221,16 +221,16 @@ namespace rfs{
   }
 
   bool JCBB_TreeNode::operator<(JCBB_TreeNode &other) const{
-    if(this->dist_mahalanobist2_ < other.dist_mahalanobist2_)
+    if(this->dist_mahalanobis2_ < other.dist_mahalanobis2_)
       return true;
     else
       return false;
   }
 
-  void JCBB_TreeNode::setAssociation(int z_idx, int m_idx, double dist_mahalanobist2){
+  void JCBB_TreeNode::setAssociation(int z_idx, int m_idx, double dist_mahalanobis2){
     z_idx_ = z_idx;
     m_idx_ = m_idx;
-    dist_mahalanobist2_ = dist_mahalanobist2;
+    dist_mahalanobis2_ = dist_mahalanobis2;
   }
   
   void JCBB_TreeNode::getAssociation(int &z_idx, int &m_idx){
@@ -239,7 +239,7 @@ namespace rfs{
   }
 
   double JCBB_TreeNode::getMahalanobisDist2(){
-    return dist_mahalanobist2_;
+    return dist_mahalanobis2_;
   }
 
   ::Eigen::VectorXd* JCBB_TreeNode::getInnovation(){
@@ -385,7 +385,7 @@ namespace rfs{
 	int lmkDim = landmarks_->at(0)->getNDim();
 	int measureDim = z_actual.size();
 	int nPreviousMeasurements = used_lmk_indices.size();
-	double dist_mahalanobist2 = -1;
+	double dist_mahalanobis2 = -1;
 
 	::Eigen::MatrixXd W;
 	W.resize(measureDim, measureDim * nPreviousMeasurements);
@@ -448,11 +448,11 @@ namespace rfs{
 	  double d1 = innov_m->transpose() * L.transpose() * N.inverse() * L * *innov_m;
 	  double d2 = 2 * innov.transpose() * L * *innov_m;
 	  double d3 = innov.transpose() * N * innov;
-	  dist_mahalanobist2 = d2_m + d1 + d2 + d3;
+	  dist_mahalanobis2 = d2_m + d1 + d2 + d3;
 
 	}else{ // robot pose has no uncertainty or we are dealing with the first measurement
 
-	  dist_mahalanobist2 = d2_m + innov.transpose() * C_current.inverse() * innov;
+	  dist_mahalanobis2 = d2_m + innov.transpose() * C_current.inverse() * innov;
 
 	}
 
@@ -460,11 +460,11 @@ namespace rfs{
 	int nDof = measureDim * (1 + nPreviousMeasurements);
 	boost::math::chi_squared_distribution<> chi2Dist(nDof);
 	double threshold = quantile(chi2Dist, confidence_interval_);
-	if(dist_mahalanobist2 < threshold){
+	if(dist_mahalanobis2 < threshold){
 
 	  // gating passed - new node in interpretation tree 
 	  JCBB_TreeNode* new_node = node->addChild();
-	  new_node->setAssociation(z_idx, m_idx, dist_mahalanobist2);
+	  new_node->setAssociation(z_idx, m_idx, dist_mahalanobis2);
 	  int new_innov_size = innov_m->size() + innov.size();
 	  new_node->getInnovation()->resize(new_innov_size);
 	  *(new_node->getInnovation()) << *innov_m, innov;
@@ -485,9 +485,9 @@ namespace rfs{
 
 	  // Keep track of best data association hypothesis
 	  if( (nAssociations_best_ < nAssociations + 1) ||  
-	      ( nAssociations_best_ == nAssociations + 1 && dist_mahalanobis2_best_ <= dist_mahalanobist2) ){
+	      ( nAssociations_best_ == nAssociations + 1 && dist_mahalanobis2_best_ <= dist_mahalanobis2) ){
 	    nAssociations_best_ = nAssociations + 1;
-	    dist_mahalanobis2_best_ = dist_mahalanobist2;
+	    dist_mahalanobis2_best_ = dist_mahalanobis2;
 	    node_best_ = new_node;
 	  }
 	}
