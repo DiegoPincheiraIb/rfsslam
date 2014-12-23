@@ -447,9 +447,9 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
   }else{
     while(nH < config.maxNDataAssocHypotheses_){
 
-      int* daVar = NULL;
+      Murty::Assignment daVar;
       unsigned int nH_old = nH;
-      nH = murty.findNextBest(daVar, &logLikelihoodSum);
+      nH = murty.findNextBest(daVar, logLikelihoodSum);
       if(nH == -1){
 	nH = nH_old;
 	break;

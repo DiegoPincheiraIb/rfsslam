@@ -880,12 +880,12 @@ rfsMeasurementLikelihood( const int particleIdx,
 	}
 
 	Murty murtyAlgo(Cp, nRows + nCols);
-	int* a;
+	Murty::Assignment a;
 	partition_likelihood = 0;
 	double permutation_log_likelihood = 0;
-	murtyAlgo.setIdealBlock(nRows, nCols);
+	murtyAlgo.setRealAssignmentBlock(nRows, nCols);
 	for(int k = 0; k < 200; k++){ 
-	  int rank = murtyAlgo.findNextBest(a, &permutation_log_likelihood);
+	  int rank = murtyAlgo.findNextBest(a, permutation_log_likelihood);
 	  if(rank == -1 || permutation_log_likelihood < BIG_NEG_NUM)
 	    break;
 	  partition_likelihood += exp(permutation_log_likelihood);
