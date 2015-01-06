@@ -160,9 +160,9 @@ namespace rfs{
     
     /** \brief Check if the template parameters for dimensionality are valid */
     void dimCheck(){
-      assert(nDim < nPosDim);
-      assert(nDim < nRotDim);
-      assert(nDim <= nPosDim + nRotDim);
+      assert(nDim >= nPosDim);
+      assert(nDim >= nRotDim);
+      assert(nDim == nPosDim + nRotDim);
     }
 
   };
