@@ -53,8 +53,8 @@ public:
 
   /** 
    * Get the elapsed time from the timer since the start (as a string)
-   * \output t_wall wall time in nsec
-   * \output t_cpu cpu (system + user) time in nsec
+   * \param[out] t_wall wall time in nsec
+   * \param[out] t_cpu cpu (system + user) time in nsec
    */
   void elapsed(std::string &t_wall, std::string &t_cpu);
 
