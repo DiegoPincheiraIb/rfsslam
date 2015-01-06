@@ -77,7 +77,7 @@ public:
    * Memory is allocated for creating copies of Gaussians for the other GaussianMixture.
    * \param[in,out] other the other Gaussian mixture to which data is copied to
    */
-  void copyTo( GaussianMixture *other);
+  void copyTo( GaussianMixture *other) const;
 
   /** 
    * Add a Gaussian to this GaussianMixture
@@ -185,6 +185,11 @@ public:
    */
   void sortByWeight();
 
+  /**
+   * Normalize the weights in the Gaussian Mixture so they add up to 1.
+   */
+  void normalizeWeights();
+
 protected:
 
   int n_; /**< number of Gaussians in this GaussianMixture */
@@ -253,7 +258,7 @@ GaussianMixture<Landmark>::~GaussianMixture(){
 }
 
 template< class Landmark >
-void GaussianMixture<Landmark>::copyTo( GaussianMixture *other){
+void GaussianMixture<Landmark>::copyTo( GaussianMixture *other) const{
   other->n_ = n_;
   other->gList_ = gList_;
   for(int i = 0; i < gList_.size(); i++){
@@ -527,7 +532,18 @@ void GaussianMixture<Landmark>::sortByWeight(){
     isSorted_ = true;
   }
 }
+template< class Landmark >
+void GaussianMixture<Landmark>::normalizeWeights(){
+  double sum = 0;
+  for(int i = 0; i < n_; i++){
+    sum += gList_[i].weight;
+  }
+  for(int i = 0; i < n_; i++){
+    gList_[i].weight = gList_[i].weight/sum;
+  }
 
+
+}
 template< class Landmark >
 bool GaussianMixture<Landmark>::weightCompare(Gaussian a, Gaussian b){
   return a.weight > b.weight;

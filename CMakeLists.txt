@@ -89,8 +89,12 @@ ADD_LIBRARY(rfsslam
   )
 
 
+
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dSim ${Boost_LIBRARIES} rfsslam)
+
+ADD_EXECUTABLE(rbcbmemberslam2dSim src/rbcbmemberslam2dSim.cpp)
+TARGET_LINK_LIBRARIES(rbcbmemberslam2dSim ${Boost_LIBRARIES} rfsslam)
 
 ADD_EXECUTABLE(fastslam2dSim src/fastslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(fastslam2dSim ${Boost_LIBRARIES} rfsslam)
