@@ -18,7 +18,11 @@ int main(int argc, char* args[]){
   cov.setZero(cov_dim, cov_dim);
 
   // Robot Pose
-  TPose robot(0, 0, 0, 1, 1, 0, 0);
+  TPose::Vec p;
+  TPose::Vec pCovDiag;
+  p << 0, 0, 0;
+  pCovDiag << 1, 1, 0;
+  TPose robot(p, pCovDiag.asDiagonal(), 0);
   cov.topLeftCorner(TPose::Vec::RowsAtCompileTime, TPose::Vec::RowsAtCompileTime) = robot.getCov();
 
   // Landmark positions // todo change to pointers

@@ -43,7 +43,7 @@ MeasurementModel_RngBrg::MeasurementModel_RngBrg(){
 }
 
 
-MeasurementModel_RngBrg::MeasurementModel_RngBrg(Eigen::Matrix2d &covZ){
+MeasurementModel_RngBrg::MeasurementModel_RngBrg(::Eigen::Matrix2d &covZ){
 
   setNoise(covZ);
   config.probabilityOfDetection_ = 0.95;

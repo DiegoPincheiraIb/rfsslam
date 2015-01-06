@@ -64,7 +64,7 @@ public:
   
   /**
    * Get pointers to a child
-   * \param[in] child index
+   * \param[in] idx child index
    * \return a pointer to the child
    */ 
   Derived* getChild(size_t idx);

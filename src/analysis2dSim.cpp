@@ -49,6 +49,9 @@ class LogFileReader2dSim
 {
 public:
 
+  typedef Particle<Pose2d, GaussianMixture<Landmark2d> > TParticle;
+  typedef std::vector< TParticle > TParticleSet;
+
   /** Constructor */
   LogFileReader2dSim(const char* logDir){
 
@@ -135,9 +138,9 @@ public:
 	p[0] = p_x_;
 	p[1] = p_y_;
 	p[2] = p_z_;
-	Particle<Pose2d, GaussianMixture<Landmark2d> > particle(p_id_, p, p_w_);
+	TParticle particle(p_id_, p, p_w_);
 	particles_.push_back( particle ); 
-	particles_[p_id_].setData(new GaussianMixture<Landmark2d>);
+	particles_[p_id_].setData( TParticle::PtrData( new GaussianMixture<Landmark2d> ));
 
 	if( fscanf(pParticlePoseFile, "%lf %d %lf %lf %lf %lf", &p_t_, &p_id_, &p_x_, &p_y_, &p_z_, &p_w_) != 6)
 	  break;
@@ -462,7 +465,8 @@ private:
   double i_hi_;  /** highest particle weight index */
   double w_sum_; /** particle weight sum */
 
-  std::vector< Particle<Pose2d, GaussianMixture<Landmark2d> > > particles_;
+  
+  TParticleSet particles_;
   std::vector< Pose2d > pose_gt_;
   std::vector< Landmark2d::Vec > map_;
   std::vector<double> mapObsTimestep_;

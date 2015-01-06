@@ -85,7 +85,11 @@ public:
   typedef typename RobotProcessModel::TInput TInput;
   typedef typename MeasurementModel::TLandmark TLandmark;
   typedef typename MeasurementModel::TMeasurement TMeasurement;
-  typedef typename GaussianMixture<TLandmark>::Gaussian TGaussian;
+  typedef GaussianMixture<TLandmark> TGM;
+  typedef typename TGM::Gaussian TGaussian;
+  typedef ParticleFilter<RobotProcessModel, MeasurementModel, TGM > TPF;
+  typedef typename TPF::TParticle TParticle;
+  typedef typename TPF::TParticleSet TParticleSet;
 
   /** 
    * \brief Configurations for this RBPHDFilter 
@@ -149,7 +153,9 @@ public:
   /**
    * Predict the robot trajectory using the lastest odometry data
    * \param[in] u input 
-   * \param[in] Timestamp size of timestep;
+   * \param[in] dT size of timestep;
+   * \param[in] useModelNoise use the additive noise for the motion model
+   * \param[in] useInputNoise use the noise for the inputs
    */
   void predict( TInput u, const TimeStamp &dT,
 		bool useModelNoise = true,
@@ -159,7 +165,6 @@ public:
    * Update the map, calculate importance weighting, and perform resampling if necessary
    * \param[in] Z set of measurements to use for the update, placed in a std vector, which
    * gets cleared after the function call. 
-   * \param[in] currentTimestep current timestep;
    */
   void update( std::vector<TMeasurement> &Z);
 
@@ -273,7 +278,7 @@ FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
   nParticles_init_ = n;
   
   for(int i = 0; i < n; i++){
-    this->particleSet_[i]->setData( new GaussianMixture<TLandmark>() );
+    this->particleSet_[i]->setData( typename TParticle::PtrData( new GaussianMixture<TLandmark>() ) );
   }
 
   config.minUpdatesBeforeResample_ = 1;
@@ -442,9 +447,9 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
   }else{
     while(nH < config.maxNDataAssocHypotheses_){
 
-      int* daVar = NULL;
+      Murty::Assignment daVar;
       unsigned int nH_old = nH;
-      nH = murty.findNextBest(daVar, &logLikelihoodSum);
+      nH = murty.findNextBest(daVar, logLikelihoodSum);
       if(nH == -1){
 	nH = nH_old;
 	break;

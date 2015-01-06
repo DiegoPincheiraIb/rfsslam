@@ -42,7 +42,7 @@ MeasurementModel_Rng1D::MeasurementModel_Rng1D(){
   config.rangeLimBuffer_ = 0.25;
 }
 
-MeasurementModel_Rng1D::MeasurementModel_Rng1D(Eigen::Matrix<double, 1, 1> &Sr){
+MeasurementModel_Rng1D::MeasurementModel_Rng1D(::Eigen::Matrix<double, 1, 1> &Sr){
   setNoise(Sr);
   config.probabilityOfDetection_ = 0.95;
   config.uniformClutterIntensity_ = 0.1;
