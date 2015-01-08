@@ -162,9 +162,9 @@ p3, = plt.plot(mapTimesteps[::10], errorOSPA_fastslam[::10], 'g-');
 plt.legend([p1, p2, p3], [r"RB-PHD-SLAM", r"MH-FastSLAM", r"FastSLAM"], loc=2);
 plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
 plt.xlabel(r'Time [s]');
-plt.ylabel(r'OSPA error');
+plt.ylabel(r'OSPA error [m]');
 plt.grid(True);
-plt.ylim(ymax = 4);
+plt.ylim(ymax = 12);
 
 plt.figure(3);
 p4, = plt.plot(mapTimesteps[::10], landmarksMeasured[::10], 'k-', linewidth=5.0);
