@@ -241,7 +241,7 @@ correct(const TPose &pose, const TMeasurement &measurement,
   P_updated = ( I - K * H ) * P;
   P_updated = ( P_updated + P_updated.transpose() ) / 2; // make sure covariance is symetric
   m_updated = m + K * z_innov; 
-
+  assert(!m_updated.isZero());
   landmark_updated.set(m_updated, P_updated); 
   
   if(zLikelihood != NULL){

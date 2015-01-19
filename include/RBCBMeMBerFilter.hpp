@@ -367,7 +367,8 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
     for (int i = 0; i < n; i++) {
       // printf("Creating map structure for particle %d\n", i);
-      this->particleSet_[i]->setData(boost::shared_ptr< GMMultiBernoulli<TLandmark> >(new GMMultiBernoulli<TLandmark>()));
+      this->particleSet_[i]->setData(
+          boost::shared_ptr<GMMultiBernoulli<TLandmark> >(new GMMultiBernoulli<TLandmark>()));
       unused_measurements_.push_back(std::vector<unsigned int>());
     }
 
@@ -614,6 +615,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
           if (kfs_[threadnum].correct(*pose, this->measurements_[z], *lm, lmNew, &innovationLikelihood,
                                       &innovationMahalanobisDist2)) {
+
             rho += innovationLikelihood * this->particleSet_[i]->getData()->tracks_[m].getWeight(g) * Pd[m];
             this->particleSet_[i]->getData()->tracks_[nM + z].addGaussian(
                 &lmNew,
@@ -637,11 +639,16 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
     //----------  5. Identify unused measurements for adding birth Gaussians later ----------
     unused_measurements_[i].clear();
+    int num_unused=0;
     for (int z = 0; z < nZ; z++) {
 
-      if (this->particleSet_[i]->getData()->tracks_[nM + z].getP() == 0)
+      if (this->particleSet_[i]->getData()->tracks_[nM + z].getP() == 0){
+        this->particleSet_[i]->getData()->tracks_[nM + nZ-1-num_unused].copyTo(&(this->particleSet_[i]->getData()->tracks_[nM + z]));
         unused_measurements_[i].push_back(z);
+        num_unused++;
+        }
     }
+    this->particleSet_[i]->getData()->tracks_.resize(nM+nZ-num_unused);
 
   }
 
@@ -765,10 +772,11 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
         // calculate the likelihood with existence probability
         L[n][m] = 0;
-        for (unsigned int g = 0; g < this->particleSet_[i]->getData()->tracks_[m].getGaussianCount(); g++) {
-          TLandmark* lm = this->particleSet_[i]->getData()->tracks_[m].getGaussian(g);
-
-          L[n][m] += lm->evalGaussianLikelihood(*evalPt) * this->particleSet_[i]->getData()->tracks_[m].getWeight(g);
+        for (unsigned int g = 0; g < this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getGaussianCount(); g++) {
+          TLandmark* lm = this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getGaussian(g);
+          double weight = this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getWeight(g);
+          double like = lm->evalGaussianLikelihood(*evalPt);
+          L[n][m] += like*weight;
         } // gaussian in track m for loop
         L[n][m] *= this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getPrevP(); // new line
 
@@ -799,7 +807,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
       if (isZeroPartition || nRows < nCols) { // all landmarks in this partition are mis-detected. All measurements are outliers
 
-        std::cerr << "Error: Map likelihood is zero \n";
+        std::cerr << "Error: Prev Map likelihood is zero \n";
         return 0;
 
       }
@@ -831,9 +839,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
             }
           }
 
-
-
-          Murty murtyAlgo(Cp, nRows + nCols);
+          Murty murtyAlgo(Cp, nRows);
           Murty::Assignment a;
           partition_likelihood = 0;
           double permutation_log_likelihood = 0;
@@ -844,8 +850,6 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
               break;
             partition_likelihood += exp(permutation_log_likelihood);
           }
-
-
 
         }
         else { // use lexicographic ordering
@@ -945,12 +949,15 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
         // calculate the likelihood with existence probability
         L[n][m] = 0;
-        for (unsigned int g = 0; g < this->particleSet_[i]->getData()->tracks_[m].getGaussianCount(); g++) {
-          TLandmark* lm = this->particleSet_[i]->getData()->tracks_[m].getGaussian(g);
-
-          L[n][m] += lm->evalGaussianLikelihood(*evalPt) * this->particleSet_[i]->getData()->tracks_[m].getWeight(g);
+        for (unsigned int g = 0; g < this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getGaussianCount(); g++) {
+          TLandmark* lm = this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getGaussian(g);
+          if (lm != NULL) {
+            double weight =this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getWeight(g);
+            double like = lm->evalGaussianLikelihood(*evalPt);
+            L[n][m] += weight*like;
+          }
         } // gaussian in track m for loop
-        L[n][m] *= this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getPrevP(); // new line
+        L[n][m] *= this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getP(); // new line
 
       }
     }
@@ -1010,14 +1017,14 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
             }
           }
 
-          Murty murtyAlgo(Cp, nRows + nCols);
+          Murty murtyAlgo(Cp, nRows );
           Murty::Assignment a;
           partition_likelihood = 0;
           double permutation_log_likelihood = 0;
           murtyAlgo.setRealAssignmentBlock(nRows, nCols);
-          for(int k = 0; k < 200; k++){
+          for (int k = 0; k < 200; k++) {
             int rank = murtyAlgo.findNextBest(a, permutation_log_likelihood);
-            if(rank == -1 || permutation_log_likelihood < BIG_NEG_NUM)
+            if (rank == -1 || permutation_log_likelihood < BIG_NEG_NUM)
               break;
             partition_likelihood += exp(permutation_log_likelihood);
           }
@@ -1087,6 +1094,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
       this->particleSet_[i]->getData()->tracks_.at(evalPtIdx[m]).getMaxGaussian(evalPt); // get location of m
       evalPt_copy = *evalPt; // so that we don't change the actual data //
+      assert(!evalPt_copy.get().isZero());
       evalPt_copy.setCov(MeasurementModel::TLandmark::Mat::Zero()); //
       this->pMeasurementModel_->measure(x, evalPt_copy, expected_z); // get expected measurement for m
       double Pd = evalPtPd[m]; // get the prob of detection of m
@@ -1189,9 +1197,9 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
           partition_likelihood = 0;
           double permutation_log_likelihood = 0;
           murtyAlgo.setRealAssignmentBlock(nRows, nCols);
-          for(int k = 0; k < 200; k++){
+          for (int k = 0; k < 200; k++) {
             int rank = murtyAlgo.findNextBest(a, permutation_log_likelihood);
-            if(rank == -1 || permutation_log_likelihood < BIG_NEG_NUM)
+            if (rank == -1 || permutation_log_likelihood < BIG_NEG_NUM)
               break;
             partition_likelihood += exp(permutation_log_likelihood);
           }

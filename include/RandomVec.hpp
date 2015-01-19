@@ -233,6 +233,7 @@ namespace rfs
       isValid_Sx_L_ = false; 
       isValid_Sx_inv_ = false;
       isValid_Sx_det_ =false;
+      assert(checkCov());
     }
 
     /**
@@ -517,6 +518,14 @@ namespace rfs
       }
       x_ += Sx_L_ * indep_noise;
 
+    }
+    /**
+     * returns true if covariance is  aproximatelly symmetric
+     **/
+    bool checkCov(){
+      Mat t=Sx_-Sx_.transpose();
+
+      return t.isZero();
     }
 
   protected:

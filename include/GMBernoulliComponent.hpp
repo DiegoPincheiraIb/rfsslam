@@ -71,6 +71,12 @@ template<class Landmark>
     void copyTo(GMBernoulliComponent *other) const;
 
     /**
+     * Assignment operator
+     * \param[in] rhs the right-hand-side from which data is copied
+     */
+    GMBernoulliComponent& operator=( const GMBernoulliComponent& rhs );
+
+    /**
      * Get probability of existence
      * \return Probability of existence of the Bernoulli Component
      **/
@@ -120,6 +126,13 @@ template<class Landmark>
     other->prevP_ = prevP_;
     GaussianMixture<Landmark>::copyTo(other);
   }
+template<class Landmark>
+GMBernoulliComponent<Landmark>& GMBernoulliComponent<Landmark>::operator=(const GMBernoulliComponent &other) {
+  other.copyTo(this);
+  return *this;
+}
+
+
 template<class Landmark>
   double GMBernoulliComponent<Landmark>::getP() {
     return p_;
@@ -269,7 +282,7 @@ template<class Landmark>
     int pruned = 0;
     for (int i = tracks_.size() - 1; i >= 0; i--) {
       if (tracks_[i].getP() < t) {
-        tracks_[i] = tracks_[tracks_.size() - 1 - pruned];
+        tracks_[tracks_.size() - 1 - pruned].copyTo(&tracks_[i]);
         pruned++;
       }
     }

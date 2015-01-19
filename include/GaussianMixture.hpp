@@ -262,9 +262,11 @@ void GaussianMixture<Landmark>::copyTo( GaussianMixture *other) const{
   other->n_ = n_;
   other->gList_ = gList_;
   for(int i = 0; i < gList_.size(); i++){
-    Landmark* lmkCopy = new Landmark;
-    *lmkCopy = *(gList_[i].landmark);
-    other->gList_[i].landmark = lmkCopy; 
+    if(gList_[i].landmark != NULL){
+      Landmark* lmkCopy = new Landmark;
+      *lmkCopy = *(gList_[i].landmark);
+      other->gList_[i].landmark = lmkCopy;
+    }
   }
   other->isSorted_ = isSorted_;
 }
