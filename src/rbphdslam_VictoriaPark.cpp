@@ -549,20 +549,16 @@ int main(int argc, char* argv[]){
     return -1;
   }
 
-  // Read files from the dataset
   slam.readData();
-
   slam.setupRBPHDFilter();
 
   srand48( time(NULL) );
-
-  //boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Run time: %ws\n");
+  boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Run time: %ws\n");
 
   //sim.run(); 
 
-  //delete timer;
-  
-
+  delete timer;
+ 
   return 0;
 
 }
