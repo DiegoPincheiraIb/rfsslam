@@ -130,7 +130,7 @@ public:
     if(useInputWhiteGaussianNoise){
 
       InputType in;
-      input_k.sample(in); // noise of in needs to be defined according to dT outside this function
+      input_k.sample(in);
       step( s_k, s_km, in, dT );
 
     }else{

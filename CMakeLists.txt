@@ -76,6 +76,7 @@ ADD_LIBRARY(rfsslam
   src/Frame.cpp
   src/ProcessModel_Odometry1D.cpp 
   src/ProcessModel_Odometry2D.cpp
+  src/ProcessModel_Ackerman2D.cpp
   src/MeasurementModel_Rng1D.cpp
   src/MeasurementModel_RngBrg.cpp
   src/MeasurementModel_XY.cpp
@@ -86,7 +87,7 @@ ADD_LIBRARY(rfsslam
   src/CostMatrix.cpp
   src/PermutationLexicographic.cpp
   )
-
+TARGET_LINK_LIBRARIES(rfsslam ${Boost_LIBRARIES})
 
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dSim ${Boost_LIBRARIES} rfsslam)

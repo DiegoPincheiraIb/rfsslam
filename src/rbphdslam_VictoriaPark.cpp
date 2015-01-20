@@ -28,6 +28,7 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <assert.h>
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -37,6 +38,7 @@
 #include "KalmanFilter_RngBrg.hpp"
 #include <stdio.h>
 #include <string>
+#include <sstream>
 
 using namespace rfs;
 
@@ -147,17 +149,54 @@ public:
     return true;   
   }
 
+  struct SensorManagerMsg{
+    TimeStamp t;
+    enum Type {GPS, Input, Lidar};
+    Type sensorType;
+    uint idx;
+  };
+
   /** \brief Import dataset from files */
   void readData(){
 
+    std::string msgLine;
+
     // Read sensor manager log
-    // \TODO define log
     std::cout << "Reading process input file: " << dataFileSensorManager_ << std::endl;
+    std::ifstream file_sensorManager( dataFileSensorManager_.c_str() );
+    assert( file_sensorManager.is_open() );
+    while( std::getline( file_sensorManager, msgLine ) ){
+      SensorManagerMsg msg;
+      double time;
+      int type;
+      std::stringstream ss( msgLine );
+      ss >> time >> type >> msg.idx;
+      msg.t.setTime(time);
+      msg.sensorType = (SensorManagerMsg::Type)type;
+      msg.idx--;
+      //std::cout << std::setw(10) << std::fixed << std::setprecision(3) << msg.t.getTimeAsDouble() 
+      //	<< std::setw(10) << (int)(msg.sensorType) 
+      //	<< std::setw(10) << msg.idx << std::endl;
+    }
+    file_sensorManager.close();
 
     // Read Process Model Inputs
     // \TODO define motion model
-    // odometry_.push_back()
+    
     std::cout << "Reading process input file: " << dataFileInput_ << std::endl;
+    std::ifstream file_input( dataFileInput_.c_str() );
+    assert( file_input.is_open() );
+    while( std::getline( file_input, msgLine ) ){
+      double time, vel, steer;
+      std::stringstream ss( msgLine );
+      ss >> time >> vel >> steer;
+
+      // odometry_.push_back()
+      //std::cout << std::setw(10) << std::fixed << std::setprecision(3) << msg.t.getTimeAsDouble() 
+      //	<< std::setw(10) << (int)(msg.sensorType) 
+      //	<< std::setw(10) << msg.idx << std::endl;
+    }
+    file_sensorManager.close();
 
     // Read Lidar measurements
     // \TODO define measurement model 
@@ -179,7 +218,7 @@ public:
     MotionModel_Odometry2d motionModel(Q);
     deadReckoning_pose_.reserve( kMax_ );
     deadReckoning_pose_.push_back( groundtruth_pose_[0] );
-    */
+   
     
     if(logToFile_){
       FILE* pDeadReckoningFile;
@@ -195,15 +234,20 @@ public:
       fclose(pDeadReckoningFile);
     }
 
+    */
+
   }
 
   /** RB-PHD Filter Setup */
   void setupRBPHDFilter(){
+
     
     pFilter_ = new RBPHDFilter<MotionModel_Odometry2d,
 			       StaticProcessModel<Landmark2d>,
 			       MeasurementModel_RngBrg,
 			       KalmanFilter_RngBrg>( nParticles_ );
+
+			       /*
 
     //double dt = dTimeStamp_.getTimeAsDouble();
 
@@ -247,15 +291,16 @@ public:
     pFilter_->config.gaussianMergingCovarianceInflationFactor_ = gaussianMergingCovarianceInflationFactor_;
     pFilter_->config.gaussianPruningThreshold_ = gaussianPruningThreshold_;
     pFilter_->config.useClusterProcess_ = useClusterProcess_;
+
+    */
   }
 
   /** Run the simulator */
   void run(){
-    
-    printf("Running simulation\n\n");
 
     //////// Initialization at first timestep //////////
 
+    
     FILE* pParticlePoseFile;
     if(logToFile_){
       std::string filenameParticlePoseFile( logDirPrefix_ );
@@ -270,6 +315,7 @@ public:
     }
 
     
+    /*
     if(logToFile_){
       MotionModel_Odometry2d::TState x_i;
       for(int i = 0; i < pFilter_->getParticleCount(); i++){
@@ -279,7 +325,7 @@ public:
     }
    
     int zIdx = 0;
-
+    */
 
   
     /////////// Run simulator from k = 1 to kMax_ /////////
@@ -483,18 +529,16 @@ int main(int argc, char* argv[]){
   // Read files from the dataset
   slam.readData();
 
-  /*
-
-  sim.setupRBPHDFilter();
+  slam.setupRBPHDFilter();
 
   srand48( time(NULL) );
 
-  boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Run time: %ws\n");
+  //boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Run time: %ws\n");
 
-  sim.run(); 
+  //sim.run(); 
 
-  delete timer;
-  */
+  //delete timer;
+  
 
   return 0;
 
