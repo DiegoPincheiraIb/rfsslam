@@ -1,0 +1,88 @@
+<!-- rbphdslam_VictoriaPark configuration file -->
+
+<config>
+  
+  <dataset>
+    <directory>data/VictoriaPark/</directory>
+    <filename>
+      <gps>GPS.txt</gps>
+      <lidar>measurements.dat</lidar>
+      <input>DRS.txt</input>
+      <manager>Sensors_manager.txt</manager>
+    </filename>
+  </dataset>
+
+  <logging>
+    <logToFile>1</logToFile>
+    <logDirPrefix>data/rbphdslam/</logDirPrefix>
+  </logging>
+
+  <process>
+    <vardx>0.00200</vardx> <!-- variance in x displacement per second -->
+    <vardy>0.00200</vardy> <!-- variance in y displacement per second -->
+    <vardz>0.00200</vardz> <!-- variance in rotation displacement per second -->
+  </process>
+
+  <landmarks>
+    <varlmx>0.0002</varlmx> <!-- increase in landmark x uncertainty per second -->
+    <varlmy>0.0002</varlmy> <!-- increase in landmark y uncertainty per second -->
+  </landmarks>
+
+  <measurements>
+    <rangeLimitMax>75.3</rangeLimitMax> <!-- measurement range limit (meter)-->
+    <rangeLimitMin>1.45</rangeLimitMin> <!-- measurement range limit (meter)-->
+    <bearingLimitMax>177.0</bearingLimitMax> <!-- measurement bearing limit (deg)-->
+    <bearingLimitMin>6.3025</bearingLimitMin> <!-- measurement bearing limit (deg)-->
+    <rangeLimitBuffer>0.05</rangeLimitBuffer> <!-- buffer zone in which negative information has no effects -->
+    <probDetection>0.90</probDetection> <!-- probability of detection -->
+    <clutterIntensity>0.01</clutterIntensity> <!-- uniform clutter intensity -->
+    <varzr>0.0005</varzr> <!-- range measurement variance -->
+    <varzb>0.00005</varzb> <!-- bearing measurement variance (0.0001 is roughly 0.6 deg standard deviation) -->
+    <varzd>0.01</varzd> <!-- diameter measurement variance (meter squared)-->
+  </measurements>
+  
+  <filter>
+    <nParticles>200</nParticles> <!-- number of particles -->
+    
+    <predict>
+      <processNoiseInflationFactor>1.5</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
+      <birthGaussianWeight>0.01</birthGaussianWeight> <!-- weight assigned to new birth Gaussians -->
+    </predict>
+
+    <update>
+      <measurementNoiseInflationFactor>10.0</measurementNoiseInflationFactor> <!-- inflation factor of measurement covariance -->
+      <KalmanFilter>
+	<innovationThreshold> <!-- exceeding innovation will cause Kalman Filter update to not occur, set this according to noise -->
+	  <range>1.0</range>  
+	  <bearing>0.2</bearing>
+	</innovationThreshold>
+      </KalmanFilter>
+      <GaussianCreateInnovMDThreshold>3.0</GaussianCreateInnovMDThreshold> <!-- during update, Gaussians with innovation mahalanobis distance above this are not created -->  
+    </update>
+    
+    <weighting>
+      <nEvalPt>15</nEvalPt> <!-- number of points to use for evaluation particle weights (weighting strategy) -->
+      <minWeight>0.75</minWeight> <!-- Gaussians must have a weight about this for their mean to be considered for particle weighting -->
+      <threshold>3.0</threshold> <!-- likelihood calculated from Mahalanobis distance above this will be assumed to be 0 -->
+      <useClusterProcess>0</useClusterProcess> <!-- Use single cluster process for particle weighting-->
+    </weighting>
+
+    <resampling>
+      <effNParticle>100.0</effNParticle> <!-- Threshold for resampling -->
+      <minTimesteps>2</minTimesteps> <!-- Minimum number of timesteps between resampling -->
+    </resampling>
+
+    <merge>
+      <threshold>0.5</threshold> <!-- mahalanobis distance threshold for Gaussian merging 0.5 -->
+      <covInflationFactor>1.5</covInflationFactor> <!-- inflation of covariance after merging -->
+    </merge>
+
+    <prune>
+      <threshold>0.01</threshold> <!-- Gaussians with weights below this are pruned -->
+    </prune>
+
+  </filter>
+
+</config>
+
+

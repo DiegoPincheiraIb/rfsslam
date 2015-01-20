@@ -28,6 +28,9 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef TIMER_HPP
+#define TIMER_HPP
+
 #include<boost/timer/timer.hpp> 
 
 namespace rfs{
@@ -72,3 +75,5 @@ private:
 };
 
 }
+
+#endif
