@@ -73,14 +73,14 @@ class RBPHDFilter : public ParticleFilter<RobotProcessModel, MeasurementModel,
 {
 public:
 
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-  typedef typename RobotProcessModel::TState TPose;
-  typedef typename RobotProcessModel::TInput TInput;
-  typedef typename MeasurementModel::TLandmark TLandmark;
-  typedef typename MeasurementModel::TMeasurement TMeasurement;
-  typedef GaussianMixture<TLandmark> TGM;
-  typedef typename TGM::Gaussian TGaussian;
+  typedef typename RobotProcessModel::TState TPose; /**< \brief Robot pose */
+  typedef typename RobotProcessModel::TInput TInput; /**< \brief Process model input */
+  typedef typename MeasurementModel::TLandmark TLandmark; /**< \brief Landmark position */
+  typedef typename MeasurementModel::TMeasurement TMeasurement; /**< \brief Sensor measurement */
+  typedef GaussianMixture<TLandmark> TGM; /**< \brief Gaussian mixture for landmarks */
+  typedef typename TGM::Gaussian TGaussian; /**< \brief Landmark Gaussian  */
 
   /** 
    * \brief Configurations for this RBPHDFilter 

@@ -33,7 +33,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
-#include "ProcessModel_Odometry2D.hpp"
+#include "ProcessModel_Ackerman2D.hpp"
 #include "RBPHDFilter.hpp"
 #include "KalmanFilter_RngBrg.hpp"
 #include <stdio.h>
@@ -53,7 +53,7 @@ public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-  typedef RBPHDFilter<MotionModel_Odometry2d, 
+  typedef RBPHDFilter<MotionModel_Ackerman2d, 
 		      StaticProcessModel<Landmark2d>,
 		      MeasurementModel_RngBrg,  
 		      KalmanFilter_RngBrg> SLAM_Filter;
@@ -92,9 +92,13 @@ public:
       logToFile_ = true;
     logDirPrefix_ = pt.get<std::string>("config.logging.logDirPrefix", "./");
 
-    vardx_ = pt.get<double>("config.process.vardx");
-    vardy_ = pt.get<double>("config.process.vardy");
-    vardz_ = pt.get<double>("config.process.vardz");    
+
+    ackerman_h_ = pt.get<double>("config.process.AckermanModel.rearWheelOffset");
+    ackerman_l_ = pt.get<double>("config.process.AckermanModel.frontToRearDist");
+    ackerman_dx_ = pt.get<double>("config.process.AckermanModel.sensorOffset_x");
+    ackerman_dy_ = pt.get<double>("config.process.AckermanModel.sensorOffset_y");
+    var_uv_ = pt.get<double>("config.process.varuv");
+    var_ur_ = pt.get<double>("config.process.varur");
 
     varlmx_ = pt.get<double>("config.landmarks.varlmx");
     varlmy_ = pt.get<double>("config.landmarks.varlmy");
@@ -180,9 +184,7 @@ public:
     }
     file_sensorManager.close();
 
-    // Read Process Model Inputs
-    // \TODO define motion model
-    
+    // Read Process Model Inputs    
     std::cout << "Reading process input file: " << dataFileInput_ << std::endl;
     std::ifstream file_input( dataFileInput_.c_str() );
     assert( file_input.is_open() );
@@ -190,32 +192,68 @@ public:
       double time, vel, steer;
       std::stringstream ss( msgLine );
       ss >> time >> vel >> steer;
-
-      // odometry_.push_back()
-      //std::cout << std::setw(10) << std::fixed << std::setprecision(3) << msg.t.getTimeAsDouble() 
-      //	<< std::setw(10) << (int)(msg.sensorType) 
-      //	<< std::setw(10) << msg.idx << std::endl;
+      SLAM_Filter::TInput::Vec uVec;
+      uVec << vel, steer;
+      SLAM_Filter::TInput u(uVec, TimeStamp(time)); 
+      motionInputs_.push_back( u );
+      //std::cout << std::setw(10) << std::fixed << std::setprecision(3) << u.getTime().getTimeAsDouble() 
+      //	<< std::setw(10) << u[0] 
+      //	<< std::setw(10) << std::fixed << std::setprecision(4) << u[1] << std::endl;
     }
-    file_sensorManager.close();
+    file_input.close();
 
     // Read Lidar measurements
     // \TODO define measurement model 
     // measurements_.push_back( z_m_k );
     std::cout << "Reading process input file: " << dataFileLidar_ << std::endl;
+    std::ifstream file_measurements( dataFileLidar_.c_str() );
+    assert( file_measurements.is_open() );
+    while( std::getline( file_measurements, msgLine ) ){
+      double time, range, bearing, diameter;
+      std::stringstream ss(msgLine);
+      ss >> time >> range >> bearing >> diameter;
+      // \TODO
+      /* uncomment after new measurement model is defined 
+      SLAM_Filter::TMeasurement::Vec zVec;
+      zVec << range, bearing, diameter;
+      SLAM_Filter::TMeasurement z(zVec, TimeStamp(time));
+      measurements_.push_back(z);
+      std::cout << std::setw(10) << std::fixed << std::setprecision(3) << z.getTime().getTimeAsDouble() 
+      	<< std::setw(10) << std::fixed << std::setprecision(5) << z[0] 
+	<< std::setw(10) << std::fixed << std::setprecision(5) << z[1]
+      	<< std::setw(10) << std::fixed << std::setprecision(5) << z[2] << std::endl;
+      */
+    }
+    file_measurements.close();
     
     // Ground truth GPS
     //groundtruth_pose_.push_back( x_k );
     //groundtruth_pose_.back().setTime(t);
     std::cout << "Reading process input file: " << dataFileGPS_ << std::endl;
+    std::ifstream file_gps( dataFileGPS_.c_str() );
+    assert( file_gps.is_open() );
+    while( std::getline( file_gps, msgLine ) ){
+      double time, x, y;
+      std::stringstream ss(msgLine);
+      ss >> time >> x >> y;
+      Position2d::Vec pVec;
+      pVec << x, y;
+      Position2d p(pVec, TimeStamp(time));
+      groundtruth_pos_.push_back(p);
+      //std::cout << std::setw(10) << std::fixed << std::setprecision(3) << p.getTime().getTimeAsDouble() 
+      //	<< std::setw(10) << std::fixed << std::setprecision(2) << p[0] 
+      //	<< std::setw(10) << std::fixed << std::setprecision(2) << p[1] << std::endl;
+    }
+    file_gps.close();
 
   }
 
   /** \brief Peform dead reckoning with process input data */
   void deadReckoning(){
     /*
-    MotionModel_Odometry2d::TState::Mat Q;
+    MotionModel_Ackerman2d::TState::Mat Q;
     Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
-    MotionModel_Odometry2d motionModel(Q);
+    MotionModel_Ackerman2d motionModel(Q);
     deadReckoning_pose_.reserve( kMax_ );
     deadReckoning_pose_.push_back( groundtruth_pose_[0] );
    
@@ -225,7 +263,7 @@ public:
       std::string filenameDeadReckoning( logDirPrefix_ );
       filenameDeadReckoning += "deadReckoning.dat";
       pDeadReckoningFile = fopen(filenameDeadReckoning.data(), "w");
-      MotionModel_Odometry2d::TState::Vec odo;
+      MotionModel_Ackerman2d::TState::Vec odo;
       TimeStamp t;
       for(int i = 0; i < deadReckoning_pose_.size(); i++){
 	deadReckoning_pose_[i].get(odo, t);
@@ -241,30 +279,13 @@ public:
   /** RB-PHD Filter Setup */
   void setupRBPHDFilter(){
 
-    
-    pFilter_ = new RBPHDFilter<MotionModel_Odometry2d,
-			       StaticProcessModel<Landmark2d>,
-			       MeasurementModel_RngBrg,
-			       KalmanFilter_RngBrg>( nParticles_ );
+    pFilter_ = new SLAM_Filter( nParticles_ );
 
-			       /*
-
-    //double dt = dTimeStamp_.getTimeAsDouble();
-
-    // configure robot motion model (only need to set once since timesteps are constant)
-    MotionModel_Odometry2d::TState::Mat Q;
-    Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
-    Q *= (pNoiseInflation_);
-    //Q *= (pNoiseInflation_ * dt * dt);
-    pFilter_->getProcessModel()->setNoise(Q);
-
-    // configure landmark process model (only need to set once since timesteps are constant)
-    Landmark2d::Mat Q_lm;
-    Q_lm << varlmx_, 0, 0, varlmy_;
-    // Q_lm = Q_lm * dt * dt;
-    pFilter_->getLmkProcessModel()->setNoise(Q_lm); 
-
+    // Configure process model
+    pFilter_->getProcessModel()->setAckermanParams( ackerman_h_, ackerman_l_, ackerman_dx_, ackerman_dy_);
+  
     // configure measurement model
+    /*
     MeasurementModel_RngBrg::TMeasurement::Mat R;
     R << varzr_, 0, 0, varzb_;
     R *= zNoiseInflation_;
@@ -274,12 +295,13 @@ public:
     pFilter_->getMeasurementModel()->config.rangeLimMax_ = rangeLimitMax_;
     pFilter_->getMeasurementModel()->config.rangeLimMin_ = rangeLimitMin_;
     pFilter_->getMeasurementModel()->config.rangeLimBuffer_ = rangeLimitBuffer_;
+    */
 
-    // configure the Kalman filter for landmark updates
+    // configure the filter
+
     pFilter_->getKalmanFilter()->config.rangeInnovationThreshold_ = innovationRangeThreshold_;
     pFilter_->getKalmanFilter()->config.bearingInnovationThreshold_ = innovationBearingThreshold_;
 
-    // configure the filter
     pFilter_->config.birthGaussianWeight_ = birthGaussianWeight_;
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
     pFilter_->config.minUpdatesBeforeResample_ = minUpdatesBeforeResample_;
@@ -292,14 +314,12 @@ public:
     pFilter_->config.gaussianPruningThreshold_ = gaussianPruningThreshold_;
     pFilter_->config.useClusterProcess_ = useClusterProcess_;
 
-    */
   }
 
   /** Run the simulator */
   void run(){
 
     //////// Initialization at first timestep //////////
-
     
     FILE* pParticlePoseFile;
     if(logToFile_){
@@ -317,7 +337,7 @@ public:
     
     /*
     if(logToFile_){
-      MotionModel_Odometry2d::TState x_i;
+      MotionModel_Ackerman2d::TState x_i;
       for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	pFilter_->getParticleSet()->at(i)->getPose(x_i);
 	fprintf( pParticlePoseFile, "%f   %d   %f   %f   %f   1.0\n", 0.0, i, x_i.get(0), x_i.get(1), x_i.get(2));
@@ -342,7 +362,7 @@ public:
       ////////// Prediction Step //////////
 
       // configure robot motion model ( not necessary since in simulation, timesteps are constant)
-      // MotionModel_Odometry2d::TState::Mat Q;
+      // MotionModel_Ackerman2d::TState::Mat Q;
       // Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
       // Q *= (pNoiseInflation_ * dt * dt);
       // pFilter_->getProcessModel()->setNoise(Q);
@@ -452,12 +472,15 @@ private:
   std::string dataFileSensorManager_;
 
   // Process model
-  double vardx_;
-  double vardy_;
-  double vardz_;
-  std::vector<MotionModel_Odometry2d::TState> groundtruth_pose_;
-  std::vector<MotionModel_Odometry2d::TInput> odometry_;
-  std::vector<MotionModel_Odometry2d::TState> deadReckoning_pose_;
+  double ackerman_h_;
+  double ackerman_l_;
+  double ackerman_dx_;
+  double ackerman_dy_;
+  double var_uv_;
+  double var_ur_;
+  std::vector<Position2d> groundtruth_pos_;
+  std::vector<MotionModel_Ackerman2d::TInput> motionInputs_;
+  std::vector<MotionModel_Ackerman2d::TState> deadReckoning_pose_;
 
   // Landmarks 
   double varlmx_;

@@ -40,7 +40,7 @@ namespace rfs{
   typedef Pose<2, 1, 1> AckermanInput;
 
   /**
-   * \class MotionModel_Ackerman2D
+   * \class MotionModel_Ackerman2d
    * \brief Ackerman motion model.
    *
    * The inputs are rear wheels average velocity and front wheel steering angle.
@@ -51,22 +51,37 @@ namespace rfs{
    * covariance information because it is not needed by the RBPHDFilter
    * \author Keith Leung
    */
-  class MotionModel_Ackerman2D : public ProcessModel< Pose2d, AckermanInput >
+  class MotionModel_Ackerman2d : public ProcessModel< Pose2d, AckermanInput >
   {
   public:
 
+    /**
+     * \brief Constructor.
+     * \param[in] Q additive zero-mean white Gaussian noise (added to the output)
+     */
+    MotionModel_Ackerman2d(Pose2d::Cov Q = Pose2d::Cov::Zero());
+
     /** 
-     * \brief Constructor 
+     * \brief Constructor.
      * \param[in] h Rear wheel lateral offset from vehicle centerline
      * \param[in] l Distance between front and rear wheels
      * \param[in] dx x offset of the point of interest from the vehicle center
      * \param[in] dy y offset of the point of interest from the vehicle center
      * \param[in] Q additive zero-mean white Gaussian noise (added to the output)
      */
-    MotionModel_Ackerman2D(double h, double l, double dx, double dy, Pose2d::Cov Q = Pose2d::Cov::Zero());
+    MotionModel_Ackerman2d(double h, double l, double dx, double dy, Pose2d::Cov Q = Pose2d::Cov::Zero());
 
     /** Default destructor */
-    ~MotionModel_Ackerman2D();
+    ~MotionModel_Ackerman2d();
+
+    /**
+     * \brief Set the parameters of the Ackerman model
+     * \param[in] h Rear wheel lateral offset from vehicle centerline
+     * \param[in] l Distance between front and rear wheels
+     * \param[in] dx x offset of the point of interest from the vehicle center
+     * \param[in] dy y offset of the point of interest from the vehicle center
+     */
+    void setAckermanParams(double h, double l, double dx, double dy);
 
     /** 
      * This overrides the virtual function in the parent class for
@@ -82,10 +97,10 @@ namespace rfs{
 
   private:
     
-    double const h_; /**< Rear wheel lateral offset from vehicle centerline */
-    double const l_; /**< Distance between front and rear wheels */
-    double const poi_offset_x_; /**< x offset of the point of interest from the vehicle center */
-    double const poi_offset_y_; /**< y offset of the point of interest from the vehicle center */
+    double h_; /**< Rear wheel lateral offset from vehicle centerline */
+    double l_; /**< Distance between front and rear wheels */
+    double poi_offset_x_; /**< x offset of the point of interest from the vehicle center */
+    double poi_offset_y_; /**< y offset of the point of interest from the vehicle center */
   
   };
 

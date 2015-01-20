@@ -32,12 +32,21 @@
 
 using namespace rfs;
 
-MotionModel_Ackerman2D::MotionModel_Ackerman2D(double h, double l, double dx, double dy, Pose2d::Cov Q): 
-h_(h), l_(l), poi_offset_x_(dx), poi_offset_y_(dy){}
+MotionModel_Ackerman2d::MotionModel_Ackerman2d(Pose2d::Cov Q): ProcessModel(Q){}
 
-MotionModel_Ackerman2D::~MotionModel_Ackerman2D(){}
+MotionModel_Ackerman2d::MotionModel_Ackerman2d(double h, double l, double dx, double dy, Pose2d::Cov Q): 
+h_(h), l_(l), poi_offset_x_(dx), poi_offset_y_(dy), ProcessModel(Q){}
 
-void MotionModel_Ackerman2D::step( Pose2d &s_k, Pose2d &s_km, AckermanInput &input_k, TimeStamp const &dT){
+MotionModel_Ackerman2d::~MotionModel_Ackerman2d(){}
+
+void MotionModel_Ackerman2d::setAckermanParams(double h, double l, double dx, double dy){
+  h_ = h;
+  l_ = l;
+  poi_offset_x_ = dx;
+  poi_offset_y_ = dy;
+}
+
+void MotionModel_Ackerman2d::step( Pose2d &s_k, Pose2d &s_km, AckermanInput &input_k, TimeStamp const &dT){
 
   double u_v; // velocity
   double u_r; // steering

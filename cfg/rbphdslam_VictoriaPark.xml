@@ -18,9 +18,14 @@
   </logging>
 
   <process>
-    <vardx>0.00200</vardx> <!-- variance in x displacement per second -->
-    <vardy>0.00200</vardy> <!-- variance in y displacement per second -->
-    <vardz>0.00200</vardz> <!-- variance in rotation displacement per second -->
+    <AckermanModel>
+      <rearWheelOffset>0.76</rearWheelOffset>
+      <frontToRearDist>2.83</frontToRearDist>
+      <sensorOffset_x>3.78</sensorOffset_x>
+      <sensorOffset_y>0.50</sensorOffset_y>
+    </AckermanModel>
+    <varuv>0.00200</varuv> <!-- variance in speed input -->
+    <varur>0.00200</varur> <!-- variance in steering input -->
   </process>
 
   <landmarks>
