@@ -30,6 +30,7 @@
 
 #include <assert.h>
 #include <boost/filesystem.hpp>
+#include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
@@ -108,12 +109,15 @@ public:
     rangeLimitMin_ = pt.get<double>("config.measurements.rangeLimitMin");
     bearingLimitMax_ = pt.get<double>("config.measurements.bearingLimitMax");
     bearingLimitMin_ = pt.get<double>("config.measurements.bearingLimitMin");
-    rangeLimitBuffer_ = pt.get<double>("config.measurements.rangeLimitBuffer");
-    Pd_ = pt.get<double>("config.measurements.probDetection");
-    c_ = pt.get<double>("config.measurements.clutterIntensity");
+    clutterExpected_ = pt.get<double>("config.measurements.expectedNClutter");
     varzr_ = pt.get<double>("config.measurements.varzr");
     varzb_ = pt.get<double>("config.measurements.varzb");
     varzd_ = pt.get<double>("config.measurements.varzd");
+    varza_ = pt.get<double>("config.measurements.varza");
+    BOOST_FOREACH(const boost::property_tree::ptree::value_type& v, 
+		  pt.get_child("config.measurements.Pd")){
+      Pd_.push_back( boost::lexical_cast<double>(v.second.data()) );
+    }
 
     nParticles_ = pt.get("config.filter.nParticles", 200);
 
@@ -163,7 +167,7 @@ public:
 
   struct LidarScanMsg{
     TimeStamp t;
-    double scan[361];
+    std::vector<double> scan;
   };
 
   /** \brief Import dataset from files */
@@ -217,17 +221,14 @@ public:
       double time, range, bearing, diameter;
       std::stringstream ss(msgLine);
       ss >> time >> range >> bearing >> diameter;
-      // \TODO
-      /* uncomment after new measurement model is defined 
       SLAM_Filter::TMeasurement::Vec zVec;
       zVec << range, bearing, diameter;
       SLAM_Filter::TMeasurement z(zVec, TimeStamp(time));
       measurements_.push_back(z);
-      std::cout << std::setw(10) << std::fixed << std::setprecision(3) << z.getTime().getTimeAsDouble() 
-      	<< std::setw(10) << std::fixed << std::setprecision(5) << z[0] 
-	<< std::setw(10) << std::fixed << std::setprecision(5) << z[1]
-      	<< std::setw(10) << std::fixed << std::setprecision(5) << z[2] << std::endl;
-      */
+      //std::cout << std::setw(10) << std::fixed << std::setprecision(3) << z.getTime().getTimeAsDouble() 
+      //	<< std::setw(10) << std::fixed << std::setprecision(5) << z[0] 
+      //<< std::setw(10) << std::fixed << std::setprecision(5) << z[1]
+      //<< std::setw(10) << std::fixed << std::setprecision(5) << z[2] << std::endl;
     }
     file_measurements.close();
 
@@ -237,6 +238,7 @@ public:
     assert( file_lidar.is_open() );
     double t = -1;
     LidarScanMsg msg;
+    msg.scan.resize(361);
     file_lidar >> t; 
     while(t >= 0){
       msg.t.setTime(t);
@@ -313,20 +315,18 @@ public:
     pFilter_->getProcessModel()->setAckermanParams( ackerman_h_, ackerman_l_, ackerman_dx_, ackerman_dy_);
   
     // configure measurement model
-    /*
-    MeasurementModel_VictoriaPark::TMeasurement::Mat R;
-    R << varzr_, 0, 0, varzb_;
+    SLAM_Filter::TMeasurement::Cov R;
+    R << varzr_, 0, 0, 0, varzb_, 0, 0, 0, varzd_;
     R *= zNoiseInflation_;
-    pFilter_->getMeasurementModel()->setNoise(R);
+    pFilter_->getMeasurementModel()->setNoise(R, varza_);
     pFilter_->getMeasurementModel()->config.probabilityOfDetection_ = Pd_;
-    pFilter_->getMeasurementModel()->config.uniformClutterIntensity_ = c_;
+    pFilter_->getMeasurementModel()->config.expectedClutterNumber_ = clutterExpected_;
     pFilter_->getMeasurementModel()->config.rangeLimMax_ = rangeLimitMax_;
     pFilter_->getMeasurementModel()->config.rangeLimMin_ = rangeLimitMin_;
-    pFilter_->getMeasurementModel()->config.rangeLimBuffer_ = rangeLimitBuffer_;
-    */
+    pFilter_->getMeasurementModel()->config.bearingLimitMax_ = bearingLimitMax_;
+    pFilter_->getMeasurementModel()->config.bearingLimitMin_ = bearingLimitMin_;
 
     // configure the filter
-
     pFilter_->getKalmanFilter()->config.rangeInnovationThreshold_ = innovationRangeThreshold_;
     pFilter_->getKalmanFilter()->config.bearingInnovationThreshold_ = innovationBearingThreshold_;
 
@@ -379,11 +379,12 @@ public:
     u_km.setCov( u_km_cov );
     u_km.setTime( t_km );
     Landmark3d::Cov Q_m_k; // landmark process model additive noise
+    int zIdx = 0;
     for(uint k = 0; k < sensorManagerMsgs_.size() ; k++ ){  
 
-      if( k % 100 == 0){
+      /*if( k % 100 == 0){
 	std::cout << "Sensor messages processed: " << k << "/" << sensorManagerMsgs_.size()-1 << std::endl;
-      }
+	}*/
 
       if(sensorManagerMsgs_[k].sensorType == SensorManagerMsg::Input){
 
@@ -427,8 +428,13 @@ public:
 	  
 	// Update particles with lidar scan data
 
-	// \todo
-	// pFilter->update(Z);
+	std::vector<SLAM_Filter::TMeasurement> Z;
+	while( zIdx < measurements_.size() && measurements_[zIdx].getTime() == t_k ){
+	  Z.push_back(measurements_[zIdx]);
+	  zIdx++;
+	}
+	pFilter_->getMeasurementModel()->setLaserScan( lidarScans_[sensorManagerMsgs_[k].idx].scan );
+	pFilter_->update(Z);
 
 	// Log data
 	double w_max = 0;
@@ -470,20 +476,6 @@ public:
       t_km = sensorManagerMsgs_[k].t;
 
     }
-    
-    /*
-      // Prepare measurement vector for update
-      std::vector<MeasurementModel_VictoriaPark::TMeasurement> Z;
-      TimeStamp kz = measurements_[ zIdx ].getTime();
-      while( kz == time ){ 
-	Z.push_back( measurements_[zIdx] );
-	zIdx++;
-	if(zIdx >= measurements_.size())
-	  break;
-	kz = measurements_[ zIdx ].getTime();
-      }
-
-    */
     
     printf("Elapsed Timing Information [nsec]\n");
     printf("Prediction    -- wall: %lld   cpu: %lld\n", 
@@ -553,13 +545,13 @@ private:
   double rangeLimitMin_;
   double bearingLimitMax_;
   double bearingLimitMin_;
-  double rangeLimitBuffer_;
-  double Pd_;
-  double c_;
+  double clutterExpected_;
   double varzr_;
   double varzb_;
   double varzd_;
-  std::vector<MeasurementModel_VictoriaPark::TMeasurement> measurements_;
+  double varza_;
+  std::vector<SLAM_Filter::TMeasurement> measurements_;
+  std::vector<double> Pd_;
   std::vector<LidarScanMsg> lidarScans_;
 
   // Filters
