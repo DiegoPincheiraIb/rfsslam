@@ -6,7 +6,8 @@
     <directory>data/VictoriaPark/</directory>
     <filename>
       <gps>GPS.txt</gps>
-      <lidar>measurements.dat</lidar>
+      <detection>measurements.dat</detection>
+      <lidar>LASER.txt</lidar>
       <input>DRS.txt</input>
       <manager>Sensors_manager.txt</manager>
     </filename>

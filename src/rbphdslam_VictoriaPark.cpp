@@ -83,6 +83,7 @@ public:
       dataDir += '/';
     }
     dataFileGPS_ = dataDir + pt.get<std::string>("config.dataset.filename.gps");
+    dataFileDetection_ = dataDir + pt.get<std::string>("config.dataset.filename.detection");
     dataFileLidar_ = dataDir + pt.get<std::string>("config.dataset.filename.lidar");
     dataFileInput_ = dataDir + pt.get<std::string>("config.dataset.filename.input");
     dataFileSensorManager_ = dataDir + pt.get<std::string>("config.dataset.filename.manager");
@@ -155,9 +156,14 @@ public:
 
   struct SensorManagerMsg{
     TimeStamp t;
-    enum Type {GPS, Input, Lidar};
+    enum Type {GPS=1, Input=2, Lidar=3};
     Type sensorType;
     uint idx;
+  };
+
+  struct LidarScanMsg{
+    TimeStamp t;
+    double scan[361];
   };
 
   /** \brief Import dataset from files */
@@ -166,7 +172,7 @@ public:
     std::string msgLine;
 
     // Read sensor manager log
-    std::cout << "Reading process input file: " << dataFileSensorManager_ << std::endl;
+    std::cout << "Reading input file: " << dataFileSensorManager_ << std::endl;
     std::ifstream file_sensorManager( dataFileSensorManager_.c_str() );
     assert( file_sensorManager.is_open() );
     while( std::getline( file_sensorManager, msgLine ) ){
@@ -178,6 +184,7 @@ public:
       msg.t.setTime(time);
       msg.sensorType = (SensorManagerMsg::Type)type;
       msg.idx--;
+      sensorManagerMsgs_.push_back(msg);
       //std::cout << std::setw(10) << std::fixed << std::setprecision(3) << msg.t.getTimeAsDouble() 
       //	<< std::setw(10) << (int)(msg.sensorType) 
       //	<< std::setw(10) << msg.idx << std::endl;
@@ -185,7 +192,7 @@ public:
     file_sensorManager.close();
 
     // Read Process Model Inputs    
-    std::cout << "Reading process input file: " << dataFileInput_ << std::endl;
+    std::cout << "Reading input file: " << dataFileInput_ << std::endl;
     std::ifstream file_input( dataFileInput_.c_str() );
     assert( file_input.is_open() );
     while( std::getline( file_input, msgLine ) ){
@@ -202,11 +209,9 @@ public:
     }
     file_input.close();
 
-    // Read Lidar measurements
-    // \TODO define measurement model 
-    // measurements_.push_back( z_m_k );
-    std::cout << "Reading process input file: " << dataFileLidar_ << std::endl;
-    std::ifstream file_measurements( dataFileLidar_.c_str() );
+    // Read Lidar detections
+    std::cout << "Reading input file: " << dataFileDetection_ << std::endl;
+    std::ifstream file_measurements( dataFileDetection_.c_str() );
     assert( file_measurements.is_open() );
     while( std::getline( file_measurements, msgLine ) ){
       double time, range, bearing, diameter;
@@ -225,11 +230,33 @@ public:
       */
     }
     file_measurements.close();
+
+    // Read Lidar raw scans
+    std::cout << "Reading input file: " << dataFileLidar_ << std::endl;
+    std::ifstream file_lidar( dataFileLidar_.c_str() );
+    assert( file_lidar.is_open() );
+    double t = -1;
+    LidarScanMsg msg;
+    file_lidar >> t; 
+    while(t >= 0){
+      msg.t.setTime(t);
+      for(int i = 0; i < 361; i++){
+	file_lidar >> msg.scan[i];
+      }
+      lidarScans_.push_back(msg);
+      t = -1;
+      file_lidar >> t;
+      //std::cout << std::setw(10) << std::fixed << std::setprecision(3) << msg.t.getTimeAsDouble() 
+      //		<< std::setw(10) << std::fixed << std::setprecision(5) << msg.scan[0] 
+      //		<< std::setw(10) << std::fixed << std::setprecision(5) << msg.scan[360] << std::endl;
+    }
+    file_lidar.close();
+
     
     // Ground truth GPS
     //groundtruth_pose_.push_back( x_k );
     //groundtruth_pose_.back().setTime(t);
-    std::cout << "Reading process input file: " << dataFileGPS_ << std::endl;
+    std::cout << "Reading input file: " << dataFileGPS_ << std::endl;
     std::ifstream file_gps( dataFileGPS_.c_str() );
     assert( file_gps.is_open() );
     while( std::getline( file_gps, msgLine ) ){
@@ -316,7 +343,7 @@ public:
 
   }
 
-  /** Run the simulator */
+  /** \brief Process the data and peform SLAM */
   void run(){
 
     //////// Initialization at first timestep //////////
@@ -334,19 +361,82 @@ public:
       pLandmarkEstFile = fopen(filenameLandmarkEstFile.data(), "w");
     }
 
-    
-    /*
     if(logToFile_){
       MotionModel_Ackerman2d::TState x_i;
       for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	pFilter_->getParticleSet()->at(i)->getPose(x_i);
-	fprintf( pParticlePoseFile, "%f   %d   %f   %f   %f   1.0\n", 0.0, i, x_i.get(0), x_i.get(1), x_i.get(2));
+	fprintf( pParticlePoseFile, "%f   %d   %f   %f   %f   1.0\n", 
+		 sensorManagerMsgs_[0].t.getTimeAsDouble(), i, x_i[0], x_i[1], x_i[2]);
       }   
     }
    
-    int zIdx = 0;
-    */
+    // Process all sensor messages sequentially
+    bool isInInitialStationaryState = true;
+    TimeStamp t_km(0); // last sensor msg time
+    SLAM_Filter::TInput u_km; // last process input
+    SLAM_Filter::TInput::Cov u_km_cov;
+    u_km_cov << var_uv_, 0, 0, var_ur_;
+    u_km.setCov( u_km_cov );
+    u_km.setTime( t_km );
+    Landmark2d::Cov Q_m_k; // landmark process model additive noise
+    for(uint k = 0; k < sensorManagerMsgs_.size(); k++ ){
 
+      if( k % 100 == 0){
+	std::cout << "Sensor messages processed: " << k << "/" << sensorManagerMsgs_.size()-1 << std::endl;
+      }
+
+      if(sensorManagerMsgs_[k].sensorType == SensorManagerMsg::Input){
+
+	TimeStamp t_k = sensorManagerMsgs_[k].t;
+	TimeStamp dt = t_k - t_km;
+
+	Q_m_k << varlmx_, 0, 0, varlmy_;
+	Q_m_k = Q_m_k * dt.getTimeAsDouble() * dt.getTimeAsDouble();
+	pFilter_->getLmkProcessModel()->setNoise(Q_m_k);
+
+	if(isInInitialStationaryState){
+	  pFilter_->predict( u_km, dt, false, false ); // this basically makes all initial particles sit still
+	}else{
+	  pFilter_->predict( u_km, dt, false, true ); // true for use noise from u_km
+	}
+	
+	u_km = motionInputs_[ sensorManagerMsgs_[k].idx ];
+	if(u_km[0] != 0){
+	  isInInitialStationaryState = false;
+	}
+
+      }else if(sensorManagerMsgs_[k].sensorType == SensorManagerMsg::Lidar){
+
+	TimeStamp t_k = sensorManagerMsgs_[k].t;
+	TimeStamp dt = t_k - t_km;
+
+	// Propagate particles up to lidar scan time
+
+	Q_m_k << varlmx_, 0, 0, varlmy_;
+	Q_m_k = Q_m_k * dt.getTimeAsDouble() * dt.getTimeAsDouble();
+	pFilter_->getLmkProcessModel()->setNoise(Q_m_k);
+
+	if(isInInitialStationaryState){
+	  pFilter_->predict( u_km, dt, false, false ); // this basically makes all initial particles sit still
+	}else{
+	  pFilter_->predict( u_km, dt, false, true ); // true for use noise from u_km
+	}
+
+	// Update particles with lidar scan data
+
+	// \todo
+
+	// Log data
+
+	// \todo
+	
+      }
+
+      t_km = sensorManagerMsgs_[k].t;
+
+    }
+    
+    
   
     /////////// Run simulator from k = 1 to kMax_ /////////
     /*
@@ -354,31 +444,6 @@ public:
 
     for(int k = 1; k < kMax_; k++){
 
-      time += dTimeStamp_;
-      
-      if( k % 100 == 0)
-	printf("k = %d\n", k);
-      
-      ////////// Prediction Step //////////
-
-      // configure robot motion model ( not necessary since in simulation, timesteps are constant)
-      // MotionModel_Ackerman2d::TState::Mat Q;
-      // Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
-      // Q *= (pNoiseInflation_ * dt * dt);
-      // pFilter_->getProcessModel()->setNoise(Q);
-
-      // configure landmark process model ( not necessary since in simulation, timesteps are constant)
-      // Landmark2d::Mat Q_lm;
-      // Q_lm << varlmx_, 0, 0, varlmy_;
-      // Q_lm = Q_lm * dt * dt;
-      // pFilter_->getLmkProcessModel()->setNoise(Q_lm);
-
-      pFilter_->predict( odometry_[k], dTimeStamp_ );
-      
-      if( k <= 100){
-	for( int i = 0; i < nParticles_; i++)
-	  pFilter_->setParticlePose(i, groundtruth_pose_[k]);
-      }
 
       // Prepare measurement vector for update
       std::vector<MeasurementModel_RngBrg::TMeasurement> Z;
@@ -423,7 +488,7 @@ public:
       }
 
     }*/
-    /*
+    
     printf("Elapsed Timing Information [nsec]\n");
     printf("Prediction    -- wall: %lld   cpu: %lld\n", 
 	   pFilter_->getTimingInfo()->predict_wall, pFilter_->getTimingInfo()->predict_cpu);
@@ -453,7 +518,6 @@ public:
 	   pFilter_->getTimingInfo()->mapPrune_cpu + 
 	   pFilter_->getTimingInfo()->particleResample_cpu);
     printf("\n");
-    */
 
     if(logToFile_){
       fclose(pParticlePoseFile);
@@ -467,9 +531,11 @@ private:
 
   // Dataset
   std::string dataFileGPS_;
+  std::string dataFileDetection_;
   std::string dataFileLidar_;
   std::string dataFileInput_;
   std::string dataFileSensorManager_;
+  std::vector<SensorManagerMsg> sensorManagerMsgs_;
 
   // Process model
   double ackerman_h_;
@@ -498,6 +564,7 @@ private:
   double varzb_;
   double varzd_;
   std::vector<MeasurementModel_RngBrg::TMeasurement> measurements_;
+  std::vector<LidarScanMsg> lidarScans_;
 
   // Filters
   KalmanFilter_RngBrg kf_;
