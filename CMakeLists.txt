@@ -80,6 +80,7 @@ ADD_LIBRARY(rfsslam
   src/MeasurementModel_Rng1D.cpp
   src/MeasurementModel_RngBrg.cpp
   src/MeasurementModel_XY.cpp
+  src/MeasurementModel_VictoriaPark.cpp
   src/KalmanFilter_RngBrg.cpp
   src/HungarianMethod.cpp
   src/MurtyAlgorithm.cpp

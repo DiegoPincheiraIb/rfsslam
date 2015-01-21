@@ -35,7 +35,7 @@
 #include <boost/property_tree/xml_parser.hpp>
 #include "ProcessModel_Ackerman2D.hpp"
 #include "RBPHDFilter.hpp"
-#include "KalmanFilter_RngBrg.hpp"
+#include "KalmanFilter_VictoriaPark.hpp"
 #include <stdio.h>
 #include <string>
 #include <sstream>
@@ -54,9 +54,9 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
   typedef RBPHDFilter<MotionModel_Ackerman2d, 
-		      StaticProcessModel<Landmark2d>,
-		      MeasurementModel_RngBrg,  
-		      KalmanFilter_RngBrg> SLAM_Filter;
+		      StaticProcessModel<Landmark3d>,
+		      MeasurementModel_VictoriaPark,  
+		      KalmanFilter_VictoriaPark> SLAM_Filter;
 
   RBPHDSLAM_VictoriaPark(){
     pFilter_ = NULL;
@@ -313,7 +313,7 @@ public:
   
     // configure measurement model
     /*
-    MeasurementModel_RngBrg::TMeasurement::Mat R;
+    MeasurementModel_VictoriaPark::TMeasurement::Mat R;
     R << varzr_, 0, 0, varzb_;
     R *= zNoiseInflation_;
     pFilter_->getMeasurementModel()->setNoise(R);
@@ -378,7 +378,7 @@ public:
     u_km_cov << var_uv_, 0, 0, var_ur_;
     u_km.setCov( u_km_cov );
     u_km.setTime( t_km );
-    Landmark2d::Cov Q_m_k; // landmark process model additive noise
+    Landmark3d::Cov Q_m_k; // landmark process model additive noise
     for(uint k = 0; k < sensorManagerMsgs_.size(); k++ ){
 
       if( k % 100 == 0){
@@ -390,7 +390,7 @@ public:
 	TimeStamp t_k = sensorManagerMsgs_[k].t;
 	TimeStamp dt = t_k - t_km;
 
-	Q_m_k << varlmx_, 0, 0, varlmy_;
+	Q_m_k << varlmx_, 0, 0, 0, varlmy_, 0, 0, 0, 1.214124; //todo  set variance for diameter
 	Q_m_k = Q_m_k * dt.getTimeAsDouble() * dt.getTimeAsDouble();
 	pFilter_->getLmkProcessModel()->setNoise(Q_m_k);
 
@@ -446,7 +446,7 @@ public:
 
 
       // Prepare measurement vector for update
-      std::vector<MeasurementModel_RngBrg::TMeasurement> Z;
+      std::vector<MeasurementModel_VictoriaPark::TMeasurement> Z;
       TimeStamp kz = measurements_[ zIdx ].getTime();
       while( kz == time ){ 
 	Z.push_back( measurements_[zIdx] );
@@ -474,8 +474,8 @@ public:
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	  int mapSize = pFilter_->getGMSize(i);
 	  for( int m = 0; m < mapSize; m++ ){
-	    MeasurementModel_RngBrg::TLandmark::Vec u;
-	    MeasurementModel_RngBrg::TLandmark::Mat S;
+	    MeasurementModel_VictoriaPark::TLandmark::Vec u;
+	    MeasurementModel_VictoriaPark::TLandmark::Mat S;
 	    double w;
 	    pFilter_->getLandmark(i, m, u, S, w);
 	    
@@ -563,11 +563,11 @@ private:
   double varzr_;
   double varzb_;
   double varzd_;
-  std::vector<MeasurementModel_RngBrg::TMeasurement> measurements_;
+  std::vector<MeasurementModel_VictoriaPark::TMeasurement> measurements_;
   std::vector<LidarScanMsg> lidarScans_;
 
   // Filters
-  KalmanFilter_RngBrg kf_;
+  KalmanFilter_VictoriaPark kf_;
   SLAM_Filter *pFilter_; 
   int nParticles_;
   double pNoiseInflation_;
