@@ -104,6 +104,7 @@ public:
 
     varlmx_ = pt.get<double>("config.landmarks.varlmx");
     varlmy_ = pt.get<double>("config.landmarks.varlmy");
+    varlmd_ = pt.get<double>("config.landmarks.varlmd");
 
     rangeLimitMax_ = pt.get<double>("config.measurements.rangeLimitMax");
     rangeLimitMin_ = pt.get<double>("config.measurements.rangeLimitMin");
@@ -382,16 +383,16 @@ public:
     int zIdx = 0;
     for(uint k = 0; k < sensorManagerMsgs_.size() ; k++ ){  
 
-      /*if( k % 100 == 0){
+      if( k % 1000 == 0){
 	std::cout << "Sensor messages processed: " << k << "/" << sensorManagerMsgs_.size()-1 << std::endl;
-	}*/
+      }
 
       if(sensorManagerMsgs_[k].sensorType == SensorManagerMsg::Input){
 
 	TimeStamp t_k = sensorManagerMsgs_[k].t;
 	TimeStamp dt = t_k - t_km;
 
-	Q_m_k << varlmx_, 0, 0, 0, varlmy_, 0, 0, 0, 1.214124; //todo  set variance for diameter
+	Q_m_k << varlmx_, 0, 0, 0, varlmy_, 0, 0, 0, varlmd_; 
 	Q_m_k = Q_m_k * dt.getTimeAsDouble() * dt.getTimeAsDouble();
 	pFilter_->getLmkProcessModel()->setNoise(Q_m_k);
 
@@ -539,6 +540,7 @@ private:
   // Landmarks 
   double varlmx_;
   double varlmy_;
+  double varlmd_;
 
   // Range-Bearing Measurements
   double rangeLimitMax_;

@@ -32,6 +32,7 @@
   <landmarks>
     <varlmx>0.0002</varlmx> <!-- increase in landmark x uncertainty per second -->
     <varlmy>0.0002</varlmy> <!-- increase in landmark y uncertainty per second -->
+    <varlmd>0.00001</varlmd> <!-- increase in landmark diameter uncertainty per second -->
   </landmarks>
 
   <measurements>
