@@ -277,30 +277,31 @@ public:
 
   /** \brief Peform dead reckoning with process input data */
   void deadReckoning(){
-    /*
-    MotionModel_Ackerman2d::TState::Mat Q;
-    Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
-    MotionModel_Ackerman2d motionModel(Q);
-    deadReckoning_pose_.reserve( kMax_ );
-    deadReckoning_pose_.push_back( groundtruth_pose_[0] );
-   
-    
+
     if(logToFile_){
-      FILE* pDeadReckoningFile;
-      std::string filenameDeadReckoning( logDirPrefix_ );
-      filenameDeadReckoning += "deadReckoning.dat";
-      pDeadReckoningFile = fopen(filenameDeadReckoning.data(), "w");
-      MotionModel_Ackerman2d::TState::Vec odo;
-      TimeStamp t;
-      for(int i = 0; i < deadReckoning_pose_.size(); i++){
-	deadReckoning_pose_[i].get(odo, t);
-	fprintf( pDeadReckoningFile, "%f   %f   %f   %f\n", t.getTimeAsDouble(), odo(0), odo(1), odo(2));
+      std::ofstream drPoseFile( (logDirPrefix_ + "deadReckoning.dat").c_str() );
+      std::cout << "Calculating dead reckoning estimate\n";
+      std::cout << "Writing to: " << logDirPrefix_ + "deadReckoning.dat\n";
+      SLAM_Filter::TPose x;
+      TimeStamp t_k  = sensorManagerMsgs_[0].t;
+      TimeStamp t_km = sensorManagerMsgs_[0].t;
+      SLAM_Filter::TInput u_km; // last process input
+      for(uint k = 0; k < sensorManagerMsgs_.size() ; k++ ){  
+	if(sensorManagerMsgs_[k].sensorType == SensorManagerMsg::Input){
+	  t_k = sensorManagerMsgs_[k].t;
+	  TimeStamp dt = t_k - t_km;
+	  pFilter_->getProcessModel()->step( x, x, u_km, dt);
+	  u_km = motionInputs_[ sensorManagerMsgs_[k].idx ];
+	  drPoseFile << std::fixed << std::setprecision(3) 
+		     << std::setw(10) << sensorManagerMsgs_[k].t.getTimeAsDouble()
+		     << std::setw(10) << x[0] 
+		     << std::setw(10) << x[1] 
+		     << std::setw(10) << x[2] << std::endl;
+	  t_km = t_k;
+	}
       }
-      fclose(pDeadReckoningFile);
+      drPoseFile.close();
     }
-
-    */
-
   }
 
   /** RB-PHD Filter Setup */
@@ -346,30 +347,27 @@ public:
   /** \brief Process the data and peform SLAM */
   void run(){
 
-    //////// Initialization at first timestep //////////
-    
-    FILE* pParticlePoseFile;
+    // Initialization at first timestep   
+    std::ofstream particlePoseFile;
+    std::ofstream landmarkEstFile;
     if(logToFile_){
-      std::string filenameParticlePoseFile( logDirPrefix_ );
-      filenameParticlePoseFile += "particlePose.dat";
-      pParticlePoseFile = fopen(filenameParticlePoseFile.data(), "w");
-    }
-    FILE* pLandmarkEstFile;
-    if(logToFile_){
-      std::string filenameLandmarkEstFile( logDirPrefix_ );
-      filenameLandmarkEstFile += "landmarkEst.dat";
-      pLandmarkEstFile = fopen(filenameLandmarkEstFile.data(), "w");
+      particlePoseFile.open( (logDirPrefix_ + "particlePose.dat").c_str() );
+      landmarkEstFile.open( (logDirPrefix_ + "landmarkEst.dat").c_str() );
+
+      for(int i = 0; i < pFilter_->getParticleCount(); i++){
+	SLAM_Filter::TPose x;
+	pFilter_->getParticleSet()->at(i)->getPose(x);
+	double w = pFilter_->getParticleSet()->at(i)->getWeight();
+	particlePoseFile << std::fixed << std::setprecision(3) 
+			 << std::setw(10) << sensorManagerMsgs_[0].t.getTimeAsDouble()
+			 << std::setw(5) << i
+			 << std::setw(10) << x[0] 
+			 << std::setw(10) << x[1] 
+			 << std::setw(10) << x[2] 
+			 << std::setw(10) << w << std::endl;
+      }
     }
 
-    if(logToFile_){
-      MotionModel_Ackerman2d::TState x_i;
-      for(int i = 0; i < pFilter_->getParticleCount(); i++){
-	pFilter_->getParticleSet()->at(i)->getPose(x_i);
-	fprintf( pParticlePoseFile, "%f   %d   %f   %f   %f   1.0\n", 
-		 sensorManagerMsgs_[0].t.getTimeAsDouble(), i, x_i[0], x_i[1], x_i[2]);
-      }   
-    }
-   
     // Process all sensor messages sequentially
     bool isInInitialStationaryState = true;
     TimeStamp t_km(0); // last sensor msg time
@@ -379,7 +377,7 @@ public:
     u_km.setCov( u_km_cov );
     u_km.setTime( t_km );
     Landmark2d::Cov Q_m_k; // landmark process model additive noise
-    for(uint k = 0; k < sensorManagerMsgs_.size(); k++ ){
+    for(uint k = 0; k < sensorManagerMsgs_.size() ; k++ ){  
 
       if( k % 100 == 0){
 	std::cout << "Sensor messages processed: " << k << "/" << sensorManagerMsgs_.size()-1 << std::endl;
@@ -422,13 +420,48 @@ public:
 	  pFilter_->predict( u_km, dt, false, true ); // true for use noise from u_km
 	}
 
+	SLAM_Filter::TPose xt;
+	pFilter_->getParticleSet()->at(0)->getPose(xt);
+	  
 	// Update particles with lidar scan data
 
 	// \todo
+	// pFilter->update(Z);
 
 	// Log data
-
-	// \todo
+	double w_max = 0;
+	double i_w_max = 0;
+	for(int i = 0; i < pFilter_->getParticleCount(); i++){
+	  SLAM_Filter::TPose x;
+	  pFilter_->getParticleSet()->at(i)->getPose(x);
+	  double w = pFilter_->getParticleSet()->at(i)->getWeight();
+	  particlePoseFile << std::fixed << std::setprecision(3) 
+			   << std::setw(10) << sensorManagerMsgs_[k].t.getTimeAsDouble()
+			   << std::setw(5) << i
+			   << std::setw(10) << x[0] 
+			   << std::setw(10) << x[1] 
+			   << std::setw(10) << x[2] 
+			   << std::setw(10) << w << std::endl;
+	  if(w > w_max){
+	    w_max = w;
+	    i_w_max = i;
+	  }
+	}
+	for( int m = 0; m < pFilter_->getGMSize(i_w_max); m++ ){
+	  MeasurementModel_RngBrg::TLandmark::Vec u;
+	  MeasurementModel_RngBrg::TLandmark::Mat S;
+	  double w;
+	  pFilter_->getLandmark(i_w_max, m, u, S, w);
+	  landmarkEstFile << std::fixed << std::setprecision(3) 
+			  << std::setw(10) << sensorManagerMsgs_[0].t.getTimeAsDouble()
+			  << std::setw(5) << i_w_max
+			  << std::setw(10) << u(0) 
+			  << std::setw(10) << u(1)
+			  << std::setw(10) << S(0,0) 
+			  << std::setw(10) << S(0,1)
+			  << std::setw(10) << S(1,1) 
+			  << std::setw(10) << w << std::endl;
+	}
 	
       }
 
@@ -436,15 +469,7 @@ public:
 
     }
     
-    
-  
-    /////////// Run simulator from k = 1 to kMax_ /////////
     /*
-    TimeStamp time;
-
-    for(int k = 1; k < kMax_; k++){
-
-
       // Prepare measurement vector for update
       std::vector<MeasurementModel_RngBrg::TMeasurement> Z;
       TimeStamp kz = measurements_[ zIdx ].getTime();
@@ -456,38 +481,7 @@ public:
 	kz = measurements_[ zIdx ].getTime();
       }
 
-      ////////// Update Step //////////
-      pFilter_->update(Z);
-
-      // Log particle poses
-      if(logToFile_){
-	for(int i = 0; i < pFilter_->getParticleCount(); i++){
-	  pFilter_->getParticleSet()->at(i)->getPose(x_i);
-	  double w = pFilter_->getParticleSet()->at(i)->getWeight();
-	  fprintf( pParticlePoseFile, "%f   %d   %f   %f   %f   %f\n", time.getTimeAsDouble(), i, x_i.get(0), x_i.get(1), x_i.get(2), w);
-	}
-	fprintf( pParticlePoseFile, "\n");
-      }
-
-      // Log landmark estimates
-      if(logToFile_){
-	for(int i = 0; i < pFilter_->getParticleCount(); i++){
-	  int mapSize = pFilter_->getGMSize(i);
-	  for( int m = 0; m < mapSize; m++ ){
-	    MeasurementModel_RngBrg::TLandmark::Vec u;
-	    MeasurementModel_RngBrg::TLandmark::Mat S;
-	    double w;
-	    pFilter_->getLandmark(i, m, u, S, w);
-	    
-	    fprintf( pLandmarkEstFile, "%f   %d   ", time.getTimeAsDouble(), i);
-	    fprintf( pLandmarkEstFile, "%f   %f      ", u(0), u(1));
-	    fprintf( pLandmarkEstFile, "%f   %f   %f", S(0,0), S(0,1), S(1,1));
-	    fprintf( pLandmarkEstFile, "   %f\n", w );
-	  }
-	}
-      }
-
-    }*/
+    */
     
     printf("Elapsed Timing Information [nsec]\n");
     printf("Prediction    -- wall: %lld   cpu: %lld\n", 
@@ -520,8 +514,8 @@ public:
     printf("\n");
 
     if(logToFile_){
-      fclose(pParticlePoseFile);
-      fclose(pLandmarkEstFile);
+      particlePoseFile.close();
+      landmarkEstFile.close();
     }
   }
 
@@ -618,11 +612,12 @@ int main(int argc, char* argv[]){
 
   slam.readData();
   slam.setupRBPHDFilter();
+  slam.deadReckoning();
 
   srand48( time(NULL) );
   boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Run time: %ws\n");
 
-  //sim.run(); 
+  slam.run(); 
 
   delete timer;
  
