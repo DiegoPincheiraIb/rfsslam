@@ -100,20 +100,25 @@ public:
 
 
    /**
-    * Abstract function of determining a landmark's probability of detection, and if the landmark is close to the sensing limit.
-    * Through this we can indirectly specify sensing limits and other sensor characteristics
-    * The probability of detection is necessary as a parameter is the PHD Filter. Indicating whether a landmark is close to the
-    * sensing limit matters in the implementation for providing a better map estimate, as it reduces landmark disappearance
-    * near the sensing limit due to the probability of detection mismatch.
+    * Function for determining a landmark's probability of detection, and if the landmark is close to the sensing limit.
+    * This function calculates the probability of detection (using probabilityODetection2) in several places to determine whether it is both zero and nonzero in the landmark's neighborhood, if it is isCloseToSensingLimit is set to 1.
     * \param[in] pose robot pose
     * \param[in] landmark landmark position
-    * \param[out] isCloseToSensingLimit true if lahttps://www.google.com/search?client=ubuntu&channel=fs&q=23%2F30*6%2B1&ie=utf-8&oe=utf-8#channel=fs&q=twitter+%23shamelessplug&safe=offndmark is close to the sensing limit
+    * \param[out] isCloseToSensingLimit true if landmark is close to the sensing limit
     * \return probability of detection
     */
    double probabilityOfDetection( const Pose2d &pose,
                                   const Landmark3d &landmark,
                                   bool &isCloseToSensingLimit);
 
+   /***
+    *
+    * Function to calculate the probability of detection at a known exact landmark position.
+    * \param[in] pose robot pose
+    * \param[in] landmark landmark position
+    * \param[out] isCloseToSensingLimit true if landmark is close to the sensing limit
+    * \return probability of detection
+    */
    double probabilityOfDetection2( const Pose2d &pose,
                                   const Landmark3d &landmark,
                                   bool &isCloseToSensingLimit);
