@@ -48,22 +48,27 @@ void MotionModel_Ackerman2d::setAckermanParams(double h, double l, double dx, do
 
 void MotionModel_Ackerman2d::step( Pose2d &s_k, Pose2d &s_km, AckermanInput &input_k, TimeStamp const &dT){
 
-  double u_v; // velocity
-  double u_r; // steering
+  double u_v = input_k[0]; // velocity
+  double u_r = input_k[1]; // steering
   double dt = dT.getTimeAsDouble();
 
   Pose2d::Vec x_km = s_km.get();
   double r_km = x_km[2];
   double cos_r_km = cos(r_km);
   double sin_r_km = sin(r_km);
-  double tan_r_km = tan(r_km);
+  double tan_u_r = tan(u_r);
   TimeStamp t_km = s_km.getTime();
 
   Pose2d::Vec dx;
-  dx << dt * ( u_v * cos_r_km - u_v / l_ * tan_r_km * (poi_offset_x_ * sin_r_km + poi_offset_y_ * cos_r_km ) ),
-        dt * ( u_v * sin_r_km + u_v / l_ * tan_r_km * (poi_offset_x_ * cos_r_km - poi_offset_y_ * sin_r_km ) ),
-        dt * u_v / l_ * tan( u_r );
+  dx << dt * ( u_v * cos_r_km - u_v / l_ * tan_u_r * (poi_offset_x_ * sin_r_km + poi_offset_y_ * cos_r_km ) ),
+        dt * ( u_v * sin_r_km + u_v / l_ * tan_u_r * (poi_offset_x_ * cos_r_km - poi_offset_y_ * sin_r_km ) ),
+        dt * u_v / l_ * tan_u_r;
   Pose2d::Vec x_k = x_km + dx;
+  if(x_k(2) > PI){
+    x_k(2) -= 2 * PI;
+  }else if(x_k(2) < -PI){
+    x_k(2) += 2 * PI;
+  } 
 
   s_k.set(x_k, t_km + dT);
 

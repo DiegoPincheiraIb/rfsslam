@@ -15,7 +15,7 @@
 
   <logging>
     <logToFile>1</logToFile>
-    <logDirPrefix>data/rbphdslam/</logDirPrefix>
+    <logDirPrefix>data/VictoriaPark/results/</logDirPrefix>
   </logging>
 
   <process>
@@ -48,7 +48,7 @@
   </measurements>
   
   <filter>
-    <nParticles>200</nParticles> <!-- number of particles -->
+    <nParticles>1</nParticles> <!-- number of particles -->
     
     <predict>
       <processNoiseInflationFactor>1.5</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
