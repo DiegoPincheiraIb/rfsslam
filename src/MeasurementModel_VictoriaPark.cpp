@@ -205,7 +205,8 @@ namespace rfs{
     double distancetocircle = measMean[0];
     double angle = measMean[1];
   
-    if (angle > config.bearingLimitMax_ || angle < config.bearingLimitMax_ || distancetocircle < config.rangeLimMin_ || distancetocircle > config.rangeLimMax_){
+    if (angle > config.bearingLimitMax_ || angle < config.bearingLimitMin_ || 
+	distancetocircle < config.rangeLimMin_ || distancetocircle > config.rangeLimMax_){
       return 0;
     }
 

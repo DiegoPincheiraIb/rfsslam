@@ -324,8 +324,8 @@ public:
     pFilter_->getMeasurementModel()->config.expectedClutterNumber_ = clutterExpected_;
     pFilter_->getMeasurementModel()->config.rangeLimMax_ = rangeLimitMax_;
     pFilter_->getMeasurementModel()->config.rangeLimMin_ = rangeLimitMin_;
-    pFilter_->getMeasurementModel()->config.bearingLimitMax_ = bearingLimitMax_;
-    pFilter_->getMeasurementModel()->config.bearingLimitMin_ = bearingLimitMin_;
+    pFilter_->getMeasurementModel()->config.bearingLimitMax_ = bearingLimitMax_ * PI / 180;
+    pFilter_->getMeasurementModel()->config.bearingLimitMin_ = bearingLimitMin_ * PI / 180;
 
     // configure the filter
     pFilter_->getKalmanFilter()->config.rangeInnovationThreshold_ = innovationRangeThreshold_;
@@ -381,7 +381,8 @@ public:
     u_km.setTime( t_km );
     Landmark3d::Cov Q_m_k; // landmark process model additive noise
     int zIdx = 0;
-    for(uint k = 0; k < sensorManagerMsgs_.size() ; k++ ){  
+    //for(uint k = 0; k < sensorManagerMsgs_.size() ; k++ ){  
+    for(uint k = 0; k < 1000 ; k++ ){ 
 
       if( k % 1000 == 0){
 	std::cout << "Sensor messages processed: " << k << "/" << sensorManagerMsgs_.size()-1 << std::endl;
@@ -403,6 +404,7 @@ public:
 	}
 	
 	u_km = motionInputs_[ sensorManagerMsgs_[k].idx ];
+	u_km.setCov( u_km_cov );
 	if(u_km[0] != 0){
 	  isInInitialStationaryState = false;
 	}
@@ -423,9 +425,6 @@ public:
 	}else{
 	  pFilter_->predict( u_km, dt, false, true ); // true for use noise from u_km
 	}
-
-	SLAM_Filter::TPose xt;
-	pFilter_->getParticleSet()->at(0)->getPose(xt);
 	  
 	// Update particles with lidar scan data
 
@@ -439,7 +438,7 @@ public:
 
 	// Log data
 	double w_max = 0;
-	double i_w_max = 0;
+	uint i_w_max = 0;
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	  SLAM_Filter::TPose x;
 	  pFilter_->getParticleSet()->at(i)->getPose(x);
@@ -462,7 +461,7 @@ public:
 	  double w;
 	  pFilter_->getLandmark(i_w_max, m, u, S, w);
 	  landmarkEstFile << std::fixed << std::setprecision(3) 
-			  << std::setw(10) << sensorManagerMsgs_[0].t.getTimeAsDouble()
+			  << std::setw(10) << sensorManagerMsgs_[k].t.getTimeAsDouble()
 			  << std::setw(5) << i_w_max
 			  << std::setw(10) << u(0) 
 			  << std::setw(10) << u(1)
