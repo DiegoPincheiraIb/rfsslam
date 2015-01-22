@@ -541,6 +541,9 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       bool isCloseToSensingLimit;
       Pd[m] = this->pMeasurementModel_->probabilityOfDetection( *pose, *lm, 
 								isCloseToSensingLimit); 
+      //std::cout << lm->get() << std::endl;
+      //std::cout << Pd[m] << std::endl << "====" << std::endl;
+
       if(isCloseToSensingLimit){
 	landmarkCloseToSensingLimit[m] = 1;
 	Pd[m] = 1;
@@ -744,9 +747,11 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     
     double prev_weight = this->particleSet_[particleIdx]->getWeight();
     this->particleSet_[particleIdx]->setWeight( overall_weight * prev_weight );
-    //printf("Particle %d overall weight = %f\n\n", i, overall_weight);
-
-  
+    /*std::cout << "P" << idx << ".w " 
+	      << std::setw(15) << intensityProd_beforeUpdate
+	      << std::setw(15) << intensityProd_afterUpdate
+	      << std::setw(15) << measurementLikelihood
+	      << std::setw(15) << overall_weight << std::endl;*/
 
 }
 
