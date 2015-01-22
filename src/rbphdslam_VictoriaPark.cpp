@@ -324,8 +324,8 @@ public:
     pFilter_->getMeasurementModel()->config.expectedClutterNumber_ = clutterExpected_;
     pFilter_->getMeasurementModel()->config.rangeLimMax_ = rangeLimitMax_;
     pFilter_->getMeasurementModel()->config.rangeLimMin_ = rangeLimitMin_;
-    pFilter_->getMeasurementModel()->config.bearingLimitMax_ = bearingLimitMax_;
-    pFilter_->getMeasurementModel()->config.bearingLimitMin_ = bearingLimitMin_;
+    pFilter_->getMeasurementModel()->config.bearingLimitMax_ = bearingLimitMax_ * PI / 180;
+    pFilter_->getMeasurementModel()->config.bearingLimitMin_ = bearingLimitMin_ * PI / 180;
 
     // configure the filter
     pFilter_->getKalmanFilter()->config.rangeInnovationThreshold_ = innovationRangeThreshold_;

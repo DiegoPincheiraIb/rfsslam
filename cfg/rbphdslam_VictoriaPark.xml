@@ -48,8 +48,8 @@
     <varzd>0.01</varzd> <!-- diameter measurement variance (meter squared)-->
     <varza>0.00001</varza> <!-- variance of lidar beam angle-->
     <Pd>
-      <value>0.0</value>
-      <value>0.0</value>
+      <value>0.00</value>
+      <value>0.02</value>
       <value>0.05</value>
       <value>0.35</value>
       <value>0.76</value>
