@@ -382,7 +382,7 @@ public:
     Landmark3d::Cov Q_m_k; // landmark process model additive noise
     int zIdx = 0;
     //for(uint k = 0; k < sensorManagerMsgs_.size() ; k++ ){  
-    for(uint k = 0; k < 1000 ; k++ ){ 
+    for(uint k = 0; k < 5000 ; k++ ){ 
 
       if( k % 1000 == 0){
 	std::cout << "Sensor messages processed: " << k << "/" << sensorManagerMsgs_.size()-1 << std::endl;

@@ -541,8 +541,6 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       bool isCloseToSensingLimit;
       Pd[m] = this->pMeasurementModel_->probabilityOfDetection( *pose, *lm, 
 								isCloseToSensingLimit); 
-      //std::cout << lm->get() << std::endl;
-      //std::cout << Pd[m] << std::endl << "====" << std::endl;
 
       if(isCloseToSensingLimit){
 	landmarkCloseToSensingLimit[m] = 1;
