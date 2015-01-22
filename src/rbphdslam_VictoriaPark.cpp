@@ -205,7 +205,7 @@ public:
       std::stringstream ss( msgLine );
       ss >> time >> vel >> steer;
       SLAM_Filter::TInput::Vec uVec;
-      uVec << vel, steer;
+      uVec << vel, steer * 0.9;
       SLAM_Filter::TInput u(uVec, TimeStamp(time)); 
       motionInputs_.push_back( u );
       //std::cout << std::setw(10) << std::fixed << std::setprecision(3) << u.getTime().getTimeAsDouble() 
@@ -382,7 +382,7 @@ public:
     Landmark3d::Cov Q_m_k; // landmark process model additive noise
     int zIdx = 0;
     //for(uint k = 0; k < sensorManagerMsgs_.size() ; k++ ){  
-    for(uint k = 0; k < 5000 ; k++ ){ 
+    for(uint k = 0; k < 10000 ; k++ ){ 
 
       if( k % 1000 == 0){
 	std::cout << "Sensor messages processed: " << k << "/" << sensorManagerMsgs_.size()-1 << std::endl;
