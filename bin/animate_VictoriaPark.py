@@ -129,7 +129,7 @@ particles, = plt.plot(p_x, p_y, 'b.');
 ax = plt.gca()
 plt.axis('equal');
 plt.grid(True);
-plt.xlim([-50, 50])
+plt.xlim([-100, 100])
 plt.ylim([-50, 50])
 
 measurements = [];
@@ -209,8 +209,8 @@ def animate(i):
             w = m[7];
             eVal, eVec = np.linalg.eig(cov);
             eVal = eVal.real;
-            a1 = 5*np.sqrt(eVal[0]); # Assume this is semi-major axis first
-            a2 = 5*np.sqrt(eVal[1]); 
+            a1 = 3*np.sqrt(eVal[0]); # Assume this is semi-major axis first
+            a2 = 3*np.sqrt(eVal[1]); 
             semiMajorAxis = eVec[:,0];
             if a2 > a1:
                 aTmp = a1
