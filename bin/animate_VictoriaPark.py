@@ -143,6 +143,8 @@ for i in range(0, nLandmarksDrawMax) :
     landmarks.append(landmark_ellipse); 
     ax.add_patch(landmarks[i]);
 
+trajectory, = plt.plot(0, 0, 'b-')
+
 xLim = plt.getp(ax, 'xlim');
 yLim = plt.getp(ax, 'ylim');
 txt = plt.text(xLim[1]-1, yLim[1]-1, " ");
@@ -159,7 +161,6 @@ def animateInit():
         landmarks[i].width = 0;
         landmarks[i].height = 0;
         landmarks[i].set_facecolor([0.2,0.2,0.8])
-    print "init"
     return [];
 
 def animate(i):
@@ -198,7 +199,8 @@ def animate(i):
             pr_best[i] = p[4];
         p = np.fromfile(estPoseFileHandle, dtype=float, count=6, sep=" ");
         p_idx += 1;
-    particles.set_data(p_x, p_y);
+    particles.set_data(p_x, p_y)
+    trajectory.set_data(px_best, py_best)
     
     # Landmarks
     m_idx = 0;
@@ -232,8 +234,6 @@ def animate(i):
 
         m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
 
-    print m_idx
-
     while landmarks[m_idx].height != 0:
         landmarks[m_idx].set_alpha(0);
         landmarks[m_idx].center = (0, 0);
@@ -250,17 +250,16 @@ def animate(i):
         drawnObjects.append(measurements[nZ]);
         z = np.fromfile(measurementFileHandle, count=4, sep=" ", dtype=float);
         nZ += 1;
-        print z
-    print nZ
     while measurements[nZ].get_xdata() != []:
         measurements[nZ].set_data([], []);
         nZ += 1;
     
-    drawnObjects.append(particles);
+    drawnObjects.append(particles)
+    drawnObjects.append(trajectory)
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, 500), interval=1, 
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, 600), interval=1, 
                                init_func=animateInit, blit=True, repeat=False);
 
 if saveMovie:

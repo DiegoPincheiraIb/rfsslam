@@ -209,7 +209,7 @@ public:
       std::stringstream ss( msgLine );
       ss >> time >> vel >> steer;
       SLAM_Filter::TInput::Vec uVec;
-      uVec << vel, steer;
+      uVec << vel, steer * 0.9;
       SLAM_Filter::TInput u(uVec, TimeStamp(time)); 
       motionInputs_.push_back( u );
       //std::cout << std::setw(10) << std::fixed << std::setprecision(3) << u.getTime().getTimeAsDouble() 
