@@ -209,6 +209,7 @@ namespace rfs{
 	distancetocircle < config.rangeLimMin_ || distancetocircle > config.rangeLimMax_){
       return 0;
     }
+    return config.probabilityOfDetection_[config.probabilityOfDetection_.size()-1];
 
 
     double modified_radius=measMean[2]/2;//+sqrt(circleCov(0,0)+circleCov(1,1)+circleCov(2,2));
