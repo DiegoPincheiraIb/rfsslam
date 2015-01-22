@@ -58,7 +58,7 @@ namespace rfs{
     TimeStamp t;
 
     pose.get(poseMean);
-    poseMean[2]=poseMean[2]+PI;
+    poseMean[2]=poseMean[2]-PI/2;
     Pose2d transformedPose(poseMean, pose.getTime());
 
 
@@ -96,7 +96,7 @@ namespace rfs{
     TimeStamp t;
 
     pose.get(poseMean);
-    poseMean[2]=poseMean[2]+PI;
+    poseMean[2]=poseMean[2]-PI/2;
     Pose2d transformedPose(poseMean , pose.getTime());
 
     landmark.get(mean,cov,t);
@@ -210,7 +210,7 @@ namespace rfs{
     }
 
 
-    double modified_radius=measMean[2];//+sqrt(circleCov(0,0)+circleCov(1,1)+circleCov(2,2));
+    double modified_radius=measMean[2]/2;//+sqrt(circleCov(0,0)+circleCov(1,1)+circleCov(2,2));
     double gamma=atan(modified_radius/measMean[0]);
 
     int maxNumPoints =(int)floor(2*gamma*720.0/(2*PI));
