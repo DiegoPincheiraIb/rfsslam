@@ -129,8 +129,8 @@ particles, = plt.plot(p_x, p_y, 'b.');
 ax = plt.gca()
 plt.axis('equal');
 plt.grid(True);
-plt.xlim([-75, 75])
-plt.ylim([-75, 75])
+plt.xlim([-100, 100])
+plt.ylim([-100, 100])
 
 measurements = [];
 for i in range(0, nMeasurementsDrawMax) : 
@@ -259,7 +259,7 @@ def animate(i):
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, 600), interval=1, 
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, 900), interval=1, 
                                init_func=animateInit, blit=True, repeat=False);
 
 if saveMovie:

@@ -101,6 +101,7 @@ public:
     ackerman_dy_ = pt.get<double>("config.process.AckermanModel.sensorOffset_y");
     var_uv_ = pt.get<double>("config.process.varuv");
     var_ur_ = pt.get<double>("config.process.varur");
+    scale_ur_ = pt.get<double>("config.process.ur_scale");
 
     varlmx_ = pt.get<double>("config.landmarks.varlmx");
     varlmy_ = pt.get<double>("config.landmarks.varlmy");
@@ -119,6 +120,8 @@ public:
 		  pt.get_child("config.measurements.Pd")){
       Pd_.push_back( boost::lexical_cast<double>(v.second.data()) );
     }
+
+    nMessageToProcess_ = pt.get<int>("config.filter.nMsgToProcess");
 
     nParticles_ = pt.get("config.filter.nParticles", 200);
 
@@ -205,7 +208,7 @@ public:
       std::stringstream ss( msgLine );
       ss >> time >> vel >> steer;
       SLAM_Filter::TInput::Vec uVec;
-      uVec << vel, steer * 0.9;
+      uVec << vel, steer * scale_ur_;
       SLAM_Filter::TInput u(uVec, TimeStamp(time)); 
       motionInputs_.push_back( u );
       //std::cout << std::setw(10) << std::fixed << std::setprecision(3) << u.getTime().getTimeAsDouble() 
@@ -381,8 +384,10 @@ public:
     u_km.setTime( t_km );
     Landmark3d::Cov Q_m_k; // landmark process model additive noise
     int zIdx = 0;
-    //for(uint k = 0; k < sensorManagerMsgs_.size() ; k++ ){  
-    for(uint k = 0; k < 10000 ; k++ ){ 
+    if(nMessageToProcess_ <= 0){
+      nMessageToProcess_ = sensorManagerMsgs_.size();
+    }  
+    for(uint k = 0; k < nMessageToProcess_ ; k++ ){ 
 
       if( k % 1000 == 0){
 	std::cout << "Sensor messages processed: " << k << "/" << sensorManagerMsgs_.size()-1 << std::endl;
@@ -532,6 +537,7 @@ private:
   double ackerman_dy_;
   double var_uv_;
   double var_ur_;
+  double scale_ur_;
   std::vector<Position2d> groundtruth_pos_;
   std::vector<MotionModel_Ackerman2d::TInput> motionInputs_;
   std::vector<MotionModel_Ackerman2d::TState> deadReckoning_pose_;
@@ -576,6 +582,7 @@ private:
   bool useClusterProcess_;
 
   bool logToFile_;
+  int nMessageToProcess_;
 
 public:
   std::string logDirPrefix_;

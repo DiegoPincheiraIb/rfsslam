@@ -26,25 +26,26 @@
       <sensorOffset_y>0.50</sensorOffset_y>
     </AckermanModel>
     <varuv>0.05000</varuv> <!-- variance in speed input -->
-    <varur>0.00500</varur> <!-- variance in steering input -->
+    <varur>0.0500</varur> <!-- variance in steering input -->
+    <ur_scale>0.95</ur_scale> 
   </process>
 
   <landmarks>
-    <varlmx>0.00005</varlmx> <!-- increase in landmark x uncertainty per second -->
-    <varlmy>0.00005</varlmy> <!-- increase in landmark y uncertainty per second -->
-    <varlmd>0.00001</varlmd> <!-- increase in landmark diameter uncertainty per second -->
+    <varlmx>0.0005</varlmx> <!-- increase in landmark x uncertainty per second -->
+    <varlmy>0.0005</varlmy> <!-- increase in landmark y uncertainty per second -->
+    <varlmd>0.0001</varlmd> <!-- increase in landmark diameter uncertainty per second -->
   </landmarks>
 
   <measurements>
     <rangeLimitMax>75.3</rangeLimitMax> <!-- measurement range limit (meter)-->
-    <rangeLimitMin>1.45</rangeLimitMin> <!-- measurement range limit (meter)-->
+    <rangeLimitMin>3</rangeLimitMin> <!-- measurement range limit (meter)--> <!-- 1.45 -->
     <bearingLimitMax>177.0</bearingLimitMax> <!-- measurement bearing limit (deg)-->
     <bearingLimitMin>6.3025</bearingLimitMin> <!-- measurement bearing limit (deg)-->
     <rangeLimitBuffer>0.05</rangeLimitBuffer> <!-- buffer zone in which negative information has no effects -->
     <probDetection>0.90</probDetection> <!-- probability of detection -->
-    <expectedNClutter>0.01</expectedNClutter> <!-- uniform clutter intensity -->
-    <varzr>0.005</varzr> <!-- range measurement variance -->
-    <varzb>0.00005</varzb> <!-- bearing measurement variance (0.0001 is roughly 0.6 deg standard deviation) -->
+    <expectedNClutter>3</expectedNClutter> <!-- uniform clutter intensity -->
+    <varzr>0.05</varzr> <!-- range measurement variance -->
+    <varzb>0.0001</varzb> <!-- bearing measurement variance (0.0001 is roughly 0.6 deg standard deviation) -->
     <varzd>0.002</varzd> <!-- diameter measurement variance (meter squared)-->
     <varza>0.00001</varza> <!-- variance of lidar beam angle-->
     <Pd>
@@ -58,18 +59,21 @@
   </measurements>
   
   <filter>
-    <nParticles>200</nParticles> <!-- number of particles -->
+    
+    <nMsgToProcess>15000</nMsgToProcess>
+
+    <nParticles>100</nParticles> <!-- number of particles -->
     
     <predict>
-      <processNoiseInflationFactor>1.5</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
+      <processNoiseInflationFactor>10</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
       <birthGaussianWeight>0.01</birthGaussianWeight> <!-- weight assigned to new birth Gaussians -->
     </predict>
 
     <update>
-      <measurementNoiseInflationFactor>10.0</measurementNoiseInflationFactor> <!-- inflation factor of measurement covariance -->
+      <measurementNoiseInflationFactor>30.0</measurementNoiseInflationFactor> <!-- inflation factor of measurement covariance -->
       <KalmanFilter>
 	<innovationThreshold> <!-- exceeding innovation will cause Kalman Filter update to not occur, set this according to noise -->
-	  <range>0.50</range>  
+	  <range>0.5</range>  
 	  <bearing>0.05</bearing>
 	</innovationThreshold>
       </KalmanFilter>
@@ -84,7 +88,7 @@
     </weighting>
 
     <resampling>
-      <effNParticle>100.0</effNParticle> <!-- Threshold for resampling -->
+      <effNParticle>50.0</effNParticle> <!-- Threshold for resampling -->
       <minTimesteps>2</minTimesteps> <!-- Minimum number of timesteps between resampling -->
     </resampling>
 
