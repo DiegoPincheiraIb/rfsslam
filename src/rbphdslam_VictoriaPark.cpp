@@ -101,6 +101,10 @@ public:
     ackerman_dy_ = pt.get<double>("config.process.AckermanModel.sensorOffset_y");
     var_uv_ = pt.get<double>("config.process.varuv");
     var_ur_ = pt.get<double>("config.process.varur");
+    
+    var_posex_ = pt.get<double>("config.process.varposex");
+    var_posey_ = pt.get<double>("config.process.varposey");
+    var_poseth_ = pt.get<double>("config.process.varposeth");
 
     varlmx_ = pt.get<double>("config.landmarks.varlmx");
     varlmy_ = pt.get<double>("config.landmarks.varlmy");
@@ -314,6 +318,8 @@ public:
 
     // Configure process model
     pFilter_->getProcessModel()->setAckermanParams( ackerman_h_, ackerman_l_, ackerman_dx_, ackerman_dy_);
+    Pose2d::Cov Q;
+    Q << var_posex_, 0, 0, 0, var_posey_, 0, 0, 0, var_poseth_;
   
     // configure measurement model
     SLAM_Filter::TMeasurement::Cov R;
@@ -382,7 +388,7 @@ public:
     Landmark3d::Cov Q_m_k; // landmark process model additive noise
     int zIdx = 0;
     //for(uint k = 0; k < sensorManagerMsgs_.size() ; k++ ){  
-    for(uint k = 0; k < 5000 ; k++ ){ 
+    for(uint k = 0; k < 15000 ; k++ ){ 
 
       if( k % 1000 == 0){
 	std::cout << "Sensor messages processed: " << k << "/" << sensorManagerMsgs_.size()-1 << std::endl;
@@ -400,7 +406,7 @@ public:
 	if(isInInitialStationaryState){
 	  pFilter_->predict( u_km, dt, false, false ); // this basically makes all initial particles sit still
 	}else{
-	  pFilter_->predict( u_km, dt, false, true ); // true for use noise from u_km
+	  pFilter_->predict( u_km, dt, true, true ); // true for use noise from u_km
 	}
 	
 	u_km = motionInputs_[ sensorManagerMsgs_[k].idx ];
@@ -532,6 +538,9 @@ private:
   double ackerman_dy_;
   double var_uv_;
   double var_ur_;
+  double var_posex_;
+  double var_posey_;
+  double var_poseth_;
   std::vector<Position2d> groundtruth_pos_;
   std::vector<MotionModel_Ackerman2d::TInput> motionInputs_;
   std::vector<MotionModel_Ackerman2d::TState> deadReckoning_pose_;
