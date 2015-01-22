@@ -30,8 +30,8 @@
   </process>
 
   <landmarks>
-    <varlmx>0.0002</varlmx> <!-- increase in landmark x uncertainty per second -->
-    <varlmy>0.0002</varlmy> <!-- increase in landmark y uncertainty per second -->
+    <varlmx>0.00005</varlmx> <!-- increase in landmark x uncertainty per second -->
+    <varlmy>0.00005</varlmy> <!-- increase in landmark y uncertainty per second -->
     <varlmd>0.00001</varlmd> <!-- increase in landmark diameter uncertainty per second -->
   </landmarks>
 
@@ -43,14 +43,14 @@
     <rangeLimitBuffer>0.05</rangeLimitBuffer> <!-- buffer zone in which negative information has no effects -->
     <probDetection>0.90</probDetection> <!-- probability of detection -->
     <expectedNClutter>0.01</expectedNClutter> <!-- uniform clutter intensity -->
-    <varzr>0.0005</varzr> <!-- range measurement variance -->
+    <varzr>0.005</varzr> <!-- range measurement variance -->
     <varzb>0.00005</varzb> <!-- bearing measurement variance (0.0001 is roughly 0.6 deg standard deviation) -->
-    <varzd>0.01</varzd> <!-- diameter measurement variance (meter squared)-->
+    <varzd>0.002</varzd> <!-- diameter measurement variance (meter squared)-->
     <varza>0.00001</varza> <!-- variance of lidar beam angle-->
     <Pd>
       <value>0.00</value>
-      <value>0.02</value>
       <value>0.05</value>
+      <value>0.10</value>
       <value>0.35</value>
       <value>0.76</value>
       <value>0.89</value>
@@ -59,7 +59,7 @@
   </measurements>
   
   <filter>
-    <nParticles>10</nParticles> <!-- number of particles -->
+    <nParticles>100</nParticles> <!-- number of particles -->
     
     <predict>
       <processNoiseInflationFactor>1.5</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
@@ -85,7 +85,7 @@
     </weighting>
 
     <resampling>
-      <effNParticle>100.0</effNParticle> <!-- Threshold for resampling -->
+      <effNParticle>50.0</effNParticle> <!-- Threshold for resampling -->
       <minTimesteps>2</minTimesteps> <!-- Minimum number of timesteps between resampling -->
     </resampling>
 
