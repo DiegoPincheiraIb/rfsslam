@@ -25,7 +25,7 @@
       <sensorOffset_x>3.78</sensorOffset_x>
       <sensorOffset_y>0.50</sensorOffset_y>
     </AckermanModel>
-    <varuv>0.05000</varuv> <!-- variance in speed input -->
+    <varuv>0.0250</varuv> <!-- variance in speed input -->
     <varur>0.0500</varur> <!-- variance in steering input -->
     <ur_scale>0.95</ur_scale> 
   </process>
@@ -60,13 +60,18 @@
   
   <filter>
     
-    <nMsgToProcess>15000</nMsgToProcess>
+    <nMsgToProcess>25000</nMsgToProcess>
 
     <nParticles>100</nParticles> <!-- number of particles -->
     
     <predict>
       <processNoiseInflationFactor>10</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
-      <birthGaussianWeight>0.01</birthGaussianWeight> <!-- weight assigned to new birth Gaussians -->
+      <birthGaussian>
+	<Weight>0.01</Weight> <!-- weight assigned to new birth Gaussians -->
+	<SupportMeasurementDist>1.0</SupportMeasurementDist>
+	<SupportMeasurementThreshold>3</SupportMeasurementThreshold>
+	<CheckCountThreshold>10</CheckCountThreshold>
+      </birthGaussian>
     </predict>
 
     <update>

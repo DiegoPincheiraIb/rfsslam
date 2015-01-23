@@ -47,7 +47,7 @@ import matplotlib.ticker as ticker
 
 saveMovie = False;
 
-nLandmarksDrawMax = 300;
+nLandmarksDrawMax = 1000;
 nMeasurementsDrawMax = 100;
 
 if len(sys.argv) < 2:
@@ -123,13 +123,13 @@ z = np.fromfile(measurementFileHandle, count=4, sep=" ", dtype=float);
 
 # Plotting 
 
-fig = plt.figure( figsize=(12,10), facecolor='w')
+fig = plt.figure( figsize=(15,10), facecolor='w')
 
 particles, = plt.plot(p_x, p_y, 'b.');
 ax = plt.gca()
 plt.axis('equal');
 plt.grid(True);
-plt.xlim([-100, 100])
+plt.xlim([-100, 200])
 plt.ylim([-100, 100])
 
 measurements = [];
@@ -169,6 +169,9 @@ def animate(i):
     global m;
     global z;
 
+    if not p.any():
+        return []
+
     currentTime = p[0];
     drawnObjects = [];
 
@@ -186,7 +189,7 @@ def animate(i):
     p_x = [];
     p_y = [];
     p_w = [];
-    while p.any() and abs(p[0] - currentTime) < 1e-12:
+    while p.any() and abs(p[0] - currentTime) < 1e-4:
         p_x.append(p[2]);
         p_y.append(p[3]);
         p_r.append(p[4]);
@@ -205,34 +208,38 @@ def animate(i):
     # Landmarks
     m_idx = 0;
     while m.any() and abs(m[0] - currentTime) < 1e-12:
-        if round(m[1]) == round(p_idx_maxWeight):
+   
 
-            cov = np.array([ [ m[4], m[5] ], [ m[5], m[6] ] ]);
-            w = m[7];
-            eVal, eVec = np.linalg.eig(cov);
-            eVal = eVal.real;
-            a1 = 3*np.sqrt(eVal[0]); # Assume this is semi-major axis first
-            a2 = 3*np.sqrt(eVal[1]); 
-            semiMajorAxis = eVec[:,0];
-            if a2 > a1:
-                aTmp = a1
-                a1 = a2
-                a2 = aTmp
-                semiMajorAxis = eVec[:,1];
-            a1Angle = np.arctan2(semiMajorAxis[1], semiMajorAxis[0]);
-
-            landmarks[m_idx].set_alpha(min(w, 0.75));
-            landmarks[m_idx].center = (m[2], m[3]);
-            landmarks[m_idx].height = a2;
-            landmarks[m_idx].width = a1;
-            t_start = ax.transData;
-            t_rot = transforms.Affine2D().rotate_around(m[2], m[3], a1Angle);
-            t_compound = t_rot + t_start;
-            landmarks[m_idx].set_transform(t_compound);
-            drawnObjects.append(landmarks[m_idx]);
-            m_idx += 1;
+        cov = np.array([ [ m[4], m[5] ], [ m[5], m[6] ] ]);
+        w = m[7];
+        eVal, eVec = np.linalg.eig(cov);
+        eVal = eVal.real;
+        a1 = 3*np.sqrt(eVal[0]); # Assume this is semi-major axis first
+        a2 = 3*np.sqrt(eVal[1]); 
+        semiMajorAxis = eVec[:,0];
+        if a2 > a1:
+            aTmp = a1
+            a1 = a2
+            a2 = aTmp
+            semiMajorAxis = eVec[:,1];
+        a1Angle = np.arctan2(semiMajorAxis[1], semiMajorAxis[0]);
+        
+        landmarks[m_idx].set_alpha(min(w, 0.75));
+        landmarks[m_idx].center = (m[2], m[3]);
+        landmarks[m_idx].height = a2;
+        landmarks[m_idx].width = a1;
+        t_start = ax.transData;
+        t_rot = transforms.Affine2D().rotate_around(m[2], m[3], a1Angle);
+        t_compound = t_rot + t_start;
+        landmarks[m_idx].set_transform(t_compound);
+        drawnObjects.append(landmarks[m_idx]);
+        m_idx += 1;
 
         m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
+
+    if(m_idx == 0):
+        print m
+        print currentTime
 
     while landmarks[m_idx].height != 0:
         landmarks[m_idx].set_alpha(0);
@@ -259,7 +266,7 @@ def animate(i):
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, 900), interval=1, 
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, 7500), interval=1, 
                                init_func=animateInit, blit=True, repeat=False);
 
 if saveMovie:

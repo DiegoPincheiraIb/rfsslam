@@ -90,6 +90,15 @@ public:
     /**  New birth Gaussians are set with this weight */
     double birthGaussianWeight_;   
 
+    /**  Number of supporting measurements required to generate a birth Gaussian */
+    uint birthGaussianMeasurementCountThreshold_;
+
+    /**  Number of checks before candidate birth Gaussian is removed if there are not enough supporting measurements */
+    uint birthGaussianMeasurementCheckThreshold_;
+
+    /**  Mahalanobis distance threshold less than which a measurement counts towards supporting a birth Guassian */
+    double birthGaussianMeasurementSupportDist_;
+
     /**  New Gaussians are only created during map update if the innovation mahalanobis distance 
 	 is less than this threshold */
     double newGaussianCreateInnovMDThreshold_;
@@ -147,6 +156,16 @@ public:
     long long particleResample_cpu;
   } timingInfo_;
 
+  /**
+   * \class BirthGaussianCandidate
+   * \brief Birth Gaussian candidate
+   */
+  class BirthGaussianCandidate : public TLandmark{
+  public:
+    uint nSupportingMeasurements;
+    uint nChecks;
+  };
+
   /** 
    * Constructor 
    * \param n number of particles
@@ -168,10 +187,12 @@ public:
    * \param[in] dT Timestep timestep, which the motion model may or may not use;
    * \param[in] useModelNoise use the additive noise for the process model
    * \param[in] useInputNoise use the noise fn the input
+   * \param[un] birthGaussianCheck check whether birth Gaussians should be created
    */
   void predict( TInput u, TimeStamp const &dT,
 		bool useModelNoise = true,
-		bool useInputNoise = false);
+		bool useInputNoise = false,
+		bool birthGaussianCheck = true);
 
   /**
    * Update the map, calculate importance weighting, sample if necessary, and
@@ -220,6 +241,8 @@ public:
   TimingInfo* getTimingInfo();
 
 private:
+
+  std::vector< std::list<BirthGaussianCandidate> > birthGaussians_;
 
   typedef boost::multi_array<double, 2> W_Table; /**< \brief weighting table */
   typedef boost::multi_array<TLandmark*, 2> M_Table; /**< \brief landmark table */
@@ -330,6 +353,9 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   }
   
   config.birthGaussianWeight_ = 0.25; 
+  config.birthGaussianMeasurementCountThreshold_ = 1;
+  config.birthGaussianMeasurementCheckThreshold_ = 1;
+  config.birthGaussianMeasurementSupportDist_ = 1;
   config.gaussianMergingThreshold_ = 0.5;
   config.gaussianMergingCovarianceInflationFactor_ = 1.5;
   config.gaussianPruningThreshold_ = 0.2;
@@ -347,6 +373,8 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
     wTables_.push_back( W_Table(boost::extents[TABLE_INIT_SIZE][TABLE_INIT_SIZE]) );
     mTables_.push_back( M_Table(boost::extents[TABLE_INIT_SIZE][TABLE_INIT_SIZE]) ); 
   }
+
+  birthGaussians_.resize(n);
  
 }
 
@@ -369,12 +397,15 @@ template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::predict( TInput u,
 												 TimeStamp const &dT,
 												 bool useModelNoise,
-												 bool useInputNoise){
+												 bool useInputNoise,
+												 bool birthGaussianCheck){
  
   timer_predict_.resume();
 
   // Add birth Gaussians using pose before prediction
-  addBirthGaussians();
+  if( birthGaussianCheck ){
+    addBirthGaussians();
+  }
 
   // propagate particles
   this->propagate(u, dT, useModelNoise, useInputNoise);
@@ -945,18 +976,64 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       TMeasurement unused_z = this->measurements_[unused_idx];
       unused_measurements_[i].pop_back();
 
-      // use inverse measurement model to get landmark
-      TPose robot_pose;
-      TLandmark landmark_pos;
-      this->particleSet_[i]->getPose(robot_pose);
-      this->pMeasurementModel_->inverseMeasure( robot_pose,  unused_z, landmark_pos );
+      // check to see if measurement corresponds closely with a Landmark in the birth Gaussian list
+      bool isNewBirthGaussianCandidate = true;
       
-      // add birth landmark to Gaussian mixture (last param = true to allocate mem)
-      this->particleSet_[i]->getData()->addGaussian( &landmark_pos, config.birthGaussianWeight_, true);
-      
+      for( typename std::list<BirthGaussianCandidate>::iterator it = birthGaussians_[i].begin();
+	   it != birthGaussians_[i].end(); it++ ){
+
+	TMeasurement z_exp;
+	TPose x = *(this->particleSet_[i]); // not sure if this works
+	this->pMeasurementModel_->measure(x, *it, z_exp);
+	double d2 = z_exp.mahalanobisDist2( unused_z );
+	if(d2 <= config.birthGaussianMeasurementSupportDist_ * config.birthGaussianMeasurementSupportDist_){
+	  (it->nSupportingMeasurements)++;
+	  isNewBirthGaussianCandidate = false;
+	  break;
+	}
+      }
+	
+      if(isNewBirthGaussianCandidate){
+
+	// use inverse measurement model to get landmark
+	TPose robot_pose;
+	BirthGaussianCandidate c;
+	c.nSupportingMeasurements = 1;
+	c.nChecks = 0;
+	// this->particleSet_[i]->getPose(robot_pose);
+	robot_pose = *(this->particleSet_[i]); // not sure if this works
+	this->pMeasurementModel_->inverseMeasure( robot_pose, unused_z, c );
+
+	if(config.birthGaussianMeasurementCountThreshold_ == 1){
+	  // add birth landmark to Gaussian mixture (last param = true to allocate mem)
+	  this->particleSet_[i]->getData()->addGaussian( &c, config.birthGaussianWeight_, true);	  
+	}else{
+	  birthGaussians_[i].push_back(c);
+	}
+	
+      }  
+
+    } // iterate unused measurements end
+
+    // Check through candidate list to see if any candidates should be made into a real birth Gaussian
+    for( typename std::list<BirthGaussianCandidate>::iterator it = birthGaussians_[i].begin();
+	 it != birthGaussians_[i].end(); it++ ){
+      it->nChecks++;
+      while( it->nSupportingMeasurements >= config.birthGaussianMeasurementCountThreshold_ || 
+	     it->nChecks > config.birthGaussianMeasurementCheckThreshold_ ){
+	if(it->nSupportingMeasurements >= config.birthGaussianMeasurementCountThreshold_){
+	  this->particleSet_[i]->getData()->addGaussian( &(*it), config.birthGaussianWeight_, true);
+	}
+	it = birthGaussians_[i].erase( it );
+	if( it != birthGaussians_[i].end() ){
+	  it->nChecks++;
+	}else{
+	  break;
+	}
+      }
     }
     
-  }
+  } // iterate particles end
 
 }
 

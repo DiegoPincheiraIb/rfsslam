@@ -151,7 +151,14 @@ public:
    * Get the pointer to the particle container
    * \return a pointer
    */
-  TParticleSet* getParticleSet(){return &particleSet_;}
+  TParticleSet* getParticleSet();
+
+  /**
+   * Get particle pose
+   * \param[in] i index of particle
+   * \return pointer to particle. NULL if index i is invalid
+   */
+  TParticle* getParticle(uint const i);
 
   /** 
    * Set the effective particle count below which we initiate resampling
@@ -348,6 +355,21 @@ void ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::normaliz
 template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
 int ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::getParticleCount(){
   return nParticles_;
+}
+
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+typename ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::TParticleSet* 
+ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::getParticleSet(){
+  return &particleSet_;
+}
+
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+typename ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::TParticle* 
+ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::getParticle(uint const i){
+  if(i < particleSet_.size() ){
+    return particleSet_[i];
+  }
+  return NULL;
 }
 
 template< class ProcessModel, class MeasurementModel, class ParticleExtraData>

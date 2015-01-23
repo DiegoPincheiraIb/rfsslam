@@ -126,7 +126,10 @@ public:
     nParticles_ = pt.get("config.filter.nParticles", 200);
 
     pNoiseInflation_ = pt.get("config.filter.predict.processNoiseInflationFactor", 1.0);
-    birthGaussianWeight_ = pt.get("config.filter.predict.birthGaussianWeight", 0.01);
+    birthGaussianWeight_ = pt.get("config.filter.predict.birthGaussian.Weight", 0.01);
+    birthGaussianSupportMeasurementDist_ = pt.get<double>("config.filter.predict.birthGaussian.SupportMeasurementDist");
+    birthGaussianSupportMeasurementThreshold_ = pt.get<int>("config.filter.predict.birthGaussian.SupportMeasurementThreshold");
+    birthGaussianCheckCountThreshold_ = pt.get<int>("config.filter.predict.birthGaussian.CheckCountThreshold");
 
     zNoiseInflation_ = pt.get("config.filter.update.measurementNoiseInflationFactor", 1.0);
     innovationRangeThreshold_ = pt.get<double>("config.filter.update.KalmanFilter.innovationThreshold.range");
@@ -333,8 +336,10 @@ public:
     // configure the filter
     pFilter_->getKalmanFilter()->config.rangeInnovationThreshold_ = innovationRangeThreshold_;
     pFilter_->getKalmanFilter()->config.bearingInnovationThreshold_ = innovationBearingThreshold_;
-
     pFilter_->config.birthGaussianWeight_ = birthGaussianWeight_;
+    pFilter_->config.birthGaussianMeasurementSupportDist_ = birthGaussianSupportMeasurementDist_;
+    pFilter_->config.birthGaussianMeasurementCountThreshold_ = birthGaussianSupportMeasurementThreshold_;
+    pFilter_->config.birthGaussianMeasurementCheckThreshold_ = birthGaussianCheckCountThreshold_;
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
     pFilter_->config.minUpdatesBeforeResample_ = minUpdatesBeforeResample_;
     pFilter_->config.newGaussianCreateInnovMDThreshold_ = newGaussianCreateInnovMDThreshold_;
@@ -384,9 +389,12 @@ public:
     u_km.setTime( t_km );
     Landmark3d::Cov Q_m_k; // landmark process model additive noise
     int zIdx = 0;
+    bool birthGaussianCheck = true;
     if(nMessageToProcess_ <= 0){
       nMessageToProcess_ = sensorManagerMsgs_.size();
-    }  
+    }else if(nMessageToProcess_ > sensorManagerMsgs_.size()){
+      nMessageToProcess_ = sensorManagerMsgs_.size();
+    }
     for(uint k = 0; k < nMessageToProcess_ ; k++ ){ 
 
       if( k % 1000 == 0){
@@ -403,10 +411,11 @@ public:
 	pFilter_->getLmkProcessModel()->setNoise(Q_m_k);
 
 	if(isInInitialStationaryState){
-	  pFilter_->predict( u_km, dt, false, false ); // this basically makes all initial particles sit still
+	  pFilter_->predict( u_km, dt, false, false, birthGaussianCheck ); // this basically makes all initial particles sit still
 	}else{
-	  pFilter_->predict( u_km, dt, false, true ); // true for use noise from u_km
+	  pFilter_->predict( u_km, dt, false, true, birthGaussianCheck); // true for use noise from u_km
 	}
+	birthGaussianCheck = false;
 	
 	u_km = motionInputs_[ sensorManagerMsgs_[k].idx ];
 	u_km.setCov( u_km_cov );
@@ -421,15 +430,16 @@ public:
 
 	// Propagate particles up to lidar scan time
 
-	Q_m_k << varlmx_, 0, 0, varlmy_;
+	Q_m_k << varlmx_, 0, 0, 0, varlmy_, 0, 0, 0, varlmd_; 
 	Q_m_k = Q_m_k * dt.getTimeAsDouble() * dt.getTimeAsDouble();
 	pFilter_->getLmkProcessModel()->setNoise(Q_m_k);
 
 	if(isInInitialStationaryState){
-	  pFilter_->predict( u_km, dt, false, false ); // this basically makes all initial particles sit still
+	  pFilter_->predict( u_km, dt, false, false, birthGaussianCheck ); // this basically makes all initial particles sit still
 	}else{
-	  pFilter_->predict( u_km, dt, false, true ); // true for use noise from u_km
-	}
+	  pFilter_->predict( u_km, dt, false, true, birthGaussianCheck ); // true for use noise from u_km
+	}	
+	birthGaussianCheck = false;
 	  
 	// Update particles with lidar scan data
 
@@ -440,6 +450,7 @@ public:
 	}
 	pFilter_->getMeasurementModel()->setLaserScan( lidarScans_[sensorManagerMsgs_[k].idx].scan );
 	pFilter_->update(Z);
+	birthGaussianCheck = true;
 
 	// Log data
 	double w_max = 0;
@@ -570,6 +581,10 @@ private:
   double innovationRangeThreshold_;
   double innovationBearingThreshold_;
   double birthGaussianWeight_;
+  double birthGaussianSupportMeasurementDist_;
+  int birthGaussianSupportMeasurementThreshold_;
+  int birthGaussianCheckThreshold_;
+  int birthGaussianCheckCountThreshold_;
   double newGaussianCreateInnovMDThreshold_;
   double importanceWeightingMeasurementLikelihoodMDThreshold_;
   double importanceWeightingEvalPointGuassianWeight_;
