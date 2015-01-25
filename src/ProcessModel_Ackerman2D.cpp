@@ -59,6 +59,8 @@ void MotionModel_Ackerman2d::step( Pose2d &s_k, Pose2d &s_km, AckermanInput &inp
   double tan_u_r = tan(u_r);
   TimeStamp t_km = s_km.getTime();
 
+  u_v = u_v / (1 - tan_u_r * h_ / l_);
+
   Pose2d::Vec dx;
   dx << dt * ( u_v * cos_r_km - u_v / l_ * tan_u_r * (poi_offset_x_ * sin_r_km + poi_offset_y_ * cos_r_km ) ),
         dt * ( u_v * sin_r_km + u_v / l_ * tan_u_r * (poi_offset_x_ * cos_r_km - poi_offset_y_ * sin_r_km ) ),

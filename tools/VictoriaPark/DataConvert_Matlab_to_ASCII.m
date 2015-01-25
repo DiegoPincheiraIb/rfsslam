@@ -1,12 +1,15 @@
 % Use detectTreesI16.m to detect features in aa3.lsr2.mat for all timesteps
 
 format long
-clear all
+clear all/home/kykleung/Projects/phdFilter/data/VictoriaPark
 load aa3_lsr2.mat
+load aa3_dr.mat
 
 % Fix timestamps
-
-TLsr = double(TLsr - TLsr(1) + 852) / 1000;
+init_msg_offset = 852;
+TLsr = double(TLsr - TLsr(1) + init_msg_offset) / 1000;
+init_msg_offset = 973;
+time = double(time - time(1) + init_msg_offset) / 1000;
 
 % Extract features 
 global AAr; 
@@ -44,3 +47,5 @@ disp( min(detections(:,4)) )
 FID = fopen('measurements.dat','w');
 fprintf(FID, '%10.3f %10.5f %10.5f %10.5f\n', detections');
 fclose(FID);
+FID = fopen('inputs.dat','w');
+fprintf(FID, '%10.3f %10.3f %10.4f\n', [time speed steering]');

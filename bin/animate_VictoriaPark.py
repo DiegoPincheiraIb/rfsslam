@@ -129,8 +129,8 @@ particles, = plt.plot(p_x, p_y, 'b.');
 ax = plt.gca()
 plt.axis('equal');
 plt.grid(True);
-plt.xlim([-100, 200])
-plt.ylim([-100, 100])
+plt.xlim([-200, 200])
+plt.ylim([-100, 200])
 
 measurements = [];
 for i in range(0, nMeasurementsDrawMax) : 
@@ -147,7 +147,7 @@ trajectory, = plt.plot(0, 0, 'b-')
 
 xLim = plt.getp(ax, 'xlim');
 yLim = plt.getp(ax, 'ylim');
-txt = plt.text(xLim[1]-1, yLim[1]-1, " ");
+txt = plt.text(150, -190, " ");
 
 def animateInit():
 
@@ -170,6 +170,7 @@ def animate(i):
     global z;
 
     if not p.any():
+        print "No more messages"
         return []
 
     currentTime = p[0];
@@ -207,6 +208,10 @@ def animate(i):
     
     # Landmarks
     m_idx = 0;
+    m_x_min = 0;
+    m_x_max = 0;
+    m_y_min = 0;
+    m_y_max = 0;
     while m.any() and abs(m[0] - currentTime) < 1e-12:
    
 
@@ -233,13 +238,23 @@ def animate(i):
         t_compound = t_rot + t_start;
         landmarks[m_idx].set_transform(t_compound);
         drawnObjects.append(landmarks[m_idx]);
+
+        if m[2] < m_x_min:
+            m_x_min = m[2]
+        if m[2] > m_x_max:
+            m_x_max = m[2]
+        if m[3] < m_y_min:
+            m_y_min = m[3]
+        if m[3] > m_y_max:
+            m_y_max = m[3]        
+
         m_idx += 1;
 
         m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
 
-    if(m_idx == 0):
-        print m
-        print currentTime
+    #plt.xlim([m_x_min - 10, m_x_max + 10])
+    #plt.ylim([m_y_min - 10, m_y_max + 10])
+    #plt.gca().set_aspect('equal')
 
     while landmarks[m_idx].height != 0:
         landmarks[m_idx].set_alpha(0);
@@ -266,7 +281,7 @@ def animate(i):
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, 7500), interval=1, 
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, 10000), interval=1, 
                                init_func=animateInit, blit=True, repeat=False);
 
 if saveMovie:

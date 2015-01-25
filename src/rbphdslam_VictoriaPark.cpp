@@ -211,7 +211,7 @@ public:
       std::stringstream ss( msgLine );
       ss >> time >> vel >> steer;
       SLAM_Filter::TInput::Vec uVec;
-      uVec << vel, steer * scale_ur_;
+      uVec << vel, steer;
       SLAM_Filter::TInput u(uVec, TimeStamp(time)); 
       motionInputs_.push_back( u );
       //std::cout << std::setw(10) << std::fixed << std::setprecision(3) << u.getTime().getTimeAsDouble() 
@@ -299,8 +299,13 @@ public:
 	if(sensorManagerMsgs_[k].sensorType == SensorManagerMsg::Input){
 	  t_k = sensorManagerMsgs_[k].t;
 	  TimeStamp dt = t_k - t_km;
+	  //u_km = motionInputs_[ sensorManagerMsgs_[k].idx ];
+	  SLAM_Filter::TInput::Vec u_km_vec = u_km.get();
+	  u_km_vec[1] *= scale_ur_;
+	  u_km.set(u_km_vec);
 	  pFilter_->getProcessModel()->step( x, x, u_km, dt);
 	  u_km = motionInputs_[ sensorManagerMsgs_[k].idx ];
+	  
 	  drPoseFile << std::fixed << std::setprecision(3) 
 		     << std::setw(10) << sensorManagerMsgs_[k].t.getTimeAsDouble()
 		     << std::setw(10) << x[0] 
@@ -418,7 +423,9 @@ public:
 	birthGaussianCheck = false;
 	
 	u_km = motionInputs_[ sensorManagerMsgs_[k].idx ];
-	u_km.setCov( u_km_cov );
+	SLAM_Filter::TInput::Vec u_km_vec = u_km.get();
+	u_km_vec[1] *= scale_ur_;
+	u_km.set(u_km_vec, u_km_cov);
 	if(u_km[0] != 0){
 	  isInInitialStationaryState = false;
 	}
