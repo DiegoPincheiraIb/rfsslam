@@ -123,14 +123,14 @@ z = np.fromfile(measurementFileHandle, count=4, sep=" ", dtype=float);
 
 # Plotting 
 
-fig = plt.figure( figsize=(15,10), facecolor='w')
+fig = plt.figure( figsize=(12,12), facecolor='w')
 
 particles, = plt.plot(p_x, p_y, 'b.');
 ax = plt.gca()
 plt.axis('equal');
 plt.grid(True);
-plt.xlim([-200, 200])
-plt.ylim([-100, 200])
+plt.xlim([-125, 225])
+plt.ylim([-75, 275])
 
 measurements = [];
 for i in range(0, nMeasurementsDrawMax) : 
@@ -147,7 +147,7 @@ trajectory, = plt.plot(0, 0, 'b-')
 
 xLim = plt.getp(ax, 'xlim');
 yLim = plt.getp(ax, 'ylim');
-txt = plt.text(150, -190, " ");
+txt = plt.text(150, -65, " ");
 
 def animateInit():
 
@@ -286,19 +286,19 @@ animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, 10000), inte
 
 if saveMovie:
     animation.save(estimateMovieFile, fps=30, extra_args=['-loglevel','quiet','-vcodec','libx264'])
-    estPoseHandle, = plt.plot(px_best, py_best, 'b-');
-    for i in range(0, nMeasurementsDrawMax) : 
-        measurements[i].remove();
-    plt.setp(gtPoseHandle, linewidth=2.0)
-    txt.set_text(" ");
-    plt.legend([gtPoseHandle, estPoseHandle, gtMapHandle, landmarks[0]], ["Ground-truth trajectory", "Estimated trajectory", "Ground-truth landmark", "Estimated landmark" ], loc=4);
-    plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
-    scale = 10;
-    ticks = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*scale))
-    plt.gca().xaxis.set_major_formatter(ticks)
-    ticks = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y*scale))
-    plt.gca().yaxis.set_major_formatter(ticks)
-    plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
+    #estPoseHandle, = plt.plot(px_best, py_best, 'b-');
+    #for i in range(0, nMeasurementsDrawMax) : 
+    #    measurements[i].remove();
+    #plt.setp(gtPoseHandle, linewidth=2.0)
+    #txt.set_text(" ");
+    #plt.legend([gtPoseHandle, estPoseHandle, gtMapHandle, landmarks[0]], ["Ground-truth trajectory", "Estimated trajectory", "Ground-truth landmark", "Estimated landmark" ], loc=4);
+    #plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
+    #scale = 10;
+    #ticks = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*scale))
+    #plt.gca().xaxis.set_major_formatter(ticks)
+    #ticks = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y*scale))
+    #plt.gca().yaxis.set_major_formatter(ticks)
+    #plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
 else:
     plt.show()
 
