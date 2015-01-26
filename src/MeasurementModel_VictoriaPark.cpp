@@ -1,33 +1,57 @@
+/*
+ * Software License Agreement (New BSD License)
+ *
+ * Copyright (c) 2013, Keith Leung, Felipe Inostroza
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the Advanced Mining Technology Center (AMTC), the
+ *       Universidad de Chile, nor the names of its contributors may be 
+ *       used to endorse or promote products derived from this software without 
+ *       specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE AMTC, UNIVERSIDAD DE CHILE, OR THE COPYRIGHT 
+ * HOLDERS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE 
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
+ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include "MeasurementModel_VictoriaPark.hpp"
 
 namespace rfs{
 
-  MeasurementModel_VictoriaPark::MeasurementModel_VictoriaPark(){
+  MeasurementModel_VictoriaPark::MeasurementModel_VictoriaPark(){}
 
+  MeasurementModel_VictoriaPark::~MeasurementModel_VictoriaPark(){}
 
-  }
-
-  MeasurementModel_VictoriaPark::~MeasurementModel_VictoriaPark(){
-
-
-  }
   MeasurementModel_VictoriaPark::MeasurementModel_VictoriaPark(Eigen::Matrix3d &covZ, double Slb){
 
     this->setNoise(covZ,Slb);
-
-
+    config.bufferZonePd_ = 0;
   }
-  MeasurementModel_VictoriaPark::MeasurementModel_VictoriaPark(Eigen::Matrix2d &covP, double covR, double Slb){
 
+  MeasurementModel_VictoriaPark::MeasurementModel_VictoriaPark(Eigen::Matrix2d &covP, double covR, double Slb){
 
     Eigen::Matrix3d M;
     M.setZero();
     M.block<2,2>(0,0)=covP;
     M(2,2)=covR;
     this->setNoise(M,Slb);
-
-
+    config.bufferZonePd_ = 0;
   }
+
   MeasurementModel_VictoriaPark::MeasurementModel_VictoriaPark(double Sx, double Sy , double SR, double Slb){
 
     Eigen::Matrix3d M;
@@ -35,19 +59,16 @@ namespace rfs{
     M(0,0)=Sx;
     M(1,1)=Sy;
     M(2,2)=SR;
-    this->setNoise(M,Slb);
-  
+    this->setNoise(M,Slb);  
+    config.bufferZonePd_ = 0;
   }
 
-
-
   void MeasurementModel_VictoriaPark::setNoise( Measurement3d::Mat &R , double Slb){
+    
     R_=R;
     Slb_=Slb;
     Eigen::Matrix2d cov=R.block<2,2>(0,0);
     rangeBearingModel.setNoise(cov);
-
-
   }
 
 
@@ -61,9 +82,7 @@ namespace rfs{
     poseMean[2]=poseMean[2]-PI/2;
     Pose2d transformedPose(poseMean, pose.getTime());
 
-
     measurement.get(meanMeas,covMeas,t);
-
 
     Eigen::Matrix2d cov2d=covMeas.block<2,2>(0,0);
     Eigen::Vector2d mean2d=meanMeas.block<2,1>(0,0);
@@ -79,17 +98,12 @@ namespace rfs{
     meanLand.block<2,1>(0,0)=mean2d;
     meanLand(2)=meanMeas(2);
 
-
     landmark.set(meanLand,covLand,t);
-
-
-
   }
 
-
-
   bool MeasurementModel_VictoriaPark::measure( const Pose2d &pose, const Landmark3d &landmark,
-					       Measurement3d &measurement, Eigen::Matrix3d *jacobian_wrt_lmk, Eigen::Matrix3d *jacobian_wrt_pose){
+					       Measurement3d &measurement, Eigen::Matrix3d *jacobian_wrt_lmk, 
+					       Eigen::Matrix3d *jacobian_wrt_pose){
 
     Eigen::Matrix3d cov,covMeas;
     Eigen::Vector3d mean,meanMeas,poseMean;
@@ -104,10 +118,7 @@ namespace rfs{
     Eigen::Matrix2d cov2d=cov.block<2,2>(0,0);
     Eigen::Vector2d mean2d=mean.block<2,1>(0,0);
 
-
     Landmark2d lan(mean2d,cov2d);
-
-
 
     Measurement2d meas;
     if(jacobian_wrt_lmk==NULL){
@@ -153,7 +164,6 @@ namespace rfs{
     measurement.get(measMean);
     double distancetocircle = sqrt(pow(measMean[0],2)+pow(measMean[1],2));
     double angle = atan2(measMean[1],measMean[0])+poseMean[2];
-
 
     Eigen::Vector2d perp_direction ,direction;
     perp_direction << -sin(angle) , cos(angle);
@@ -211,7 +221,6 @@ namespace rfs{
     }
     // return config.probabilityOfDetection_[config.probabilityOfDetection_.size()-1];
 
-
     double modified_radius=measMean[2]/2;//+sqrt(circleCov(0,0)+circleCov(1,1)+circleCov(2,2));
     double gamma=atan(modified_radius/measMean[0]);
 
@@ -220,16 +229,14 @@ namespace rfs{
     if(config.probabilityOfDetection_.size()>maxNumPoints && config.probabilityOfDetection_[maxNumPoints]==0){
       return 0;
     }
-    if(config.probabilityOfDetection_.size()>maxNumPoints && config.probabilityOfDetection_[maxNumPoints]<0.5){
+    if(config.probabilityOfDetection_.size()>maxNumPoints && config.probabilityOfDetection_[maxNumPoints] < config.bufferZonePd_){
       isCloseToSensingLimit =true;
     }
 
     int minb=(int)ceil((angle-gamma)*720.0/(2*PI));
     int maxb=minb+maxNumPoints;
 
-
     while(minb>=720)minb-=720;
-  
     while(minb<0)minb+=720;
     while(maxb>=720)maxb-=720;
     while(maxb<0)maxb+=720;
@@ -238,20 +245,15 @@ namespace rfs{
 
     double minrange=distancetocircle - modified_radius - 6*0.03;// - sqrt(std::max(circleCov(0,0),circleCov(1,1))+circleCov(2,2));
 
-
-
     if((maxb-minb+720)%720>0){
       for(int bearing=minb;bearing!=maxb;bearing=(bearing+1)%720){
-
 
 	if(this->laserscan_[bearing]>minrange || this->laserscan_[bearing]==0)
 	  numPoints++;
       }
     }
 
-
     int numPoints_small=numPoints;
-
 
     if(numPoints>=config.probabilityOfDetection_.size()){
       numPoints=config.probabilityOfDetection_.size()-1;
@@ -281,14 +283,11 @@ namespace rfs{
   double MeasurementModel_VictoriaPark::clutterIntensity( Measurement3d &z, int nZ ){
 
     return clutterIntensity_;
-
-
   }
 
   double MeasurementModel_VictoriaPark::clutterIntensityIntegral( int nZ){
 
     return config.expectedClutterNumber_;
-
   }
 
 }

@@ -138,6 +138,7 @@ namespace rfs{
       double rangeLimMin_; /**< sensing range limit, below which \f$ P_D = 0 \f$*/
       double bearingLimitMin_; /**< sensing angle limit, below which \f$ P_D = 0 \f$*/
       double bearingLimitMax_; /**< sensing angle limit, beyond which \f$ P_D = 0 \f$*/
+      double bufferZonePd_; /**< Pd below which a feature is considered in the buffer zone */
 
     }config;
 

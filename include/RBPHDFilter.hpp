@@ -99,6 +99,11 @@ public:
     /**  Mahalanobis distance threshold less than which a measurement counts towards supporting a birth Guassian */
     double birthGaussianMeasurementSupportDist_;
 
+    /**  Number of latest observations below or equal to which birth Gaussians are added regardless or measurement evidence.
+     *   This is to accomodate for the case where the robot enters an area sparesly populated with landmarks.
+     */
+    double birthGaussianCurrentMeasurementCountThreshold_;
+
     /**  New Gaussians are only created during map update if the innovation mahalanobis distance 
 	 is less than this threshold */
     double newGaussianCreateInnovMDThreshold_;
@@ -262,6 +267,7 @@ private:
   std::vector<uint> nLandmarksInFOV_;
 
   unsigned int nUpdatesSinceResample; /**< Number of updates performed since the last resmaple */
+  bool resampleOccured_;
 
   Timer timer_predict_; /**< Timer for prediction step */
   Timer timer_mapUpdate_; /**< Timer for map update */
@@ -359,6 +365,7 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   config.birthGaussianMeasurementCountThreshold_ = 1;
   config.birthGaussianMeasurementCheckThreshold_ = 1;
   config.birthGaussianMeasurementSupportDist_ = 1;
+  config.birthGaussianCurrentMeasurementCountThreshold_ = 1;
   config.gaussianMergingThreshold_ = 0.5;
   config.gaussianMergingCovarianceInflationFactor_ = 1.5;
   config.gaussianPruningThreshold_ = 0.2;
@@ -508,12 +515,12 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
   //////////// Particle resampling //////////
   timer_particleResample_.resume();
-  bool resampleOccured = false;
+  resampleOccured_ = false;
   if( nUpdatesSinceResample >= config.minUpdatesBeforeResample_){
-    resampleOccured = this->resample();
+    resampleOccured_ = this->resample();
   }
 
-  if( resampleOccured ){
+  if( resampleOccured_ ){
     nUpdatesSinceResample = 0;
   }else{
     this->normalizeWeights();
@@ -975,6 +982,14 @@ template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::addBirthGaussians(){
 
   for(int i = 0; i < this->nParticles_; i++){
+
+    if(resampleOccured_){ 
+      uint i_prev = this->particleSet_[i]->getParentId();
+      if( i_prev != i ){
+	unused_measurements_[i] = unused_measurements_[i_prev];
+	birthGaussians_[i] = birthGaussians_[i_prev];
+      }
+    }
     
     while( unused_measurements_[i].size() > 0){
      
@@ -1012,7 +1027,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	this->pMeasurementModel_->inverseMeasure( robot_pose, unused_z, c );
 
 	if(config.birthGaussianMeasurementCountThreshold_ == 1 ||
-	   nLandmarksInFOV_[i] <= 2){
+	   nLandmarksInFOV_[i] <= config.birthGaussianCurrentMeasurementCountThreshold_){
 	  // add birth landmark to Gaussian mixture (last param = true to allocate mem)
 	  this->particleSet_[i]->getData()->addGaussian( &c, config.birthGaussianWeight_, true);	  
 	}else{
@@ -1029,10 +1044,10 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       it->nChecks++;
       while( it->nSupportingMeasurements >= config.birthGaussianMeasurementCountThreshold_ || 
 	     it->nChecks > config.birthGaussianMeasurementCheckThreshold_ ||
-	     nLandmarksInFOV_[i] <= 2){
+	     nLandmarksInFOV_[i] <= config.birthGaussianCurrentMeasurementCountThreshold_){
 	if(it->nSupportingMeasurements >= config.birthGaussianMeasurementCountThreshold_){
 	  this->particleSet_[i]->getData()->addGaussian( &(*it), config.birthGaussianWeight_, true);
-	}else if( nLandmarksInFOV_[i] <= 2){
+	}else if( nLandmarksInFOV_[i] <= config.birthGaussianCurrentMeasurementCountThreshold_){
 	  this->particleSet_[i]->getData()->addGaussian( &(*it), config.birthGaussianWeight_, true);
 	}
 	it = birthGaussians_[i].erase( it );

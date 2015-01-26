@@ -78,7 +78,7 @@ else:
     sys.exit(0);
 estMapFileHandle = open(estMapFile, "r");
 
-measurementFile = 'measurement.dat';
+measurementFile = 'measurements.dat';
 measurementFile = dataDir + measurementFile;
 if os.path.exists(measurementFile):
     print('Opening ' + measurementFile);
@@ -143,6 +143,9 @@ for i in range(0, nLandmarksDrawMax) :
     landmarks.append(landmark_ellipse); 
     ax.add_patch(landmarks[i]);
 
+landmarkCenters, = plt.plot([], [], '+')
+landmarkCenters.set_color([0.2,0.2,0.8])
+
 trajectory, = plt.plot(0, 0, 'b-')
 
 xLim = plt.getp(ax, 'xlim');
@@ -155,7 +158,7 @@ def animateInit():
     particles.set_data([],[]);
     for i in range(0, nMeasurementsDrawMax) :
         measurements[i].set_data([],[]);
-        measurements[i].set_color([0.5,0.5,0.9]);
+        measurements[i].set_color([1.0, 0.2 ,0.2]);
     for i in range(0, nLandmarksDrawMax):
         landmarks[i].center = (0,0);
         landmarks[i].width = 0;
@@ -170,6 +173,7 @@ def animate(i):
     global z;
 
     if not p.any():
+        print i
         print "No more messages"
         return []
 
@@ -208,6 +212,8 @@ def animate(i):
     
     # Landmarks
     m_idx = 0;
+    m_x = []
+    m_y = []
     m_x_min = 0;
     m_x_max = 0;
     m_y_min = 0;
@@ -219,8 +225,8 @@ def animate(i):
         w = m[7];
         eVal, eVec = np.linalg.eig(cov);
         eVal = eVal.real;
-        a1 = 3*np.sqrt(eVal[0]); # Assume this is semi-major axis first
-        a2 = 3*np.sqrt(eVal[1]); 
+        a1 = 4*np.sqrt(eVal[0]); # Assume this is semi-major axis first
+        a2 = 4*np.sqrt(eVal[1]); # 3 dof, 4 stdev is roughly prob = 0.997
         semiMajorAxis = eVec[:,0];
         if a2 > a1:
             aTmp = a1
@@ -229,6 +235,8 @@ def animate(i):
             semiMajorAxis = eVec[:,1];
         a1Angle = np.arctan2(semiMajorAxis[1], semiMajorAxis[0]);
         
+        m_x.append(m[2])
+        m_y.append(m[3])
         landmarks[m_idx].set_alpha(min(w, 0.75));
         landmarks[m_idx].center = (m[2], m[3]);
         landmarks[m_idx].height = a2;
@@ -263,6 +271,9 @@ def animate(i):
         landmarks[m_idx].width = 0;
         m_idx += 1;
 
+    landmarkCenters.set_data(m_x, m_y)
+    drawnObjects.append(landmarkCenters)
+
     # Measurements
     nZ = 0;
     while z.any() and abs(z[0] -  currentTime) < 1e-12:
@@ -281,24 +292,19 @@ def animate(i):
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, 10000), interval=1, 
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, 7230), interval=1, 
                                init_func=animateInit, blit=True, repeat=False);
 
 if saveMovie:
     animation.save(estimateMovieFile, fps=30, extra_args=['-loglevel','quiet','-vcodec','libx264'])
     #estPoseHandle, = plt.plot(px_best, py_best, 'b-');
-    #for i in range(0, nMeasurementsDrawMax) : 
-    #    measurements[i].remove();
+    for i in range(0, nMeasurementsDrawMax) : 
+        measurements[i].remove();
     #plt.setp(gtPoseHandle, linewidth=2.0)
-    #txt.set_text(" ");
     #plt.legend([gtPoseHandle, estPoseHandle, gtMapHandle, landmarks[0]], ["Ground-truth trajectory", "Estimated trajectory", "Ground-truth landmark", "Estimated landmark" ], loc=4);
-    #plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
-    #scale = 10;
-    #ticks = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*scale))
-    #plt.gca().xaxis.set_major_formatter(ticks)
-    #ticks = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y*scale))
-    #plt.gca().yaxis.set_major_formatter(ticks)
-    #plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
+    plt.legend([estPoseHandle, landmarks[0]], ["Estimated trajectory", "Estimated landmark" ], loc=4);
+    plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
+    plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
 else:
     plt.show()
 

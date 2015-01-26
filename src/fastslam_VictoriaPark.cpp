@@ -35,7 +35,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include "ProcessModel_Ackerman2D.hpp"
-#include "RBPHDFilter.hpp"
+#include "FastSLAM.hpp"
 #include "KalmanFilter_VictoriaPark.hpp"
 #include <stdio.h>
 #include <string>
@@ -44,26 +44,26 @@
 using namespace rfs;
 
 /**
- * \class RBPHDSLAM_VictoriaPark
+ * \class FastSLAM_VictoriaPark
  * \brief Run the RB-PHD-SLAM Algorithm on the Victoria Park Dataset.
  * \author Keith Leung
  */
-class RBPHDSLAM_VictoriaPark{
+class FastSLAM_VictoriaPark{
 
 public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-  typedef RBPHDFilter<MotionModel_Ackerman2d, 
-		      StaticProcessModel<Landmark3d>,
-		      MeasurementModel_VictoriaPark,  
-		      KalmanFilter_VictoriaPark> SLAM_Filter;
+  typedef FastSLAM<MotionModel_Ackerman2d, 
+		   StaticProcessModel<Landmark3d>,
+		   MeasurementModel_VictoriaPark,  
+		   KalmanFilter_VictoriaPark> SLAM_Filter;
 
-  RBPHDSLAM_VictoriaPark(){
+  FastSLAM_VictoriaPark(){
     pFilter_ = NULL;
   }
   
-  ~RBPHDSLAM_VictoriaPark(){
+  ~FastSLAM_VictoriaPark(){
     
     if(pFilter_ != NULL){
       delete pFilter_;
@@ -127,31 +127,19 @@ public:
     nParticles_ = pt.get("config.filter.nParticles", 200);
 
     pNoiseInflation_ = pt.get("config.filter.predict.processNoiseInflationFactor", 1.0);
-    birthGaussianWeight_ = pt.get("config.filter.predict.birthGaussian.Weight", 0.01);
-    birthGaussianSupportMeasurementDist_ = pt.get<double>("config.filter.predict.birthGaussian.SupportMeasurementDist");
-    birthGaussianSupportMeasurementThreshold_ = pt.get<int>("config.filter.predict.birthGaussian.SupportMeasurementThreshold");
-    birthGaussianCheckCountThreshold_ = pt.get<int>("config.filter.predict.birthGaussian.CheckCountThreshold");
-    birthGaussianCurrentMeasurementCountThreshold_ = pt.get<double>("config.filter.predict.birthGaussian.CurrentMeasurementCountThreshold");
 
     zNoiseInflation_ = pt.get("config.filter.update.measurementNoiseInflationFactor", 1.0);
+    maxNDataAssocHypotheses_ = pt.get<int>("config.filter.update.maxNDataAssocHypotheses", 1);
+    maxDataAssocLogLikelihoodDiff_ = pt.get("config.filter.update.maxDataAssocLogLikelihoodDiff", 3.0);
     innovationRangeThreshold_ = pt.get<double>("config.filter.update.KalmanFilter.innovationThreshold.range");
     innovationBearingThreshold_ = pt.get<double>("config.filter.update.KalmanFilter.innovationThreshold.bearing");
-    newGaussianCreateInnovMDThreshold_ = pt.get<double>("config.filter.update.GaussianCreateInnovMDThreshold");
 
-    importanceWeightingEvalPointCount_ = pt.get("config.filter.weighting.nEvalPt", 15);
-    importanceWeightingEvalPointGuassianWeight_ = pt.get("config.filter.weighting.minWeight", 0.75);
-    importanceWeightingMeasurementLikelihoodMDThreshold_ = pt.get("config.filter.weighting.threshold", 3.0);
-    useClusterProcess_ = false;
-    if( pt.get("config.filter.weighting.useClusterProcess", 0) == 1 )
-      useClusterProcess_ = true;
+    minLogMeasurementLikelihood_ = pt.get("config.filter.weighting.minLogMeasurementLikelihood",-10.0);
 
     effNParticleThreshold_ = pt.get("config.filter.resampling.effNParticle", nParticles_);
     minUpdatesBeforeResample_ = pt.get("config.filter.resampling.minTimesteps", 1);
-    
-    gaussianMergingThreshold_ = pt.get<double>("config.filter.merge.threshold");
-    gaussianMergingCovarianceInflationFactor_ = pt.get("config.filter.merge.covInflationFactor", 1.0);
-    
-    gaussianPruningThreshold_ = pt.get("config.filter.prune.threshold", birthGaussianWeight_);
+            
+    landmarkExistencePruningThreshold_ = pt.get("config.filter.prune.threshold", -5.0);
 
     // Copy config file to logDir
     if(logToFile_){
@@ -333,8 +321,8 @@ public:
     }
   }
 
-  /** RB-PHD Filter Setup */
-  void setupRBPHDFilter(){
+  /** FastSLAM Filter Setup */
+  void setupFastSLAMFilter(){
 
     pFilter_ = new SLAM_Filter( nParticles_ );
 
@@ -353,25 +341,17 @@ public:
     pFilter_->getMeasurementModel()->config.bearingLimitMax_ = bearingLimitMax_ * PI / 180;
     pFilter_->getMeasurementModel()->config.bearingLimitMin_ = bearingLimitMin_ * PI / 180;
     pFilter_->getMeasurementModel()->config.bufferZonePd_ = bufferZonePd_;
-    
+
     // configure the filter
     pFilter_->getKalmanFilter()->config.rangeInnovationThreshold_ = innovationRangeThreshold_;
     pFilter_->getKalmanFilter()->config.bearingInnovationThreshold_ = innovationBearingThreshold_;
-    pFilter_->config.birthGaussianWeight_ = birthGaussianWeight_;
-    pFilter_->config.birthGaussianMeasurementSupportDist_ = birthGaussianSupportMeasurementDist_;
-    pFilter_->config.birthGaussianMeasurementCountThreshold_ = birthGaussianSupportMeasurementThreshold_;
-    pFilter_->config.birthGaussianMeasurementCheckThreshold_ = birthGaussianCheckCountThreshold_;
-    pFilter_->config.birthGaussianCurrentMeasurementCountThreshold_ = birthGaussianCurrentMeasurementCountThreshold_;
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
     pFilter_->config.minUpdatesBeforeResample_ = minUpdatesBeforeResample_;
-    pFilter_->config.newGaussianCreateInnovMDThreshold_ = newGaussianCreateInnovMDThreshold_;
-    pFilter_->config.importanceWeightingMeasurementLikelihoodMDThreshold_ = importanceWeightingMeasurementLikelihoodMDThreshold_;
-    pFilter_->config.importanceWeightingEvalPointCount_ = importanceWeightingEvalPointCount_;
-    pFilter_->config.importanceWeightingEvalPointGuassianWeight_ = importanceWeightingEvalPointGuassianWeight_;
-    pFilter_->config.gaussianMergingThreshold_ = gaussianMergingThreshold_;
-    pFilter_->config.gaussianMergingCovarianceInflationFactor_ = gaussianMergingCovarianceInflationFactor_;
-    pFilter_->config.gaussianPruningThreshold_ = gaussianPruningThreshold_;
-    pFilter_->config.useClusterProcess_ = useClusterProcess_;
+    pFilter_->config.minLogMeasurementLikelihood_ = minLogMeasurementLikelihood_;
+    pFilter_->config.maxNDataAssocHypotheses_ = maxNDataAssocHypotheses_;
+    pFilter_->config.maxDataAssocLogLikelihoodDiff_ = maxDataAssocLogLikelihoodDiff_;
+    pFilter_->config.mapExistencePruneThreshold_ = landmarkExistencePruningThreshold_;
+    pFilter_->config.landmarkExistencePrior_ = 0.5;
 
   }
 
@@ -411,7 +391,6 @@ public:
     u_km.setTime( t_km );
     Landmark3d::Cov Q_m_k; // landmark process model additive noise
     int zIdx = 0;
-    bool birthGaussianCheck = true;
     if(nMessageToProcess_ <= 0){
       nMessageToProcess_ = sensorManagerMsgs_.size();
     }else if(nMessageToProcess_ > sensorManagerMsgs_.size()){
@@ -433,11 +412,10 @@ public:
 	pFilter_->getLmkProcessModel()->setNoise(Q_m_k);
 
 	if(isInInitialStationaryState){
-	  pFilter_->predict( u_km, dt, false, false, birthGaussianCheck ); // this basically makes all initial particles sit still
+	  pFilter_->predict( u_km, dt, false, false); // this basically makes all initial particles sit still
 	}else{
-	  pFilter_->predict( u_km, dt, false, true, birthGaussianCheck); // true for use noise from u_km
+	  pFilter_->predict( u_km, dt, false, true); // true for use noise from u_km
 	}
-	birthGaussianCheck = false;
 	
 	u_km = motionInputs_[ sensorManagerMsgs_[k].idx ];
 	SLAM_Filter::TInput::Vec u_km_vec = u_km.get();
@@ -459,11 +437,10 @@ public:
 	pFilter_->getLmkProcessModel()->setNoise(Q_m_k);
 
 	if(isInInitialStationaryState){
-	  pFilter_->predict( u_km, dt, false, false, birthGaussianCheck ); // this basically makes all initial particles sit still
+	  pFilter_->predict( u_km, dt, false, false); // this basically makes all initial particles sit still
 	}else{
-	  pFilter_->predict( u_km, dt, false, true, birthGaussianCheck ); // true for use noise from u_km
+	  pFilter_->predict( u_km, dt, false, true); // true for use noise from u_km
 	}	
-	birthGaussianCheck = false;
 	  
 	// Update particles with lidar scan data
 
@@ -474,7 +451,6 @@ public:
 	}
 	pFilter_->getMeasurementModel()->setLaserScan( lidarScans_[sensorManagerMsgs_[k].idx].scan );
 	pFilter_->update(Z);
-	birthGaussianCheck = true;
 
 	// Log data
 	double w_max = 0;
@@ -508,7 +484,7 @@ public:
 			  << std::setw(10) << S(0,0) 
 			  << std::setw(10) << S(0,1)
 			  << std::setw(10) << S(1,1) 
-			  << std::setw(10) << w << std::endl;
+			  << std::setw(10) << 1 - 1/(1 + exp(w)) << std::endl;
 	}
 	
       }
@@ -516,37 +492,23 @@ public:
       t_km = sensorManagerMsgs_[k].t;
 
     }
-    
+
     printf("Elapsed Timing Information [nsec]\n");
     printf("Prediction    -- wall: %lld   cpu: %lld\n", 
 	   pFilter_->getTimingInfo()->predict_wall, pFilter_->getTimingInfo()->predict_cpu);
     printf("Map Update    -- wall: %lld   cpu: %lld\n", 
 	   pFilter_->getTimingInfo()->mapUpdate_wall, pFilter_->getTimingInfo()->mapUpdate_cpu);
-    printf("Map Update KF -- wall: %lld   cpu: %lld\n", 
-	   pFilter_->getTimingInfo()->mapUpdate_kf_wall, pFilter_->getTimingInfo()->mapUpdate_kf_cpu);
-    printf("Weighting     -- wall: %lld   cpu: %lld\n", 
-	   pFilter_->getTimingInfo()->particleWeighting_wall, pFilter_->getTimingInfo()->particleWeighting_cpu);
-    printf("Map Merge     -- wall: %lld   cpu: %lld\n", 
-	   pFilter_->getTimingInfo()->mapMerge_wall, pFilter_->getTimingInfo()->mapMerge_cpu);
-    printf("Map Prune     -- wall: %lld   cpu: %lld\n", 
-	   pFilter_->getTimingInfo()->mapPrune_wall, pFilter_->getTimingInfo()->mapPrune_cpu);
     printf("Resampling    -- wall: %lld   cpu: %lld\n", 
 	   pFilter_->getTimingInfo()->particleResample_wall, pFilter_->getTimingInfo()->particleResample_cpu);
     printf("Total         -- wall: %lld   cpu: %lld\n",
 	   pFilter_->getTimingInfo()->predict_wall +
 	   pFilter_->getTimingInfo()->mapUpdate_wall +
-	   pFilter_->getTimingInfo()->particleWeighting_wall +
-	   pFilter_->getTimingInfo()->mapMerge_wall +
-	   pFilter_->getTimingInfo()->mapPrune_wall +
 	   pFilter_->getTimingInfo()->particleResample_wall,
 	   pFilter_->getTimingInfo()->predict_cpu +
 	   pFilter_->getTimingInfo()->mapUpdate_cpu +
-	   pFilter_->getTimingInfo()->particleWeighting_cpu +
-	   pFilter_->getTimingInfo()->mapMerge_cpu +
-	   pFilter_->getTimingInfo()->mapPrune_cpu + 
 	   pFilter_->getTimingInfo()->particleResample_cpu);
     printf("\n");
-
+    
     if(logToFile_){
       particlePoseFile.close();
       landmarkEstFile.close();
@@ -605,22 +567,14 @@ private:
   double zNoiseInflation_;
   double innovationRangeThreshold_;
   double innovationBearingThreshold_;
-  double birthGaussianWeight_;
-  double birthGaussianSupportMeasurementDist_;
-  int birthGaussianSupportMeasurementThreshold_;
-  int birthGaussianCheckThreshold_;
-  int birthGaussianCheckCountThreshold_;
-  double birthGaussianCurrentMeasurementCountThreshold_;
-  double newGaussianCreateInnovMDThreshold_;
-  double importanceWeightingMeasurementLikelihoodMDThreshold_;
-  double importanceWeightingEvalPointGuassianWeight_;
   double effNParticleThreshold_;
   int minUpdatesBeforeResample_;
-  double gaussianMergingThreshold_;
-  double gaussianMergingCovarianceInflationFactor_;
-  double gaussianPruningThreshold_;
-  int importanceWeightingEvalPointCount_;
-  bool useClusterProcess_;
+  double minLogMeasurementLikelihood_;
+  int maxNDataAssocHypotheses_;
+  double maxDataAssocLogLikelihoodDiff_;
+  double landmarkExistencePruningThreshold_;
+
+  // Filters
 
   bool logToFile_;
   int nMessageToProcess_;
@@ -634,7 +588,7 @@ public:
 int main(int argc, char* argv[]){
 
   int initRandSeed = 0;
-  const char* cfgFileName = "cfg/rbphdslam_VictoriaPark.xml";
+  const char* cfgFileName = "cfg/fastslam_VictoriaPark.xml";
   if( argc >= 2 ){
     initRandSeed = boost::lexical_cast<int>(argv[1]);
   }
@@ -645,7 +599,7 @@ int main(int argc, char* argv[]){
   std::cout << "[randomSeed] = " << initRandSeed << std::endl;
   std::cout << "[cfgFile] = " << cfgFileName << std::endl;
 
-  RBPHDSLAM_VictoriaPark slam;
+  FastSLAM_VictoriaPark slam;
 
   // Read config file
   if( !slam.readConfigFile( cfgFileName ) ){
@@ -654,7 +608,7 @@ int main(int argc, char* argv[]){
   }
 
   slam.readData();
-  slam.setupRBPHDFilter();
+  slam.setupFastSLAMFilter();
   slam.deadReckoning();
 
   srand48( time(NULL) );
