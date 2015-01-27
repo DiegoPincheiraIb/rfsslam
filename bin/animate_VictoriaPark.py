@@ -296,7 +296,8 @@ animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, 7230), inter
                                init_func=animateInit, blit=True, repeat=False);
 
 if saveMovie:
-    animation.save(estimateMovieFile, fps=30, extra_args=['-loglevel','quiet','-vcodec','libx264'])
+    FFMpegWriter = matplotlib.animation.writers['ffmpeg']
+    animation.save(estimateMovieFile, writer=FFMpegWriter(fps = 30)) #extra_args=['-loglevel','quiet','-vcodec','libx264']
     #estPoseHandle, = plt.plot(px_best, py_best, 'b-');
     for i in range(0, nMeasurementsDrawMax) : 
         measurements[i].remove();

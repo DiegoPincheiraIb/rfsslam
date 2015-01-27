@@ -102,7 +102,7 @@ public:
     /**  Number of latest observations below or equal to which birth Gaussians are added regardless or measurement evidence.
      *   This is to accomodate for the case where the robot enters an area sparesly populated with landmarks.
      */
-    double birthGaussianCurrentMeasurementCountThreshold_;
+    uint birthGaussianCurrentMeasurementCountThreshold_;
 
     /**  New Gaussians are only created during map update if the innovation mahalanobis distance 
 	 is less than this threshold */
@@ -1005,7 +1005,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	   it != birthGaussians_[i].end(); it++ ){
 
 	TMeasurement z_exp;
-	TPose x = *(this->particleSet_[i]); // not sure if this works
+	TPose x = *(this->particleSet_[i]); 
 	this->pMeasurementModel_->measure(x, *it, z_exp);
 	double d2 = z_exp.mahalanobisDist2( unused_z );
 	if(d2 <= config.birthGaussianMeasurementSupportDist_ * config.birthGaussianMeasurementSupportDist_){
@@ -1023,7 +1023,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	c.nSupportingMeasurements = 1;
 	c.nChecks = 0;
 	// this->particleSet_[i]->getPose(robot_pose);
-	robot_pose = *(this->particleSet_[i]); // not sure if this works
+	robot_pose = *(this->particleSet_[i]); 
 	this->pMeasurementModel_->inverseMeasure( robot_pose, unused_z, c );
 
 	if(config.birthGaussianMeasurementCountThreshold_ == 1 ||

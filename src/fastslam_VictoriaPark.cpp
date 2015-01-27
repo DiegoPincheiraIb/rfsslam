@@ -134,6 +134,11 @@ public:
     innovationRangeThreshold_ = pt.get<double>("config.filter.update.KalmanFilter.innovationThreshold.range");
     innovationBearingThreshold_ = pt.get<double>("config.filter.update.KalmanFilter.innovationThreshold.bearing");
 
+    landmarkCandidateMeasurementSupportDist_ = pt.get<double>("config.filter.update.landmarkCandidate.MeasurementSupportDist");
+    landmarkCandidateMeasurementCountThreshold_ = pt.get<uint>("config.filter.update.landmarkCandidate.MeasurementCountThreshold");
+    landmarkCandidateCurrentMeasurementCountThreshold_ = pt.get<uint>("config.filter.update.landmarkCandidate.CurrentMeasurementCountThreshold");
+    landmarkCandidateMeasurementCheckThreshold_ = pt.get<uint>("config.filter.update.landmarkCandidate.MeasurementCheckThreshold");
+
     minLogMeasurementLikelihood_ = pt.get("config.filter.weighting.minLogMeasurementLikelihood",-10.0);
 
     effNParticleThreshold_ = pt.get("config.filter.resampling.effNParticle", nParticles_);
@@ -343,6 +348,10 @@ public:
     pFilter_->getMeasurementModel()->config.bufferZonePd_ = bufferZonePd_;
 
     // configure the filter
+    pFilter_->config.landmarkCandidateMeasurementSupportDist_ = landmarkCandidateMeasurementSupportDist_;
+    pFilter_->config.landmarkCandidateMeasurementCountThreshold_ = landmarkCandidateMeasurementCountThreshold_;
+    pFilter_->config.landmarkCandidateCurrentMeasurementCountThreshold_ = landmarkCandidateCurrentMeasurementCountThreshold_;
+    pFilter_->config.landmarkCandidateMeasurementCheckThreshold_ = landmarkCandidateMeasurementCheckThreshold_;
     pFilter_->getKalmanFilter()->config.rangeInnovationThreshold_ = innovationRangeThreshold_;
     pFilter_->getKalmanFilter()->config.bearingInnovationThreshold_ = innovationBearingThreshold_;
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
@@ -560,6 +569,10 @@ private:
   std::vector<LidarScanMsg> lidarScans_;
 
   // Filters
+  double landmarkCandidateMeasurementSupportDist_;
+  uint landmarkCandidateMeasurementCountThreshold_;
+  uint landmarkCandidateCurrentMeasurementCountThreshold_;
+  uint landmarkCandidateMeasurementCheckThreshold_;
   KalmanFilter_VictoriaPark kf_;
   SLAM_Filter *pFilter_; 
   int nParticles_;

@@ -91,6 +91,16 @@ public:
   typedef typename TPF::TParticle TParticle;
   typedef typename TPF::TParticleSet TParticleSet;
 
+  /**
+   * \class LandmarkCandidate
+   * \brief New landmark candidate
+   */
+  class LandmarkCandidate : public TLandmark{
+  public:
+    uint nSupportingMeasurements;
+    uint nChecks;
+  };
+
   /** 
    * \brief Configurations for this RBPHDFilter 
    */
@@ -119,6 +129,20 @@ public:
 
     /** Maximum measurement likelihood difference to the previous best data association hypothesis for a given association to be allowed to spawn a new particle in MH-FastSLAM */
     double maxDataAssocLogLikelihoodDiff_;
+
+    /**  Mahalanobis distance threshold less than which a measurement counts towards supporting a new landmark candidate */
+    double landmarkCandidateMeasurementSupportDist_;
+
+    /**  Number of supporting measurements required to generate a new landmark */
+    uint landmarkCandidateMeasurementCountThreshold_;
+
+    /**  Number of latest observations below or equal to which birth Gaussians are added regardless or measurement evidence.
+     *   This is to accomodate for the case where the robot enters an area sparesly populated with landmarks.
+     */
+    uint landmarkCandidateCurrentMeasurementCountThreshold_;
+
+    /**  Number of checks before candidate birth Gaussian is removed if there are not enough supporting measurements */
+    uint landmarkCandidateMeasurementCheckThreshold_;
 
   } config;
 
@@ -209,6 +233,9 @@ public:
 
 private:
 
+  std::vector< std::list<LandmarkCandidate> > landmarkCandidates_;
+  std::vector< uint > nLandmarksInFOV_;
+
   uint nThreads_;
 
   std::vector<KalmanFilter> kfs_; /**< Kalman filters (one for each thread)*/
@@ -216,19 +243,13 @@ private:
 
   int nParticles_init_;
 
+  bool resampleOccured_;
+
   Timer timer_predict_; /**< Timer for prediction step */
   Timer timer_mapUpdate_; /**< Timer for map update */
-  Timer timer_particleResample_; /**<Timer for particle resampling */
-
-  /** indices of unused measurement for each particle for creating birth Gaussians */
-  std::vector< std::vector<unsigned int> > unused_measurements_; 
+  Timer timer_particleResample_; /**<Timer for particle resampling */ 
 
   unsigned int nUpdatesSinceResample; /**< Number of updates performed since the last resmaple */
-  
-  /** 
-   * Add birth Gaussians for each particle's map using unused_measurements_
-   */ 
-  void addBirthGaussians();
 
   /**
    * Update the map with the measurements in measurements_
@@ -289,8 +310,15 @@ FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
   config.nParticlesMax_ = n * 3;
   config.maxNDataAssocHypotheses_ = 1;
   config.maxDataAssocLogLikelihoodDiff_ = 5;
+  config.landmarkCandidateMeasurementSupportDist_ = 1;
+  config.landmarkCandidateMeasurementCountThreshold_ = 1;
+  config.landmarkCandidateCurrentMeasurementCountThreshold_ = 1;
+  config.landmarkCandidateMeasurementCheckThreshold_ = 2;
 
   nUpdatesSinceResample = 0;
+
+  landmarkCandidates_.resize(n);
+  nLandmarksInFOV_.resize(n);
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
@@ -334,6 +362,9 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
   const unsigned int startIdx = 0;
   const unsigned int stopIdx = this->nParticles_;
+
+  landmarkCandidates_.resize(this->nParticles_ * config.maxNDataAssocHypotheses_);
+  nLandmarksInFOV_.resize(this->nParticles_ * config.maxNDataAssocHypotheses_);
 
   nUpdatesSinceResample++;
 
@@ -490,6 +521,9 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       this->copyParticle(i, nH-1, newWeight); /**< \warning Not entirely sure this is thread-safe */
       for(unsigned int h = 1; h < nH; h++){
 	pi[h] = this->nParticles_ - h;
+	if(resampleOccured_){
+	   landmarkCandidates_[pi[h]] = landmarkCandidates_[pi[0]];
+	}
       }
     }
   }
@@ -503,6 +537,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     double p_exist_given_Z = 0;
     double logParticleWeight = 0;
 
+    nLandmarksInFOV_[pi[h]] = 0;
     bool zUsed[nZ];
     for(unsigned int z = 0; z < nZ; z++){
       zUsed[z] = false;
@@ -522,6 +557,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       // calculate change to existence probability      
       if(isUpdatePerformed){
 
+	nLandmarksInFOV_[pi[h]]++;
 	zUsed[z] = true; // This flag is for new landmark creation	
 	logParticleWeight += likelihoodTable[m][z];
 	p_exist_given_Z = ((1 - pd_inRange[m]) * probFalseAlarm * config.landmarkExistencePrior_ + pd_inRange[m] * config.landmarkExistencePrior_) /
@@ -542,16 +578,80 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
     //---------- 3. Map Management (Add and remove landmarks)  ------------
     int nRemoved = this->particleSet_[pi[h]]->getData()->prune(config.mapExistencePruneThreshold_); 
+    
+    double newLandmarkWeight = log(config.landmarkExistencePrior_ / (1 - config.landmarkExistencePrior_));
 
     for(unsigned int z = 0; z < nZ; z++){
       if(!zUsed[z]){ // Create new landmarks with inverse measurement model with unused measurements
 
-	TLandmark landmark_pos;
-	this->pMeasurementModel_->inverseMeasure( *pose, this->measurements_[z] , landmark_pos );
-	double newLandmarkWeight = log(config.landmarkExistencePrior_ / (1 - config.landmarkExistencePrior_));
-	this->particleSet_[pi[h]]->getData()->addGaussian( &landmark_pos, newLandmarkWeight, true);
+	// get measurement
+	TMeasurement unused_z = this->measurements_[z];
+
+	// check to see if measurement corresponds closely with a Landmark in the landmark candidate list
+	bool isNewCandidate = true;
+      
+	for( typename std::list<LandmarkCandidate>::iterator it = landmarkCandidates_[pi[h]].begin();
+	     it != landmarkCandidates_[pi[h]].end(); it++ ){
+	  
+	  TMeasurement z_exp;
+	  TPose x = *(this->particleSet_[pi[h]]);
+	  this->pMeasurementModel_->measure(x, *it, z_exp);
+	  double d2 = z_exp.mahalanobisDist2( unused_z );
+	  if(d2 <= config.landmarkCandidateMeasurementSupportDist_ * config.landmarkCandidateMeasurementSupportDist_){
+	    (it->nSupportingMeasurements)++;
+	    isNewCandidate = false;
+	    break;
+	  }
+	}
+
+	if(isNewCandidate){
+
+	  // use inverse measurement model to get landmark
+	  TPose robot_pose = *(this->particleSet_[pi[h]]);
+	  LandmarkCandidate c;
+	  c.nSupportingMeasurements = 1;
+	  c.nChecks = 0;
+	  this->pMeasurementModel_->inverseMeasure( robot_pose, unused_z, c );
+
+	  if(config.landmarkCandidateMeasurementCountThreshold_ == 1 ||
+	     nLandmarksInFOV_[pi[h]] <= config.landmarkCandidateCurrentMeasurementCountThreshold_){
+	    // add birth landmark to Gaussian mixture (last param = true to allocate mem)
+	    this->particleSet_[pi[h]]->getData()->addGaussian( &c, newLandmarkWeight, true);	  
+	  }else{
+	    landmarkCandidates_[pi[h]].push_back(c);
+	  }
+	
+	}  
+	
+	// Check through candidate list to see if any candidates should be made into a real birth Gaussian
+	for( typename std::list<LandmarkCandidate>::iterator it = landmarkCandidates_[pi[h]].begin();
+	     it != landmarkCandidates_[pi[h]].end(); it++ ){
+	  it->nChecks++;
+	  while( it->nSupportingMeasurements >= config.landmarkCandidateMeasurementCountThreshold_ || 
+		 it->nChecks > config.landmarkCandidateMeasurementCheckThreshold_ ||
+		 nLandmarksInFOV_[pi[h]] <= config.landmarkCandidateCurrentMeasurementCountThreshold_){
+	    
+	    if (it->nSupportingMeasurements >= config.landmarkCandidateMeasurementCountThreshold_){
+	      
+	      this->particleSet_[pi[h]]->getData()->addGaussian( &(*it), newLandmarkWeight * it->nChecks, true);
+
+	    }else if( nLandmarksInFOV_[pi[h]] <= config.landmarkCandidateCurrentMeasurementCountThreshold_){
+	      this->particleSet_[pi[h]]->getData()->addGaussian( &(*it), newLandmarkWeight * it->nChecks, true);
+	    }
+	    it = landmarkCandidates_[pi[h]].erase( it );
+	    if( it != landmarkCandidates_[pi[h]].end() ){
+	      it->nChecks++;
+	    }else{
+	      break;
+	    }
+	  }
+	}
+	
       }
     }
+
+
+
 
     //---------- 4. Importance Weighting --------------
     // Some of the work has already been done in the map update step
@@ -571,19 +671,29 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >
 void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::resampleWithMapCopy(){
 
-  bool resampleOccured = false;
+  resampleOccured_ = false;
 
   if( this->nParticles_ > config.nParticlesMax_){
-    resampleOccured = this->resample( nParticles_init_, true );
+    resampleOccured_ = this->resample( nParticles_init_, true );
   }else if( nUpdatesSinceResample >= config.minUpdatesBeforeResample_){
-    resampleOccured = this->resample( nParticles_init_ );
+    resampleOccured_ = this->resample( nParticles_init_ );
   }
 
-  if( resampleOccured ){
+  if( resampleOccured_ ){
     nUpdatesSinceResample = 0;
   }else{
     this->normalizeWeights();
   }
+
+  if(resampleOccured_){ 
+    for(uint i = 0; i < this->nParticles_; i++){
+      uint i_prev = this->particleSet_[i]->getParentId();
+      if( i_prev != i ){
+	landmarkCandidates_[i] = landmarkCandidates_[i_prev];
+      }
+    }
+  }
+
 
 }
 

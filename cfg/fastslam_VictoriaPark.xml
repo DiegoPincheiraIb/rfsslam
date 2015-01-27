@@ -78,7 +78,12 @@
 	  <bearing>0.05</bearing>
 	</innovationThreshold>
       </KalmanFilter>
-      <GaussianCreateInnovMDThreshold>3.0</GaussianCreateInnovMDThreshold> <!-- during update, Gaussians with innovation mahalanobis distance above this are not created -->  
+      <landmarkCandidate>
+	<MeasurementSupportDist>2.0</MeasurementSupportDist>
+	<MeasurementCountThreshold>4</MeasurementCountThreshold>
+	<CurrentMeasurementCountThreshold>1</CurrentMeasurementCountThreshold>
+	<MeasurementCheckThreshold>10</MeasurementCheckThreshold>
+      </landmarkCandidate>
     </update>
 
     <weighting>
