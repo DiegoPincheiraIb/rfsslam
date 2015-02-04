@@ -82,6 +82,7 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   typedef typename RobotProcessModel::TState TPose;
+  typedef Trajectory<TPose> TTrajectory;
   typedef typename RobotProcessModel::TInput TInput;
   typedef typename MeasurementModel::TLandmark TLandmark;
   typedef typename MeasurementModel::TMeasurement TMeasurement;
@@ -250,6 +251,7 @@ private:
   Timer timer_particleResample_; /**<Timer for particle resampling */ 
 
   unsigned int nUpdatesSinceResample; /**< Number of updates performed since the last resmaple */
+  unsigned int nMeasurementsSinceResample; /**< Number of measurements processed since the last resample */
 
   /**
    * Update the map with the measurements in measurements_
@@ -316,6 +318,7 @@ FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
   config.landmarkCandidateMeasurementCheckThreshold_ = 2;
 
   nUpdatesSinceResample = 0;
+  nMeasurementsSinceResample = 0;
 
   landmarkCandidates_.resize(n);
   nLandmarksInFOV_.resize(n);
@@ -343,7 +346,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
   timer_predict_.resume();
 
   // propagate particles
-  this->propagate(u, dT, useModelNoise, useInputNoise);
+  this->propagate(u, dT, useModelNoise, useInputNoise, true); // true for keeping trajecotory 
 
   // propagate landmarks
   for( int i = 0; i < this->nParticles_; i++ ){
@@ -371,6 +374,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
   this->setMeasurements( Z ); // Z gets cleared after this call, measurements now stored in this->measurements_
   if(this->measurements_.size() == 0)
     return;
+  nMeasurementsSinceResample += this->measurements_.size();
 
   // make sure any setting changes to the Kalman Filter are set for all threads
   if(nThreads_>1){
@@ -598,6 +602,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 	  this->pMeasurementModel_->measure(x, *it, z_exp);
 	  double d2 = z_exp.mahalanobisDist2( unused_z );
 	  if(d2 <= config.landmarkCandidateMeasurementSupportDist_ * config.landmarkCandidateMeasurementSupportDist_){
+	    kfs_[0].correct(x, unused_z, *it, *it);
 	    (it->nSupportingMeasurements)++;
 	    isNewCandidate = false;
 	    break;
@@ -675,12 +680,13 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
   if( this->nParticles_ > config.nParticlesMax_){
     resampleOccured_ = this->resample( nParticles_init_, true );
-  }else if( nUpdatesSinceResample >= config.minUpdatesBeforeResample_){
+  }else if( nUpdatesSinceResample >= config.minUpdatesBeforeResample_ && nMeasurementsSinceResample >= 15){
     resampleOccured_ = this->resample( nParticles_init_ );
   }
 
   if( resampleOccured_ ){
     nUpdatesSinceResample = 0;
+    nMeasurementsSinceResample = 0;
   }else{
     this->normalizeWeights();
   }
@@ -731,7 +737,7 @@ template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel
 void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
 setParticlePose(int i, TPose &p){
   
-  this->particleSet_[i]->setPose(p);
+  *(this->particleSet_[i]) = p;
 
 }
 

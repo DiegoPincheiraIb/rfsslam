@@ -50,10 +50,9 @@
     <varza>0.00001</varza> <!-- variance of lidar beam angle-->
     <Pd>
       <value>0.00</value>
-      <value>0.05</value>
-      <value>0.35</value>
-      <value>0.76</value>
-      <value>0.89</value>
+      <value>0.20</value>
+      <value>0.50</value>
+      <value>0.80</value>
       <value>0.90</value>
     </Pd>
   </measurements>
@@ -69,20 +68,20 @@
     </predict>
 
     <update>
-      <measurementNoiseInflationFactor>40.0</measurementNoiseInflationFactor> <!-- inflation factor of measurement covariance -->
+      <measurementNoiseInflationFactor>80</measurementNoiseInflationFactor> <!-- inflation factor of measurement covariance -->
       <maxNDataAssocHypotheses>1</maxNDataAssocHypotheses> <!-- max number of hypotheses per particle -->
       <maxDataAssocLogLikelihoodDiff>3.0</maxDataAssocLogLikelihoodDiff> <!-- When <maxNDataAssocHypotheses> > 1, maximum difference in log likelihood to the next best hypothesis for it to be considered valid for data association -->    
       <KalmanFilter>
 	<innovationThreshold> <!-- exceeding innovation will cause Kalman Filter update to not occur, set this according to noise -->
-	  <range>2.0</range>  
+	  <range>5.0</range>  
 	  <bearing>0.05</bearing>
 	</innovationThreshold>
       </KalmanFilter>
       <landmarkCandidate>
 	<MeasurementSupportDist>2.0</MeasurementSupportDist>
-	<MeasurementCountThreshold>4</MeasurementCountThreshold>
+	<MeasurementCountThreshold>5</MeasurementCountThreshold>
 	<CurrentMeasurementCountThreshold>1</CurrentMeasurementCountThreshold>
-	<MeasurementCheckThreshold>10</MeasurementCheckThreshold>
+	<MeasurementCheckThreshold>20</MeasurementCheckThreshold>
       </landmarkCandidate>
     </update>
 

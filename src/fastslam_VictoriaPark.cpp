@@ -378,7 +378,7 @@ public:
       MotionModel_Ackerman2d::TState x_i;
       for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	SLAM_Filter::TPose x;
-	pFilter_->getParticleSet()->at(i)->getPose(x);
+	x = *(pFilter_->getParticleSet()->at(i));
 	double w = pFilter_->getParticleSet()->at(i)->getWeight();
 	particlePoseFile << std::fixed << std::setprecision(3) 
 			 << std::setw(10) << sensorManagerMsgs_[0].t.getTimeAsDouble()
@@ -466,7 +466,7 @@ public:
 	uint i_w_max = 0;
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	  SLAM_Filter::TPose x;
-	  pFilter_->getParticleSet()->at(i)->getPose(x);
+	  x = *(pFilter_->getParticleSet()->at(i));
 	  double w = pFilter_->getParticleSet()->at(i)->getWeight();
 	  particlePoseFile << std::fixed << std::setprecision(3) 
 			   << std::setw(10) << sensorManagerMsgs_[k].t.getTimeAsDouble()
@@ -501,6 +501,39 @@ public:
       t_km = sensorManagerMsgs_[k].t;
 
     }
+
+    // Use the highest-weight particle and get its trajectory
+    if(logToFile_){
+      std::ofstream bestTrajFile;
+      bestTrajFile.open( (logDirPrefix_ + "trajectory.dat").c_str() );
+
+      double w_max = 0;
+      uint i_w_max = 0;
+      for(int i = 0; i < pFilter_->getParticleCount(); i++){
+	double w = pFilter_->getParticle(i)->getWeight();
+	if(w > w_max){
+	  w_max = w;
+	  i_w_max = i;
+	}
+      }
+      std::vector<SLAM_Filter::TTrajectory> traj;
+      traj.push_back( *(pFilter_->getParticle(i_w_max)) );
+      boost::shared_ptr<SLAM_Filter::TTrajectory> x_prev = traj[0].prev;
+      while(x_prev != NULL){
+	traj.push_back( *x_prev );
+	x_prev = x_prev->prev;
+      }
+      for(int k = traj.size() - 1; k >= 0; k--){
+	bestTrajFile << std::fixed << std::setprecision(3) 
+		     << std::setw(10) << sensorManagerMsgs_[k].t.getTimeAsDouble()
+		     << std::setw(10) << traj[k][0] 
+		     << std::setw(10) << traj[k][1] 
+		     << std::setw(10) << traj[k][2] << std::endl;
+      }
+
+      bestTrajFile.close();
+    }
+    
 
     printf("Elapsed Timing Information [nsec]\n");
     printf("Prediction    -- wall: %lld   cpu: %lld\n", 

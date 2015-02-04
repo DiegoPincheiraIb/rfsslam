@@ -388,8 +388,7 @@ public:
     if(logToFile_){
       MotionModel_Ackerman2d::TState x_i;
       for(int i = 0; i < pFilter_->getParticleCount(); i++){
-	SLAM_Filter::TPose x;
-	pFilter_->getParticleSet()->at(i)->getPose(x);
+	SLAM_Filter::TPose x = *(pFilter_->getParticleSet()->at(i));
 	double w = pFilter_->getParticleSet()->at(i)->getWeight();
 	particlePoseFile << std::fixed << std::setprecision(3) 
 			 << std::setw(10) << sensorManagerMsgs_[0].t.getTimeAsDouble()
@@ -480,8 +479,7 @@ public:
 	double w_max = 0;
 	uint i_w_max = 0;
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
-	  SLAM_Filter::TPose x;
-	  pFilter_->getParticleSet()->at(i)->getPose(x);
+	  SLAM_Filter::TPose x = *(pFilter_->getParticleSet()->at(i));
 	  double w = pFilter_->getParticleSet()->at(i)->getWeight();
 	  particlePoseFile << std::fixed << std::setprecision(3) 
 			   << std::setw(10) << sensorManagerMsgs_[k].t.getTimeAsDouble()

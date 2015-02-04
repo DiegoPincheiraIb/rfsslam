@@ -283,7 +283,7 @@ public:
 	w = particles_[i].getWeight();
       }
 
-      particles_[i].getPose(poseEst);
+      poseEst = particles_[i];
 
       ex = poseEst[0] - rx_;
       ey = poseEst[1] - ry_;

@@ -498,7 +498,7 @@ public:
 
     if(logToFile_){
       for(int i = 0; i < pFilter_->getParticleCount(); i++){
-	pFilter_->getParticleSet()->at(i)->getPose(x_i);
+	x_i = *(pFilter_->getParticleSet()->at(i));
 	fprintf( pParticlePoseFile, "%f   %d   %f   %f   %f   1.0\n", 0.0, i, x_i.get(0), x_i.get(1), x_i.get(2));
       }   
     }
@@ -553,7 +553,7 @@ public:
       // Log particle poses
       if(logToFile_){
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
-	  pFilter_->getParticleSet()->at(i)->getPose(x_i);
+	  x_i = *(pFilter_->getParticleSet()->at(i));
 	  double w = pFilter_->getParticleSet()->at(i)->getWeight();
 	  fprintf( pParticlePoseFile, "%f   %d   %f   %f   %f   %f\n", time.getTimeAsDouble(), i, x_i.get(0), x_i.get(1), x_i.get(2), w);
 	}

@@ -709,8 +709,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
   
     const uint particleIdx = idx;
-    TPose x;
-    this->particleSet_[particleIdx]->getPose( x );
+    TPose x = *(this->particleSet_[particleIdx]);
 
     // 1. select evaluation points from highest-weighted Gaussians after update, that are within sensor FOV
     const unsigned int nM = this->particleSet_[particleIdx]->getData()->getGaussianCount();
@@ -807,8 +806,7 @@ rfsMeasurementLikelihood( const int particleIdx,
   // eval points are first nEvalPoints elements of maps_[i], which are already ordered by weight; 
 
   const int i = particleIdx;
-  TPose x;
-  this->particleSet_[i]->getPose( x );
+  TPose x = *(this->particleSet_[i]);
   const int nM = evalPtIdx.size();
   const int nZ = this->measurements_.size();
   int nL = nM;
@@ -1161,7 +1159,7 @@ template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
 setParticlePose(int i, TPose &p){
   
-  this->particleSet_[i]->setPose(p);
+  *(this->particleSet_[i]) = p;
 
 }
 

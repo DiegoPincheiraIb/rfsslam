@@ -33,6 +33,7 @@
 
 #include <boost/shared_ptr.hpp>
 #include <cstddef>
+#include "Trajectory.hpp"
 
 namespace rfs{
 
@@ -44,7 +45,7 @@ namespace rfs{
  *  \author Keith Leung
  */
 template< class PoseType, class DataType = int>
-class Particle : public PoseType
+class Particle : public Trajectory<PoseType>
 {
 
 public:
@@ -72,18 +73,6 @@ public:
    *  \param[in] x Pose to copy to the particle 
    */
   Particle<PoseType, DataType>& operator= ( PoseType const &x );
-
-  /**
-   *  \brief Set particle pose.
-   *  \param[in] x pose
-   */
-  void setPose( PoseType const &x );
-
-  /**
-   *  \brief Get particle pose.
-   *  \param[out] x pose
-   */
-  void getPose( PoseType &x ) const;
 
   /**
    *  \brief Get particle pose
@@ -165,15 +154,14 @@ protected:
 template< class PoseType, class DataType >
 Particle<PoseType, DataType>::Particle() : id_(0),
 					   idParent_(0),
-					   w_(0),
-					   data_(NULL)
+					   w_(0)
 {}
 
 template< class PoseType, class DataType >
-Particle<PoseType, DataType>::Particle( unsigned int id, PoseType &x_k_i, double w ) : id_(id),
+Particle<PoseType, DataType>::Particle( unsigned int id, PoseType &x_k_i, double w ) : Trajectory<PoseType>(x_k_i),
+										       id_(id),
 										       idParent_(id),
-										       w_(w),
-										       PoseType(x_k_i)
+										       w_(w)
 {}
 
 template< class PoseType, class DataType >
@@ -186,19 +174,6 @@ Particle<PoseType, DataType>& Particle<PoseType, DataType>::operator= ( PoseType
 template< class PoseType, class DataType >
 Particle<PoseType, DataType>::~Particle(){
   deleteData();
-}
-
-template< class PoseType, class DataType >
-void Particle<PoseType, DataType>::setPose( PoseType const &x ){ 
-  
-  PoseType::operator= (x);
-
-}
-
-template< class PoseType, class DataType >
-void Particle<PoseType, DataType>::getPose( PoseType &x ) const{
-
-  x = *this;
 }
 
 template< class PoseType, class DataType >
