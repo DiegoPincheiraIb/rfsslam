@@ -69,6 +69,14 @@ else:
     sys.exit(0);
 estPoseFileHandle = open(estPoseFile, "r");
 
+bestTrajFile = 'trajectory.dat'
+bestTrajFile = dataDir + bestTrajFile
+if os.path.exists(bestTrajFile):
+    print('Opening ' + bestTrajFile)
+else:
+    print(bestTrajFile + ' does not exist')
+bestTrajFileHandle = open(bestTrajFile, "r")
+
 estMapFile = 'landmarkEst.dat';
 estMapFile = dataDir + estMapFile;
 if os.path.exists(estMapFile):
@@ -117,6 +125,13 @@ px_best = []
 py_best = []
 pr_best = []
 
+bt = np.fromfile(bestTrajFileHandle, dtype=float, count=4, sep=" ")
+while bt[0] < p[0]:
+    bt = np.fromfile(bestTrajFileHandle, dtype=float, count=4, sep=" ")
+bt_x = []
+bt_y = []
+by_r = []
+
 m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
 
 z = np.fromfile(measurementFileHandle, count=4, sep=" ", dtype=float);
@@ -147,6 +162,7 @@ landmarkCenters, = plt.plot([], [], '+')
 landmarkCenters.set_color([0.2,0.2,0.8])
 
 trajectory, = plt.plot(0, 0, 'b-')
+trajectory_best, = plt.plot(0, 0, 'k-')
 
 xLim = plt.getp(ax, 'xlim');
 yLim = plt.getp(ax, 'ylim');
@@ -169,12 +185,13 @@ def animateInit():
 def animate(i):
     
     global p;
+    global bt;
     global m;
     global z;
 
     if not p.any():
-        print i
-        print "No more messages"
+        #print i
+        #print "No more messages"
         return []
 
     currentTime = p[0];
@@ -183,6 +200,20 @@ def animate(i):
     # Time
     txt.set_text("Time: {0}".format(currentTime));
     drawnObjects.append(txt);
+    timeStart = 1200
+    if currentTime < timeStart:
+        while p.any() and p[0] < timeStart:
+            p = np.fromfile(estPoseFileHandle, dtype=float, count=6, sep=" ");
+            currentTime = p[0];
+        while bt.any() and bt[0] < timeStart:
+            bt_x.append(bt[1])
+            bt_y.append(bt[2])
+            by_r.append(bt[3])
+            bt = np.fromfile(bestTrajFileHandle, dtype=float, count=4, sep=" ")
+        while m.any() and m[0] < timeStart:
+            m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
+        while z.any() and z[0] < timeStart:
+            z = np.fromfile(measurementFileHandle, count=4, sep=" ", dtype=float);
 
     # Particles
     p_idx = 0;
@@ -210,6 +241,15 @@ def animate(i):
     particles.set_data(p_x, p_y)
     trajectory.set_data(px_best, py_best)
     
+    # Best trajectory
+    while bt[0] < currentTime:
+        bt_x.append(bt[1])
+        bt_y.append(bt[2])
+        by_r.append(bt[3])
+        bt = np.fromfile(bestTrajFileHandle, dtype=float, count=4, sep=" ")
+    trajectory_best.set_data(bt_x, bt_y)
+    
+
     # Landmarks
     m_idx = 0;
     m_x = []
@@ -220,7 +260,6 @@ def animate(i):
     m_y_max = 0;
     while m.any() and abs(m[0] - currentTime) < 1e-12:
    
-
         cov = np.array([ [ m[4], m[5] ], [ m[5], m[6] ] ]);
         w = m[7];
         eVal, eVec = np.linalg.eig(cov);
@@ -288,7 +327,8 @@ def animate(i):
         nZ += 1;
     
     drawnObjects.append(particles)
-    drawnObjects.append(trajectory)
+    #drawnObjects.append(trajectory)
+    drawnObjects.append(trajectory_best)
 
     return drawnObjects;
 

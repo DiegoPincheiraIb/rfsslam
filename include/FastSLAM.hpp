@@ -145,6 +145,12 @@ public:
     /**  Number of checks before candidate birth Gaussian is removed if there are not enough supporting measurements */
     uint landmarkCandidateMeasurementCheckThreshold_;
 
+    /** Weight above which a landmark is considered permanent */
+    double landmarkLockWeight_;
+
+    /** Map pruning occurs if number of measurements is equal or above this threshold during update */
+    uint pruningMeasurementsThreshold_;
+
   } config;
 
   
@@ -316,6 +322,8 @@ FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
   config.landmarkCandidateMeasurementCountThreshold_ = 1;
   config.landmarkCandidateCurrentMeasurementCountThreshold_ = 1;
   config.landmarkCandidateMeasurementCheckThreshold_ = 2;
+  config.landmarkLockWeight_ = 10;
+  config.pruningMeasurementsThreshold_ = 0;
 
   nUpdatesSinceResample = 0;
   nMeasurementsSinceResample = 0;
@@ -522,7 +530,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     this->particleSet_[i]->setWeight(newWeight); 
     #pragma omp critical(increaseParticles)
     {
-      this->copyParticle(i, nH-1, newWeight); /**< \warning Not entirely sure this is thread-safe */
+      this->copyParticle(i, nH-1, newWeight);
       for(unsigned int h = 1; h < nH; h++){
 	pi[h] = this->nParticles_ - h;
 	if(resampleOccured_){
@@ -559,10 +567,11 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       }
       
       // calculate change to existence probability      
+      double w = this->particleSet_[pi[h]]->getData()->getWeight( idx_inRange[m] );
       if(isUpdatePerformed){
 
 	nLandmarksInFOV_[pi[h]]++;
-	zUsed[z] = true; // This flag is for new landmark creation	
+	zUsed[z] = true; // This flag is for new landmark creation
 	logParticleWeight += likelihoodTable[m][z];
 	p_exist_given_Z = ((1 - pd_inRange[m]) * probFalseAlarm * config.landmarkExistencePrior_ + pd_inRange[m] * config.landmarkExistencePrior_) /
 	  (probFalseAlarm + (1 - probFalseAlarm) * pd_inRange[m] * config.landmarkExistencePrior_); 
@@ -572,16 +581,20 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 	p_exist_given_Z = ((1 - pd_inRange[m]) * config.landmarkExistencePrior_) /
 	  ((1 - config.landmarkExistencePrior_) + (1 - pd_inRange[m]) * config.landmarkExistencePrior_);
 
-      }
+	if(w > config.landmarkLockWeight_)
+	  p_exist_given_Z = 0.5;
 
-      double w = this->particleSet_[pi[h]]->getData()->getWeight( idx_inRange[m] );
+      }
+      
       w += log( (p_exist_given_Z) / (1 - p_exist_given_Z) ); 
       this->particleSet_[pi[h]]->getData()->setWeight(idx_inRange[m], w);
     }
      
 
     //---------- 3. Map Management (Add and remove landmarks)  ------------
-    int nRemoved = this->particleSet_[pi[h]]->getData()->prune(config.mapExistencePruneThreshold_); 
+    //if(nLandmarksInFOV_[pi[h]] >= 3 && nZ >= 3)
+    if(nZ >= config.pruningMeasurementsThreshold_)
+      int nRemoved = this->particleSet_[pi[h]]->getData()->prune(config.mapExistencePruneThreshold_); 
     
     double newLandmarkWeight = log(config.landmarkExistencePrior_ / (1 - config.landmarkExistencePrior_));
 

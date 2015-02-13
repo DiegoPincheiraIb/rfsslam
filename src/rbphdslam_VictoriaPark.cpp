@@ -446,6 +446,8 @@ public:
 	  isInInitialStationaryState = false;
 	}
 
+	t_km = t_k;
+
       }else if(sensorManagerMsgs_[k].sensorType == SensorManagerMsg::Lidar){
 
 	TimeStamp t_k = sensorManagerMsgs_[k].t;
@@ -508,10 +510,10 @@ public:
 			  << std::setw(10) << S(1,1) 
 			  << std::setw(10) << w << std::endl;
 	}
+
+	t_km = t_k;
 	
       }
-
-      t_km = sensorManagerMsgs_[k].t;
 
     }
     

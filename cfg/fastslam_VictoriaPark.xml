@@ -64,37 +64,39 @@
     <nParticles>100</nParticles> <!-- number of particles -->
     
     <predict>
-      <processNoiseInflationFactor>20</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
+      <processNoiseInflationFactor>15</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
     </predict>
 
     <update>
-      <measurementNoiseInflationFactor>80</measurementNoiseInflationFactor> <!-- inflation factor of measurement covariance -->
+      <measurementNoiseInflationFactor>75</measurementNoiseInflationFactor> <!-- inflation factor of measurement covariance -->
       <maxNDataAssocHypotheses>1</maxNDataAssocHypotheses> <!-- max number of hypotheses per particle -->
       <maxDataAssocLogLikelihoodDiff>3.0</maxDataAssocLogLikelihoodDiff> <!-- When <maxNDataAssocHypotheses> > 1, maximum difference in log likelihood to the next best hypothesis for it to be considered valid for data association -->    
       <KalmanFilter>
 	<innovationThreshold> <!-- exceeding innovation will cause Kalman Filter update to not occur, set this according to noise -->
-	  <range>5.0</range>  
-	  <bearing>0.05</bearing>
+	  <range>7.5</range>  
+	  <bearing>0.2</bearing>
 	</innovationThreshold>
       </KalmanFilter>
       <landmarkCandidate>
-	<MeasurementSupportDist>2.0</MeasurementSupportDist>
-	<MeasurementCountThreshold>5</MeasurementCountThreshold>
+	<MeasurementSupportDist>1</MeasurementSupportDist>
+	<MeasurementCountThreshold>4</MeasurementCountThreshold>
 	<CurrentMeasurementCountThreshold>1</CurrentMeasurementCountThreshold>
 	<MeasurementCheckThreshold>20</MeasurementCheckThreshold>
       </landmarkCandidate>
+      <landmarkLockWeight>8</landmarkLockWeight>
     </update>
 
     <weighting>
-      <minLogMeasurementLikelihood>-10.0</minLogMeasurementLikelihood> <!-- Likelihoods smaller than this will be limited for numerical stability in calculating particle importance weighting -->
+      <minLogMeasurementLikelihood>-30.0</minLogMeasurementLikelihood> <!-- Likelihoods smaller than this will be limited for numerical stability in calculating particle importance weighting -->
     </weighting>
 
     <resampling>
-      <effNParticle>50.0</effNParticle> <!-- Threshold for resampling -->
+      <effNParticle>25.0</effNParticle> <!-- Threshold for resampling -->
       <minTimesteps>2</minTimesteps> <!-- Minimum number of timesteps between resampling -->
     </resampling>
 
     <prune>
+      <nMeasurementsThreshold>3</nMeasurementsThreshold> <!-- Pruning occurs if number of measurements is equal or above this -->
       <threshold>-5.0</threshold> <!-- The log odds threshold for eliminating a landmark from the map -->
     </prune>   
 

@@ -139,12 +139,15 @@ public:
     landmarkCandidateCurrentMeasurementCountThreshold_ = pt.get<uint>("config.filter.update.landmarkCandidate.CurrentMeasurementCountThreshold");
     landmarkCandidateMeasurementCheckThreshold_ = pt.get<uint>("config.filter.update.landmarkCandidate.MeasurementCheckThreshold");
 
+    landmarkLockWeight_ = pt.get<double>("config.filter.update.landmarkLockWeight");
+
     minLogMeasurementLikelihood_ = pt.get("config.filter.weighting.minLogMeasurementLikelihood",-10.0);
 
     effNParticleThreshold_ = pt.get("config.filter.resampling.effNParticle", nParticles_);
     minUpdatesBeforeResample_ = pt.get("config.filter.resampling.minTimesteps", 1);
             
     landmarkExistencePruningThreshold_ = pt.get("config.filter.prune.threshold", -5.0);
+    nMeasurementPruningThreshold_ = pt.get<uint>("config.filter.prune.nMeasurementsThreshold");
 
     // Copy config file to logDir
     if(logToFile_){
@@ -352,6 +355,7 @@ public:
     pFilter_->config.landmarkCandidateMeasurementCountThreshold_ = landmarkCandidateMeasurementCountThreshold_;
     pFilter_->config.landmarkCandidateCurrentMeasurementCountThreshold_ = landmarkCandidateCurrentMeasurementCountThreshold_;
     pFilter_->config.landmarkCandidateMeasurementCheckThreshold_ = landmarkCandidateMeasurementCheckThreshold_;
+    pFilter_->config.landmarkLockWeight_ = landmarkLockWeight_;
     pFilter_->getKalmanFilter()->config.rangeInnovationThreshold_ = innovationRangeThreshold_;
     pFilter_->getKalmanFilter()->config.bearingInnovationThreshold_ = innovationBearingThreshold_;
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
@@ -360,6 +364,7 @@ public:
     pFilter_->config.maxNDataAssocHypotheses_ = maxNDataAssocHypotheses_;
     pFilter_->config.maxDataAssocLogLikelihoodDiff_ = maxDataAssocLogLikelihoodDiff_;
     pFilter_->config.mapExistencePruneThreshold_ = landmarkExistencePruningThreshold_;
+    pFilter_->config.pruningMeasurementsThreshold_ = nMeasurementPruningThreshold_;
     pFilter_->config.landmarkExistencePrior_ = 0.5;
 
   }
@@ -425,7 +430,7 @@ public:
 	}else{
 	  pFilter_->predict( u_km, dt, false, true); // true for use noise from u_km
 	}
-	
+
 	u_km = motionInputs_[ sensorManagerMsgs_[k].idx ];
 	SLAM_Filter::TInput::Vec u_km_vec = u_km.get();
 	u_km_vec[1] *= scale_ur_;
@@ -433,6 +438,8 @@ public:
 	if(u_km[0] != 0){
 	  isInInitialStationaryState = false;
 	}
+
+	t_km = t_k;
 
       }else if(sensorManagerMsgs_[k].sensorType == SensorManagerMsg::Lidar){
 
@@ -449,8 +456,8 @@ public:
 	  pFilter_->predict( u_km, dt, false, false); // this basically makes all initial particles sit still
 	}else{
 	  pFilter_->predict( u_km, dt, false, true); // true for use noise from u_km
-	}	
-	  
+	}
+
 	// Update particles with lidar scan data
 
 	std::vector<SLAM_Filter::TMeasurement> Z;
@@ -496,9 +503,9 @@ public:
 			  << std::setw(10) << 1 - 1/(1 + exp(w)) << std::endl;
 	}
 	
-      }
+	t_km = t_k;
 
-      t_km = sensorManagerMsgs_[k].t;
+      }
 
     }
 
@@ -525,7 +532,7 @@ public:
       }
       for(int k = traj.size() - 1; k >= 0; k--){
 	bestTrajFile << std::fixed << std::setprecision(3) 
-		     << std::setw(10) << sensorManagerMsgs_[k].t.getTimeAsDouble()
+		     << std::setw(10) << traj[k].getTime().getTimeAsDouble()
 		     << std::setw(10) << traj[k][0] 
 		     << std::setw(10) << traj[k][1] 
 		     << std::setw(10) << traj[k][2] << std::endl;
@@ -619,6 +626,8 @@ private:
   int maxNDataAssocHypotheses_;
   double maxDataAssocLogLikelihoodDiff_;
   double landmarkExistencePruningThreshold_;
+  uint nMeasurementPruningThreshold_;
+  double landmarkLockWeight_;
 
   // Filters
 

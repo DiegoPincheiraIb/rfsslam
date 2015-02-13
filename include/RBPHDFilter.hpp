@@ -1007,6 +1007,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	this->pMeasurementModel_->measure(x, *it, z_exp);
 	double d2 = z_exp.mahalanobisDist2( unused_z );
 	if(d2 <= config.birthGaussianMeasurementSupportDist_ * config.birthGaussianMeasurementSupportDist_){
+	  kfs_[0].correct(x, unused_z, *it, *it);
 	  (it->nSupportingMeasurements)++;
 	  isNewBirthGaussianCandidate = false;
 	  break;
