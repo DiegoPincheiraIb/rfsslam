@@ -374,8 +374,10 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
   const unsigned int startIdx = 0;
   const unsigned int stopIdx = this->nParticles_;
 
-  landmarkCandidates_.resize(this->nParticles_ * config.maxNDataAssocHypotheses_);
-  nLandmarksInFOV_.resize(this->nParticles_ * config.maxNDataAssocHypotheses_);
+  if(landmarkCandidates_.size() < this->nParticles_ * config.maxNDataAssocHypotheses_)
+    landmarkCandidates_.resize(this->nParticles_ * config.maxNDataAssocHypotheses_);
+  if(nLandmarksInFOV_.size() < this->nParticles_ * config.maxNDataAssocHypotheses_)
+    nLandmarksInFOV_.resize(this->nParticles_ * config.maxNDataAssocHypotheses_);
 
   nUpdatesSinceResample++;
 

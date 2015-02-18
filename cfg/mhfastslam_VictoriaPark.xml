@@ -69,7 +69,7 @@
 
     <update>
       <measurementNoiseInflationFactor>75</measurementNoiseInflationFactor> <!-- inflation factor of measurement covariance -->
-      <maxNDataAssocHypotheses>1</maxNDataAssocHypotheses> <!-- max number of hypotheses per particle -->
+      <maxNDataAssocHypotheses>3</maxNDataAssocHypotheses> <!-- max number of hypotheses per particle -->
       <maxDataAssocLogLikelihoodDiff>3.0</maxDataAssocLogLikelihoodDiff> <!-- When <maxNDataAssocHypotheses> > 1, maximum difference in log likelihood to the next best hypothesis for it to be considered valid for data association -->    
       <KalmanFilter>
 	<innovationThreshold> <!-- exceeding innovation will cause Kalman Filter update to not occur, set this according to noise -->
