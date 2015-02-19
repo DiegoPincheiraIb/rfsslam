@@ -93,6 +93,7 @@
     <resampling>
       <effNParticle>25.0</effNParticle> <!-- Threshold for resampling -->
       <minTimesteps>2</minTimesteps> <!-- Minimum number of timesteps between resampling -->
+      <minMeasurements>15</minMeasurements> <!-- Minimum number of measurements between resampling -->
     </resampling>
 
     <prune>

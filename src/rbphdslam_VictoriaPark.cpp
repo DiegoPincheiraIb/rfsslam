@@ -147,6 +147,7 @@ public:
 
     effNParticleThreshold_ = pt.get("config.filter.resampling.effNParticle", nParticles_);
     minUpdatesBeforeResample_ = pt.get("config.filter.resampling.minTimesteps", 1);
+    minMeausurementsBeforeResample_ = pt.get("config.filter.resampling.minMeasurements", 0);
     
     gaussianMergingThreshold_ = pt.get<double>("config.filter.merge.threshold");
     gaussianMergingCovarianceInflationFactor_ = pt.get("config.filter.merge.covInflationFactor", 1.0);
@@ -364,6 +365,7 @@ public:
     pFilter_->config.birthGaussianCurrentMeasurementCountThreshold_ = birthGaussianCurrentMeasurementCountThreshold_;
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
     pFilter_->config.minUpdatesBeforeResample_ = minUpdatesBeforeResample_;
+    pFilter_->config.minMeausurementsBeforeResample_ = minMeausurementsBeforeResample_;
     pFilter_->config.newGaussianCreateInnovMDThreshold_ = newGaussianCreateInnovMDThreshold_;
     pFilter_->config.importanceWeightingMeasurementLikelihoodMDThreshold_ = importanceWeightingMeasurementLikelihoodMDThreshold_;
     pFilter_->config.importanceWeightingEvalPointCount_ = importanceWeightingEvalPointCount_;
@@ -516,6 +518,38 @@ public:
       }
 
     }
+
+    // Use the highest-weight particle and get its trajectory
+    if(logToFile_){
+      std::ofstream bestTrajFile;
+      bestTrajFile.open( (logDirPrefix_ + "trajectory.dat").c_str() );
+
+      double w_max = 0;
+      uint i_w_max = 0;
+      for(int i = 0; i < pFilter_->getParticleCount(); i++){
+	double w = pFilter_->getParticle(i)->getWeight();
+	if(w > w_max){
+	  w_max = w;
+	  i_w_max = i;
+	}
+      }
+      std::vector<SLAM_Filter::TTrajectory> traj;
+      traj.push_back( *(pFilter_->getParticle(i_w_max)) );
+      boost::shared_ptr<SLAM_Filter::TTrajectory> x_prev = traj[0].prev;
+      while(x_prev != NULL){
+	traj.push_back( *x_prev );
+	x_prev = x_prev->prev;
+      }
+      for(int k = traj.size() - 1; k >= 0; k--){
+	bestTrajFile << std::fixed << std::setprecision(3) 
+		     << std::setw(10) << traj[k].getTime().getTimeAsDouble()
+		     << std::setw(10) << traj[k][0] 
+		     << std::setw(10) << traj[k][1] 
+		     << std::setw(10) << traj[k][2] << std::endl;
+      }
+
+      bestTrajFile.close();
+    }
     
     printf("Elapsed Timing Information [nsec]\n");
     printf("Prediction    -- wall: %lld   cpu: %lld\n", 
@@ -616,6 +650,7 @@ private:
   double importanceWeightingEvalPointGuassianWeight_;
   double effNParticleThreshold_;
   int minUpdatesBeforeResample_;
+  int minMeausurementsBeforeResample_;
   double gaussianMergingThreshold_;
   double gaussianMergingCovarianceInflationFactor_;
   double gaussianPruningThreshold_;

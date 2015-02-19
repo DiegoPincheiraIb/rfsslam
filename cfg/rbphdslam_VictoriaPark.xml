@@ -15,7 +15,7 @@
 
   <logging>
     <logToFile>1</logToFile>
-    <logDirPrefix>data/VictoriaPark/results/</logDirPrefix>
+    <logDirPrefix>data/VictoriaPark/rbphdslam/results/</logDirPrefix>
   </logging>
 
   <process>
@@ -46,7 +46,7 @@
     <expectedNClutter>3</expectedNClutter> <!-- uniform clutter intensity -->
     <varzr>0.025</varzr> <!-- range measurement variance -->
     <varzb>0.000025</varzb> <!-- bearing measurement variance (0.0001 is roughly 0.6 deg standard deviation) -->
-    <varzd>0.01</varzd> <!-- diameter measurement variance (meter squared)-->
+    <varzd>0.002</varzd> <!-- diameter measurement variance (meter squared)-->
     <varza>0.00001</varza> <!-- variance of lidar beam angle-->
     <Pd>
       <value>0.00</value>
@@ -68,7 +68,7 @@
       <processNoiseInflationFactor>20</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
       <birthGaussian>
 	<Weight>0.01</Weight> <!-- weight assigned to new birth Gaussians -->
-	<SupportMeasurementDist>2.0</SupportMeasurementDist>
+	<SupportMeasurementDist>2</SupportMeasurementDist>
 	<SupportMeasurementThreshold>5</SupportMeasurementThreshold>
 	<CheckCountThreshold>10</CheckCountThreshold>
 	<CurrentMeasurementCountThreshold>2</CurrentMeasurementCountThreshold>
@@ -79,8 +79,8 @@
       <measurementNoiseInflationFactor>40.0</measurementNoiseInflationFactor> <!-- inflation factor of measurement covariance -->
       <KalmanFilter>
 	<innovationThreshold> <!-- exceeding innovation will cause Kalman Filter update to not occur, set this according to noise -->
-	  <range>3.0</range>  
-	  <bearing>0.05</bearing>
+	  <range>7.5</range>  
+	  <bearing>0.2</bearing>
 	</innovationThreshold>
       </KalmanFilter>
       <GaussianCreateInnovMDThreshold>3.0</GaussianCreateInnovMDThreshold> <!-- during update, Gaussians with innovation mahalanobis distance above this are not created -->  

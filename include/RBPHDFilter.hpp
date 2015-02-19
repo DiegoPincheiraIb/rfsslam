@@ -135,6 +135,9 @@ public:
     /** Minimum number of updates betwen resampling of particles*/
     int minUpdatesBeforeResample_;
 
+    /** Minimum numnber of measurements before resampling of particles*/
+    int minMeausurementsBeforeResample_;
+
     /** Use the particle weighting strategty from Single-cluster PHD Filtering by Lee, et. al. */
     bool useClusterProcess_;
 
@@ -266,7 +269,8 @@ private:
   /** count of how many landmarks were in the FOV */
   std::vector<uint> nLandmarksInFOV_;
 
-  unsigned int nUpdatesSinceResample; /**< Number of updates performed since the last resmaple */
+  unsigned int nUpdatesSinceResample_; /**< Number of updates performed since the last resmaple */
+  unsigned int nMeasurementsSinceResample_; /**< Number of measurements processed since the last resample */
   bool resampleOccured_;
 
   Timer timer_predict_; /**< Timer for prediction step */
@@ -374,8 +378,9 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   config.newGaussianCreateInnovMDThreshold_ = 0.2;
   config.minUpdatesBeforeResample_ = 1;
   
-  nUpdatesSinceResample = 0;
-  
+  nUpdatesSinceResample_ = 0;
+  nMeasurementsSinceResample_ = 0;
+
   wTables_.reserve(nThreads_);
   mTables_.reserve(nThreads_);
   double const TABLE_INIT_SIZE = 100;
@@ -419,7 +424,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   }
 
   // propagate particles
-  this->propagate(u, dT, useModelNoise, useInputNoise);
+  this->propagate(u, dT, useModelNoise, useInputNoise, true); // true for keeping trajecotory 
 
   // propagate landmarks
   for( int i = 0; i < this->nParticles_; i++ ){
@@ -437,12 +442,13 @@ template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel
 void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::update( std::vector<TMeasurement> &Z){
 
   
-  nUpdatesSinceResample++;
+  nUpdatesSinceResample_++;
 
   this->setMeasurements( Z ); // Z gets cleared after this call, measurements now stored in this->measurements_
   if(this->measurements_.size() == 0)
     return;
-  
+  nMeasurementsSinceResample_ += this->measurements_.size();
+
   const unsigned int startIdx = 0;
   const unsigned int stopIdx = this->nParticles_;
   const unsigned int nZ = this->measurements_.size();
@@ -516,12 +522,14 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   //////////// Particle resampling //////////
   timer_particleResample_.resume();
   resampleOccured_ = false;
-  if( nUpdatesSinceResample >= config.minUpdatesBeforeResample_){
+  if( nUpdatesSinceResample_ >= config.minUpdatesBeforeResample_ && 
+      nMeasurementsSinceResample_ >= config.minMeausurementsBeforeResample_){
     resampleOccured_ = this->resample();
   }
 
   if( resampleOccured_ ){
-    nUpdatesSinceResample = 0;
+    nUpdatesSinceResample_ = 0;
+    nMeasurementsSinceResample_ = 0;
   }else{
     this->normalizeWeights();
   }

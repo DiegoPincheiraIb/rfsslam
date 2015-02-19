@@ -110,6 +110,9 @@ public:
     /** Minimum updates betwen resampling of particles*/
     int minUpdatesBeforeResample_;
 
+    /** Minimum numnber of measurements before resampling of particles*/
+    int minMeausurementsBeforeResample_;
+
     /** If true, timing information is written to the console every update*/
     bool reportTimingInfo_;
 
@@ -256,8 +259,8 @@ private:
   Timer timer_mapUpdate_; /**< Timer for map update */
   Timer timer_particleResample_; /**<Timer for particle resampling */ 
 
-  unsigned int nUpdatesSinceResample; /**< Number of updates performed since the last resmaple */
-  unsigned int nMeasurementsSinceResample; /**< Number of measurements processed since the last resample */
+  unsigned int nUpdatesSinceResample_; /**< Number of updates performed since the last resmaple */
+  unsigned int nMeasurementsSinceResample_; /**< Number of measurements processed since the last resample */
 
   /**
    * Update the map with the measurements in measurements_
@@ -325,8 +328,8 @@ FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
   config.landmarkLockWeight_ = 10;
   config.pruningMeasurementsThreshold_ = 0;
 
-  nUpdatesSinceResample = 0;
-  nMeasurementsSinceResample = 0;
+  nUpdatesSinceResample_ = 0;
+  nMeasurementsSinceResample_ = 0;
 
   landmarkCandidates_.resize(n);
   nLandmarksInFOV_.resize(n);
@@ -379,12 +382,12 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
   if(nLandmarksInFOV_.size() < this->nParticles_ * config.maxNDataAssocHypotheses_)
     nLandmarksInFOV_.resize(this->nParticles_ * config.maxNDataAssocHypotheses_);
 
-  nUpdatesSinceResample++;
+  nUpdatesSinceResample_++;
 
   this->setMeasurements( Z ); // Z gets cleared after this call, measurements now stored in this->measurements_
   if(this->measurements_.size() == 0)
     return;
-  nMeasurementsSinceResample += this->measurements_.size();
+  nMeasurementsSinceResample_ += this->measurements_.size();
 
   // make sure any setting changes to the Kalman Filter are set for all threads
   if(nThreads_>1){
@@ -695,13 +698,14 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
   if( this->nParticles_ > config.nParticlesMax_){
     resampleOccured_ = this->resample( nParticles_init_, true );
-  }else if( nUpdatesSinceResample >= config.minUpdatesBeforeResample_ && nMeasurementsSinceResample >= 15){
+  }else if( nUpdatesSinceResample_ >= config.minUpdatesBeforeResample_ && 
+	    nMeasurementsSinceResample_ >= config.minMeausurementsBeforeResample_){
     resampleOccured_ = this->resample( nParticles_init_ );
   }
 
   if( resampleOccured_ ){
-    nUpdatesSinceResample = 0;
-    nMeasurementsSinceResample = 0;
+    nUpdatesSinceResample_ = 0;
+    nMeasurementsSinceResample_ = 0;
   }else{
     this->normalizeWeights();
   }

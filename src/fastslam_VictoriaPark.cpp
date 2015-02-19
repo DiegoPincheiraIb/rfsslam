@@ -145,6 +145,7 @@ public:
 
     effNParticleThreshold_ = pt.get("config.filter.resampling.effNParticle", nParticles_);
     minUpdatesBeforeResample_ = pt.get("config.filter.resampling.minTimesteps", 1);
+    minMeausurementsBeforeResample_ = pt.get("config.filter.resampling.minMeasurements", 0);
             
     landmarkExistencePruningThreshold_ = pt.get("config.filter.prune.threshold", -5.0);
     nMeasurementPruningThreshold_ = pt.get<uint>("config.filter.prune.nMeasurementsThreshold");
@@ -360,6 +361,7 @@ public:
     pFilter_->getKalmanFilter()->config.bearingInnovationThreshold_ = innovationBearingThreshold_;
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
     pFilter_->config.minUpdatesBeforeResample_ = minUpdatesBeforeResample_;
+    pFilter_->config.minMeausurementsBeforeResample_ = minMeausurementsBeforeResample_;
     pFilter_->config.minLogMeasurementLikelihood_ = minLogMeasurementLikelihood_;
     pFilter_->config.maxNDataAssocHypotheses_ = maxNDataAssocHypotheses_;
     pFilter_->config.maxDataAssocLogLikelihoodDiff_ = maxDataAssocLogLikelihoodDiff_;
@@ -622,6 +624,7 @@ private:
   double innovationBearingThreshold_;
   double effNParticleThreshold_;
   int minUpdatesBeforeResample_;
+  int minMeausurementsBeforeResample_;
   double minLogMeasurementLikelihood_;
   int maxNDataAssocHypotheses_;
   double maxDataAssocLogLikelihoodDiff_;
