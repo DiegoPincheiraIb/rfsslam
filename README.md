@@ -72,18 +72,34 @@ Documentation will be generated in `doc/` directory.
 
 * Rao-Blackwellized Probability Hypothesis Density (RB-PHD) SLAM 2-D Simulation
     - Source: src/rbphdslam2dSim.cpp
-    - Config: cfg/rbphdslam2dSim.cfg
+    - Config: cfg/rbphdslam2dSim.xml
     - Run: `bin/rbphdslam2dSim [random_seed=0] [cfg_file=cfg/rbphdslam2dSim.cfg]`
 
 * Factored Solution to SLAM (FastSLAM 1.0) 2-D Simulation
     - Source: src/fastslam2dSim.cpp 
-    - Config: cfg/fastslam2dSim.cfg
-    - Run: `bin/fastslam2dSim [random_seed=0] [cfg_file=cfg/fastslam2dSim.cfg]`
+    - Config: cfg/fastslam2dSim.xml
+    - Run: `bin/fastslam2dSim [random_seed] [xml_file]`
 
 * Multi-Hypothesis Factored Solution to SLAM (MH FastSLAM) 2-D Simulation
     - Source: src/fastslam2dSim.cpp 
-    - Config: cfg/mhfastslam2dSim.cfg
-    - Run: `bin/fastslam2dSim [random_seed=0] [cfg_file=cfg/mhfastslam2dSim.cfg]`
+    - Config: cfg/mhfastslam2dSim.xml
+    - Run: `bin/fastslam2dSim [random_seed] [xml_file]`
+
+* RB-PHD SLAM on the Victoria Park dataset
+    - Source: src/rbphdslam_VictoriaPark.cpp
+    - Config: cfg/rbphdslam_VictoriaPark.xml and cfg/rbphdslam_VictoriaPark_artificialClutter.xml
+    - Run: `bin/rbphdslam_VictoriaPark [random_seed] [xml_file]
+
+* FastSLAM on the Victoria Park dataset
+    - Source: src/fastslam_VictoriaPark.cpp
+    - Config: cfg/fastslam_VictoriaPark.xml and cfg/fastslam_VictoriaPark_artificialClutter.xml
+    - Run: `bin/fastslam_VictoriaPark [random_seed] [xml_file]
+
+* MH FastSLAM on the Victoria Park dataset
+    - Source: src/mhfastslam_VictoriaPark.cpp
+    - Config: cfg/mhfastslam_VictoriaPark.xml and cfg/mhfastslam_VictoriaPark_artificialClutter.xml
+    - Run: `bin/mhfastslam_VictoriaPark [random_seed] [xml_file]
+
 
 #### Visualization Tools ####
 
@@ -112,11 +128,12 @@ Set `saveMoive=True` to generate a mp4 file.
 * Latest
     - Implementation of joint compatibility branch and bound (JCBB) 
       for data association in vector-based methods
-    - Removed dependency on the libconfig library for simulation configuration
+    - Config files now use xml format to removed dependency on the libconfig library
     - OSX compatible when compiling with Clang/LLVM
     - Multi-threaded versions of SLAM algorithms using OpenMP
         - multithreading with OpenMP is currently not supported by Clang/LLVM 
         - An OpenMP-supported LLVM compiler is available at: [http://clang-omp.github.io/](http://clang-omp.github.io/)	
+    - Inclusion of the Victoria Park dataset and the code for processing it using various SLAM filters.
 
 ### Future Work ###
 
