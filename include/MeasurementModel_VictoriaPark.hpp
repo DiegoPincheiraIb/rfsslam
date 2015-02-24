@@ -65,7 +65,8 @@ namespace rfs{
      * \param[in] pose \f$\mathbf{x}\f$, robot pose from which the measurement is made
      * \param[in] landmark \f$\mathbf{m}\f$, the measured landmark
      * \param[out] measurement \f$\mathbf{x}\f$, the measurement
-     * \param[out] jacobian_wrt_lmk if not NULL, the pointed-to matrix is overwritten
+     * \param[out] jacobian_wrt_lmk  if not NULL, the pointed-to matrix is overwritten with the Jacobian w.r.t. the landmark position
+     * \param[out] jacobian_wrt_pose if not NULL, the pointed-to matrix is overwritten with the Jacobian w.r.t. the robot pose
      * by the Jacobian of the measurement model, \f$\mathbf{H}\f$, evaluated at \f$\mathbf{x}\f$ and \f$\mathbf{m}\f$
      * \return true if a valid measurement is produced
      */
@@ -126,9 +127,10 @@ namespace rfs{
 
 
     /**
-     * \TODO documentation
+     * Set the raw lidar scan, which is used for determining the probability of detection of objects
+     * \param[in] laserscan The lidar scan as a std vector
      */ 
-    void setLaserScan(const std::vector<double> &laserscan); // \todo use shared_ptr
+    void setLaserScan(const std::vector<double> &laserscan);
 
     /** \brief Configuration for this measurement model */
     struct Config{

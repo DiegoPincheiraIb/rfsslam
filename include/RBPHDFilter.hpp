@@ -195,7 +195,7 @@ public:
    * \param[in] dT Timestep timestep, which the motion model may or may not use;
    * \param[in] useModelNoise use the additive noise for the process model
    * \param[in] useInputNoise use the noise fn the input
-   * \param[un] birthGaussianCheck check whether birth Gaussians should be created
+   * \param[in] birthGaussianCheck check whether birth Gaussians should be created
    */
   void predict( TInput u, TimeStamp const &dT,
 		bool useModelNoise = true,
