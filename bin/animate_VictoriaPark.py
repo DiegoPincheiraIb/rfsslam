@@ -49,6 +49,7 @@ saveMovie = False;
 
 nLandmarksDrawMax = 1000;
 nMeasurementsDrawMax = 100;
+nClutterDrawMax = 30
 
 if len(sys.argv) < 2:
     print "Usage: animate2dSim DATA_DIR\n";
@@ -95,6 +96,12 @@ else:
     sys.exit(0);
 measurementFileHandle = open(measurementFile, "r");
 
+clutterFile = 'clutter.dat'
+clutterFile = dataDir + clutterFile
+if os.path.exists(clutterFile):
+    print('Opening ' + clutterFile);
+clutterFileHandle = open(clutterFile, "r")
+
 estimateImageFile = 'estimate.pdf';
 estimateImageFile = dataDir + estimateImageFile;
 estimateMovieFile = 'estimate.mp4';
@@ -136,6 +143,8 @@ m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
 
 z = np.fromfile(measurementFileHandle, count=4, sep=" ", dtype=float);
 
+c = np.fromfile(clutterFileHandle, count=4, sep=" ", dtype=float)
+
 # Plotting 
 
 fig = plt.figure( figsize=(12,12), facecolor='w')
@@ -151,6 +160,11 @@ measurements = [];
 for i in range(0, nMeasurementsDrawMax) : 
     measurement_line, = plt.plot([], [], 'b-');
     measurements.append( measurement_line );
+
+clutter = []
+for i in range(0, nClutterDrawMax) : 
+    clutter_line, = plt.plot([],[], 'g-')
+    clutter.append( clutter_line )
 
 landmarks = [];
 for i in range(0, nLandmarksDrawMax) : 
@@ -175,6 +189,9 @@ def animateInit():
     for i in range(0, nMeasurementsDrawMax) :
         measurements[i].set_data([],[]);
         measurements[i].set_color([1.0, 0.2 ,0.2]);
+    for i in range(0, nClutterDrawMax):
+        clutter[i].set_data([],[])
+        clutter[i].set_color([0.2, 1, 0.2])
     for i in range(0, nLandmarksDrawMax):
         landmarks[i].center = (0,0);
         landmarks[i].width = 0;
@@ -188,6 +205,7 @@ def animate(i):
     global bt;
     global m;
     global z;
+    global c
 
     if not p.any():
         #print i
@@ -200,7 +218,7 @@ def animate(i):
     # Time
     txt.set_text("Time: {0}".format(currentTime));
     drawnObjects.append(txt);
-    timeStart = 1200
+    timeStart = 1500
     if currentTime < timeStart:
         while p.any() and p[0] < timeStart:
             p = np.fromfile(estPoseFileHandle, dtype=float, count=6, sep=" ");
@@ -214,6 +232,8 @@ def animate(i):
             m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
         while z.any() and z[0] < timeStart:
             z = np.fromfile(measurementFileHandle, count=4, sep=" ", dtype=float);
+        while c.any() and c[0] < timeStart:
+            c = np.fromfile(clutterFileHandle, count=4, sep=" ", dtype=float);
 
     # Particles
     p_idx = 0;
@@ -324,6 +344,17 @@ def animate(i):
         nZ += 1;
     while measurements[nZ].get_xdata() != []:
         measurements[nZ].set_data([], []);
+        nZ += 1;
+    nZ = 0
+    while c.any() and abs(c[0] -  currentTime) < 1e-12:
+        c_dir = pr_best[i] + c[2] - np.pi / 2;
+        c_end = [px_best[i] + c[1]*np.cos(c_dir), py_best[i] + c[1]*np.sin(c_dir) ];
+        clutter[nZ].set_data([px_best[i], c_end[0]], [py_best[i], c_end[1]]);
+        drawnObjects.append(clutter[nZ]);
+        c = np.fromfile(clutterFileHandle, count=4, sep=" ", dtype=float);
+        nZ += 1;
+    while clutter[nZ].get_xdata() != []:
+        clutter[nZ].set_data([], []);
         nZ += 1;
     
     drawnObjects.append(particles)

@@ -15,7 +15,7 @@
 
   <logging>
     <logToFile>1</logToFile>
-    <logDirPrefix>data/VictoriaPark/fastslam/results/</logDirPrefix>
+    <logDirPrefix>data/VictoriaPark/fastslam_clutter/results/</logDirPrefix>
   </logging>
 
   <process>
@@ -43,7 +43,8 @@
     <bearingLimitMin>6.3025</bearingLimitMin> <!-- measurement bearing limit (deg)-->
     <bufferZonePd>0.4</bufferZonePd> <!-- Pd below which a landmark is considered to be in the buffer zone -->
     <probDetection>0.90</probDetection> <!-- probability of detection -->
-    <expectedNClutter>3</expectedNClutter> <!-- uniform clutter intensity -->
+    <expectedNClutter>6</expectedNClutter> <!-- uniform clutter intensity -->
+    <addedClutter>3</addedClutter> <!-- artificial mean clutter measurements added -->
     <varzr>0.025</varzr> <!-- range measurement variance -->
     <varzb>0.000025</varzb> <!-- bearing measurement variance (0.0001 is roughly 0.6 deg standard deviation) -->
     <varzd>0.002</varzd> <!-- diameter measurement variance (meter squared)-->

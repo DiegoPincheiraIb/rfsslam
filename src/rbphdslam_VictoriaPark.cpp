@@ -112,6 +112,7 @@ public:
     bearingLimitMax_ = pt.get<double>("config.measurements.bearingLimitMax");
     bearingLimitMin_ = pt.get<double>("config.measurements.bearingLimitMin");
     clutterExpected_ = pt.get<double>("config.measurements.expectedNClutter");
+    clutterAdded_ = pt.get("config.measurements.addedClutter", 0);
     bufferZonePd_ = pt.get<double>("config.measurements.bufferZonePd");
     varzr_ = pt.get<double>("config.measurements.varzr");
     varzb_ = pt.get<double>("config.measurements.varzb");
@@ -383,9 +384,11 @@ public:
     // Initialization at first timestep   
     std::ofstream particlePoseFile;
     std::ofstream landmarkEstFile;
+    std::ofstream clutterFile;
     if(logToFile_){
       particlePoseFile.open( (logDirPrefix_ + "particlePose.dat").c_str() );
       landmarkEstFile.open( (logDirPrefix_ + "landmarkEst.dat").c_str() );
+      clutterFile.open( (logDirPrefix_ + "clutter.dat").c_str() );
     }
     if(logToFile_){
       MotionModel_Ackerman2d::TState x_i;
@@ -400,6 +403,19 @@ public:
 			 << std::setw(10) << x[2] 
 			 << std::setw(10) << w << std::endl;
       }
+    }
+    double expNegMeanClutter = exp( -clutterAdded_ );
+    double poissonPmf[100];
+    double poissonCmf[100];
+    double mean_pow_i = 1;
+    double i_factorial = 1;
+    poissonPmf[0] = expNegMeanClutter;
+    poissonCmf[0] = poissonPmf[0];
+    for( int i = 1; i < 100; i++){
+      mean_pow_i *= clutterAdded_;
+      i_factorial *= i;
+      poissonPmf[i] = mean_pow_i / i_factorial * expNegMeanClutter;
+      poissonCmf[i] = poissonCmf[i-1] + poissonPmf[i]; 
     }
 
     // Process all sensor messages sequentially
@@ -475,6 +491,34 @@ public:
 	  Z.push_back(measurements_[zIdx]);
 	  zIdx++;
 	}
+
+	if(clutterAdded_ > 0 ){
+	  double randomNum = drand48();
+	  int nClutterToGen = 0;
+	  while( randomNum > poissonCmf[ nClutterToGen ] ){
+	    nClutterToGen++;
+	  }
+	  for( int i = 0; i < nClutterToGen; i++ ){
+	
+	    double r = drand48() * (rangeLimitMax_ - rangeLimitMin_) + rangeLimitMin_;
+	    double b = drand48() * ((bearingLimitMax_ - bearingLimitMin_) + bearingLimitMin_) * PI / 180;
+	    double d = 1.0;
+	    SLAM_Filter::TMeasurement z_clutter;
+	    SLAM_Filter::TMeasurement::Vec z;
+	    z << r, b, d;
+	    z_clutter.set(z, t_k);
+	    Z.push_back(z_clutter);
+	    if(logToFile_){
+	      clutterFile << std::fixed << std::setprecision(3)
+			  << std::setw(10) << t_k.getTimeAsDouble()
+			  << std::setprecision(5)
+			  << std::setw(11) << r
+			  << std::setw(11) << b 
+			  << std::setw(11) << d << std::endl;
+	    }
+	  }
+	}
+
 	pFilter_->getMeasurementModel()->setLaserScan( lidarScans_[sensorManagerMsgs_[k].idx].scan );
 	pFilter_->update(Z);
 	birthGaussianCheck = true;
@@ -584,6 +628,7 @@ public:
     if(logToFile_){
       particlePoseFile.close();
       landmarkEstFile.close();
+      clutterFile.close();
     }
   }
 
@@ -622,6 +667,7 @@ private:
   double bearingLimitMax_;
   double bearingLimitMin_;
   double clutterExpected_;
+  double clutterAdded_;
   double bufferZonePd_;
   double varzr_;
   double varzb_;
