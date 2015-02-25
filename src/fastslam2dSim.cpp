@@ -545,9 +545,15 @@ public:
 
       // Log particle poses
       if(logToFile_){
+	int i_w_max = 0;
+	double w_max = 0;
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	  x_i = *(pFilter_->getParticleSet()->at(i));
 	  double w = pFilter_->getParticleSet()->at(i)->getWeight();
+	  if(w > w_max){
+	    i_w_max = i;
+	    w_max = w;
+	  }
 	  fprintf( pParticlePoseFile, "%f   %d   %f   %f   %f   %f\n", time.getTimeAsDouble(), i, x_i.get(0), x_i.get(1), x_i.get(2), w);
 	}
 	fprintf( pParticlePoseFile, "\n");
@@ -555,19 +561,19 @@ public:
 
       // Log landmark estimates
       if(logToFile_){
-	for(int i = 0; i < pFilter_->getParticleCount(); i++){
-	  int mapSize = pFilter_->getGMSize(i);
-	  for( int m = 0; m < mapSize; m++ ){
-	    MeasurementModel_RngBrg::TLandmark::Vec u;
-	    MeasurementModel_RngBrg::TLandmark::Mat S;
-	    double w;
-	    pFilter_->getLandmark(i, m, u, S, w);
+
+	int mapSize = pFilter_->getGMSize(i_w_max);
+	for( int m = 0; m < mapSize; m++ ){
+	  MeasurementModel_RngBrg::TLandmark::Vec u;
+	  MeasurementModel_RngBrg::TLandmark::Mat S;
+	  double w;
+	  pFilter_->getLandmark(i_w_max, m, u, S, w);
 	    
-	    fprintf( pLandmarkEstFile, "%f   %d   ", time.getTimeAsDouble(), i);
-	    fprintf( pLandmarkEstFile, "%f   %f      ", u(0), u(1));
-	    fprintf( pLandmarkEstFile, "%f   %f   %f", S(0,0), S(0,1), S(1,1));
-	    fprintf( pLandmarkEstFile, "   %f\n", 1 - 1/(1 + exp(w)) );
-	  }
+	  fprintf( pLandmarkEstFile, "%f   %d   ", time.getTimeAsDouble(), i_w_max);
+	  fprintf( pLandmarkEstFile, "%f   %f      ", u(0), u(1));
+	  fprintf( pLandmarkEstFile, "%f   %f   %f", S(0,0), S(0,1), S(1,1));
+	  fprintf( pLandmarkEstFile, "   %f\n", 1 - 1/(1 + exp(w)) );
+	  
 	}
       }
     }

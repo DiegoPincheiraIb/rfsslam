@@ -36,7 +36,11 @@ import os.path
 import numpy as np
 
 import matplotlib
-matplotlib.use("TKAgg");
+matplotlib.use("TkAgg");
+
+# Necessary to generate Type 1 fonts for pdf figures as required by IEEE for paper submissions
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 #print matplotlib.__version__
 
 import matplotlib.pyplot as plt
@@ -46,6 +50,8 @@ from matplotlib import transforms
 import matplotlib.ticker as ticker   
 
 saveMovie = False;
+saveFig = True
+timestepStart = 2900
 
 nLandmarksDrawMax = 300;
 nMeasurementsDrawMax = 100;
@@ -208,6 +214,31 @@ def animate(i):
     # Time
     txt.set_text("Time: {0}".format(currentTime));
     drawnObjects.append(txt);
+    
+    timeStart = timestepStart * 0.1
+
+    p_idx_maxWeight = 0
+    p_maxWeight = 0
+    while p.any() and p[0] < timeStart:
+        p = np.fromfile(estPoseFileHandle, dtype=float, count=6, sep=" ");
+        currentTime = p[0]
+        k = int(np.ceil(currentTime / 0.1))
+        if p[1] == 0:
+            p_idx_maxWeight = p[1]
+            p_maxWeight = p[5]
+            px_best[k] = p[2];
+            py_best[k] = p[3];
+        elif p[5] > p_maxWeight :
+            p_maxWeight = p[5];
+            p_idx_maxWeight = p[1];
+            px_best[k] = p[2];
+            py_best[k] = p[3];
+    
+    while m.any() and m[0] < timeStart:
+        m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
+    while z.any() and z[0] < timeStart:
+        z = np.fromfile(measurementFileHandle, count=3, sep=" ", dtype=float);
+
 
     # Groundtruth 
     gtPoseCurrentPos.set_xdata(gtPose_x[i]);
@@ -301,11 +332,16 @@ def animate(i):
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, len(gtPose_t)), interval=1, 
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timestepStart, len(gtPose_t)), interval=1, 
                                init_func=animateInit, blit=True, repeat=False);
 if saveMovie:
-    animation.save(estimateMovieFile, fps=30, extra_args=['-loglevel','quiet','-vcodec','libx264'])
-    estPoseHandle, = plt.plot(px_best, py_best, 'b-');
+    FFMpegWriter = matplotlib.animation.writers['ffmpeg']
+    animation.save(estimateMovieFile, writer=FFMpegWriter(fps = 30))
+else:
+    plt.show(block=False)
+
+if saveFig:
+    estPoseHandle, = plt.plot(px_best, py_best, 'b-')
     for i in range(0, nMeasurementsDrawMax) : 
         measurements[i].remove();
     plt.setp(gtPoseHandle, linewidth=2.0)
@@ -318,8 +354,6 @@ if saveMovie:
     ticks = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y*scale))
     plt.gca().yaxis.set_major_formatter(ticks)
     plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
-else:
-    plt.show()
 
 measurementFileHandle.close();
 
