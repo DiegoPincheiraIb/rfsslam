@@ -544,9 +544,9 @@ public:
       pFilter_->update(Z);
 
       // Log particle poses
+      int i_w_max = 0;
+      double w_max = 0;
       if(logToFile_){
-	int i_w_max = 0;
-	double w_max = 0;
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	  x_i = *(pFilter_->getParticleSet()->at(i));
 	  double w = pFilter_->getParticleSet()->at(i)->getWeight();

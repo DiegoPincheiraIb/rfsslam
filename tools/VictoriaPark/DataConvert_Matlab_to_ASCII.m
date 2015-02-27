@@ -49,3 +49,20 @@ fprintf(FID, '%10.3f %10.5f %10.5f %10.5f\n', detections');
 fclose(FID);
 FID = fopen('inputs.dat','w');
 fprintf(FID, '%10.3f %10.3f %10.4f\n', [time speed steering]');
+fclose(FID);
+
+
+
+% GPS data
+clear all
+load aa3_gpsx.mat
+timeGps = (timeGps - timeGps(1)) / 1000;
+Lo_m = Lo_m + 67;
+La_m = La_m + 39;
+gps = [Lo_m La_m]';
+a = -33 / 180 * pi;
+R = [cos(a) -sin(a); sin(a) cos(a)];
+gps = R * gps;
+FID = fopen('gps.dat','w');
+fprintf(FID, '%10.3f %10.3f %10.3f\n', [timeGps'; gps(1,:); gps(2,:)]);
+fclose(FID);

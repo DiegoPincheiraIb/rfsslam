@@ -39,13 +39,21 @@ import matplotlib
 #matplotlib.use("TKAgg");
 #print matplotlib.__version__
 
+# Necessary to generate Type 1 fonts for pdf figures as required by IEEE for paper submissions
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from matplotlib.patches import Ellipse, Circle
 from matplotlib import transforms
 import matplotlib.ticker as ticker   
 
+######### USER INPUT ####################
 saveMovie = False;
+saveFig = True
+timeStepStart = 7220 # max 7230
+#########################################
 
 nLandmarksDrawMax = 1000;
 nMeasurementsDrawMax = 100;
@@ -98,9 +106,17 @@ measurementFileHandle = open(measurementFile, "r");
 
 clutterFile = 'clutter.dat'
 clutterFile = dataDir + clutterFile
+clutterFileHandle = 0
 if os.path.exists(clutterFile):
     print('Opening ' + clutterFile);
-clutterFileHandle = open(clutterFile, "r")
+    clutterFileHandle = open(clutterFile, "r")
+
+gpsFile = 'gps.dat'
+gpsFile = dataDir + gpsFile
+gpsFileHandle = 0
+if os.path.exists(gpsFile):
+    print('Opening ' + gpsFile)
+    gpsFileHandle = open(gpsFile, "r")
 
 estimateImageFile = 'estimate.pdf';
 estimateImageFile = dataDir + estimateImageFile;
@@ -131,19 +147,32 @@ while p[0] == p_t:
 px_best = []
 py_best = []
 pr_best = []
+px_best.append(p[2]);
+py_best.append(p[3]);
+pr_best.append(p[4]);
+p_maxWeight = p[5];
 
 bt = np.fromfile(bestTrajFileHandle, dtype=float, count=4, sep=" ")
 while bt[0] < p[0]:
     bt = np.fromfile(bestTrajFileHandle, dtype=float, count=4, sep=" ")
 bt_x = []
 bt_y = []
-by_r = []
+bt_r = []
 
 m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
 
 z = np.fromfile(measurementFileHandle, count=4, sep=" ", dtype=float);
 
-c = np.fromfile(clutterFileHandle, count=4, sep=" ", dtype=float)
+c = np.array([])
+if(clutterFileHandle != 0):
+    c = np.fromfile(clutterFileHandle, count=4, sep=" ", dtype=float)
+
+g = np.array([])
+if(gpsFileHandle != 0):
+    g = np.fromfile(gpsFileHandle, count=3, sep=" ", dtype=float) # first line is all 0
+    g = np.fromfile(gpsFileHandle, count=3, sep=" ", dtype=float)
+gps_x = []
+gps_y = []
 
 # Plotting 
 
@@ -177,10 +206,16 @@ landmarkCenters.set_color([0.2,0.2,0.8])
 
 trajectory, = plt.plot(0, 0, 'b-')
 trajectory_best, = plt.plot(0, 0, 'k-')
+gps, = plt.plot(0, 0, 'r.')
+gps_legend, = plt.plot(0, 0, 'r-')
+plt.setp(gps, ms=0.75)
 
 xLim = plt.getp(ax, 'xlim');
 yLim = plt.getp(ax, 'ylim');
 txt = plt.text(150, -65, " ");
+
+timeStepCurrent = 0
+
 
 def animateInit():
 
@@ -206,6 +241,9 @@ def animate(i):
     global m;
     global z;
     global c
+    global g
+    global timeStepCurrent
+    global p_maxWeight
 
     if not p.any():
         #print i
@@ -218,22 +256,39 @@ def animate(i):
     # Time
     txt.set_text("Time: {0}".format(currentTime));
     drawnObjects.append(txt);
-    timeStart = 1500
-    if currentTime < timeStart:
-        while p.any() and p[0] < timeStart:
-            p = np.fromfile(estPoseFileHandle, dtype=float, count=6, sep=" ");
-            currentTime = p[0];
-        while bt.any() and bt[0] < timeStart:
+
+    if timeStepCurrent < i:
+        while p.any() and timeStepCurrent < i:
+            if currentTime != p[0]:                
+                px_best.append(p[2]);
+                py_best.append(p[3]);
+                pr_best.append(p[4]);
+                p_maxWeight = p[5];
+                timeStepCurrent = timeStepCurrent + 1
+                currentTime = p[0];
+            elif p[5] > p_maxWeight :
+                p_maxWeight = p[5];
+                px_best[-1] = p[2];
+                py_best[-1] = p[3];
+                pr_best[-1] = p[4];
+            p = np.fromfile(estPoseFileHandle, dtype=float, count=6, sep=" ")
+                
+        while bt.any() and bt[0] < currentTime:
             bt_x.append(bt[1])
             bt_y.append(bt[2])
-            by_r.append(bt[3])
+            bt_r.append(bt[3])
             bt = np.fromfile(bestTrajFileHandle, dtype=float, count=4, sep=" ")
-        while m.any() and m[0] < timeStart:
+        while m.any() and m[0] < currentTime:
             m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
-        while z.any() and z[0] < timeStart:
+        while z.any() and z[0] < currentTime:
             z = np.fromfile(measurementFileHandle, count=4, sep=" ", dtype=float);
-        while c.any() and c[0] < timeStart:
+        while c.any() and c[0] < currentTime:
             c = np.fromfile(clutterFileHandle, count=4, sep=" ", dtype=float);
+        while g.any() and g[0] < currentTime:
+            gps_x.append(g[1])
+            gps_y.append(g[2])
+            g = np.fromfile(gpsFileHandle, count=3, sep=" ", dtype=float)
+            
 
     # Particles
     p_idx = 0;
@@ -260,12 +315,13 @@ def animate(i):
         p_idx += 1;
     particles.set_data(p_x, p_y)
     trajectory.set_data(px_best, py_best)
-    
+    timeStepCurrent = timeStepCurrent + 1
+
     # Best trajectory
     while bt[0] < currentTime:
         bt_x.append(bt[1])
         bt_y.append(bt[2])
-        by_r.append(bt[3])
+        bt_r.append(bt[3])
         bt = np.fromfile(bestTrajFileHandle, dtype=float, count=4, sep=" ")
     trajectory_best.set_data(bt_x, bt_y)
     
@@ -356,29 +412,41 @@ def animate(i):
     while clutter[nZ].get_xdata() != []:
         clutter[nZ].set_data([], []);
         nZ += 1;
+
+
+    # GPS
+    while g.any() and g[0] < currentTime:
+        gps_x.append(g[1])
+        gps_y.append(g[2])
+        g = np.fromfile(gpsFileHandle, count=3, sep=" ", dtype=float)
+    gps.set_data(gps_x, gps_y)
     
     drawnObjects.append(particles)
     #drawnObjects.append(trajectory)
     drawnObjects.append(trajectory_best)
+    drawnObjects.append(gps)
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, 7230), interval=1, 
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timeStepStart, 7230), interval=1, 
                                init_func=animateInit, blit=True, repeat=False);
 
 if saveMovie:
     FFMpegWriter = matplotlib.animation.writers['ffmpeg']
     animation.save(estimateMovieFile, writer=FFMpegWriter(fps = 30)) #extra_args=['-loglevel','quiet','-vcodec','libx264']
-    #estPoseHandle, = plt.plot(px_best, py_best, 'b-');
+else:
+    plt.show(block=False)
+
+if saveFig:
     for i in range(0, nMeasurementsDrawMax) : 
         measurements[i].remove();
-    #plt.setp(gtPoseHandle, linewidth=2.0)
-    #plt.legend([gtPoseHandle, estPoseHandle, gtMapHandle, landmarks[0]], ["Ground-truth trajectory", "Estimated trajectory", "Ground-truth landmark", "Estimated landmark" ], loc=4);
-    plt.legend([estPoseHandle, landmarks[0]], ["Estimated trajectory", "Estimated landmark" ], loc=4);
+    plt.setp(gps, ms=0.75)
+    plt.setp(gps_legend, linewidth=1)
+    txt.set_text(" ");
+    trajectory.set_data([], [])
+    plt.legend([trajectory_best, landmarkCenters, landmarks[0], gps_legend], ["Estimated trajectory", "Estimated landmark mean", "Estimated landmark uncertainty", "GPS vehicle position" ], loc=4);
     plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
     plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
-else:
-    plt.show()
 
 measurementFileHandle.close();
 

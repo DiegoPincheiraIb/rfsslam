@@ -299,6 +299,13 @@ public:
       //	<< std::setw(10) << std::fixed << std::setprecision(2) << p[1] << std::endl;
     }
     file_gps.close();
+    if(logToFile_){
+      boost::filesystem::path src( dataFileGPS_.c_str() );
+      std::string dst( logDirPrefix_ );
+      dst += "gps.dat";
+      boost::filesystem::path cfgFilePathDst( dst.c_str() );
+      boost::filesystem::copy_file( src, dst, boost::filesystem::copy_option::overwrite_if_exists);
+    }
 
   }
 
@@ -524,37 +531,41 @@ public:
 	birthGaussianCheck = true;
 
 	// Log data
-	double w_max = 0;
-	uint i_w_max = 0;
-	for(int i = 0; i < pFilter_->getParticleCount(); i++){
-	  SLAM_Filter::TPose x = *(pFilter_->getParticleSet()->at(i));
-	  double w = pFilter_->getParticleSet()->at(i)->getWeight();
-	  particlePoseFile << std::fixed << std::setprecision(3) 
-			   << std::setw(10) << sensorManagerMsgs_[k].t.getTimeAsDouble()
-			   << std::setw(5) << i
-			   << std::setw(10) << x[0] 
-			   << std::setw(10) << x[1] 
-			   << std::setw(10) << x[2] 
-			   << std::setw(10) << w << std::endl;
-	  if(w > w_max){
-	    w_max = w;
-	    i_w_max = i;
+	if (logToFile_){
+    
+	  double w_max = 0;
+	  uint i_w_max = 0;
+	  for(int i = 0; i < pFilter_->getParticleCount(); i++){
+	    SLAM_Filter::TPose x = *(pFilter_->getParticleSet()->at(i));
+	    double w = pFilter_->getParticleSet()->at(i)->getWeight();
+	    particlePoseFile << std::fixed << std::setprecision(3) 
+			     << std::setw(10) << sensorManagerMsgs_[k].t.getTimeAsDouble()
+			     << std::setw(5) << i
+			     << std::setw(10) << x[0] 
+			     << std::setw(10) << x[1] 
+			     << std::setw(10) << x[2] 
+			     << std::setw(10) << w << std::endl;
+	    if(w > w_max){
+	      w_max = w;
+	      i_w_max = i;
+	    }
 	  }
-	}
-	for( int m = 0; m < pFilter_->getGMSize(i_w_max); m++ ){
-	  MeasurementModel_VictoriaPark::TLandmark::Vec u;
-	  MeasurementModel_VictoriaPark::TLandmark::Mat S;
-	  double w;
-	  pFilter_->getLandmark(i_w_max, m, u, S, w);
-	  landmarkEstFile << std::fixed << std::setprecision(3) 
-			  << std::setw(10) << sensorManagerMsgs_[k].t.getTimeAsDouble()
-			  << std::setw(5) << i_w_max
-			  << std::setw(10) << u(0) 
-			  << std::setw(10) << u(1)
-			  << std::setw(10) << S(0,0) 
-			  << std::setw(10) << S(0,1)
-			  << std::setw(10) << S(1,1) 
-			  << std::setw(10) << w << std::endl;
+	  for( int m = 0; m < pFilter_->getGMSize(i_w_max); m++ ){
+	    MeasurementModel_VictoriaPark::TLandmark::Vec u;
+	    MeasurementModel_VictoriaPark::TLandmark::Mat S;
+	    double w;
+	    pFilter_->getLandmark(i_w_max, m, u, S, w);
+	    landmarkEstFile << std::fixed << std::setprecision(3) 
+			    << std::setw(10) << sensorManagerMsgs_[k].t.getTimeAsDouble()
+			    << std::setw(5) << i_w_max
+			    << std::setw(10) << u(0) 
+			    << std::setw(10) << u(1)
+			    << std::setw(10) << S(0,0) 
+			    << std::setw(10) << S(0,1)
+			    << std::setw(10) << S(1,1) 
+			    << std::setw(10) << w << std::endl;
+	  }
+
 	}
 
 	t_km = t_k;
