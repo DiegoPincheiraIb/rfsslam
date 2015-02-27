@@ -34,6 +34,7 @@
 import sys
 import os.path
 import numpy as np
+from scipy import ndimage
 
 import matplotlib
 #matplotlib.use("TKAgg");
@@ -52,6 +53,7 @@ import matplotlib.ticker as ticker
 ######### USER INPUT ####################
 saveMovie = False;
 saveFig = True
+useSatImg = False
 timeStepStart = 7220 # max 7230
 #########################################
 
@@ -176,18 +178,30 @@ gps_y = []
 
 # Plotting 
 
-fig = plt.figure( figsize=(12,12), facecolor='w')
+fig = plt.figure( figsize=(12,10),facecolor='w')
 
 particles, = plt.plot(p_x, p_y, 'b.');
 ax = plt.gca()
 plt.axis('equal');
 plt.grid(True);
 plt.xlim([-125, 225])
-plt.ylim([-75, 275])
+plt.ylim([-50, 250])
+
+
+if useSatImg and os.path.exists(dataDir + "VictoriaParkSatellite.png"):
+    satImg = np.flipud(plt.imread(dataDir + "VictoriaParkSatellite.png"))
+    satImg = ndimage.rotate(satImg, -7, reshape=False)
+    img_x_min = -195
+    img_y_min = -80
+    img_x_max = img_x_min + 475
+    img_y_max = img_y_min + 375
+    plt.imshow(satImg, zorder=0, origin='lower', extent=[img_x_min, img_x_max, img_y_min, img_y_max])
+else:
+    useSatImg = False;
 
 measurements = [];
 for i in range(0, nMeasurementsDrawMax) : 
-    measurement_line, = plt.plot([], [], 'b-');
+    measurement_line, = plt.plot([], [], 'r-');
     measurements.append( measurement_line );
 
 clutter = []
@@ -202,17 +216,20 @@ for i in range(0, nLandmarksDrawMax) :
     ax.add_patch(landmarks[i]);
 
 landmarkCenters, = plt.plot([], [], '+')
-landmarkCenters.set_color([0.2,0.2,0.8])
-
+landmarkCenters.set_color([1,0.6,0])
+if( not useSatImg ):
+    landmarkCenters.set_color([0.2, 0.2 , 0.8])
 trajectory, = plt.plot(0, 0, 'b-')
-trajectory_best, = plt.plot(0, 0, 'k-')
+trajectory_best, = plt.plot(0, 0, 'y-')
+if( not useSatImg ):
+    trajectory_best.set_color('k')
 gps, = plt.plot(0, 0, 'r.')
 gps_legend, = plt.plot(0, 0, 'r-')
 plt.setp(gps, ms=0.75)
 
-xLim = plt.getp(ax, 'xlim');
-yLim = plt.getp(ax, 'ylim');
-txt = plt.text(150, -65, " ");
+
+txt = plt.text(150, -40, " ");
+
 
 timeStepCurrent = 0
 
@@ -231,7 +248,9 @@ def animateInit():
         landmarks[i].center = (0,0);
         landmarks[i].width = 0;
         landmarks[i].height = 0;
-        landmarks[i].set_facecolor([0.2,0.2,0.8])
+        landmarks[i].set_facecolor([1,0.6,0])
+        if( not useSatImg):
+            landmarks[i].set_facecolor([0.2, 0.2, 0.8])
     return [];
 
 def animate(i):
@@ -421,15 +440,14 @@ def animate(i):
         g = np.fromfile(gpsFileHandle, count=3, sep=" ", dtype=float)
     gps.set_data(gps_x, gps_y)
     
+    drawnObjects.append(gps)
     drawnObjects.append(particles)
     #drawnObjects.append(trajectory)
     drawnObjects.append(trajectory_best)
-    drawnObjects.append(gps)
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timeStepStart, 7230), interval=1, 
-                               init_func=animateInit, blit=True, repeat=False);
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timeStepStart, 7230), interval=1, init_func=animateInit, blit=True, repeat=False);
 
 if saveMovie:
     FFMpegWriter = matplotlib.animation.writers['ffmpeg']
@@ -440,11 +458,13 @@ else:
 if saveFig:
     for i in range(0, nMeasurementsDrawMax) : 
         measurements[i].remove();
+    for i in range(0, nClutterDrawMax) :
+        clutter[i].remove()
     plt.setp(gps, ms=0.75)
     plt.setp(gps_legend, linewidth=1)
     txt.set_text(" ");
     trajectory.set_data([], [])
-    plt.legend([trajectory_best, landmarkCenters, landmarks[0], gps_legend], ["Estimated trajectory", "Estimated landmark mean", "Estimated landmark uncertainty", "GPS vehicle position" ], loc=4);
+    plt.legend([trajectory_best, landmarkCenters, landmarks[0], gps_legend], ["Estimated trajectory", "Estimated landmark position", "Estimated landmark uncertainty", "GPS vehicle trajectory" ], loc=4);
     plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
     plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
 
