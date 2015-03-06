@@ -73,7 +73,7 @@ Documentation will be generated in `doc/` directory.
 * Rao-Blackwellized Probability Hypothesis Density (RB-PHD) SLAM 2-D Simulation
     - Source: src/rbphdslam2dSim.cpp
     - Config: cfg/rbphdslam2dSim.xml
-    - Run: `bin/rbphdslam2dSim [random_seed=0] [cfg_file=cfg/rbphdslam2dSim.cfg]`
+    - Run: `bin/rbphdslam2dSim [random_seed] [cfg_file]`
 
 * Factored Solution to SLAM (FastSLAM 1.0) 2-D Simulation
     - Source: src/fastslam2dSim.cpp 
@@ -88,24 +88,27 @@ Documentation will be generated in `doc/` directory.
 * RB-PHD SLAM on the Victoria Park dataset
     - Source: src/rbphdslam_VictoriaPark.cpp
     - Config: cfg/rbphdslam_VictoriaPark.xml and cfg/rbphdslam_VictoriaPark_artificialClutter.xml
-    - Run: `bin/rbphdslam_VictoriaPark [random_seed] [xml_file]
+    - Run: `bin/rbphdslam_VictoriaPark [random_seed] [xml_file]`
 
 * FastSLAM on the Victoria Park dataset
     - Source: src/fastslam_VictoriaPark.cpp
     - Config: cfg/fastslam_VictoriaPark.xml and cfg/fastslam_VictoriaPark_artificialClutter.xml
-    - Run: `bin/fastslam_VictoriaPark [random_seed] [xml_file]
+    - Run: `bin/fastslam_VictoriaPark [random_seed] [xml_file]`
 
 * MH FastSLAM on the Victoria Park dataset
     - Source: src/mhfastslam_VictoriaPark.cpp
     - Config: cfg/mhfastslam_VictoriaPark.xml and cfg/mhfastslam_VictoriaPark_artificialClutter.xml
-    - Run: `bin/mhfastslam_VictoriaPark [random_seed] [xml_file]
+    - Run: `bin/mhfastslam_VictoriaPark [random_seed] [xml_file]`
 
 
 #### Visualization Tools ####
 
-For animating 2D SLAM results, run: `bin/animate2dSim.py [results_dir]`. 
+For animating 2D SLAM simulation results, run: `bin/animate2dSim.py [results_dir]`. 
 Edit the python script and set `saveMoive=False` to see animation.
 Set `saveMoive=True` to generate a mp4 file.
+
+For animating Victoria Park dataset results, run: `bin/animate_VictoriaPark.py [results_dir]`.
+Use `-h` or `--help` to see options.
 
 ### Version History ###
 

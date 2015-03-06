@@ -37,7 +37,7 @@ import numpy as np
 from scipy import ndimage
 
 import matplotlib
-#matplotlib.use("TKAgg");
+#matplotlib.use("Agg");
 #print matplotlib.__version__
 
 # Necessary to generate Type 1 fonts for pdf figures as required by IEEE for paper submissions
@@ -50,24 +50,33 @@ from matplotlib.patches import Ellipse, Circle
 from matplotlib import transforms
 import matplotlib.ticker as ticker   
 
-######### USER INPUT ####################
-saveMovie = False;
-saveFig = True
-useSatImg = False
-timeStepStart = 7220 # max 7230
+import argparse
+
+######### DEFAULT OPTION VALUES ####################
+#saveMovie = False
+#saveFig = True
+#useSatImg = True
+#timeStepStart = 0 # max 7230
 #########################################
+
+parser = argparse.ArgumentParser(description="Victoria Park data / results animation")
+parser.add_argument("-v", "--verbosity", help="increase output verbosity", action="store_true")
+parser.add_argument("--satImg", help="use satellite image in plot", action="store_true")
+parser.add_argument("--saveFig", help="save last animation frame as a pdf file", action="store_true")
+parser.add_argument("--saveMovie", help="save animation as movie (mp4) file", action="store_true")
+parser.add_argument("-s", "--startTimeStep", help="starting timestep", type=int, default=0, metavar='NUM')
+parser.add_argument("resultDir", help="path to result data")
+args = parser.parse_args()
 
 nLandmarksDrawMax = 1000;
 nMeasurementsDrawMax = 100;
 nClutterDrawMax = 30
 
-if len(sys.argv) < 2:
-    print "Usage: animate2dSim DATA_DIR\n";
-    sys.exit(0);
+#sys.exit(0);
 
 # Setting for file names
 
-dataDir = sys.argv[1];
+dataDir = args.resultDir
 if dataDir[-1] != '/':
     dataDir += '/'
 
@@ -188,7 +197,7 @@ plt.xlim([-125, 225])
 plt.ylim([-50, 250])
 
 
-if useSatImg and os.path.exists(dataDir + "VictoriaParkSatellite.png"):
+if args.satImg and os.path.exists(dataDir + "VictoriaParkSatellite.png"):
     satImg = np.flipud(plt.imread(dataDir + "VictoriaParkSatellite.png"))
     satImg = ndimage.rotate(satImg, -7, reshape=False)
     img_x_min = -195
@@ -197,7 +206,7 @@ if useSatImg and os.path.exists(dataDir + "VictoriaParkSatellite.png"):
     img_y_max = img_y_min + 375
     plt.imshow(satImg, zorder=0, origin='lower', extent=[img_x_min, img_x_max, img_y_min, img_y_max])
 else:
-    useSatImg = False;
+    args.satImg = False;
 
 measurements = [];
 for i in range(0, nMeasurementsDrawMax) : 
@@ -217,11 +226,11 @@ for i in range(0, nLandmarksDrawMax) :
 
 landmarkCenters, = plt.plot([], [], '+')
 landmarkCenters.set_color([1,0.6,0])
-if( not useSatImg ):
+if( not args.satImg ):
     landmarkCenters.set_color([0.2, 0.2 , 0.8])
 trajectory, = plt.plot(0, 0, 'b-')
 trajectory_best, = plt.plot(0, 0, 'y-')
-if( not useSatImg ):
+if( not args.satImg ):
     trajectory_best.set_color('k')
 gps, = plt.plot(0, 0, 'r.')
 gps_legend, = plt.plot(0, 0, 'r-')
@@ -249,7 +258,7 @@ def animateInit():
         landmarks[i].width = 0;
         landmarks[i].height = 0;
         landmarks[i].set_facecolor([1,0.6,0])
-        if( not useSatImg):
+        if( not args.satImg):
             landmarks[i].set_facecolor([0.2, 0.2, 0.8])
     return [];
 
@@ -265,8 +274,6 @@ def animate(i):
     global p_maxWeight
 
     if not p.any():
-        #print i
-        #print "No more messages"
         return []
 
     currentTime = p[0];
@@ -275,6 +282,9 @@ def animate(i):
     # Time
     txt.set_text("Time: {0}".format(currentTime));
     drawnObjects.append(txt);
+
+    if args.verbosity and i % 100 == 0:
+        print(i)
 
     if timeStepCurrent < i:
         while p.any() and timeStepCurrent < i:
@@ -447,15 +457,16 @@ def animate(i):
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timeStepStart, 7230), interval=1, init_func=animateInit, blit=True, repeat=False);
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(args.startTimeStep, 7230), interval=1, init_func=animateInit, blit=True, repeat=False);
 
-if saveMovie:
+if args.saveMovie:
     FFMpegWriter = matplotlib.animation.writers['ffmpeg']
-    animation.save(estimateMovieFile, writer=FFMpegWriter(fps = 30)) #extra_args=['-loglevel','quiet','-vcodec','libx264']
+    animation.save(estimateMovieFile, writer=FFMpegWriter(fps=30, codec='mpeg4', bitrate=300000))
+    # run ffmpeg -codecs on shell to see available video encoding codecs
 else:
     plt.show(block=False)
 
-if saveFig:
+if args.saveFig:
     for i in range(0, nMeasurementsDrawMax) : 
         measurements[i].remove();
     for i in range(0, nClutterDrawMax) :
@@ -464,6 +475,7 @@ if saveFig:
     plt.setp(gps_legend, linewidth=1)
     txt.set_text(" ");
     trajectory.set_data([], [])
+    particles.set_data([], [])
     plt.legend([trajectory_best, landmarkCenters, landmarks[0], gps_legend], ["Estimated trajectory", "Estimated landmark position", "Estimated landmark uncertainty", "GPS vehicle trajectory" ], loc=4);
     plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
     plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
