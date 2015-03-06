@@ -40,6 +40,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <vector>
+#include <list>
 
 #include "GaussianMixture.hpp"
 #include "KalmanFilter.hpp"
