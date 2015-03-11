@@ -62,11 +62,17 @@ import argparse
 parser = argparse.ArgumentParser(description="Victoria Park data / results animation")
 parser.add_argument("-v", "--verbosity", help="increase output verbosity", action="store_true")
 parser.add_argument("--satImg", help="use satellite image in plot", action="store_true")
+parser.add_argument("--satImgLowRes", help="use the low resolution satellite image in the plot to reduce figure file size", action="store_true")
+parser.add_argument("--allMeasure", help="If --saveFig is used, all measurements will be shown on the saved file. This will also force option --startTimeStep 0 to be set", action="store_true")
+parser.add_argument("--noLandmarkEst", help="Do not show landmark estimates", action="store_true")
+parser.add_argument("--noGPS", help="Do not show GPS trajectory", action="store_true")
 parser.add_argument("--saveFig", help="save last animation frame as a pdf file", action="store_true")
 parser.add_argument("--saveMovie", help="save animation as movie (mp4) file", action="store_true")
 parser.add_argument("-s", "--startTimeStep", help="starting timestep", type=int, default=0, metavar='NUM')
 parser.add_argument("resultDir", help="path to result data")
 args = parser.parse_args()
+if args.allMeasure:
+    args.startTimeStep = 0
 
 nLandmarksDrawMax = 1000;
 nMeasurementsDrawMax = 100;
@@ -173,6 +179,8 @@ bt_r = []
 m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
 
 z = np.fromfile(measurementFileHandle, count=4, sep=" ", dtype=float);
+allZ_x = []
+allZ_y = []
 
 c = np.array([])
 if(clutterFileHandle != 0):
@@ -205,6 +213,14 @@ if args.satImg and os.path.exists(dataDir + "VictoriaParkSatellite.png"):
     img_x_max = img_x_min + 475
     img_y_max = img_y_min + 375
     plt.imshow(satImg, zorder=0, origin='lower', extent=[img_x_min, img_x_max, img_y_min, img_y_max])
+elif args.satImgLowRes and os.path.exists(dataDir + "VictoriaParkSatellite_lowRes.png"):
+    satImg = np.flipud(plt.imread(dataDir + "VictoriaParkSatellite_lowRes.png"))
+    satImg = ndimage.rotate(satImg, -7, reshape=False)
+    img_x_min = -195
+    img_y_min = -80
+    img_x_max = img_x_min + 475
+    img_y_max = img_y_min + 375
+    plt.imshow(satImg, zorder=0, origin='lower', extent=[img_x_min, img_x_max, img_y_min, img_y_max])
 else:
     args.satImg = False;
 
@@ -212,6 +228,9 @@ measurements = [];
 for i in range(0, nMeasurementsDrawMax) : 
     measurement_line, = plt.plot([], [], 'r-');
     measurements.append( measurement_line );
+allZ, = plt.plot([], [], 'k.')
+if( not args.satImg and not args.satImgLowRes ):
+    allZ.set_color([0.2, 0.2 , 0.8])
 
 clutter = []
 for i in range(0, nClutterDrawMax) : 
@@ -226,11 +245,11 @@ for i in range(0, nLandmarksDrawMax) :
 
 landmarkCenters, = plt.plot([], [], '+')
 landmarkCenters.set_color([1,0.6,0])
-if( not args.satImg ):
+if( not args.satImg and not args.satImgLowRes ):
     landmarkCenters.set_color([0.2, 0.2 , 0.8])
 trajectory, = plt.plot(0, 0, 'b-')
 trajectory_best, = plt.plot(0, 0, 'y-')
-if( not args.satImg ):
+if( not args.satImg and not args.satImgLowRes ):
     trajectory_best.set_color('k')
 gps, = plt.plot(0, 0, 'r.')
 gps_legend, = plt.plot(0, 0, 'r-')
@@ -258,7 +277,7 @@ def animateInit():
         landmarks[i].width = 0;
         landmarks[i].height = 0;
         landmarks[i].set_facecolor([1,0.6,0])
-        if( not args.satImg):
+        if( not args.satImg and not args.satImgLowRes):
             landmarks[i].set_facecolor([0.2, 0.2, 0.8])
     return [];
 
@@ -364,32 +383,34 @@ def animate(i):
     m_y_min = 0;
     m_y_max = 0;
     while m.any() and abs(m[0] - currentTime) < 1e-12:
+
+        if not args.noLandmarkEst:
    
-        cov = np.array([ [ m[4], m[5] ], [ m[5], m[6] ] ]);
-        w = m[7];
-        eVal, eVec = np.linalg.eig(cov);
-        eVal = eVal.real;
-        a1 = 4*np.sqrt(eVal[0]); # Assume this is semi-major axis first
-        a2 = 4*np.sqrt(eVal[1]); # 3 dof, 4 stdev is roughly prob = 0.997
-        semiMajorAxis = eVec[:,0];
-        if a2 > a1:
-            aTmp = a1
-            a1 = a2
-            a2 = aTmp
-            semiMajorAxis = eVec[:,1];
-        a1Angle = np.arctan2(semiMajorAxis[1], semiMajorAxis[0]);
+            cov = np.array([ [ m[4], m[5] ], [ m[5], m[6] ] ]);
+            w = m[7];
+            eVal, eVec = np.linalg.eig(cov);
+            eVal = eVal.real;
+            a1 = 4*np.sqrt(eVal[0]); # Assume this is semi-major axis first
+            a2 = 4*np.sqrt(eVal[1]); # 3 dof, 4 stdev is roughly prob = 0.997
+            semiMajorAxis = eVec[:,0];
+            if a2 > a1:
+                aTmp = a1
+                a1 = a2
+                a2 = aTmp
+                semiMajorAxis = eVec[:,1];
+            a1Angle = np.arctan2(semiMajorAxis[1], semiMajorAxis[0]);
         
-        m_x.append(m[2])
-        m_y.append(m[3])
-        landmarks[m_idx].set_alpha(min(w, 0.75));
-        landmarks[m_idx].center = (m[2], m[3]);
-        landmarks[m_idx].height = a2;
-        landmarks[m_idx].width = a1;
-        t_start = ax.transData;
-        t_rot = transforms.Affine2D().rotate_around(m[2], m[3], a1Angle);
-        t_compound = t_rot + t_start;
-        landmarks[m_idx].set_transform(t_compound);
-        drawnObjects.append(landmarks[m_idx]);
+            m_x.append(m[2])
+            m_y.append(m[3])
+            landmarks[m_idx].set_alpha(min(w, 0.75));
+            landmarks[m_idx].center = (m[2], m[3]);
+            landmarks[m_idx].height = a2;
+            landmarks[m_idx].width = a1;
+            t_start = ax.transData;
+            t_rot = transforms.Affine2D().rotate_around(m[2], m[3], a1Angle);
+            t_compound = t_rot + t_start;
+            landmarks[m_idx].set_transform(t_compound);
+            drawnObjects.append(landmarks[m_idx]);
 
         if m[2] < m_x_min:
             m_x_min = m[2]
@@ -424,6 +445,9 @@ def animate(i):
         z_dir = pr_best[i] + z[2] - np.pi / 2;
         z_end = [px_best[i] + z[1]*np.cos(z_dir), py_best[i] + z[1]*np.sin(z_dir) ];
         measurements[nZ].set_data([px_best[i], z_end[0]], [py_best[i], z_end[1]]);
+        if args.allMeasure:
+            allZ_x.append(z_end[0])
+            allZ_y.append(z_end[1])
         drawnObjects.append(measurements[nZ]);
         z = np.fromfile(measurementFileHandle, count=4, sep=" ", dtype=float);
         nZ += 1;
@@ -435,6 +459,9 @@ def animate(i):
         c_dir = pr_best[i] + c[2] - np.pi / 2;
         c_end = [px_best[i] + c[1]*np.cos(c_dir), py_best[i] + c[1]*np.sin(c_dir) ];
         clutter[nZ].set_data([px_best[i], c_end[0]], [py_best[i], c_end[1]]);
+        if args.allMeasure:
+            allZ_x.append(c_end[0])
+            allZ_y.append(c_end[1])
         drawnObjects.append(clutter[nZ]);
         c = np.fromfile(clutterFileHandle, count=4, sep=" ", dtype=float);
         nZ += 1;
@@ -445,10 +472,12 @@ def animate(i):
 
     # GPS
     while g.any() and g[0] < currentTime:
-        gps_x.append(g[1])
-        gps_y.append(g[2])
+        if not args.noGPS:
+            gps_x.append(g[1])
+            gps_y.append(g[2])
         g = np.fromfile(gpsFileHandle, count=3, sep=" ", dtype=float)
-    gps.set_data(gps_x, gps_y)
+    if not args.noGPS:
+        gps.set_data(gps_x, gps_y)
     
     drawnObjects.append(gps)
     drawnObjects.append(particles)
@@ -467,6 +496,7 @@ else:
     plt.show(block=False)
 
 if args.saveFig:
+    
     for i in range(0, nMeasurementsDrawMax) : 
         measurements[i].remove();
     for i in range(0, nClutterDrawMax) :
@@ -476,8 +506,34 @@ if args.saveFig:
     txt.set_text(" ");
     trajectory.set_data([], [])
     particles.set_data([], [])
-    plt.legend([trajectory_best, landmarkCenters, landmarks[0], gps_legend], ["Estimated trajectory", "Estimated landmark position", "Estimated landmark uncertainty", "GPS vehicle trajectory" ], loc=4);
-    plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
+    trajectory_best.set_data(bt_x[0::10], bt_y[0::10])
+    
+    plt.setp(landmarkCenters, markersize=4)
+    matplotlib.rcParams.update({'font.size': 4})
+    plt.gcf().set_size_inches(4, 3.3)
+
+    legend_list = [trajectory_best]
+    legend_name = ["Estimated trajectory"]
+
+    if not args.noLandmarkEst:
+        legend_list.append(landmarkCenters)
+        legend_name.append("Estimated landmark position")
+        legend_list.append(landmarks[0])
+        legend_name.append("Estimated landmark uncertainty")
+
+    if args.allMeasure:
+        allZ.set_data(allZ_x, allZ_y)
+        plt.setp(allZ, markersize=2)
+        legend_list.append(allZ)
+        legend_name.append("Measurements")
+
+    if not args.noGPS:
+        legend_list.append(gps_legend)
+        legend_name.append("GPS vehicle trajectory")
+
+    plt.legend(legend_list, legend_name, loc='upper right', labelspacing=0.5);
+
+    plt.setp(plt.gca().get_legend().get_texts(), fontsize='5')
     plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
 
 measurementFileHandle.close();
