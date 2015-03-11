@@ -41,6 +41,7 @@
 #include <math.h>
 #include <vector>
 #include <stdio.h>
+#include <list>
 
 #ifdef _OPENMP
 #include <omp.h>
