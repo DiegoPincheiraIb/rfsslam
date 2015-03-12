@@ -79,9 +79,11 @@ ADD_LIBRARY(rfsslam
   src/ProcessModel_Ackerman2D.cpp
   src/MeasurementModel_Rng1D.cpp
   src/MeasurementModel_RngBrg.cpp
+  src/MeasurementModel_RngBrg_amplitude.cpp
   src/MeasurementModel_XY.cpp
   src/MeasurementModel_VictoriaPark.cpp
   src/KalmanFilter_RngBrg.cpp
+  src/KalmanFilter_RngBrg_amplitude.cpp
   src/HungarianMethod.cpp
   src/MurtyAlgorithm.cpp
   src/BruteForceAssignment.cpp
@@ -92,6 +94,9 @@ TARGET_LINK_LIBRARIES(rfsslam ${Boost_LIBRARIES})
 
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dSim ${Boost_LIBRARIES} rfsslam)
+
+ADD_EXECUTABLE(rbphdslam2dSim_amplitude src/rbphdslam2dSim_amplitude.cpp)
+TARGET_LINK_LIBRARIES(rbphdslam2dSim_amplitude ${Boost_LIBRARIES} rfsslam)
 
 ADD_EXECUTABLE(fastslam2dSim src/fastslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(fastslam2dSim ${Boost_LIBRARIES} rfsslam)

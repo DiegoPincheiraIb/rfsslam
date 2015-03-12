@@ -51,10 +51,10 @@ import matplotlib.ticker as ticker
 
 saveMovie = False;
 saveFig = True
-timestepStart = 2900
+timestepStart = 0
 
-nLandmarksDrawMax = 300;
-nMeasurementsDrawMax = 100;
+nLandmarksDrawMax = 500;
+nMeasurementsDrawMax = 500;
 
 if len(sys.argv) < 2:
     print "Usage: animate2dSim DATA_DIR\n";

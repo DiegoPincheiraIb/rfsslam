@@ -9,6 +9,5 @@ build/
 bin/
 !bin/*.py
 lib/
-scripts/
 install_manifest.txt
 *.orig

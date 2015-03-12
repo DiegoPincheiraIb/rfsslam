@@ -279,7 +279,7 @@ correct(const TPose &pose,
   ::Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, 1> m_updated; /**< mean - updated */
   ::Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime> P; /**< covariance */
   ::Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime> P_updated; /**< covariance - updated */
-  RandomVec< TMeasurement::Vec::RowsAtCompileTime > innov; /**< RandomVec form of innovation */
+  TMeasurement innov; /**< TMeasurement form of innovation */
 
  
   if(!pMeasurementModel_->measure( pose , landmark_current , measurement_exp , &H)){

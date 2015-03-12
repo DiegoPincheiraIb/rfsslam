@@ -7,7 +7,7 @@
     <logDirPrefix>data/rbphdslam/</logDirPrefix>
   </logging>
 
-  <timesteps>3000</timesteps>
+  <timesteps>6000</timesteps>
   <sec_per_timestep>0.1</sec_per_timestep>
 
   <trajectory>
@@ -32,7 +32,7 @@
     <rangeLimitMin>0.5</rangeLimitMin> <!-- measurement range limit				 -->
     <rangeLimitBuffer>0.05</rangeLimitBuffer> <!-- buffer zone around range limit in which negative information has no effects -->
     <probDetection>0.90</probDetection> <!-- probability of detection -->
-    <clutterIntensity>0.01</clutterIntensity> <!-- uniform clutter intensity -->
+    <clutterIntensity>0.1</clutterIntensity> <!-- uniform clutter intensity -->
     <varzr>0.0005</varzr> <!-- range measurement variance -->
     <varzb>0.00005</varzb> <!-- bearing measurement variance (0.0001 is roughly 0.6 deg standard deviation) -->
   </measurements>
