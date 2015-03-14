@@ -148,7 +148,7 @@ public:
 
     effNParticleThreshold_ = pt.get("config.filter.resampling.effNParticle", nParticles_);
     minUpdatesBeforeResample_ = pt.get("config.filter.resampling.minTimesteps", 1);
-    minMeausurementsBeforeResample_ = pt.get("config.filter.resampling.minMeasurements", 0);
+    minMeasurementsBeforeResample_ = pt.get("config.filter.resampling.minMeasurements", 0);
     
     gaussianMergingThreshold_ = pt.get<double>("config.filter.merge.threshold");
     gaussianMergingCovarianceInflationFactor_ = pt.get("config.filter.merge.covInflationFactor", 1.0);
@@ -373,7 +373,7 @@ public:
     pFilter_->config.birthGaussianCurrentMeasurementCountThreshold_ = birthGaussianCurrentMeasurementCountThreshold_;
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
     pFilter_->config.minUpdatesBeforeResample_ = minUpdatesBeforeResample_;
-    pFilter_->config.minMeausurementsBeforeResample_ = minMeausurementsBeforeResample_;
+    pFilter_->config.minMeasurementsBeforeResample_ = minMeasurementsBeforeResample_;
     pFilter_->config.newGaussianCreateInnovMDThreshold_ = newGaussianCreateInnovMDThreshold_;
     pFilter_->config.importanceWeightingMeasurementLikelihoodMDThreshold_ = importanceWeightingMeasurementLikelihoodMDThreshold_;
     pFilter_->config.importanceWeightingEvalPointCount_ = importanceWeightingEvalPointCount_;
@@ -707,7 +707,7 @@ private:
   double importanceWeightingEvalPointGuassianWeight_;
   double effNParticleThreshold_;
   int minUpdatesBeforeResample_;
-  int minMeausurementsBeforeResample_;
+  int minMeasurementsBeforeResample_;
   double gaussianMergingThreshold_;
   double gaussianMergingCovarianceInflationFactor_;
   double gaussianPruningThreshold_;

@@ -137,7 +137,7 @@ public:
     int minUpdatesBeforeResample_;
 
     /** Minimum numnber of measurements before resampling of particles*/
-    int minMeausurementsBeforeResample_;
+    int minMeasurementsBeforeResample_;
 
     /** Use the particle weighting strategty from Single-cluster PHD Filtering by Lee, et. al. */
     bool useClusterProcess_;
@@ -524,7 +524,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
   timer_particleResample_.resume();
   resampleOccured_ = false;
   if( nUpdatesSinceResample_ >= config.minUpdatesBeforeResample_ && 
-      nMeasurementsSinceResample_ >= config.minMeausurementsBeforeResample_){
+      nMeasurementsSinceResample_ >= config.minMeasurementsBeforeResample_){
     resampleOccured_ = this->resample();
   }
 
