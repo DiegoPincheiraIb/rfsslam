@@ -378,6 +378,7 @@ RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter 
   config.importanceWeightingMeasurementLikelihoodMDThreshold_ = 3.0;
   config.newGaussianCreateInnovMDThreshold_ = 0.2;
   config.minUpdatesBeforeResample_ = 1;
+  config.minMeasurementsBeforeResample_ = 1;
   
   nUpdatesSinceResample_ = 0;
   nMeasurementsSinceResample_ = 0;

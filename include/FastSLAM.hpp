@@ -315,6 +315,7 @@ FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
   }
 
   config.minUpdatesBeforeResample_ = 1;
+  config.minMeasurementsBeforeResample_ = 1;
   config.reportTimingInfo_ = false;
   config.landmarkExistencePrior_ = 0.5;
   config.mapExistencePruneThreshold_ = -3.0;

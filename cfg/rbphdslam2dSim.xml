@@ -7,7 +7,7 @@
     <logDirPrefix>data/rbphdslam/</logDirPrefix>
   </logging>
 
-  <timesteps>6000</timesteps>
+  <timesteps>3000</timesteps>
   <sec_per_timestep>0.1</sec_per_timestep>
 
   <trajectory>
