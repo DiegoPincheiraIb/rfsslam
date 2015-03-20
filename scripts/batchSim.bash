@@ -1,5 +1,7 @@
 #!/bin/bash
 
+LANG=en_US # so that seq doesn't use commas as decimal separator
+
 cd ~/Projects/phdFilter
 mkdir -p data/batch/rbphdslam
 
@@ -13,7 +15,7 @@ do
     for c in 0.0001 0.001 0.01 0.1 1 10
     do
 	
-	for trialseed in {0 1 2 3 4 5 6 7 8 28}
+	for trialseed in 0 1 2 3 4 5 6 7 8 28
 	do
 
 	    echo "Pd = $Pd   c = $c   seed = $trialseed"
