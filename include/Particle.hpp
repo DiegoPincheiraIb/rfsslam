@@ -168,7 +168,7 @@ template< class PoseType, class DataType >
 Particle<PoseType, DataType>& Particle<PoseType, DataType>::operator= ( PoseType const &x ){
   
   PoseType::operator= (x);
-  
+  return *this;
 }
 
 template< class PoseType, class DataType >
