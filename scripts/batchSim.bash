@@ -3,17 +3,17 @@
 cd ~/Projects/phdFilter
 mkdir -p data/batch/rbphdslam
 
-for Pd in 0.99 0.9 #$(seq 1.0 -0.1 0.1)
+for Pd in $(seq 1.0 -0.1 0.1)
 do
     if (( $(bc <<< "$Pd == 1.0") == 1 ))
     then
 	Pd=0.99  
     fi
 
-    for c in 0.0001 #0.0001 0.001 0.01 0.1 1 10
+    for c in 0.0001 0.001 0.01 0.1 1 10
     do
 	
-	for trial in {1..10}
+	for trialseed in {0 1 2 3 4 5 6 7 8 28}
 	do
 
 	    echo "Pd = $Pd   c = $c"
@@ -22,7 +22,7 @@ do
 	    sed -e "s/<probDetection>.*<\/probDetection>/<probDetection>$Pd<\/probDetection>/" -e "s/<clutterIntensity>.*<\/clutterIntensity>/<clutterIntensity>$c<\/clutterIntensity>/" -e "s/<logDirPrefix>.*<\/logDirPrefix>/<logDirPrefix>data\/batch\/rbphdslam\/<\/logDirPrefix>/" cfg/rbphdslam2dSim.xml > data/batch/rbphdslam/rbphdslam2dSim.xml
 
 	    # Run the simulator
-	    build/bin/rbphdslam2dSim 28 data/batch/rbphdslam/rbphdslam2dSim.xml
+	    build/bin/rbphdslam2dSim $trialseed data/batch/rbphdslam/rbphdslam2dSim.xml
 
 	    # Analyze results
 	    build/bin/analysis2dSim data/batch/rbphdslam/
