@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "MeasurementModel.hpp"
-#include "rfsslam/MeasurementModel_RngBrg.hpp"
+#include "MeasurementModel_RngBrg.hpp"
 
 namespace rfs{
   
