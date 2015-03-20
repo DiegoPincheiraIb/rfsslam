@@ -16,7 +16,7 @@ do
 	for trialseed in {0 1 2 3 4 5 6 7 8 28}
 	do
 
-	    echo "Pd = $Pd   c = $c"
+	    echo "Pd = $Pd   c = $c   seed = $trialseed"
 
 	    # Edit xml config files
 	    sed -e "s/<probDetection>.*<\/probDetection>/<probDetection>$Pd<\/probDetection>/" -e "s/<clutterIntensity>.*<\/clutterIntensity>/<clutterIntensity>$c<\/clutterIntensity>/" -e "s/<logDirPrefix>.*<\/logDirPrefix>/<logDirPrefix>data\/batch\/rbphdslam\/<\/logDirPrefix>/" cfg/rbphdslam2dSim.xml > data/batch/rbphdslam/rbphdslam2dSim.xml
