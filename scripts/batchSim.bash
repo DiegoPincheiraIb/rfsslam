@@ -1,6 +1,7 @@
 #!/bin/bash
 
 LANG=en_US # so that seq doesn't use commas as decimal separator
+LC_NUMERIC=en_US.UTF-8 # so that seq doesn't use commas as decimal separator
 
 cd ~/Projects/phdFilter
 mkdir -p data/batch/rbphdslam
