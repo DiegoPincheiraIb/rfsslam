@@ -112,7 +112,7 @@ public:
     int minUpdatesBeforeResample_;
 
     /** Minimum numnber of measurements before resampling of particles*/
-    int minMeausurementsBeforeResample_;
+    int minMeasurementsBeforeResample_;
 
     /** If true, timing information is written to the console every update*/
     bool reportTimingInfo_;
@@ -315,6 +315,7 @@ FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter >::
   }
 
   config.minUpdatesBeforeResample_ = 1;
+  config.minMeasurementsBeforeResample_ = 1;
   config.reportTimingInfo_ = false;
   config.landmarkExistencePrior_ = 0.5;
   config.mapExistencePruneThreshold_ = -3.0;
@@ -700,7 +701,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
   if( this->nParticles_ > config.nParticlesMax_){
     resampleOccured_ = this->resample( nParticles_init_, true );
   }else if( nUpdatesSinceResample_ >= config.minUpdatesBeforeResample_ && 
-	    nMeasurementsSinceResample_ >= config.minMeausurementsBeforeResample_){
+	    nMeasurementsSinceResample_ >= config.minMeasurementsBeforeResample_){
     resampleOccured_ = this->resample( nParticles_init_ );
   }
 

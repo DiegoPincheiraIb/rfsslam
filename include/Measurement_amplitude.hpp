@@ -88,7 +88,7 @@ protected:
   double cov_;
   double amplitude_;
 
-};
+  };
 
 }
 

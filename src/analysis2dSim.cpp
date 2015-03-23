@@ -32,7 +32,7 @@
 #include <boost/filesystem.hpp>
 #include "GaussianMixture.hpp"
 #include "Landmark.hpp"
-#include "OSPA.hpp"
+#include "COLA.hpp"
 #include "Particle.hpp"
 #include "Pose.hpp"
 #include <stdio.h>
@@ -64,7 +64,7 @@ public:
 };
 
 
-struct OSPA_Error{
+struct COLA_Error{
   
   double error; // combined average error
   double loc; // localization error
@@ -222,13 +222,13 @@ public:
    }
 
   /** Caclculate the error for landmark estimates 
-   *  \return OSPA errors
+   *  \return COLA errors
    */
-  OSPA_Error calcLandmarkError(){
+  COLA_Error calcLandmarkError(){
 
     
-    double const cutoff = 0.20; // ospa cutoff
-    double const order = 1.0; // ospa order
+    double const cutoff = 0.20; // cola cutoff
+    double const order = 1.0; // cola order
 
     std::vector<MM> map_e_k_M; // observed groundtruth map storage (for Mahananobis distance calculations)
     map_e_k_M.clear();
@@ -238,12 +238,12 @@ public:
       }
     }
 
-    OSPA_Error e_ospa;
-    e_ospa.t = t_currentStep_;
-    OSPA<MM> ospa(emap_e_M_, map_e_k_M, cutoff, order);
-    e_ospa.error = ospa.calcError(&(e_ospa.loc), &(e_ospa.card));
+    COLA_Error e_cola;
+    e_cola.t = t_currentStep_;
+    COLA<MM> cola(emap_e_M_, map_e_k_M, cutoff, order);
+    e_cola.error = cola.calcError(&(e_cola.loc), &(e_cola.card));
 
-    return e_ospa;
+    return e_cola;
   }
 
   /** Calculate the dead reckoning error */
@@ -398,7 +398,7 @@ int main(int argc, char* argv[]){
   double k = reader.readNextStepData();
   while( k != -1){
 
-    printf("Time: %f\n", k);
+    //printf("Time: %f\n", k);
     
     double ex, ey, er, ed;
     
@@ -408,15 +408,15 @@ int main(int argc, char* argv[]){
     reader.calcPoseError( ex, ey, er, ed, false );
     fprintf(pPoseEstErrorFile, "%f   %f   %f   %f   %f\n", k, ex, ey, er, ed);
 
-    printf("   error x: %f   error y: %f   error rot: %f   error dist: %f\n", ex, ey, er, ed);
+    //printf("   error x: %f   error y: %f   error rot: %f   error dist: %f\n", ex, ey, er, ed);
 
     int nLandmarksObserved;
     double cardEst = reader.getCardinalityEst( nLandmarksObserved );
-    OSPA_Error ospaError = reader.calcLandmarkError();
-    fprintf(pMapEstErrorFile, "%f   %d   %f   %f\n", k, nLandmarksObserved, cardEst, ospaError.loc + ospaError.card);
+    COLA_Error colaError = reader.calcLandmarkError();
+    fprintf(pMapEstErrorFile, "%f   %d   %f   %f\n", k, nLandmarksObserved, cardEst, colaError.error);
  
-    printf("   nLandmarks: %d   nLandmarks estimated: %f   OSPA error: %f\n", nLandmarksObserved, cardEst, ospaError.loc + ospaError.card);
-    printf("--------------------\n");
+    //printf("   nLandmarks: %d   nLandmarks estimated: %f   COLA error: %f\n", nLandmarksObserved, cardEst, colaError.loc + colaError.card);
+    //printf("--------------------\n");
     
     k = reader.readNextStepData();
   }

@@ -105,7 +105,7 @@ namespace rfs{
      */
     int getOptAssignment(unsigned int set1Idx, double *cost);
 
-  private:
+  protected:
     
     double c_; /**< cutoff threshold */
     double p_; /**< order of metric */
@@ -114,7 +114,7 @@ namespace rfs{
     unsigned int n2_; /**< size of set 2 */
     unsigned int n_; /**< size of cost matrix */
     SolnArr soln_; /**< Solution array */
-    double cost_; /**< OSPA error */
+    double cost_; /**< error */
 
   };
 
@@ -214,7 +214,7 @@ namespace rfs{
       }
     }
     calcError();
-    printf("\nOSPA Error: %f\n", cost_);
+    printf("\nError: %f\n", cost_);
     
   }
 
