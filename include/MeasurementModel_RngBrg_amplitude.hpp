@@ -138,8 +138,8 @@ public:
 				 bool &isCloseToSensingLimit);
 
   /**
-   * Determine the clutter intensity in measurement space.
-   * Uniform clutter intensity is assumed
+   * Determine the clutter intensity in measurement space, using Measurement amplitude information
+   * Uniform clutter intensity is assumed, an exponential distribution is asumed for the amplitude distribution.
    * \param[in] z measurement point at which clutter intensity will be determined
    * \param[in] nZ the cardinality of Z, of which z is a member.
    * \return clutter intensity
