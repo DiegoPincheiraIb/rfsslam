@@ -82,10 +82,12 @@ for i in range(1, data.shape[0]):
         data_stat = np.vstack( [data_stat, data_add])
         c_unique.append(np.log10(c_current))
 
+        print trajErrors
+
         Pd_current = data[i,0]
         c_current = data[i,1]
-        trajError_sum = data[i,2]
-        mapCola_sum = data[i,3]
+        trajErrors = [data[i,2]]
+        mapColas = [data[i,3]]
 
 data_add = np.array([Pd_current, np.log10(c_current), np.mean(trajErrors), np.std(trajErrors), np.mean(mapColas), np.std(mapColas) ])
 data_stat = np.vstack( [data_stat, data_add])
