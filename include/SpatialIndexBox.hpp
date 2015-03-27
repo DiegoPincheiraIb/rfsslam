@@ -54,47 +54,71 @@ namespace rfs{
 
     typedef Eigen::Matrix<double, nDim, 1> Pos; /**< Location of a point */
     typedef boost::shared_ptr<DataType> DataPtr; /**< Data pointer */
+    typedef boost::shared_ptr< Box<nDim, DataType> > Ptr; /**< Pointer to box */
 
     enum POSITION{
       POS_LOWER, POS_UPPER, POS_CENTER
     };
     
     /** 
-     * Constructor 
+     * \brief Constructor 
      * \param[in] length size of box
      * \param[in] pos Array specifying the location of the minimum corner.
      */
     Box(double length = 1, 
 	Eigen::Matrix<double, nDim, 1> pos = Eigen::Matrix<double, nDim, 1>::Zero() );
 
-    /** Destructor */
+    /** \brief Destructor */
     ~Box();
+
+    /** 
+     * \brief Assignment operator 
+     * \warn It is the responsibility of the caller to ensure that the bounds are equal
+     */
+    Box& operator=(const Box& other);
+    
     
     /** 
-     * Get the position of the box 
+     * \brief Get the position of the box 
      * \param[in] p which part of the box 
      */
     Eigen::Matrix<double, nDim, 1> getPos(POSITION p = POS_LOWER);
 
     /**
-     * Add data to box
+     * \brief Add data to box
      * \param[in] data Data to add
      */
     void addData(DataPtr data);
 
     /**
-     * Get the number of data points stored in this box
+     * \brief Get the number of data points stored in this box
      */
     unsigned int getDataSize();
 
     /**
-     * Get a data point 
+     * \brief Get a data point 
      * \param[in] idx Data point index.
      * \return pointer to Data, or NULL pointer if index is invalid
      */
     DataPtr getData(unsigned int idx);
 
+    /**
+     * \brief Remove a data point according to its index, or remove all data points stored in the box
+     * \info for single data point removal, the last point in the list is used to replace the erased point
+     * \param[in] idx Data point index. Default of -1 will erase all data points
+     * \return True if successful
+     */
+    bool removeData(int idx = -1);
+
+    /**
+     * \brief Remove a data point by comparing actual data stored
+     * \param[in] data Data point
+     * \return True if successful
+     */
+    bool removeData(DataPtr data);
+
     double const size_; /**< size of the box */
+   
 
   protected:
     
@@ -105,10 +129,12 @@ namespace rfs{
      */
     bool isInside(Pos p);
 
-    Pos bound_min_; /**< point defining the intersection of all minimum bounds */
-    Pos bound_max_; /**< point defining the intersection of all maximum bounds */
+    Pos bound_min_; /**< \brief point defining the intersection of all minimum bounds */
+    Pos bound_max_; /**< \brief point defining the intersection of all maximum bounds */
 
-    std::vector< DataPtr > data_; /**< data storage */
+    std::vector< DataPtr > data_; /**< \brief data storage */
+
+    unsigned int nData_; /**< \brief number of data points contained */
 
   };
 
@@ -126,6 +152,24 @@ namespace rfs{
 
   template <unsigned int nDim, class DataType>
   Box<nDim, DataType>::~Box(){}
+
+  template <unsigned int nDim, class DataType>
+  Box<nDim, DataType>& Box<nDim, DataType>::operator=(const Box<nDim, DataType> &other){
+
+    TreeNode< Box<nDim, DataType> >::operator=(other);
+
+    bound_min_ = other.bound_min_;
+    bound_max_ = other.bound_max_;
+
+    int nDataDiff = other.nData_ - nData_;
+    nData_ = other.nData_;
+
+    Ptr parent = this->getParent();
+    while( parent.get() != NULL ){
+      parent->nData_+= nDataDiff;
+      parent = parent->getParent();
+    }
+  }
  
   template <unsigned int nDim, class DataType>
   typename Box<nDim, DataType>::Pos Box<nDim, DataType>::getPos(Box<nDim, DataType>::POSITION p){
@@ -151,6 +195,13 @@ namespace rfs{
   template <unsigned int nDim, class DataType>
   void Box<nDim, DataType>::addData( Box<nDim, DataType>::DataPtr data){
     data_.push_back(data);
+
+    nData_++;
+    Ptr parent = this->getParent();
+    while( parent.get() != NULL ){
+      parent->nData_++;
+      parent = parent->getParent();
+    }
   }
 
   template <unsigned int nDim, class DataType>
@@ -166,6 +217,45 @@ namespace rfs{
     }else{
       return DataPtr();
     }
+  }
+
+  template <unsigned int nDim, class DataType>
+  bool Box<nDim, DataType>::removeData(int idx){
+
+    if(idx >= data_.size() ){
+      return false;
+    }
+
+    int nDataRemoved = 0;
+    if(data_.size() == 1 || idx == -1){
+      nDataRemoved = data_.size();
+      data_.clear();
+    }else{
+      nDataRemoved = 1;
+      data_[idx] = data_.back();
+      data_.pop_back();
+    }
+    nData_ -= nDataRemoved;
+    Ptr parent = this->getParent();
+    while( parent.get() != NULL ){
+      parent->nData_-= nDataRemoved;
+      parent = parent->getParent();
+    }
+
+    return true;
+
+  }
+
+  template <unsigned int nDim, class DataType>
+  bool Box<nDim, DataType>::removeData(DataPtr data){
+
+    for(int i = 0; i < data_.size(); i++){
+      if(data_[i] == data){
+	return removeData(i);
+      }
+    }
+    return false;
+
   }
   
 }

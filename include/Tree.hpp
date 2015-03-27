@@ -40,7 +40,6 @@ namespace rfs{
 
 /** 
  * \class TreeNode
- * A generic tree node
  * \brief A generic tree node, defined using curiously recurring template pattern (CRTP)
  * \tparam Derived the derived class
  */
@@ -52,50 +51,51 @@ public:
 
   typedef boost::shared_ptr<Derived> DerivedPtr;
 
-  /** Constructor 
+  /** 
+   * \brief Constructor 
    * \param[in] n_children_exp the number of children this node is expected to have,
    * used for more efficient memory allocation. Not mandatory.
    */
   TreeNode(size_t n_children_exp = 0);
   
-  /** Destructor, virtual becuase other classes will be derived from this class*/
+  /** \brief Destructor, virtual becuase other classes will be derived from this class*/
   virtual ~TreeNode();
 
   /** 
-   * Get a pointer to the parent node
+   * \brief Get a pointer to the parent node
    * \return pointer to parent, or NULL if this node has no parent
    */
   DerivedPtr getParent();
   
   /**
-   * Get pointers to a child
+   * \brief Get pointers to a child
    * \param[in] idx child index
    * \return a pointer to the child
    */ 
   DerivedPtr getChild(size_t idx);
 
   /**
-   * Get the number of children that this node has
+   * \brief Get the number of children that this node has
    * \return number of children
    */
   size_t getChildrenCount();
 
   /**
-   * Create a new child for this node. 
+   * \brief Create a new child for this node. 
    * \return pointer to new child node
    */
   DerivedPtr addChild();
 
   /**
-   * Add a new child to this node.
+   * \brief Add a new child to this node.
    * \param child pointer to child
    */
   void addChild(DerivedPtr child);
 
 protected:
 
-  std::vector< boost::shared_ptr<Derived> > children_;
-  DerivedPtr parent_;
+  std::vector< boost::shared_ptr<Derived> > children_; /**< \brief children of this node */
+  DerivedPtr parent_; /**< \brief parent of this node */
 };
 
 }
