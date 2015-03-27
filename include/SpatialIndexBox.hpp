@@ -117,17 +117,17 @@ namespace rfs{
      */
     bool removeData(DataPtr data);
 
-    double const size_; /**< size of the box */
-   
-
-  protected:
-    
     /**
-     * Check if a point is within a box
+     * \brief Check if a point is within a box
      * \param[in] p query point
      * \return True or False
      */
     bool isInside(Pos p);
+
+    double const size_; /**< size of the box */
+   
+
+  protected:
 
     Pos bound_min_; /**< \brief point defining the intersection of all minimum bounds */
     Pos bound_max_; /**< \brief point defining the intersection of all maximum bounds */
@@ -151,7 +151,10 @@ namespace rfs{
   }
 
   template <unsigned int nDim, class DataType>
-  Box<nDim, DataType>::~Box(){}
+  Box<nDim, DataType>::~Box(){
+
+    removeData(); // to update parents' nData_ count
+  }
 
   template <unsigned int nDim, class DataType>
   Box<nDim, DataType>& Box<nDim, DataType>::operator=(const Box<nDim, DataType> &other){
@@ -206,7 +209,7 @@ namespace rfs{
 
   template <unsigned int nDim, class DataType>
   unsigned int Box<nDim, DataType>::getDataSize(){
-    return data_.size();
+    return nData_;
   }
 
   template <unsigned int nDim, class DataType>

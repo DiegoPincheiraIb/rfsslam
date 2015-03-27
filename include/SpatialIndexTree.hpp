@@ -92,6 +92,21 @@ namespace rfs{
      * \return position
      */
     Pos getDataPos(DataPtr d);
+
+    /**
+     * \brief Get all the data points within the query box
+     * \param[in] qbox_min the min corner of the query box
+     * \param[in] qbox_max the max corner of the query box
+     * \param[out] query_result The result vector
+     */
+    void queryDataInBox(Pos &qbox_min, Pos &qbox_max, std::vector<DataPtr> &query_result);
+
+    /**
+     * \brief Find the closest data point to query point
+     * \param[in] qp query point
+     * \return Pointer to closest data point
+     */
+    DataPtr queryClosestPt(Pos qp);
     
 
   protected:
@@ -186,7 +201,33 @@ namespace rfs{
   bool SpatialIndexTree<nDim, DataType>::removeData(SpatialIndexTree<nDim, DataType>::DataPtr data){
     
     TreeBoxPtr b = search(getDataPos(data));
-    return b->removeData(data);
+    if( b->removeData(data) ){
+      // See if we can simplify the tree
+      TreeBoxPtr p = b->getParent();
+      TreeBoxPtr c;
+      int nChildrenWithData = 0;
+      for(int i = 0; i < p->getChildrenCount; i++){
+
+	if( p->getChild(i)->getDataSize() > 0 ){
+	  if( c.get() == NULL )
+	    c = p->getChild(i);
+	  else{
+	    c = TreeBoxPtr();
+	    break;
+	  }
+	}
+      }
+      if( c.get() != NULL ){ // only 1 child has data, move everything to p and remove all children
+	
+	for(int i = 0; i < c->getDataSize(); i++){
+	  p->addData( c->getData(i) ); 
+	}
+	p->removeChildren();
+      }
+
+      return true;
+    }
+    return false;
 
   }
 
@@ -246,6 +287,103 @@ namespace rfs{
   SpatialIndexTree<nDim, DataType>::getDataPos(SpatialIndexTree<nDim, DataType>::DataPtr d){
 
     return d->get().template head<nDim>;
+  }
+
+  template<unsigned int nDim, class DataType>
+  void SpatialIndexTree<nDim, DataType>::queryDataInBox(Pos &qbox_min, Pos &qbox_max, std::vector<DataPtr> &query_result){
+
+    // Find the smallest box in the tree that encapsulates the query box
+    TreeBoxPtr b = root_;
+    bool smallerBoxFound = true;
+    while( smallerBoxFound == true ){
+      smallerBoxFound = false;
+      for(int i = 0; i < b->getChildrenCount(); i++){
+	TreeBoxPtr c = b->getChild(i);
+	if( c->isInside( qbox_min ) && c->isInside( qbox_max ) ){
+	  b = c;
+	  smallerBoxFound = true;
+	  break;
+	} 
+      }
+    }
+
+    std::vector<TreeBoxPtr> traverseStack;
+    traverseStack.push_back(b);
+
+    while(!traverseStack.empty()){
+
+      // pop from stack
+      b = traverseStack.back();
+
+      // if there are children push children into stack
+      if(b->getChildrenCount() > 0){
+	for(int i = b->getChildrenCount() - 1; i >= 0 ; i--){
+	  traverseStack.push_back( b->getChild(i) );
+	}
+      }else{ // if no children, do check to see if data is inside query box
+
+	// whole box b fits in query box
+	Pos b_max = b->getPos( TreeBox::POS_UPPER );
+	Pos b_min = b->getPos( TreeBox::POS_LOWER );
+	if( (qbox_max - b_max).minCoeff() >= 0 && (qbox_min - b_max).maxCoeff() <= 0 &&
+	    (qbox_max - b_min).minCoeff() >= 0 && (qbox_min - b_min).maxCoeff() <= 0){
+	  for(int i = 0; i < b->getDataSize(); i++){
+	    query_result.push_back( b->getData(i) );
+	  }
+	}else{ // box b partially fix in query box
+	  for(int i = 0; i < b->getDataSize(); i++){
+	    Pos x = getDataPos(b->getData(i));
+	    if( (qbox_max - x).minCoeff() >= 0 && (qbox_min - x).maxCoeff() <= 0 ){
+	      query_result.push_back( b->getData(i) );
+	    }
+	  }
+	}
+
+      }
+
+    } // while(!traverStack.empty())
+
+  }
+
+  template<unsigned int nDim, class DataType>
+  typename SpatialIndexTree<nDim, DataType>::DataPtr 
+  SpatialIndexTree<nDim, DataType>::queryClosestPt(SpatialIndexTree<nDim, DataType>::Pos qp){
+
+    TreeBoxPtr b = search(qp);
+    if( b.get() == NULL ){
+      b = root_;
+    }
+    
+    // Get a point d from within b
+    DataPtr d();
+    while(d.get() == NULL){
+      
+      if(b->getDataSize() > 0 ){ // b is not empty
+	if(b->getChildrenCount() == 0){ // b does not have children, so b must contain data
+	  d = b->getData(0);
+	}else{ // b has children
+	  for(int i = 0; i < b->getChildrenCount(); i++){
+	    if( b->getChild(i)->getDataSize() > 0){
+	      b = b->getChild(i);
+	      break;
+	    }
+	  }
+	}
+      }else{ // b is empty
+	b = b->getParent();
+      }
+    }
+
+    // Construct a query box using qp and d
+    Pos dp = getDataPos(d);
+    double dist = (dp - qp).norm();
+    Pos qbox_min = qp - Pos::ones() * dist;
+    Pos qbox_max = qp - Pos::ones() * dist;
+
+    // todo need to check all overlapping boxes - so check within box that fully contains the query box
+
+    // todo see if we can find a smaller query box (i.e., closer point)
+
   }
 
 

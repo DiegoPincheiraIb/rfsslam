@@ -92,6 +92,11 @@ public:
    */
   void addChild(DerivedPtr child);
 
+  /**
+   * \brief Remove all children
+   */
+  void removeChildren();
+
 protected:
 
   std::vector< boost::shared_ptr<Derived> > children_; /**< \brief children of this node */
@@ -145,6 +150,14 @@ namespace rfs{
     child->parent_ = this->shared_from_this();
     children_.push_back(child);
     return;
+  }
+
+  template<class Derived>
+  void TreeNode<Derived>::removeChildren(){
+    for(int i = 0; i < children_.size(); i++){
+      children_[i]->parent_ = DerivedPtr();
+    }
+    children_.clear();
   }
 
 }
