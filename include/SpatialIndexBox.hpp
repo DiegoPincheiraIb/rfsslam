@@ -88,7 +88,7 @@ namespace rfs{
      * \brief Add data to box
      * \param[in] data Data to add
      */
-    void addData(DataPtr data);
+    void addData(const DataPtr &data);
 
     /**
      * \brief Get the number of data points stored in this box
@@ -123,6 +123,29 @@ namespace rfs{
      * \return True or False
      */
     bool isInside(Pos p);
+
+    /**
+     * \brief Check if a box is within a box
+     * \param[in] b query box
+     * \return True or False
+     */
+    bool isInside(Box<nDim, DataType> &b);
+
+    /**
+     * \brief Check if a box is within a box
+     * \param[in] b_max query box max corner
+     * \param[in] b_min query box min corner
+     * \return True or False
+     */
+    bool isInside(Pos &b_max, Pos &b_min);
+
+    /**
+     * \brief Check if a point is within a distance d from the box
+     * \param[in] p query point
+     * \param[in] d query distance
+     * \return True or False
+     */
+    bool isWithinDistance(Pos p, double d);
 
     double const size_; /**< size of the box */
    
@@ -196,7 +219,21 @@ namespace rfs{
   }
 
   template <unsigned int nDim, class DataType>
-  void Box<nDim, DataType>::addData( Box<nDim, DataType>::DataPtr data){
+  bool Box<nDim, DataType>::isInside(Box<nDim, DataType> &b){
+
+    return isInside(b.getPos(POS_UPPER), b.getPos(POS_LOWER));
+  }
+
+  template <unsigned int nDim, class DataType>
+  bool Box<nDim, DataType>::isInside(Pos &b_max, Pos &b_min){
+
+    if( isInside( b_max ) && isInside( b_min ) )
+      return true;
+    return false;
+  }
+
+  template <unsigned int nDim, class DataType>
+  void Box<nDim, DataType>::addData( const Box<nDim, DataType>::DataPtr &data){
     data_.push_back(data);
 
     nData_++;
@@ -260,6 +297,14 @@ namespace rfs{
     return false;
 
   }
+
+  template <unsigned int nDim, class DataType>
+  bool Box<nDim, DataType>::isWithinDistance(Pos p, double d){
+
+    Box<nDim, DataType> check_box( getPos(POS_CENTER), d*2 );
+    return check_box.isInside(p);
+  }
+
   
 }
 
