@@ -150,8 +150,8 @@ namespace rfs{
     
     // Data position
     Pos x = getDataPos(data);
-    
     TreeBoxPtr b = search(x);
+
     // Check to see if we need to replace the current root with a new one with bigger bounding box
     while(b.get() == NULL){
       
@@ -160,9 +160,27 @@ namespace rfs{
       root_ = TreeBoxPtr( new TreeBox( root_old->size_*2, Pos::Ones() * -root_old->size_) );
       branch(root_); 
 
-      // root_old is one of the child of root_, so it needs to be put back in place;
-      TreeBoxPtr root_old_as_new_branch  = search( root_old->getPos( TreeBox::POS_CENTER ) );
-      *root_old_as_new_branch = *root_old;
+      // Children of root_old need to become children of the new branches of root_
+      for(int i = 0; i < root_old->getChildrenCount(); i++){
+	for(int c = 0; c < root_->getChildrenCount(); c++){
+
+	  if(root_->getChild(c)->isInside( root_old->getChild(i)->getPos(TreeBox::POS_CENTER) )){
+	    if(root_old->getChild(i)->getDataSize() > 0){
+
+	      branch(root_->getChild(c));
+	      for(int j = 0; j < root_->getChild(c)->getChildrenCount(); j++){
+		if(root_->getChild(c)->getChild(j)->isInside( root_old->getChild(i)->getPos(TreeBox::POS_CENTER)) ){
+		  root_->getChild(c)->replaceChild(j, root_old->getChild(i));
+		  break;
+		}
+	      }
+	    }
+
+	    break;
+	  } 
+	 
+	}
+      }
 
       // check if data point can be placed in the new root, now with a bigger bounding box;
       b = search(x);
@@ -184,10 +202,12 @@ namespace rfs{
 	  break;
 	}
       } 
+      
       if(divide){
 	branch(b);
-	// place existing data points in b into children boxes
-	for(int n = 0; n < b->getDataSize(); n++){
+	// place existing data points of b into children boxes
+	int n_max = b->getDataSize();
+	for(int n = 0; n < n_max; n++){
 	  DataPtr d = b->getData(n);
 	  TreeBoxPtr c = search( getDataPos(d), b);
 	  c->addData(d);
@@ -198,6 +218,7 @@ namespace rfs{
 	// determine which child data should be added to
 	b = search(x, b);
       }
+      
       b->addData(data);
     }
 
@@ -212,10 +233,11 @@ namespace rfs{
     TreeBoxPtr b = search(getDataPos(data));
     if( b->removeData(data) ){
       // See if we can simplify the tree
+
       TreeBoxPtr p = b->getParent();
       TreeBoxPtr c;
       int nChildrenWithData = 0;
-      for(int i = 0; i < p->getChildrenCount; i++){
+      for(int i = 0; i < p->getChildrenCount(); i++){
 
 	if( p->getChild(i)->getDataSize() > 0 ){
 	  if( c.get() == NULL )
@@ -226,12 +248,16 @@ namespace rfs{
 	  }
 	}
       }
-      if( c.get() != NULL ){ // only 1 child has data, move everything to p and remove all children
-	
+      if( c.get() != NULL ){ // only child has data, move everything to p and remove all children
+
+	std::cout << "data size " << c->getDataSize() << std::endl;
+	std::cout << "data size " << p->getDataSize() << std::endl;
 	for(int i = 0; i < c->getDataSize(); i++){
 	  p->addData( c->getData(i) ); 
 	}
 	p->removeChildren();
+	std::cout << "data size " << p->getDataSize() << std::endl;
+	
       }
 
       return true;
@@ -255,11 +281,17 @@ namespace rfs{
     }
     
     while( b->getChildrenCount() != 0 ){
+      bool childFound = false;
       for(int c = 0; c < nChildrenPerBox; c++){
 	if (b->getChild(c)->isInside(p)){
 	  b = b->getChild(c);
+	  childFound = true;
 	  break;
 	}
+      }
+      if(!childFound){ // if program reaches this point, something is wrong
+	std::cerr << "Spatial index tree search error\n";
+	throw;
       }
     }
     return b;
@@ -282,7 +314,7 @@ namespace rfs{
 	x[d] = (i >> d) & 1 == 1; 
       }
       x *= childBoxSize;
-      x += root_->getPos();
+      x += b->getPos();
 
       b->addChild( TreeBoxPtr(new TreeBox(childBoxSize, x)) );
 
@@ -463,7 +495,7 @@ namespace rfs{
       for(int i = 0; i < nDim; i++){
 	dataFile << std::setw(8) << b_max[i];
       }
-      dataFile << std::endl;
+      dataFile << std::setw(8) << b->getDataSize() << std::endl;
 
       if(b->getChildrenCount() > 0){
 	for(int i = b->getChildrenCount() - 1; i >= 0 ; i--){
@@ -476,7 +508,10 @@ namespace rfs{
 	  for(int i = 0; i < nDim; i++){
 	    dataFile << std::setw(8) << dp[i];
 	  }
-	  dataFile << std::endl;
+	  for(int i = 0; i < nDim; i++){
+	    dataFile << std::setw(8) << dp[i];
+	  }
+	  dataFile << std::setw(8) << 0 << std::endl;
 	}
       }
       

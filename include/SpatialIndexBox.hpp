@@ -85,6 +85,20 @@ namespace rfs{
     Eigen::Matrix<double, nDim, 1> getPos(POSITION p = POS_LOWER);
 
     /**
+     * \brief Add a child box
+     * \param[in] b child box to add
+     */
+    void addChild(const Ptr& b);
+
+    /**
+     * \brief Replace an existing child box with a new ond
+     * \param[in] idx index of child to be replaced
+     * \param[in] b new child box
+     * \return True if successful
+     */
+    bool replaceChild(uint idx, const Ptr& b);
+
+    /**
      * \brief Add data to box
      * \param[in] data Data to add
      */
@@ -118,26 +132,26 @@ namespace rfs{
     bool removeData(DataPtr data);
 
     /**
-     * \brief Check if a point is within a box
+     * \brief Check if a point is within this box
      * \param[in] p query point
      * \return True or False
      */
-    bool isInside(Pos p);
+    bool isInside(const Pos &p);
 
     /**
-     * \brief Check if a box is within a box
+     * \brief Check if a box is within this box
      * \param[in] b query box
      * \return True or False
      */
-    bool isInside(Box<nDim, DataType> &b);
+    bool isInside(const Ptr &b);
 
     /**
-     * \brief Check if a box is within a box
+     * \brief Check if a box is within this box
      * \param[in] b_max query box max corner
      * \param[in] b_min query box min corner
      * \return True or False
      */
-    bool isInside(Pos &b_max, Pos &b_min);
+    bool isInside(const Pos &b_max, const Pos &b_min);
 
     /**
      * \brief Check if a point is within a distance d from the box
@@ -209,7 +223,28 @@ namespace rfs{
   }
 
   template <unsigned int nDim, class DataType>
-  bool Box<nDim, DataType>::isInside(Box<nDim, DataType>::Pos p){
+  void Box<nDim, DataType>::addChild(const Ptr& b){
+
+    TreeNode< Box<nDim, DataType> >::addChild(b);
+    nData_ += b->getDataSize();
+  }
+
+  template <unsigned int nDim, class DataType>
+  bool Box<nDim, DataType>::replaceChild(uint idx, const Ptr& b){
+
+    if( idx >= this->getChildrenCount() )
+      return false;
+
+    nData_ -= this->getChild(idx)->getDataSize();
+    nData_ += b->getDataSize();
+
+    this->children_[idx] = b;
+
+    return true;
+  }
+
+  template <unsigned int nDim, class DataType>
+  bool Box<nDim, DataType>::isInside(const Box<nDim, DataType>::Pos &p){
     
     if( (bound_max_ - p).minCoeff() >= 0 && (bound_min_ - p).maxCoeff() <= 0 ){
       return true;
@@ -219,13 +254,13 @@ namespace rfs{
   }
 
   template <unsigned int nDim, class DataType>
-  bool Box<nDim, DataType>::isInside(Box<nDim, DataType> &b){
+  bool Box<nDim, DataType>::isInside(const Ptr &b){
 
-    return isInside(b.getPos(POS_UPPER), b.getPos(POS_LOWER));
+    return isInside(b->getPos(POS_UPPER), b->getPos(POS_LOWER));
   }
 
   template <unsigned int nDim, class DataType>
-  bool Box<nDim, DataType>::isInside(Pos &b_max, Pos &b_min){
+  bool Box<nDim, DataType>::isInside(const Pos &b_max, const Pos &b_min){
 
     if( isInside( b_max ) && isInside( b_min ) )
       return true;
