@@ -87,6 +87,14 @@ public:
   DerivedPtr addChild();
 
   /**
+   * \brief Replace a current child with a new one
+   * \param[in] idx Child index
+   * \param[in] c new child
+   * \return True if successful
+   */
+  bool replaceChild(uint idx, const DerivedPtr& c);
+
+  /**
    * \brief Add a new child to this node.
    * \param child pointer to child
    */
@@ -150,6 +158,17 @@ namespace rfs{
     child->parent_ = this->shared_from_this();
     children_.push_back(child);
     return;
+  }
+
+  template<class Derived>
+  bool TreeNode<Derived>::replaceChild(uint idx, const TreeNode<Derived>::DerivedPtr& c){
+    
+    if( idx >= this->getChildrenCount() )
+      return false;
+    this->children_[idx]->parent_.reset();
+    this->children_[idx] = c;
+    this->children_[idx]->parent_ = this->shared_from_this();
+    return true;
   }
 
   template<class Derived>

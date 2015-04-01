@@ -187,7 +187,7 @@ namespace rfs{
     }
     
     if(b->size_ == minBoxSize_ || b->getDataSize() == 0 ){ // b is the smallest box allowed, or it is empty
-
+     
       b->addData(data);
 
     }else{ // check if adding data point will divide b

@@ -235,10 +235,16 @@ namespace rfs{
     if( idx >= this->getChildrenCount() )
       return false;
 
-    nData_ -= this->getChild(idx)->getDataSize();
-    nData_ += b->getDataSize();
+    int nDataDiff = b->getDataSize() - this->getChild(idx)->getDataSize();
+    
+    TreeNode< Box<nDim, DataType> >::replaceChild(idx, b);
 
-    this->children_[idx] = b;
+    nData_ += nDataDiff;
+    Ptr parent = this->getParent();
+    while( parent.get() != NULL ){
+      parent->nData_+= nDataDiff;
+      parent = parent->getParent();
+    }
 
     return true;
   }
@@ -270,10 +276,14 @@ namespace rfs{
   template <unsigned int nDim, class DataType>
   void Box<nDim, DataType>::addData( const Box<nDim, DataType>::DataPtr &data){
     data_.push_back(data);
-
+    std::cout << "data in box\n";
+    std::cout << this->getPos() << std::endl << this->getPos(POS_UPPER) << std::endl <<std::endl;
     nData_++;
     Ptr parent = this->getParent();
     while( parent.get() != NULL ){
+      std::cout << "parent\n";
+      std::cout << parent->getPos(POS_LOWER) << std::endl 
+		<< parent->getPos(POS_UPPER) << std::endl << std::endl;
       parent->nData_++;
       parent = parent->getParent();
     }
@@ -297,20 +307,25 @@ namespace rfs{
   template <unsigned int nDim, class DataType>
   bool Box<nDim, DataType>::removeData(int idx){
 
-    if(idx >= data_.size() ){
-      return false;
-    }
-
-    int nDataRemoved = 0;
-    if(data_.size() == 1 || idx == -1){
-      nDataRemoved = data_.size();
+    uint nDataRemoved = 0;
+    if(idx < 0){
+      uint nData_allChildren = 0;
+      for(int i = 0; i < this->getChildrenCount(); i++){
+	nData_allChildren += this->getChild(i)->getDataSize();
+      }
+      nDataRemoved = this->nData_ - nData_allChildren;
+      std::cout << this->nData_ << " " << nData_allChildren << " " << nDataRemoved << std::endl;
       data_.clear();
     }else{
       nDataRemoved = 1;
+      if(idx >= data_.size() ){
+	return false;
+      }
       data_[idx] = data_.back();
       data_.pop_back();
     }
     nData_ -= nDataRemoved;
+
     Ptr parent = this->getParent();
     while( parent.get() != NULL ){
       parent->nData_-= nDataRemoved;
