@@ -99,6 +99,11 @@ namespace rfs{
     bool replaceChild(uint idx, const Ptr& b);
 
     /**
+     * \brief Remove all children
+     */
+    void removeChildren();
+
+    /**
      * \brief Add data to box
      * \param[in] data Data to add
      */
@@ -250,6 +255,22 @@ namespace rfs{
   }
 
   template <unsigned int nDim, class DataType>
+  void Box<nDim, DataType>::removeChildren(){
+
+    int nDataDiff = 0;
+    for(int i = 0; i < this->getChildrenCount(); i++){
+      nDataDiff -= this->getChild(i)->getDataSize();
+    }
+    nData_ += nDataDiff;
+    Ptr parent = this->getParent();
+    while( parent.get() != NULL ){
+      parent->nData_+= nDataDiff;
+      parent = parent->getParent();
+    }
+    TreeNode< Box<nDim, DataType> >::removeChildren();
+  }
+
+  template <unsigned int nDim, class DataType>
   bool Box<nDim, DataType>::isInside(const Box<nDim, DataType>::Pos &p){
     
     if( (bound_max_ - p).minCoeff() >= 0 && (bound_min_ - p).maxCoeff() <= 0 ){
@@ -276,14 +297,9 @@ namespace rfs{
   template <unsigned int nDim, class DataType>
   void Box<nDim, DataType>::addData( const Box<nDim, DataType>::DataPtr &data){
     data_.push_back(data);
-    std::cout << "data in box\n";
-    std::cout << this->getPos() << std::endl << this->getPos(POS_UPPER) << std::endl <<std::endl;
     nData_++;
     Ptr parent = this->getParent();
     while( parent.get() != NULL ){
-      std::cout << "parent\n";
-      std::cout << parent->getPos(POS_LOWER) << std::endl 
-		<< parent->getPos(POS_UPPER) << std::endl << std::endl;
       parent->nData_++;
       parent = parent->getParent();
     }
@@ -314,7 +330,6 @@ namespace rfs{
 	nData_allChildren += this->getChild(i)->getDataSize();
       }
       nDataRemoved = this->nData_ - nData_allChildren;
-      std::cout << this->nData_ << " " << nData_allChildren << " " << nDataRemoved << std::endl;
       data_.clear();
     }else{
       nDataRemoved = 1;

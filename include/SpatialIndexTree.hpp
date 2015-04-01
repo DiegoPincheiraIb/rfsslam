@@ -236,28 +236,36 @@ namespace rfs{
 
       TreeBoxPtr p = b->getParent();
       TreeBoxPtr c;
-      int nChildrenWithData = 0;
       for(int i = 0; i < p->getChildrenCount(); i++){
 
 	if( p->getChild(i)->getDataSize() > 0 ){
 	  if( c.get() == NULL )
 	    c = p->getChild(i);
 	  else{
-	    c = TreeBoxPtr();
+	    c.reset();
 	    break;
 	  }
 	}
       }
-      if( c.get() != NULL ){ // only child has data, move everything to p and remove all children
-
-	std::cout << "data size " << c->getDataSize() << std::endl;
-	std::cout << "data size " << p->getDataSize() << std::endl;
+      while( c.get() != NULL ){ // only 1 child has data, move everything to p and remove all children
 	for(int i = 0; i < c->getDataSize(); i++){
 	  p->addData( c->getData(i) ); 
 	}
 	p->removeChildren();
-	std::cout << "data size " << p->getDataSize() << std::endl;
-	
+	c.reset();
+	p = p->getParent();
+	if( p.get() != NULL ){
+	  for(int i = 0; i < p->getChildrenCount(); i++){
+	    if( p->getChild(i)->getDataSize() > 0 ){
+	      if( c.get() == NULL )
+		c = p->getChild(i);
+	      else{
+		c.reset();
+		  break;
+	      }
+	    }
+	  }
+	}
       }
 
       return true;
