@@ -63,7 +63,7 @@ namespace rfs{
     /** 
      * \brief Constructor 
      * \param[in] length size of box
-     * \param[in] pos Array specifying the location of the minimum corner.
+     * \param[in] pos Coordinates specifying the location of the minimum corner.
      */
     Box(double length = 1, 
 	Eigen::Matrix<double, nDim, 1> pos = Eigen::Matrix<double, nDim, 1>::Zero() );
@@ -366,8 +366,10 @@ namespace rfs{
   template <unsigned int nDim, class DataType>
   bool Box<nDim, DataType>::isWithinDistance(Pos p, double d){
 
-    Box<nDim, DataType> check_box( getPos(POS_CENTER), d*2 );
-    return check_box.isInside(p);
+    double check_box_size = size_ + 2*d;
+    Box<nDim, DataType> check_box( check_box_size, getPos(POS_CENTER) - check_box_size/2 * Pos::Ones() );
+    return(check_box.isInside(p));
+	     
   }
 
   

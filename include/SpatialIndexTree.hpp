@@ -405,7 +405,7 @@ namespace rfs{
     }
     
     // Get a point d from within b
-    DataPtr d();
+    DataPtr d;
     while(d.get() == NULL){
       
       if(b->getDataSize() > 0 ){ // b is not empty
@@ -423,12 +423,12 @@ namespace rfs{
 	b = b->getParent();
       }
     }
-
+ 
     // Construct a query box using qp and d
     Pos dp = getDataPos(d);
     double dist = (dp - qp).norm();
-    Pos qbox_min = qp - Pos::ones() * dist;
-    Pos qbox_max = qp - Pos::ones() * dist;
+    Pos qbox_min = qp - Pos::Ones() * dist;
+    Pos qbox_max = qp + Pos::Ones() * dist;
 
     // Find the smallest box that contains the query box
     b = root_;
@@ -474,6 +474,7 @@ namespace rfs{
 
       }
     }
+    return d;
 
   }
 
