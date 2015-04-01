@@ -192,31 +192,43 @@ namespace rfs{
 
     }else{ // check if adding data point will divide b
 
-      Pos y = b->getData(0)->get().template head<nDim>(); // Get position of any arbitrary data point from b
-      //check if the axis-aligned planes defining the center of the box also divide x and y
-      Pos c = b->getPos( TreeBox::POS_CENTER );
-      bool divide = false;
-      for(unsigned int d = 0; d < nDim; d++){
-	if( (x[d] - c[d]) * (y[d] - c[d]) < 0 ){ // c divides x and y
-	  divide = true;
+      while(b->getDataSize() > 0){
+
+	Pos y = getDataPos( b->getData(0) ); // Get position of any arbitrary data point from b
+
+	// Determine the smallest box that this datapoint could go in
+	Pos smallest_box_min;
+	for(int d = 0; d < nDim; d++){
+	  smallest_box_min[d] = floor( y[d]/minBoxSize_ ) * minBoxSize_;
+	}
+	TreeBox smallest_box(minBoxSize_, smallest_box_min);
+
+	// check if we need branch box b to index the new data point
+	if(!smallest_box.isInside(x)){
+
+	  if(branch(b)){
+
+	    // place existing data points of b into children boxes
+	    int n_max = b->getDataSize();
+	    for(int n = 0; n < n_max; n++){
+	      DataPtr d = b->getData(n);
+	      TreeBoxPtr c = search( getDataPos(d), b);
+	      c->addData(d);
+	    }
+	    // remove old copies of data in b
+	    b->removeData();
+	  
+	    // determine which child box we should add data to
+	    b = search(x, b);
+
+	  }else{ // cannot branch b into smaller boxes
+	    break;
+	  }
+	
+	}else{ // new data point fits in the same (smallest-sized) box as an existing datapoint
 	  break;
 	}
-      } 
-      
-      if(divide){
-	branch(b);
-	// place existing data points of b into children boxes
-	int n_max = b->getDataSize();
-	for(int n = 0; n < n_max; n++){
-	  DataPtr d = b->getData(n);
-	  TreeBoxPtr c = search( getDataPos(d), b);
-	  c->addData(d);
-	}
-	// remove old copies of data in b
-	b->removeData();
-	  
-	// determine which child data should be added to
-	b = search(x, b);
+
       }
       
       b->addData(data);
@@ -224,7 +236,6 @@ namespace rfs{
 
     return b;
      
-    
   }
 
   template<unsigned int nDim, class DataType>

@@ -115,8 +115,8 @@ TARGET_LINK_LIBRARIES(fastslam_VictoriaPark ${Boost_LIBRARIES} rfsslam)
 ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp)
 TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} rfsslam)
 
-ADD_EXECUTABLE(treeTest src/tests/test.cpp)
-TARGET_LINK_LIBRARIES(treeTest ${Boost_LIBRARIES} rfsslam)
+ADD_EXECUTABLE(spatialIndexTreeTest src/tests/spatialIndexTreetest.cpp)
+TARGET_LINK_LIBRARIES(spatialIndexTreeTest ${Boost_LIBRARIES} rfsslam)
 
 ADD_EXECUTABLE(convertLogFiles src/convertLogFiles.cpp)
 TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})
