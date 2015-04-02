@@ -111,17 +111,18 @@ TARGET_LINK_LIBRARIES(fastslam_VictoriaPark ${Boost_LIBRARIES} rfsslam)
 #TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread TimeStamp MeasurementModel ProcessModel LinearAssignment)
 #ADD_TEST(unitTest bin/unitTest)
 
-
 ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp)
 TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} rfsslam)
 
-ADD_EXECUTABLE(spatialIndexTreeTest src/tests/spatialIndexTreetest.cpp)
-TARGET_LINK_LIBRARIES(spatialIndexTreeTest ${Boost_LIBRARIES} rfsslam)
+#ADD_EXECUTABLE(spatialIndexTreeTest src/tests/spatialIndexTreeTest.cpp)
+#TARGET_LINK_LIBRARIES(spatialIndexTreeTest ${Boost_LIBRARIES} rfsslam)
 
 ADD_EXECUTABLE(convertLogFiles src/convertLogFiles.cpp)
 TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})
 
-
+ADD_EXECUTABLE(spatialIndexTreeTest test/SpatialIndexTreeTest.cpp)
+TARGET_LINK_LIBRARIES(spatialIndexTreeTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} rfsslam)
+ADD_TEST(unitTest spatialIndexTreeTest)
 
 # Examples
 

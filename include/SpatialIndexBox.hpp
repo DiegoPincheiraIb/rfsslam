@@ -189,6 +189,8 @@ namespace rfs{
 
     bound_min_ = pos;
     bound_max_ = pos + Pos::Ones() * length;
+
+    nData_ = 0;
     
   }
 

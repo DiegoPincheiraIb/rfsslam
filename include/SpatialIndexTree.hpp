@@ -83,19 +83,30 @@ namespace rfs{
     bool removeData(DataPtr data);
 
     /**
+     * \brief Get the total number of data points stored in the tree
+     * \return number of data points
+     */
+    uint getDataSize();
+
+    /**
      * \brief Get all the data points within the query box
      * \param[in] qbox_min the min corner of the query box
      * \param[in] qbox_max the max corner of the query box
      * \param[out] query_result The result vector
      */
-    void queryDataInBox(Pos &qbox_min, Pos &qbox_max, std::vector<DataPtr> &query_result);
+    void queryDataInBox(const Pos &qbox_min, const Pos &qbox_max, std::vector<DataPtr> &query_result);
 
     /**
      * \brief Find the closest data point to query point
      * \param[in] qp query point
      * \return Pointer to closest data point
      */
-    DataPtr queryClosestPt(Pos &qp);
+    DataPtr queryClosestPt(const Pos &qp);
+
+    /**
+     * \brief Clear the tree
+     */
+    void clear();
 
     /**
      * \brief Export tree structure to ascii file for visualization
@@ -129,7 +140,7 @@ namespace rfs{
     TreeBoxPtr search(const Pos &p, TreeBoxPtr b = TreeBoxPtr() );
 
     TreeBoxPtr root_; /**< \brief root of the tree */
-    double const minBoxSize_; /**< \brief smallest box size allowed */
+    double minBoxSize_; /**< \brief smallest box size allowed */
 
   };
 
@@ -247,7 +258,16 @@ namespace rfs{
 
       TreeBoxPtr p = b->getParent();
       TreeBoxPtr c;
+
+      if(p->getParent().get() == NULL)
+	return true;
+
       for(int i = 0; i < p->getChildrenCount(); i++){
+
+	if(p->getChild(i)->getChildrenCount() != 0){
+	  c.reset();
+	  break;
+	}
 
 	if( p->getChild(i)->getDataSize() > 0 ){
 	  if( c.get() == NULL )
@@ -265,14 +285,18 @@ namespace rfs{
 	p->removeChildren();
 	c.reset();
 	p = p->getParent();
-	if( p.get() != NULL ){
+	if( p.get() != NULL && p->getParent().get() != NULL){
 	  for(int i = 0; i < p->getChildrenCount(); i++){
-	    if( p->getChild(i)->getDataSize() > 0 ){
+	    if(p->getChild(i)->getChildrenCount() != 0){
+	      c.reset();
+	      break;
+	    }
+	    if( p->getChild(i)->getDataSize() > 0 && p->getChild(i)->getChildrenCount() == 0){
 	      if( c.get() == NULL )
 		c = p->getChild(i);
 	      else{
 		c.reset();
-		  break;
+		break;
 	      }
 	    }
 	  }
@@ -283,6 +307,12 @@ namespace rfs{
     }
     return false;
 
+  }
+
+  template<unsigned int nDim, class DataType>
+  uint SpatialIndexTree<nDim, DataType>::getDataSize(){
+
+    return root_->getDataSize();
   }
 
   template<unsigned int nDim, class DataType>
@@ -350,7 +380,7 @@ namespace rfs{
   }
 
   template<unsigned int nDim, class DataType>
-  void SpatialIndexTree<nDim, DataType>::queryDataInBox(Pos &qbox_min, Pos &qbox_max, std::vector<DataPtr> &query_result){
+  void SpatialIndexTree<nDim, DataType>::queryDataInBox(const Pos &qbox_min, const Pos &qbox_max, std::vector<DataPtr> &query_result){
 
     // Find the smallest box in the tree that encapsulates the query box
     TreeBoxPtr b = root_;
@@ -378,14 +408,16 @@ namespace rfs{
 
       // if there are children push children into stack
       if(b->getChildrenCount() > 0){
-	for(int i = b->getChildrenCount() - 1; i >= 0 ; i--){
-	  traverseStack.push_back( b->getChild(i) );
+	for(int i = b->getChildrenCount() - 1; i >= 0 ; i--){	 
+	  if( b->getChild(i)->getDataSize() > 0){  // but only if the children are not empty
+	    traverseStack.push_back( b->getChild(i) );
+	  }
 	}
-      }else{ // if no children, do check to see if data is inside query box
+      }else{ // if no children, do check to see if there is data inside query box
 
-	// whole box b fits in query box
 	Pos b_max = b->getPos( TreeBox::POS_UPPER );
 	Pos b_min = b->getPos( TreeBox::POS_LOWER );
+	// whole box b fits in query box
 	if( (qbox_max - b_max).minCoeff() >= 0 && (qbox_min - b_max).maxCoeff() <= 0 &&
 	    (qbox_max - b_min).minCoeff() >= 0 && (qbox_min - b_min).maxCoeff() <= 0){
 	  for(int i = 0; i < b->getDataSize(); i++){
@@ -408,7 +440,7 @@ namespace rfs{
 
   template<unsigned int nDim, class DataType>
   typename SpatialIndexTree<nDim, DataType>::DataPtr 
-  SpatialIndexTree<nDim, DataType>::queryClosestPt(SpatialIndexTree<nDim, DataType>::Pos &qp){
+  SpatialIndexTree<nDim, DataType>::queryClosestPt(const SpatialIndexTree<nDim, DataType>::Pos &qp){
 
     TreeBoxPtr b = search(qp);
     if( b.get() == NULL ){
@@ -490,6 +522,13 @@ namespace rfs{
   }
 
   template<unsigned int nDim, class DataType>
+  void SpatialIndexTree<nDim, DataType>::clear(){
+
+    root_ = TreeBoxPtr( new TreeBox( minBoxSize_*2, Pos::Ones() * -minBoxSize_) );
+    branch(root_);
+  }
+
+  template<unsigned int nDim, class DataType>
   void SpatialIndexTree<nDim, DataType>::exportASCII(std::string filename){
 
     std::ofstream dataFile;
@@ -510,12 +549,12 @@ namespace rfs{
       Pos b_max = b->getPos(TreeBox::POS_UPPER);
       dataFile << std::fixed << std::setprecision(3) << "BOX ";
       for(int i = 0; i < nDim; i++){
-	dataFile << std::setw(8) << b_min[i];
+	dataFile << std::setw(15) << b_min[i];
       }
       for(int i = 0; i < nDim; i++){
-	dataFile << std::setw(8) << b_max[i];
+	dataFile << std::setw(15) << b_max[i];
       }
-      dataFile << std::setw(8) << b->getDataSize() << std::endl;
+      dataFile << std::setw(15) << b->getDataSize() << std::endl;
 
       if(b->getChildrenCount() > 0){
 	for(int i = b->getChildrenCount() - 1; i >= 0 ; i--){
@@ -526,12 +565,12 @@ namespace rfs{
 	  Pos dp = getDataPos( b->getData(i) );
 	  dataFile << std::fixed << std::setprecision(3) << "PT ";
 	  for(int i = 0; i < nDim; i++){
-	    dataFile << std::setw(8) << dp[i];
+	    dataFile << std::setw(15) << dp[i];
 	  }
 	  for(int i = 0; i < nDim; i++){
-	    dataFile << std::setw(8) << dp[i];
+	    dataFile << std::setw(15) << dp[i];
 	  }
-	  dataFile << std::setw(8) << 0 << std::endl;
+	  dataFile << std::setw(15) << 0 << std::endl;
 	}
       }
       
