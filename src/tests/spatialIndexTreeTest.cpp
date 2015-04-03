@@ -6,7 +6,6 @@
 int main(int argc, char** argv){
 
   rfs::SpatialIndexTree<2> t(2);
-
   boost::shared_ptr< rfs::RandomVec<2> > px;
   rfs::RandomVec<2>::Vec xv;
   
@@ -76,6 +75,6 @@ int main(int argc, char** argv){
   for(int i = 0; i < query_result.size(); i++){
     std::cout << query_result[i]->get() << std::endl << std::endl;
   }
-
+  
   return 0;
 } 

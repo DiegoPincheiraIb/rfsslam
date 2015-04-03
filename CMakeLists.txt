@@ -27,7 +27,7 @@ message(STATUS "RFSSLAM Version ${RFSSLAM_VERSION}")
 SET(CMAKE_C_COMPILER "gcc")
 SET(CMAKE_CXX_COMPILER "c++")
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native ")
 
 SET(USE_OPENMP ON CACHE BOOL "Use OpenMP to compile multithreaded versions of SLAM algorithms.")
 IF(USE_OPENMP)
@@ -114,8 +114,8 @@ TARGET_LINK_LIBRARIES(fastslam_VictoriaPark ${Boost_LIBRARIES} rfsslam)
 ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp)
 TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} rfsslam)
 
-#ADD_EXECUTABLE(spatialIndexTreeTest src/tests/spatialIndexTreeTest.cpp)
-#TARGET_LINK_LIBRARIES(spatialIndexTreeTest ${Boost_LIBRARIES} rfsslam)
+ADD_EXECUTABLE(spatialIndexTreeTestSimple src/tests/spatialIndexTreeTest.cpp)
+TARGET_LINK_LIBRARIES(spatialIndexTreeTestSimple ${Boost_LIBRARIES} rfsslam)
 
 ADD_EXECUTABLE(convertLogFiles src/convertLogFiles.cpp)
 TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})

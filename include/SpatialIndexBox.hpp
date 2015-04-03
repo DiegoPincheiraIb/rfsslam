@@ -68,8 +68,14 @@ namespace rfs{
     Box(double length = 1, 
 	Eigen::Matrix<double, nDim, 1> pos = Eigen::Matrix<double, nDim, 1>::Zero() );
 
+    /**
+     * \brief Copy Constructor
+     * \param[in] other The other Box
+     */
+    Box(const Box &other);
+
     /** \brief Destructor */
-    ~Box();
+    virtual ~Box();
 
     /** 
      * \brief Assignment operator 
@@ -192,6 +198,22 @@ namespace rfs{
 
     nData_ = 0;
     
+  }
+  
+  template <unsigned int nDim, class DataType>
+  Box<nDim, DataType>::Box(const Box &other) : TreeNode< Box<nDim, DataType> >(other){
+    
+    bound_min_ = other.bound_min_;
+    bound_max_ = other.bound_max_;
+
+    int nDataDiff = other.nData_ - nData_;
+    nData_ = other.nData_;
+
+    Ptr parent = this->getParent();
+    while( parent.get() != NULL ){
+      parent->nData_+= nDataDiff;
+      parent = parent->getParent();
+    }
   }
 
   template <unsigned int nDim, class DataType>

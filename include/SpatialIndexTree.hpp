@@ -149,7 +149,7 @@ namespace rfs{
   template<unsigned int nDim, class DataType>
   SpatialIndexTree<nDim, DataType>::SpatialIndexTree(double minBoxSize) : minBoxSize_(minBoxSize) {
 
-    root_ = TreeBoxPtr( new TreeBox( minBoxSize*2, Pos::Ones() * -minBoxSize) );
+    root_ = TreeBoxPtr(new TreeBox( minBoxSize*2, Pos::Ones() * -minBoxSize));
     branch(root_);
   }
 
@@ -168,7 +168,7 @@ namespace rfs{
       
       TreeBoxPtr root_old = root_;
       
-      root_ = TreeBoxPtr( new TreeBox( root_old->size_*2, Pos::Ones() * -root_old->size_) );
+      root_.reset( new TreeBox( root_old->size_*2, Pos::Ones() * -root_old->size_) );
       branch(root_); 
 
       // Children of root_old need to become children of the new branches of root_
@@ -524,7 +524,7 @@ namespace rfs{
   template<unsigned int nDim, class DataType>
   void SpatialIndexTree<nDim, DataType>::clear(){
 
-    root_ = TreeBoxPtr( new TreeBox( minBoxSize_*2, Pos::Ones() * -minBoxSize_) );
+    root_.reset( new TreeBox( minBoxSize_*2, Pos::Ones() * -minBoxSize_) );
     branch(root_);
   }
 

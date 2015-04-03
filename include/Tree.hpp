@@ -34,7 +34,9 @@
 #include <cstddef>
 #include <vector>
 #include <boost/shared_ptr.hpp>
+#include <boost/weak_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
+#include <iostream>
 
 namespace rfs{
 
@@ -50,6 +52,7 @@ class TreeNode :
 public:
 
   typedef boost::shared_ptr<Derived> DerivedPtr;
+  typedef boost::weak_ptr<Derived> DerivedWeakPtr;
 
   /** 
    * \brief Constructor 
@@ -108,7 +111,7 @@ public:
 protected:
 
   std::vector< boost::shared_ptr<Derived> > children_; /**< \brief children of this node */
-  DerivedPtr parent_; /**< \brief parent of this node */
+  DerivedWeakPtr parent_; /**< \brief parent of this node */
 };
 
 }
@@ -124,11 +127,13 @@ namespace rfs{
   }
   
   template<class Derived>
-  TreeNode<Derived>::~TreeNode(){}
+  TreeNode<Derived>::~TreeNode(){
+    children_.clear();
+  }
   
   template<class Derived>
   typename TreeNode<Derived>::DerivedPtr TreeNode<Derived>::getParent(){
-    return parent_;
+    return parent_.lock();
   }
   
   template<class Derived>

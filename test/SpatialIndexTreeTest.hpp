@@ -47,7 +47,7 @@ class SpatialIndexTreeTest : public ::testing::Test{
 
 protected:
 
-  typedef rfs::Landmark<2> Pt;
+  typedef rfs::Landmark<3> Pt;
   typedef boost::shared_ptr<Pt> Ptr;
 
   /** Constructor for setting up each test */
@@ -56,7 +56,7 @@ protected:
     coord_max = 1000;
     coord_min = -coord_max;
     box_size_min = 2;
-    tree = rfs::SpatialIndexTree<2, rfs::Landmark<2> >(box_size_min);
+    tree = rfs::SpatialIndexTree<3, rfs::Landmark<3> >(box_size_min);
     nLandmarks = 5000;
   }
   
@@ -70,7 +70,7 @@ protected:
   virtual void TearDown(){}
 
   // Additional objects to declare //
-  rfs::SpatialIndexTree<2, rfs::Landmark<2> > tree;
+  rfs::SpatialIndexTree<3, rfs::Landmark<3> > tree;
   double coord_max;
   double coord_min;
   double box_size_min;
@@ -130,7 +130,7 @@ TEST_F(SpatialIndexTreeTest, populateTreeTest){
     gen(boost::mt19937(time(NULL)), ::boost::uniform_real<double>(coord_min, coord_max));
 
   // Randomly populate map space
-  for(int k = 0; k < 500; k++){
+  for(int k = 0; k < 100; k++){
     //std::cout << "================================\n";
     while(map_added.size() < nLandmarks){
       
@@ -165,7 +165,7 @@ TEST_F(SpatialIndexTreeTest, populateTreeTest){
     map_added.clear();
     map_removed.clear();
 
-    // tree.exportASCII("tree.dat");
+    //tree.exportASCII("tree.dat");
     tree.clear();
     ASSERT_EQ(0, tree.getDataSize());
   }
