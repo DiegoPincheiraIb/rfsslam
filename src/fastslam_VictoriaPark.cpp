@@ -29,6 +29,7 @@
  */
 
 #include <assert.h>
+#define BOOST_NO_CXX11_SCOPED_ENUMS // required for boost/filesystem to work with C++11
 #include <boost/filesystem.hpp>
 #include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
