@@ -101,16 +101,6 @@ if(Pd_current > 0.1):
 
 c_unique = np.unique(c_unique)
 
-#plt.figure(1);
-#for i in c_unique:
-#    data_ = data_stat[ (data_stat[:,1] == i) ]
-#    plt.plot(data_[:,0], data_[:,2], 'r-');
-#plt.grid(True)
-#plt.xlabel(r"Probability of detection")
-#plt.ylabel(r"Error [m]")
-
-print data_stat
-
 fig = plt.figure(1)
 ax = fig.gca(projection='3d')
 X = data_stat[:,0]
@@ -121,6 +111,8 @@ ax.set_zlim3d(0, 5)
 ax.set_xlabel(r"$P_d$")
 ax.set_ylabel(r"$log_{10}(c)$")
 ax.set_zlabel(r"Averaged robot position error [m]")
+if(args.saveFig):
+    plt.savefig("batch_robot_error.pdf", format='pdf', bbox_inches='tight')
 
 fig = plt.figure(2)
 ax = fig.gca(projection='3d')
@@ -132,32 +124,8 @@ ax.set_zlim3d(0, 50)
 ax.set_xlabel(r"$P_d$")
 ax.set_ylabel(r"$log_{10}(c)$")
 ax.set_zlabel(r"Averaged landmark position error [m]")
+if(args.saveFig):
+    plt.savefig("batch_map_error.pdf", format='pdf', bbox_inches='tight')
 
-
-#plt.figure(2);
-#for i in c_unique:
-#    data_ = data_stat[ (data_stat[:,1] == i) ]
-#    plt.plot(data_[:,0], data_[:,4], 'r-');
-#plt.grid(True)
-#plt.xlabel(r"Probability of detection")
-#plt.ylabel(r"COLA error")
-
-#fig = plt.figure()
-#ax = fig.gca(projection='3d')
-#X = np.arange(-5, 5, 0.25)
-#Y = np.arange(-5, 5, 0.25)
-#X, Y = np.meshgrid(X, Y)
-#R = np.sqrt(X**2 + Y**2)
-#Z = np.sin(R)
-#surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm,
-#        linewidth=0, antialiased=False)
-plt.show()
-
-
-
-#print data_stat.shape
-
-#dtype = [('Pd',float), ('c',float), ('PoseErr',float), ('COLA',float)]
-#data2 = np.array(data, dtype=dtype)
-#np.sort(data2, axis=0, order=['Pd', 'c'])
-#print data2
+if( not args.saveFig ):
+    plt.show()
