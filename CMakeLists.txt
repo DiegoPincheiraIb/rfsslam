@@ -114,8 +114,8 @@ TARGET_LINK_LIBRARIES(fastslam_VictoriaPark ${Boost_LIBRARIES} rfsslam)
 ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp)
 TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} rfsslam)
 
-ADD_EXECUTABLE(spatialIndexTreeTestSimple src/tests/spatialIndexTreeTest.cpp)
-TARGET_LINK_LIBRARIES(spatialIndexTreeTestSimple ${Boost_LIBRARIES} rfsslam)
+ADD_EXECUTABLE(spatialIndexTree src/examples/spatialIndexTree.cpp)
+TARGET_LINK_LIBRARIES(spatialIndexTree ${Boost_LIBRARIES} rfsslam)
 
 ADD_EXECUTABLE(convertLogFiles src/convertLogFiles.cpp)
 TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})
@@ -149,13 +149,15 @@ set_target_properties(linearAssignment_CostMatrixPartitioning
 	linearAssignment_LexicographicOrdering
 	linearAssignment_MurtyAlgorithm 
 	ospaError
+	spatialIndexTree
 	PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/examples"
 )
 
 set_target_properties(cpu_timer_test jcbb_test
+        spatialIndexTreeTest
 	PROPERTIES
-	RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tests"
+	RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test"
 )
 
 
