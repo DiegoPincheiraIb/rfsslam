@@ -48,6 +48,9 @@ import matplotlib.animation as anim
 from matplotlib.patches import Ellipse, Circle
 from matplotlib import transforms
 import matplotlib.ticker as ticker   
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+
 import argparse
 
 parser = argparse.ArgumentParser(description="Batch Simulation Results Plotter")
@@ -78,40 +81,79 @@ for i in range(1, data.shape[0]):
         mapColas.append(data[i,3])
     else:
         # Calculate statistics
-        data_add = np.array([Pd_current, np.log10(c_current), np.mean(trajErrors), np.std(trajErrors), np.mean(mapColas), np.std(mapColas) ])
-        data_stat = np.vstack( [data_stat, data_add])
-        c_unique.append(np.log10(c_current))
+        if(Pd_current > 0.1):
+            data_add = np.array([Pd_current, np.log10(c_current), np.mean(trajErrors), np.std(trajErrors), np.mean(mapColas), np.std(mapColas) ])
+            data_stat = np.vstack( [data_stat, data_add])
+            c_unique.append(np.log10(c_current))
 
-        print trajErrors
+        #print trajErrors
 
         Pd_current = data[i,0]
         c_current = data[i,1]
         trajErrors = [data[i,2]]
         mapColas = [data[i,3]]
 
-data_add = np.array([Pd_current, np.log10(c_current), np.mean(trajErrors), np.std(trajErrors), np.mean(mapColas), np.std(mapColas) ])
-data_stat = np.vstack( [data_stat, data_add])
+if(Pd_current > 0.1):
+    data_add = np.array([Pd_current, np.log10(c_current), np.mean(trajErrors), np.std(trajErrors), np.mean(mapColas), np.std(mapColas) ])
+    data_stat = np.vstack( [data_stat, data_add])
 
-data_stat = data_stat[ np.lexsort((data_stat[:,0], data_stat[:,1])) ]
+    data_stat = data_stat[ np.lexsort((data_stat[:,0], data_stat[:,1])) ]
 
 c_unique = np.unique(c_unique)
 
-plt.figure(1);
-for i in c_unique:
-    data_ = data_stat[ (data_stat[:,1] == i) ]
-    plt.plot(data_[:,0], data_[:,2], 'r-');
-plt.grid(True)
-plt.xlabel(r"Probability of detection")
-plt.ylabel(r"Error [m]")
+#plt.figure(1);
+#for i in c_unique:
+#    data_ = data_stat[ (data_stat[:,1] == i) ]
+#    plt.plot(data_[:,0], data_[:,2], 'r-');
+#plt.grid(True)
+#plt.xlabel(r"Probability of detection")
+#plt.ylabel(r"Error [m]")
 
-plt.figure(2);
-for i in c_unique:
-    data_ = data_stat[ (data_stat[:,1] == i) ]
-    plt.plot(data_[:,0], data_[:,4], 'r-');
-plt.grid(True)
-plt.xlabel(r"Probability of detection")
-plt.ylabel(r"COLA error")
+print data_stat
+
+fig = plt.figure(1)
+ax = fig.gca(projection='3d')
+X = data_stat[:,0]
+Y = data_stat[:,1]
+Z = data_stat[:,2]
+ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0, vmin=0, vmax=5)
+ax.set_zlim3d(0, 5)
+ax.set_xlabel(r"$P_d$")
+ax.set_ylabel(r"$log_{10}(c)$")
+ax.set_zlabel(r"Averaged robot position error [m]")
+
+fig = plt.figure(2)
+ax = fig.gca(projection='3d')
+X = data_stat[:,0]
+Y = data_stat[:,1]
+Z = data_stat[:,4]
+ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0, vmin=0, vmax=50)
+ax.set_zlim3d(0, 50)
+ax.set_xlabel(r"$P_d$")
+ax.set_ylabel(r"$log_{10}(c)$")
+ax.set_zlabel(r"Averaged landmark position error [m]")
+
+
+#plt.figure(2);
+#for i in c_unique:
+#    data_ = data_stat[ (data_stat[:,1] == i) ]
+#    plt.plot(data_[:,0], data_[:,4], 'r-');
+#plt.grid(True)
+#plt.xlabel(r"Probability of detection")
+#plt.ylabel(r"COLA error")
+
+#fig = plt.figure()
+#ax = fig.gca(projection='3d')
+#X = np.arange(-5, 5, 0.25)
+#Y = np.arange(-5, 5, 0.25)
+#X, Y = np.meshgrid(X, Y)
+#R = np.sqrt(X**2 + Y**2)
+#Z = np.sin(R)
+#surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm,
+#        linewidth=0, antialiased=False)
 plt.show()
+
+
 
 #print data_stat.shape
 
