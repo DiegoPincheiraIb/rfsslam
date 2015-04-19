@@ -20,7 +20,7 @@ public:
   /**
    * 
    */
-  Measurement2d_amplitude(const typename Measurement2d::Vec x, const typename Measurement2d::Mat Sx, const TimeStamp t = TimeStamp() ) :
+  Measurement2d_amplitude(const Measurement2d::Vec x, const Measurement2d::Mat Sx, const TimeStamp t = TimeStamp() ) :
     Measurement2d(x,Sx,t){
     amplitude_=1;
     mean_=10;
@@ -30,7 +30,7 @@ public:
    * Constructor 
    * \param[in] t time
    */ 
-  Measurement2d_amplitude(const typename Measurement2d::Vec x, const TimeStamp t = TimeStamp()) :
+  Measurement2d_amplitude(const Measurement2d::Vec x, const TimeStamp t = TimeStamp()) :
     Measurement2d(x,t){
     amplitude_=1;
     mean_=10;

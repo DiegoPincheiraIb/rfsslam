@@ -360,7 +360,7 @@ namespace rfs{
       
       Pos x = Pos::Zero();
       for(int d = 0; d < nDim; d++){
-	x[d] = (i >> d) & 1 == 1; 
+	x[d] = ((i >> d) & 1) == 1; 
       }
       x *= childBoxSize;
       x += b->getPos();
