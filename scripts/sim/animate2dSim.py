@@ -38,9 +38,6 @@ import numpy as np
 import matplotlib
 matplotlib.use("TkAgg");
 
-# Necessary to generate Type 1 fonts for pdf figures as required by IEEE for paper submissions
-matplotlib.rcParams['pdf.fonttype'] = 42
-matplotlib.rcParams['ps.fonttype'] = 42
 #print matplotlib.__version__
 
 import matplotlib.pyplot as plt
@@ -49,9 +46,11 @@ from matplotlib.patches import Ellipse, Circle
 from matplotlib import transforms
 import matplotlib.ticker as ticker   
 
+matplotlib.rcParams.update({'font.size': 20})
+
 saveMovie = False;
 saveFig = True
-timestepStart = 0
+timestepStart = 2950
 
 nLandmarksDrawMax = 500;
 nMeasurementsDrawMax = 500;
@@ -341,19 +340,27 @@ else:
     plt.show(block=False)
 
 if saveFig:
+    # Necessary to generate Type 1 fonts for pdf figures as required by IEEE for paper submissions
+    #matplotlib.rcParams['pdf.fonttype'] = 42
+    #matplotlib.rcParams['ps.fonttype'] = 42
+    matplotlib.rcParams['ps.useafm'] = True
+    matplotlib.rcParams['pdf.use14corefonts'] = True
+    #matplotlib.rcParams['text.usetex'] = True
+    #plt.rc('text', usetex=True)
     estPoseHandle, = plt.plot(px_best, py_best, 'b-')
     for i in range(0, nMeasurementsDrawMax) : 
         measurements[i].remove();
     plt.setp(gtPoseHandle, linewidth=2.0)
     txt.set_text(" ");
     plt.legend([gtPoseHandle, estPoseHandle, gtMapHandle, landmarks[0]], ["Ground-truth trajectory", "Estimated trajectory", "Ground-truth landmark", "Estimated landmark" ], loc=4);
-    plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
+    plt.setp(plt.gca().get_legend().get_texts(), fontsize='18')
     scale = 10;
     ticks = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*scale))
     plt.gca().xaxis.set_major_formatter(ticks)
     ticks = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y*scale))
     plt.gca().yaxis.set_major_formatter(ticks)
     plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
+    #plt.savefig('estimate.eps', format='eps', bbox_inches='tight')
 
 measurementFileHandle.close();
 

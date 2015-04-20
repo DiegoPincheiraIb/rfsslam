@@ -100,14 +100,21 @@ Documentation will be generated in `doc/` directory.
     - Config: cfg/mhfastslam_VictoriaPark.xml and cfg/mhfastslam_VictoriaPark_artificialClutter.xml
     - Run: `bin/mhfastslam_VictoriaPark [random_seed] [xml_file]`
 
+#### Analysis Tools ####
+
+For calculating errors for 2d simulations, run: `bin/analysis2dSim [results_dir]`.
+
+For plotting the errors after running the analysis executable, use: 
+    - `scripts/sim/plotError2dSim.py`
+    - `scripts/sim/plotErrorCompare2dSim.py`
 
 #### Visualization Tools ####
 
-For animating 2D SLAM simulation results, run: `bin/animate2dSim.py [results_dir]`. 
+For animating 2D SLAM simulation results, run: `scripts/sim/animate2dSim.py [results_dir]`. 
 Edit the python script and set `saveMoive=False` to see animation.
 Set `saveMoive=True` to generate a mp4 file.
 
-For animating Victoria Park dataset results, run: `bin/animate_VictoriaPark.py [results_dir]`.
+For animating Victoria Park dataset results, run: `scripts/VictoriaPark/animate_VictoriaPark.py [results_dir]`.
 Use `-h` or `--help` to see options.
 
 ### Version History ###

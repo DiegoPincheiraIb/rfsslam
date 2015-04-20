@@ -40,8 +40,15 @@ import matplotlib.pyplot as plt
 #rc('font',**{'family':'serif','serif':['Palatino']})
 #rc('text', usetex=True)
 
-plt.rc('text', usetex=True)
+# Necessary to generate Type 1 fonts for pdf figures as required by IEEE for paper submissions
+#matplotlib.rcParams['pdf.fonttype'] = 42
+#matplotlib.rcParams['ps.fonttype'] = 42
+plt.rcParams['ps.useafm'] = True
+plt.rcParams['pdf.use14corefonts'] = True
+#matplotlib.rcParams['text.usetex'] = True
+#plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
+plt.rcParams.update({'font.size': 22})
 
 if len(sys.argv) < 2:
     print "Usage: plotError2dSim DATA_PARENT_DIR\n";
@@ -155,24 +162,24 @@ plt.grid(True);
 plt.ylim(ymax = 3);
 #plt.ylim(ymax = 15);
 
-plt.figure(2);
+plt.figure(2, figsize=(12,6), facecolor='w');
 p1, = plt.plot(mapTimesteps[::10], errorOSPA_rbphdslam[::10], 'r-');
 p2, = plt.plot(mapTimesteps[::10], errorOSPA_mhfastslam[::10], 'b-');
 p3, = plt.plot(mapTimesteps[::10], errorOSPA_fastslam[::10], 'g-');
 plt.legend([p1, p2, p3], [r"RB-PHD-SLAM", r"MH-FastSLAM", r"FastSLAM"], loc=2);
-plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
+plt.setp(plt.gca().get_legend().get_texts(), fontsize='18')
 plt.xlabel(r'Time [s]');
 plt.ylabel(r'OSPA error [m]');
 plt.grid(True);
 plt.ylim(ymax = 12);
 
-plt.figure(3);
+plt.figure(3, figsize=(12,6), facecolor='w');
 p4, = plt.plot(mapTimesteps[::10], landmarksMeasured[::10], 'k-', linewidth=5.0);
 p1, = plt.plot(mapTimesteps[::10], landmarksEstimated_rbphdslam[::10], 'r-');
 p2, = plt.plot(mapTimesteps[::10], landmarksEstimated_mhfastslam[::10], 'b-');
 p3, = plt.plot(mapTimesteps[::10], landmarksEstimated_fastslam[::10], 'g-');
 plt.legend([p4, p1, p2, p3], [r"Actual", r"RB-PHD-SLAM", r"MH-FastSLAM", r"FastSLAM"], loc=4);
-plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
+plt.setp(plt.gca().get_legend().get_texts(), fontsize='18')
 plt.xlabel(r'Time [s]');
 plt.ylabel(r'Number of landmarks');
 plt.grid(True);

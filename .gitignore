@@ -11,3 +11,4 @@ bin/
 lib/
 install_manifest.txt
 *.orig
+*.bak

@@ -33,6 +33,7 @@
 import sys
 import os.path
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 #from matplotlib import rc
 #rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
@@ -40,8 +41,17 @@ import matplotlib.pyplot as plt
 #rc('font',**{'family':'serif','serif':['Palatino']})
 #rc('text', usetex=True)
 
-plt.rc('text', usetex=True)
+# Necessary to generate Type 1 fonts for pdf figures as required by IEEE for paper submissions
+#matplotlib.rcParams['pdf.fonttype'] = 42
+#matplotlib.rcParams['ps.fonttype'] = 42
+matplotlib.rcParams['ps.useafm'] = True
+matplotlib.rcParams['pdf.use14corefonts'] = True
+matplotlib.rcParams['axes.unicode_minus'] = False
+#matplotlib.rcParams['text.usetex'] = True
+#plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
+
+matplotlib.rcParams.update({'font.size': 20})
 
 if len(sys.argv) < 2:
     print "Usage: plotError2dSim DATA_DIR\n";
@@ -87,7 +97,7 @@ plt.figure(1);
 p1, = plt.plot(poseTimesteps[::10], poseErr_x[::10], 'r-');
 p2, = plt.plot(poseTimesteps[::10], poseErr_y[::10], 'b-');
 plt.legend([p1, p2], [r"$x$", r"$y$"], loc=4);
-plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
+#plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
 plt.xlabel(r'Time [s]');
 plt.ylabel(r'Position error [m]');
 plt.grid(True);
@@ -121,7 +131,7 @@ plt.figure(5);
 p1, = plt.plot(mapTimesteps[::10], landmarksMeasured[::10], 'k-', linewidth=3.0);
 p2, = plt.plot(mapTimesteps[::10], landmarksEstimated[::10], 'r-');
 plt.legend([p1, p2], [r"Actual", r"Estimated"], loc=4);
-plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
+#plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
 plt.xlabel(r'Time [s]');
 plt.ylabel(r'Number of landmarks observed');
 plt.grid(True);
@@ -133,11 +143,11 @@ p2, = ax1.plot(poseTimesteps[::10], poseErr_y[::10], 'b-');
 ax2 = ax1.twinx();
 p3, = ax2.plot(poseTimesteps[::10], poseErr_r[::10], 'g-')
 
-plt.legend([p1, p2, p3], [r"$x$", r"$y$", r"$\theta$"], loc=3);
-plt.setp(plt.gca().get_legend().get_texts(), fontsize='12')
-ax1.set_xlabel(r"Time [s]");
-ax1.set_ylabel(r"Position error [m]");
-ax2.set_ylabel(r"Orientation error [deg]");
+plt.legend([p1, p2, p3], ["x-position", "y-position", r"orientation"], loc=3);
+plt.setp(plt.gca().get_legend().get_texts(), fontsize='20')
+ax1.set_xlabel("Time [s]", fontsize=24);
+ax1.set_ylabel("Position error [m]", fontsize=24);
+ax2.set_ylabel("Orientation error [deg]", fontsize=24);
 ax1.grid(True);
 ax1.set_ylim(-3, 3);
 ax2.set_ylim(-6, 6);

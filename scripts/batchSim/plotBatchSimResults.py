@@ -38,10 +38,16 @@ import numpy as np
 import matplotlib
 matplotlib.use("TkAgg");
 
-# Necessary to generate Type 1 fonts for pdf figures as required by IEEE for paper submissions
-matplotlib.rcParams['pdf.fonttype'] = 42
-matplotlib.rcParams['ps.fonttype'] = 42
 #print matplotlib.__version__
+
+# Necessary to generate Type 1 fonts for pdf figures as required by IEEE for paper submissions
+#matplotlib.rcParams['pdf.fonttype'] = 42
+#matplotlib.rcParams['ps.fonttype'] = 42
+matplotlib.rcParams['ps.useafm'] = True
+matplotlib.rcParams['pdf.use14corefonts'] = True
+matplotlib.rcParams['axes.unicode_minus'] = False
+#matplotlib.rcParams['text.usetex'] = True
+#plt.rc('text', usetex=True)
 
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
@@ -81,10 +87,10 @@ for i in range(1, data.shape[0]):
         mapColas.append(data[i,3])
     else:
         # Calculate statistics
-        if(Pd_current > 0.1):
-            data_add = np.array([Pd_current, np.log10(c_current), np.mean(trajErrors), np.std(trajErrors), np.mean(mapColas), np.std(mapColas) ])
+        if(Pd_current > 0.2):
+            data_add = np.array([Pd_current, np.log10(c_current)-2, np.mean(trajErrors), np.std(trajErrors), np.mean(mapColas), np.std(mapColas) ])
             data_stat = np.vstack( [data_stat, data_add])
-            c_unique.append(np.log10(c_current))
+            c_unique.append(np.log10(c_current)-2)
 
         #print trajErrors
 
@@ -93,8 +99,8 @@ for i in range(1, data.shape[0]):
         trajErrors = [data[i,2]]
         mapColas = [data[i,3]]
 
-if(Pd_current > 0.1):
-    data_add = np.array([Pd_current, np.log10(c_current), np.mean(trajErrors), np.std(trajErrors), np.mean(mapColas), np.std(mapColas) ])
+if(Pd_current > 0.2):
+    data_add = np.array([Pd_current, np.log10(c_current)-2, np.mean(trajErrors), np.std(trajErrors), np.mean(mapColas), np.std(mapColas) ])
     data_stat = np.vstack( [data_stat, data_add])
 
     data_stat = data_stat[ np.lexsort((data_stat[:,0], data_stat[:,1])) ]
@@ -106,11 +112,11 @@ ax = fig.gca(projection='3d')
 X = data_stat[:,0]
 Y = data_stat[:,1]
 Z = data_stat[:,2]
-ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0, vmin=0, vmax=5)
-ax.set_zlim3d(0, 5)
-ax.set_xlabel(r"$P_d$")
-ax.set_ylabel(r"$log_{10}(c)$")
-ax.set_zlabel(r"Averaged robot position error [m]")
+ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0, vmin=0, vmax=1.5)
+ax.set_zlim3d(0, 1.5)
+ax.set_xlabel(r"Prob. of detection")
+ax.set_ylabel(r"log clutter intensity")
+ax.set_zlabel(r"Avg. robot position error [m]")
 if(args.saveFig):
     plt.savefig("batch_robot_error.pdf", format='pdf', bbox_inches='tight')
 
@@ -121,9 +127,9 @@ Y = data_stat[:,1]
 Z = data_stat[:,4]
 ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0, vmin=0, vmax=50)
 ax.set_zlim3d(0, 50)
-ax.set_xlabel(r"$P_d$")
-ax.set_ylabel(r"$log_{10}(c)$")
-ax.set_zlabel(r"Averaged landmark position error [m]")
+ax.set_xlabel("Prob. of detection")
+ax.set_ylabel("log clutter intensity")
+ax.set_zlabel(r"Avg. landmark position error [m]")
 if(args.saveFig):
     plt.savefig("batch_map_error.pdf", format='pdf', bbox_inches='tight')
 

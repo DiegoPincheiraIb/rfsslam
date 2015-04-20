@@ -41,8 +41,12 @@ import matplotlib
 #print matplotlib.__version__
 
 # Necessary to generate Type 1 fonts for pdf figures as required by IEEE for paper submissions
-matplotlib.rcParams['pdf.fonttype'] = 42
-matplotlib.rcParams['ps.fonttype'] = 42
+#matplotlib.rcParams['pdf.fonttype'] = 42
+#matplotlib.rcParams['ps.fonttype'] = 42
+matplotlib.rcParams['ps.useafm'] = True
+matplotlib.rcParams['pdf.use14corefonts'] = True
+matplotlib.rcParams['axes.unicode_minus'] = False
+
 
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
@@ -509,17 +513,17 @@ if args.saveFig:
     trajectory_best.set_data(bt_x[0::10], bt_y[0::10])
     
     plt.setp(landmarkCenters, markersize=4)
-    matplotlib.rcParams.update({'font.size': 4})
+    matplotlib.rcParams.update({'font.size': 6})
     plt.gcf().set_size_inches(4, 3.3)
 
     legend_list = [trajectory_best]
-    legend_name = ["Estimated trajectory"]
+    legend_name = ["Trajectory Est."]
 
     if not args.noLandmarkEst:
         legend_list.append(landmarkCenters)
-        legend_name.append("Estimated landmark position")
+        legend_name.append("Landmark Position Est.")
         legend_list.append(landmarks[0])
-        legend_name.append("Estimated landmark uncertainty")
+        legend_name.append("Landmark Est. Uncertainty")
 
     if args.allMeasure:
         allZ.set_data(allZ_x, allZ_y)
@@ -529,11 +533,11 @@ if args.saveFig:
 
     if not args.noGPS:
         legend_list.append(gps_legend)
-        legend_name.append("GPS vehicle trajectory")
+        legend_name.append("GPS Vehicle Trajectory")
 
     plt.legend(legend_list, legend_name, loc='upper right', labelspacing=0.5);
 
-    plt.setp(plt.gca().get_legend().get_texts(), fontsize='5')
+    plt.setp(plt.gca().get_legend().get_texts(), fontsize='6')
     plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
 
 measurementFileHandle.close();
