@@ -89,6 +89,7 @@ ADD_LIBRARY(rfsslam
   src/BruteForceAssignment.cpp
   src/CostMatrix.cpp
   src/PermutationLexicographic.cpp
+  src/MatrixPermanent.cpp
   )
 TARGET_LINK_LIBRARIES(rfsslam ${Boost_LIBRARIES})
 
@@ -124,6 +125,10 @@ ADD_EXECUTABLE(spatialIndexTreeTest test/SpatialIndexTreeTest.cpp)
 TARGET_LINK_LIBRARIES(spatialIndexTreeTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} rfsslam)
 ADD_TEST(unitTest spatialIndexTreeTest)
 
+ADD_EXECUTABLE(matrixPermanentTest test/MatrixPermanentTest.cpp)
+TARGET_LINK_LIBRARIES(matrixPermanentTest ${GTEST_LIBRARIES} rfsslam)
+ADD_TEST(unitTest matrixPermanentTest)
+
 # Examples
 
 ADD_EXECUTABLE(linearAssignment_CostMatrixPartitioning src/examples/linearAssignment_CostMatrixPartitioning.cpp)
@@ -156,6 +161,7 @@ set_target_properties(linearAssignment_CostMatrixPartitioning
 
 set_target_properties(cpu_timer_test jcbb_test
         spatialIndexTreeTest
+	matrixPermanentTest
 	PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test"
 )
