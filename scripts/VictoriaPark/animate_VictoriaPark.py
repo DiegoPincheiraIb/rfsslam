@@ -37,7 +37,7 @@ import numpy as np
 from scipy import ndimage
 
 import matplotlib
-#matplotlib.use("Agg");
+matplotlib.use("TKAgg");
 #print matplotlib.__version__
 
 # Necessary to generate Type 1 fonts for pdf figures as required by IEEE for paper submissions
@@ -72,11 +72,14 @@ parser.add_argument("--noLandmarkEst", help="Do not show landmark estimates", ac
 parser.add_argument("--noGPS", help="Do not show GPS trajectory", action="store_true")
 parser.add_argument("--saveFig", help="save last animation frame as a pdf file", action="store_true")
 parser.add_argument("--saveMovie", help="save animation as movie (mp4) file", action="store_true")
-parser.add_argument("-s", "--startTimeStep", help="starting timestep", type=int, default=0, metavar='NUM')
+parser.add_argument("-s", "--startTimeStep", help="starting timestep (max 7230)", type=int, default=0, metavar='NUM')
+parser.add_argument("--noEllipse", help="Uncertainty ellipses are not plotted", action="store_true")
 parser.add_argument("resultDir", help="path to result data")
 args = parser.parse_args()
 if args.allMeasure:
     args.startTimeStep = 0
+if args.startTimeStep > 7220:
+    args.startTimeStep = 7220
 
 nLandmarksDrawMax = 1000;
 nMeasurementsDrawMax = 100;
@@ -382,56 +385,42 @@ def animate(i):
     m_idx = 0;
     m_x = []
     m_y = []
-    m_x_min = 0;
-    m_x_max = 0;
-    m_y_min = 0;
-    m_y_max = 0;
+
     while m.any() and abs(m[0] - currentTime) < 1e-12:
 
         if not args.noLandmarkEst:
-   
-            cov = np.array([ [ m[4], m[5] ], [ m[5], m[6] ] ]);
-            w = m[7];
-            eVal, eVec = np.linalg.eig(cov);
-            eVal = eVal.real;
-            a1 = 4*np.sqrt(eVal[0]); # Assume this is semi-major axis first
-            a2 = 4*np.sqrt(eVal[1]); # 3 dof, 4 stdev is roughly prob = 0.997
-            semiMajorAxis = eVec[:,0];
-            if a2 > a1:
-                aTmp = a1
-                a1 = a2
-                a2 = aTmp
-                semiMajorAxis = eVec[:,1];
-            a1Angle = np.arctan2(semiMajorAxis[1], semiMajorAxis[0]);
-        
+
             m_x.append(m[2])
             m_y.append(m[3])
-            landmarks[m_idx].set_alpha(min(w, 0.75));
-            landmarks[m_idx].center = (m[2], m[3]);
-            landmarks[m_idx].height = a2;
-            landmarks[m_idx].width = a1;
-            t_start = ax.transData;
-            t_rot = transforms.Affine2D().rotate_around(m[2], m[3], a1Angle);
-            t_compound = t_rot + t_start;
-            landmarks[m_idx].set_transform(t_compound);
-            drawnObjects.append(landmarks[m_idx]);
 
-        if m[2] < m_x_min:
-            m_x_min = m[2]
-        if m[2] > m_x_max:
-            m_x_max = m[2]
-        if m[3] < m_y_min:
-            m_y_min = m[3]
-        if m[3] > m_y_max:
-            m_y_max = m[3]        
+            if not args.noEllipse:
+                cov = np.array([ [ m[4], m[5] ], [ m[5], m[6] ] ]);
+                w = m[7];
+                eVal, eVec = np.linalg.eig(cov);
+                eVal = eVal.real;
+                a1 = 4*np.sqrt(eVal[0]); # Assume this is semi-major axis first
+                a2 = 4*np.sqrt(eVal[1]); # 3 dof, 4 stdev is roughly prob = 0.997
+                semiMajorAxis = eVec[:,0];
+                if a2 > a1:
+                    aTmp = a1
+                    a1 = a2
+                    a2 = aTmp
+                    semiMajorAxis = eVec[:,1];
+                a1Angle = np.arctan2(semiMajorAxis[1], semiMajorAxis[0]);
+        
+                landmarks[m_idx].set_alpha(min(w, 0.75));
+                landmarks[m_idx].center = (m[2], m[3]);
+                landmarks[m_idx].height = a2;
+                landmarks[m_idx].width = a1;
+                t_start = ax.transData;
+                t_rot = transforms.Affine2D().rotate_around(m[2], m[3], a1Angle);
+                t_compound = t_rot + t_start;
+                landmarks[m_idx].set_transform(t_compound);
+                drawnObjects.append(landmarks[m_idx]);
 
         m_idx += 1;
 
         m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
-
-    #plt.xlim([m_x_min - 10, m_x_max + 10])
-    #plt.ylim([m_y_min - 10, m_y_max + 10])
-    #plt.gca().set_aspect('equal')
 
     while landmarks[m_idx].height != 0:
         landmarks[m_idx].set_alpha(0);
@@ -510,7 +499,7 @@ if args.saveFig:
     txt.set_text(" ");
     trajectory.set_data([], [])
     particles.set_data([], [])
-    trajectory_best.set_data(bt_x[0::10], bt_y[0::10])
+    trajectory_best.set_data(bt_x[0::20], bt_y[0::20])
     
     plt.setp(landmarkCenters, markersize=4)
     matplotlib.rcParams.update({'font.size': 6})
@@ -522,8 +511,9 @@ if args.saveFig:
     if not args.noLandmarkEst:
         legend_list.append(landmarkCenters)
         legend_name.append("Landmark Position Est.")
-        legend_list.append(landmarks[0])
-        legend_name.append("Landmark Est. Uncertainty")
+        if not args.noEllipse:
+            legend_list.append(landmarks[0])
+            legend_name.append("Landmark Est. Uncertainty")
 
     if args.allMeasure:
         allZ.set_data(allZ_x, allZ_y)
