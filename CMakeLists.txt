@@ -90,6 +90,7 @@ ADD_LIBRARY(rfsslam
   src/CostMatrix.cpp
   src/PermutationLexicographic.cpp
   src/MatrixPermanent.cpp
+  src/misc/memProfile.cpp
   )
 TARGET_LINK_LIBRARIES(rfsslam ${Boost_LIBRARIES})
 

@@ -699,8 +699,6 @@ public:
 
 
 
-
-
 int main(int argc, char* argv[]){
 
   int initRandSeed = 0;
@@ -730,7 +728,7 @@ int main(int argc, char* argv[]){
   boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
 
   sim.run(); 
-
+  std::cout << "mem use: " << MemProfile::getCurrentRSS() << "(" << MemProfile::getPeakRSS() << ")\n";
   delete timer;
 
   return 0;

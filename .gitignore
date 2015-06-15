@@ -12,3 +12,4 @@ lib/
 install_manifest.txt
 *.orig
 *.bak
+cfg/*.xml
