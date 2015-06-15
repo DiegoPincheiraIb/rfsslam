@@ -123,11 +123,11 @@ ADD_EXECUTABLE(convertLogFiles src/convertLogFiles.cpp)
 TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})
 
 ADD_EXECUTABLE(spatialIndexTreeTest test/SpatialIndexTreeTest.cpp)
-TARGET_LINK_LIBRARIES(spatialIndexTreeTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} rfsslam)
+TARGET_LINK_LIBRARIES(spatialIndexTreeTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} rfsslam pthread)
 ADD_TEST(unitTest spatialIndexTreeTest)
 
 ADD_EXECUTABLE(matrixPermanentTest test/MatrixPermanentTest.cpp)
-TARGET_LINK_LIBRARIES(matrixPermanentTest ${GTEST_LIBRARIES} rfsslam)
+TARGET_LINK_LIBRARIES(matrixPermanentTest ${GTEST_LIBRARIES} rfsslam pthread)
 ADD_TEST(unitTest matrixPermanentTest)
 
 # Examples
