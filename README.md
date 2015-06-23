@@ -117,6 +117,17 @@ Set `saveMoive=True` to generate a mp4 file.
 For animating Victoria Park dataset results, run: `scripts/VictoriaPark/animate_VictoriaPark.py [results_dir]`.
 Use `-h` or `--help` to see options.
 
+#### Performance Profiling Tools ####
+
+Performance profiling is currently available for:
+  - `bin/rbphdslam2dSim`
+  - `bin/rbphdslam_VictoriaPark`
+  - `bin/fastslam2dSim`
+  - `bin/fastslam_VictoriaPark`
+
+Use `ccmake` to turn on `USE_CPU_PROFILER` and or `USE_HEAP_PROFILER`
+
+
 ### Version History ###
 
 * 1.0.0 
@@ -144,6 +155,7 @@ Use `-h` or `--help` to see options.
         - multithreading with OpenMP is currently not supported by Clang/LLVM 
         - An OpenMP-supported LLVM compiler is available at: [http://clang-omp.github.io/](http://clang-omp.github.io/)	
     - Inclusion of the Victoria Park dataset and the code for processing it using various SLAM filters.
+	- Performance profiling option using Google Perftools
 
 ### Future Work ###
 
