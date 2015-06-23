@@ -125,8 +125,9 @@ Performance profiling is currently available for:
   - `bin/fastslam2dSim`
   - `bin/fastslam_VictoriaPark`
 
-Use `ccmake` to turn on `USE_CPU_PROFILER` and or `USE_HEAP_PROFILER`
-
+Use `ccmake` to turn on `USE_CPU_PROFILER` and or `USE_HEAP_PROFILER`.
+Performance profiles are recorded in `.prof` files in the current directory.
+Use `google-pprof` to parse the profiles.
 
 ### Version History ###
 
@@ -146,7 +147,7 @@ Use `ccmake` to turn on `USE_CPU_PROFILER` and or `USE_HEAP_PROFILER`
     - cmake now generates rfsslam-config.cmake to enable find(rfsslam) 
       from other projects
 
-* Latest
+* Latest (1.2.0)
     - Implementation of joint compatibility branch and bound (JCBB) 
       for data association in vector-based methods
     - Config files now use xml format to removed dependency on the libconfig library
