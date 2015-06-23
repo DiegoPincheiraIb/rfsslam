@@ -740,10 +740,10 @@ int main(int argc, char* argv[]){
   boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
 
 #ifdef _PERFTOOLS_CPU
-  ProfilerStart("./rbphdslam2d_cpu_prof");
+  ProfilerStart("./rbphdslam2dSim_cpu.prof");
 #endif
 #ifdef _PERFTOOLS_HEAP
-  HeapProfilerStart("./rbphdslam2d_heap_prof");
+  HeapProfilerStart("./rbphdslam2dSim_heap.prof");
 #endif
 
   sim.run(); 

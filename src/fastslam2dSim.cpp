@@ -40,6 +40,13 @@
 #include <stdio.h>
 #include <string>
 
+#ifdef _PERFTOOLS_CPU
+#include <google/profiler.h>
+#endif
+#ifdef _PERFTOOLS_HEAP
+#include <google/heap-profiler.h>
+#endif
+
 using namespace rfs;
 
 /**
@@ -692,7 +699,22 @@ int main(int argc, char* argv[]){
 
   boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
 
-  sim.run();
+
+#ifdef _PERFTOOLS_CPU
+  ProfilerStart("./fastslam2dSim_cpu.prof");
+#endif
+#ifdef _PERFTOOLS_HEAP
+  HeapProfilerStart("./fastslam2dSim_heap.prof");
+#endif
+
+  sim.run(); 
+  
+#ifdef _PERFTOOLS_HEAP
+  HeapProfilerStop();
+#endif
+#ifdef _PERFTOOLS_CPU
+  ProfilerStop();
+#endif
 
   delete timer;
 

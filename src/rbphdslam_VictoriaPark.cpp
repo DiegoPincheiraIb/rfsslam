@@ -766,10 +766,10 @@ int main(int argc, char* argv[]){
   boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Run time: %ws\n");
 
 #ifdef _PERFTOOLS_CPU
-  ProfilerStart("./rbphdslamVicPark_cpu_prof");
+  ProfilerStart("./rbphdslam_VictoriaPark_cpu.prof");
 #endif
 #ifdef _PERFTOOLS_HEAP
-  HeapProfilerStart("./rbphdslamVicPark_heap_prof");
+  HeapProfilerStart("./rbphdslam_VictoriaPark_heap.prof");
 #endif
 
   slam.run(); 

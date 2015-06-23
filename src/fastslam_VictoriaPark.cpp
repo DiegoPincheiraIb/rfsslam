@@ -42,6 +42,13 @@
 #include <string>
 #include <sstream>
 
+#ifdef _PERFTOOLS_CPU
+#include <google/profiler.h>
+#endif
+#ifdef _PERFTOOLS_HEAP
+#include <google/heap-profiler.h>
+#endif
+
 using namespace rfs;
 
 /**
@@ -728,7 +735,21 @@ int main(int argc, char* argv[]){
   srand48( time(NULL) );
   boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Run time: %ws\n");
 
+#ifdef _PERFTOOLS_CPU
+  ProfilerStart("./fastslam_VictoriaPark_cpu.prof");
+#endif
+#ifdef _PERFTOOLS_HEAP
+  HeapProfilerStart("./fastslam_VictoriaPark_heap.prof");
+#endif
+
   slam.run(); 
+
+#ifdef _PERFTOOLS_HEAP
+  HeapProfilerStop();
+#endif
+#ifdef _PERFTOOLS_CPU
+  ProfilerStop();
+#endif
 
   delete timer;
  
