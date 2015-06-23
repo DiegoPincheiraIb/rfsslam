@@ -45,7 +45,8 @@ matplotlib.use("TKAgg");
 #matplotlib.rcParams['ps.fonttype'] = 42
 matplotlib.rcParams['ps.useafm'] = True
 matplotlib.rcParams['pdf.use14corefonts'] = True
-matplotlib.rcParams['axes.unicode_minus'] = False
+#matplotlib.rcParams['text.usetex'] = True
+#matplotlib.rcParams['axes.unicode_minus'] = False
 
 
 import matplotlib.pyplot as plt
@@ -528,6 +529,13 @@ if args.saveFig:
     plt.legend(legend_list, legend_name, loc='upper right', labelspacing=0.5);
 
     plt.setp(plt.gca().get_legend().get_texts(), fontsize='6')
+
+    scale = 1;
+    ticks = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*scale))
+    plt.gca().xaxis.set_major_formatter(ticks)
+    ticks = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y*scale))
+    plt.gca().yaxis.set_major_formatter(ticks)
+    
     plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
 
 measurementFileHandle.close();

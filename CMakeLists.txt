@@ -41,7 +41,23 @@ set(Boost_USE_STATIC_RUNTIME ON)
 #MESSAGE(${Boost_LIBRARIES})
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-FIND_PACKAGE(Eigen  REQUIRED)
+FIND_PACKAGE(Eigen REQUIRED)
+
+# Google perftools
+FIND_PACKAGE(Perftools)
+IF(Perftools_FOUND)
+  SET(USE_CPU_PROFILER OFF CACHE BOOL "Use Google Perftools for CPU profiling.")
+  SET(USE_HEAP_PROFILER OFF CACHE BOOL "Use Google Perftools for heap profiling.")
+  IF(USE_CPU_PROFILER)
+    ADD_DEFINITIONS(-D_PERFTOOLS_CPU)
+  ENDIF()
+  IF(USE_HEAP_PROFILER)
+    ADD_DEFINITIONS(-D_PERFTOOLS_HEAP)
+  ENDIF()
+ENDIF()
+
+
+
 
 # Change the following include directories depending on where gtest is installed
 # If using Ubuntu apt-get to install, go to /usr/src/gtest,
@@ -49,7 +65,6 @@ FIND_PACKAGE(Eigen  REQUIRED)
 # move libgtest_main.a and libgtest.a to /usr/lib
 enable_testing()
 find_package(GTest REQUIRED)
-
 
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 #MESSAGE("CMAKE_RUNTIME_OUTPUT_DIRECTORY = " ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
@@ -90,23 +105,24 @@ ADD_LIBRARY(rfsslam
   src/CostMatrix.cpp
   src/PermutationLexicographic.cpp
   src/MatrixPermanent.cpp
+  src/misc/memProfile.cpp
   )
 TARGET_LINK_LIBRARIES(rfsslam ${Boost_LIBRARIES})
 
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)
-TARGET_LINK_LIBRARIES(rbphdslam2dSim ${Boost_LIBRARIES} rfsslam)
+TARGET_LINK_LIBRARIES(rbphdslam2dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
 
 ADD_EXECUTABLE(rbphdslam2dSim_amplitude src/rbphdslam2dSim_amplitude.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dSim_amplitude ${Boost_LIBRARIES} rfsslam)
 
 ADD_EXECUTABLE(fastslam2dSim src/fastslam2dSim.cpp)
-TARGET_LINK_LIBRARIES(fastslam2dSim ${Boost_LIBRARIES} rfsslam)
+TARGET_LINK_LIBRARIES(fastslam2dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY}) 
 
 ADD_EXECUTABLE(rbphdslam_VictoriaPark src/rbphdslam_VictoriaPark.cpp)
-TARGET_LINK_LIBRARIES(rbphdslam_VictoriaPark ${Boost_LIBRARIES} rfsslam)
+TARGET_LINK_LIBRARIES(rbphdslam_VictoriaPark ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
 
 ADD_EXECUTABLE(fastslam_VictoriaPark src/fastslam_VictoriaPark.cpp)
-TARGET_LINK_LIBRARIES(fastslam_VictoriaPark ${Boost_LIBRARIES} rfsslam)
+TARGET_LINK_LIBRARIES(fastslam_VictoriaPark ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
 
 #ADD_EXECUTABLE(unitTest test/test.cpp src/Measurement.cpp src/Pose.cpp)
 #TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread TimeStamp MeasurementModel ProcessModel LinearAssignment)

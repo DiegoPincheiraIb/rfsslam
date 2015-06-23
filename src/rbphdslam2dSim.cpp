@@ -39,6 +39,13 @@
 #include <stdio.h>
 #include <string>
 
+#ifdef _PERFTOOLS_CPU
+#include <google/profiler.h>
+#endif
+#ifdef _PERFTOOLS_HEAP
+#include <google/heap-profiler.h>
+#endif
+
 using namespace rfs;
 
 /**
@@ -515,6 +522,11 @@ public:
       
       if( k % 100 == 0)
 	printf("k = %d\n", k);
+
+#ifdef _PERFTOOLS_HEAP
+      if( k % 20 == 0)
+	HeapProfilerDump("Timestep interval dump");
+#endif
       
       ////////// Prediction Step //////////
 
@@ -699,8 +711,6 @@ public:
 
 
 
-
-
 int main(int argc, char* argv[]){
 
   int initRandSeed = 0;
@@ -729,8 +739,23 @@ int main(int argc, char* argv[]){
 
   boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
 
-  sim.run(); 
+#ifdef _PERFTOOLS_CPU
+  ProfilerStart("./rbphdslam2dSim_cpu.prof");
+#endif
+#ifdef _PERFTOOLS_HEAP
+  HeapProfilerStart("./rbphdslam2dSim_heap.prof");
+#endif
 
+  sim.run(); 
+  
+#ifdef _PERFTOOLS_HEAP
+  HeapProfilerStop();
+#endif
+#ifdef _PERFTOOLS_CPU
+  ProfilerStop();
+#endif
+
+  std::cout << "mem use: " << MemProfile::getCurrentRSS() << "(" << MemProfile::getPeakRSS() << ")\n";
   delete timer;
 
   return 0;

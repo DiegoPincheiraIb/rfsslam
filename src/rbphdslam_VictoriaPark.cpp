@@ -42,6 +42,13 @@
 #include <string>
 #include <sstream>
 
+#ifdef _PERFTOOLS_CPU
+#include <google/profiler.h>
+#endif
+#ifdef _PERFTOOLS_HEAP
+#include <google/heap-profiler.h>
+#endif
+
 using namespace rfs;
 
 /**
@@ -448,6 +455,11 @@ public:
 	std::cout << "Sensor messages processed: " << k << "/" << sensorManagerMsgs_.size()-1 << std::endl;
       }
 
+#ifdef _PERFTOOLS_HEAP
+      if( k % 50 == 0)
+	HeapProfilerDump("Timestep interval dump");
+#endif
+
       if(sensorManagerMsgs_[k].sensorType == SensorManagerMsg::Input){
 
 	TimeStamp t_k = sensorManagerMsgs_[k].t;
@@ -753,7 +765,21 @@ int main(int argc, char* argv[]){
   srand48( time(NULL) );
   boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Run time: %ws\n");
 
+#ifdef _PERFTOOLS_CPU
+  ProfilerStart("./rbphdslam_VictoriaPark_cpu.prof");
+#endif
+#ifdef _PERFTOOLS_HEAP
+  HeapProfilerStart("./rbphdslam_VictoriaPark_heap.prof");
+#endif
+
   slam.run(); 
+
+#ifdef _PERFTOOLS_HEAP
+  HeapProfilerStop();
+#endif
+#ifdef _PERFTOOLS_CPU
+  ProfilerStop();
+#endif
 
   delete timer;
  
