@@ -29,9 +29,14 @@ SET(CMAKE_CXX_COMPILER "c++")
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native ")
 
-SET(USE_OPENMP ON CACHE BOOL "Use OpenMP to compile multithreaded versions of SLAM algorithms.")
+IF(APPLE)
+  SET(USE_OPENMP OFF CACHE BOOL "Use OpenMP to compile multithreaded versions of SLAM algorithms.")
+ELSE()
+  SET(USE_OPENMP ON CACHE BOOL "Use OpenMP to compile multithreaded versions of SLAM algorithms.")
+ENDIF()
+
 IF(USE_OPENMP)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp ")
 ENDIF()
 
 FIND_PACKAGE(Boost COMPONENTS math_c99 timer system filesystem graph REQUIRED)
@@ -50,13 +55,17 @@ IF(Perftools_FOUND)
   SET(USE_HEAP_PROFILER OFF CACHE BOOL "Use Google Perftools for heap profiling.")
   IF(USE_CPU_PROFILER)
     ADD_DEFINITIONS(-D_PERFTOOLS_CPU)
+    IF(APPLE)
+      SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-no_pie ")
+    ENDIF()
   ENDIF()
   IF(USE_HEAP_PROFILER)
     ADD_DEFINITIONS(-D_PERFTOOLS_HEAP)
+    IF(APPLE)
+      SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-no_pie ")
+    ENDIF()
   ENDIF()
 ENDIF()
-
-
 
 
 # Change the following include directories depending on where gtest is installed
