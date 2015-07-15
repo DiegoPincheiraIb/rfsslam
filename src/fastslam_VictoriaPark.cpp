@@ -43,10 +43,10 @@
 #include <sstream>
 
 #ifdef _PERFTOOLS_CPU
-#include <google/profiler.h>
+#include <gperftools/profiler.h>
 #endif
 #ifdef _PERFTOOLS_HEAP
-#include <google/heap-profiler.h>
+#include <gperftools/heap-profiler.h>
 #endif
 
 using namespace rfs;

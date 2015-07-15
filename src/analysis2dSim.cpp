@@ -39,6 +39,8 @@
 #include <string>
 #include <vector>
 
+typedef unsigned int uint;
+
 using namespace rfs;
 
 class MM : public Landmark2d{

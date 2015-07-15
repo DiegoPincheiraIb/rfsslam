@@ -38,6 +38,8 @@
 #include <queue> 
 #include "HungarianMethod.hpp"
 
+typedef unsigned int uint;
+
 namespace rfs{
 
   /** 

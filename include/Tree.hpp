@@ -38,6 +38,8 @@
 #include <boost/enable_shared_from_this.hpp>
 #include <iostream>
 
+typedef unsigned int uint;
+
 namespace rfs{
 
 /** 

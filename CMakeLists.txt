@@ -1,7 +1,4 @@
 
-# Note: to change compiler, use...
-# cmake -D CMAKE_C_COMPILER=gcc CMAKE_CXX_COMPILER=c++ .
-
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 
 #
@@ -15,7 +12,6 @@ ELSE()
    SET(CMAKE_BUILD_TYPE RELEASE CACHE STRING "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel.")
 ENDIF()
 
-
 PROJECT(RFSSLAM)
 SET(RFSSLAM_MAJOR_VERSION 1)
 SET(RFSSLAM_MINOR_VERSION 1)
@@ -23,52 +19,69 @@ SET(RFSSLAM_PATCH_VERSION 0)
 SET(RFSSLAM_VERSION ${RFSSLAM_MAJOR_VERSION}.${RFSSLAM_MINOR_VERSION}.${RFSSLAM_PATCH_VERSION})
 message(STATUS "RFSSLAM Version ${RFSSLAM_VERSION}")
 
-# Explicitly set for colorgcc. By default, they point to gcc and c++ with absolute path
+# Compiler settings
+# Note: to change compiler, use for example...
+# cmake -D CMAKE_C_COMPILER=gcc CMAKE_CXX_COMPILER=c++ .
 SET(CMAKE_C_COMPILER "gcc")
-SET(CMAKE_CXX_COMPILER "c++")
-
+SET(CMAKE_CXX_COMPILER "g++")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native ")
-
+#MESSAGE("CMAKE_CXX_COMPILTER_ID = ${CMAKE_CXX_COMPILER_ID}")
 IF(APPLE)
-  SET(USE_OPENMP OFF CACHE BOOL "Use OpenMP to compile multithreaded versions of SLAM algorithms.")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-qualifiers ") # For Eigen const warnings
+  IF("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    MESSAGE("NOTE: Libraries being linked to RFSSLAM must also be compiled using GCC")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-enum-compare ") # For Eigen enum compare warnings
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wa,-q ") #required for march=native errors. This forces clang assembler to be used, and will produce some argument unused warnings. 
+  ENDIF()
+ENDIF()
+
+# OpenMP
+IF(APPLE AND ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang"))
+  SET(USE_OPENMP OFF) # OpenMP does not yet work with Clang, but hopefully soon
 ELSE()
   SET(USE_OPENMP ON CACHE BOOL "Use OpenMP to compile multithreaded versions of SLAM algorithms.")
 ENDIF()
-
 IF(USE_OPENMP)
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp ")
 ENDIF()
 
-FIND_PACKAGE(Boost COMPONENTS math_c99 timer system filesystem graph REQUIRED)
+# Boost
+FIND_PACKAGE(Boost COMPONENTS timer chrono system filesystem graph REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON) 
 set(Boost_USE_STATIC_RUNTIME ON)
-#MESSAGE(${Boost_LIBRARIES})
 
+# For cmake custom library searches
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+# Eigen
 FIND_PACKAGE(Eigen REQUIRED)
 
 # Google perftools
 FIND_PACKAGE(Perftools)
 IF(Perftools_FOUND)
-  SET(USE_CPU_PROFILER OFF CACHE BOOL "Use Google Perftools for CPU profiling.")
-  SET(USE_HEAP_PROFILER OFF CACHE BOOL "Use Google Perftools for heap profiling.")
+  IF("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    SET(USE_CPU_PROFILER OFF CACHE BOOL "Use Google Perftools for CPU profiling.")
+    SET(USE_HEAP_PROFILER OFF CACHE BOOL "Use Google Perftools for heap profiling.")
+  ELSE()
+    SET(USE_CPU_PROFILER OFF) # Does not play nice with Clang
+    SET(USE_HEAP_PROFILER OFF)
+  ENDIF()
   IF(USE_CPU_PROFILER)
     ADD_DEFINITIONS(-D_PERFTOOLS_CPU)
     IF(APPLE)
-      SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-no_pie ")
+      SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-no_pie ") # Required due to ASLR
     ENDIF()
   ENDIF()
   IF(USE_HEAP_PROFILER)
     ADD_DEFINITIONS(-D_PERFTOOLS_HEAP)
     IF(APPLE)
-      SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-no_pie ")
+      SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-no_pie ") # Required due to ASLR
     ENDIF()
   ENDIF()
 ENDIF()
 
-
-# Change the following include directories depending on where gtest is installed
+# GTest
 # If using Ubuntu apt-get to install, go to /usr/src/gtest,
 # run cmake . and make  . After compiling , 
 # move libgtest_main.a and libgtest.a to /usr/lib
