@@ -5,7 +5,7 @@
   <dataset>
     <directory>data/VictoriaPark/</directory>
     <filename>
-      <gps>GPS.txt</gps>
+      <gps>gps.dat</gps>
       <detection>measurements.dat</detection>
       <lidar>LASER.txt</lidar>
       <input>inputs.dat</input>
