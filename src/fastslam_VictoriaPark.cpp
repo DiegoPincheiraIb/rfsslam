@@ -41,6 +41,7 @@
 #include <stdio.h>
 #include <string>
 #include <sstream>
+#include <sys/ioctl.h>
 
 #ifdef _PERFTOOLS_CPU
 #include <gperftools/profiler.h>
@@ -101,7 +102,8 @@ public:
     if( pt.get("config.logging.logToFile", 0) == 1 )
       logToFile_ = true;
     logDirPrefix_ = pt.get<std::string>("config.logging.logDirPrefix", "./");
-
+    if( *logDirPrefix_.rbegin() != '/')
+      logDirPrefix_ += '/';
 
     ackerman_h_ = pt.get<double>("config.process.AckermanModel.rearWheelOffset");
     ackerman_l_ = pt.get<double>("config.process.AckermanModel.frontToRearDist");
@@ -165,7 +167,7 @@ public:
       boost::filesystem::create_directories(dir);
       boost::filesystem::path cfgFilePathSrc( cfgFileName_ );
       std::string cfgFileDst( logDirPrefix_ );
-      cfgFileDst += "settings.cfg";
+      cfgFileDst += "settings.xml";
       boost::filesystem::path cfgFilePathDst( cfgFileDst.data() );
       boost::filesystem::copy_file( cfgFilePathSrc, cfgFilePathDst, boost::filesystem::copy_option::overwrite_if_exists);
     }
@@ -390,6 +392,15 @@ public:
   /** \brief Process the data and peform SLAM */
   void run(){
 
+#ifdef _PERFTOOLS_CPU
+    std::string perfCPU_file = logDirPrefix_ + "fastslam_VictoriaPark_cpu.prof";
+    ProfilerStart(perfCPU_file.data());
+#endif
+#ifdef _PERFTOOLS_HEAP
+    std::string perfHEAP_file = logDirPrefix_ + "fastslam_VictoriaPark_heap.prof";
+    HeapProfilerStart(perfHEAP_file.data());
+#endif
+
     // Initialization at first timestep   
     std::ofstream particlePoseFile;
     std::ofstream landmarkEstFile;
@@ -444,10 +455,36 @@ public:
       nMessageToProcess_ = sensorManagerMsgs_.size();
     }
     for(uint k = 0; k < nMessageToProcess_ ; k++ ){ 
-
-      if( k % 1000 == 0){
-	std::cout << "Sensor messages processed: " << k << "/" << sensorManagerMsgs_.size()-1 << std::endl;
+      
+      if( k % 500 == 0 || k == nMessageToProcess_ - 1){
+	float progressPercent = float(k+1) / float(nMessageToProcess_);
+	int progressBarW = 50;
+	struct winsize ws;
+	if(ioctl(1, TIOCGWINSZ, &ws) >= 0)
+	  progressBarW = ws.ws_col - 30;
+	int progressPos = progressPercent * progressBarW;
+	if(progressBarW >= 50){
+	  std::cout << "["; 
+	  for(int i = 0; i < progressBarW; i++){
+	    if(i < progressPos)
+	      std::cout << "=";
+	    else if(i == progressPos)
+	      std::cout << ">";
+	    else
+	      std::cout << " ";
+	  }
+	  std::cout << "] ";
+	}
+	std::cout << "k = " << k << " (" << int(progressPercent * 100.0) << " %)\r"; 
+	std::cout.flush();
       }
+      if(k == nMessageToProcess_ - 1)
+	std::cout << std::endl << std::endl;
+
+#ifdef _PERFTOOLS_HEAP
+      if( k % 50 == 0)
+	HeapProfilerDump("Timestep interval dump");
+#endif
 
       if(sensorManagerMsgs_[k].sensorType == SensorManagerMsg::Input){
 
@@ -604,6 +641,12 @@ public:
       bestTrajFile.close();
     }
     
+#ifdef _PERFTOOLS_HEAP
+    HeapProfilerStop();
+#endif
+#ifdef _PERFTOOLS_CPU
+    ProfilerStop();
+#endif
 
     printf("Elapsed Timing Information [nsec]\n");
     printf("Prediction    -- wall: %lld   cpu: %lld\n", 
@@ -735,21 +778,7 @@ int main(int argc, char* argv[]){
   srand48( time(NULL) );
   boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Run time: %ws\n");
 
-#ifdef _PERFTOOLS_CPU
-  ProfilerStart("./fastslam_VictoriaPark_cpu.prof");
-#endif
-#ifdef _PERFTOOLS_HEAP
-  HeapProfilerStart("./fastslam_VictoriaPark_heap.prof");
-#endif
-
   slam.run(); 
-
-#ifdef _PERFTOOLS_HEAP
-  HeapProfilerStop();
-#endif
-#ifdef _PERFTOOLS_CPU
-  ProfilerStop();
-#endif
 
   delete timer;
  

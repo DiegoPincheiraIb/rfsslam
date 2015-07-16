@@ -39,6 +39,7 @@
 #include "ProcessModel_Odometry2D.hpp"
 #include <stdio.h>
 #include <string>
+#include <sys/ioctl.h>
 
 #ifdef _PERFTOOLS_CPU
 #include <gperftools/profiler.h>
@@ -84,6 +85,8 @@ public:
     if( pt.get("config.logging.logToFile", 0) == 1 )
       logToFile_ = true;
     logDirPrefix_ = pt.get<std::string>("config.logging.logDirPrefix", "./");
+    if( *logDirPrefix_.rbegin() != '/')
+      logDirPrefix_ += '/';
 
     kMax_ = pt.get<int>("config.timesteps");
     dT_ = pt.get<double>("config.sec_per_timestep");
@@ -363,7 +366,7 @@ public:
 
     boost::filesystem::path cfgFilePathSrc( cfgFileName_ );
     std::string cfgFileDst( logDirPrefix_ );
-    cfgFileDst += "simSettings.cfg";
+    cfgFileDst += "simSettings.xml";
     boost::filesystem::path cfgFilePathDst( cfgFileDst.data() );
     boost::filesystem::copy_file( cfgFilePathSrc, cfgFilePathDst, boost::filesystem::copy_option::overwrite_if_exists);
 
@@ -479,6 +482,15 @@ public:
     
     printf("Running simulation\n\n");
 
+#ifdef _PERFTOOLS_CPU
+    std::string perfCPU_file = logDirPrefix_ + "fastslam2dSim_cpu.prof";
+    ProfilerStart(perfCPU_file.data());
+#endif
+#ifdef _PERFTOOLS_HEAP
+    std::string perfHEAP_file = logDirPrefix_ + "fastslam2dSim_heap.prof";
+    HeapProfilerStart(perfHEAP_file.data());
+#endif
+
     //////// Initialization at first timestep //////////
 
     FILE* pParticlePoseFile;
@@ -511,10 +523,36 @@ public:
     for(int k = 1; k < kMax_; k++){
 
       time += dTimeStamp_;
- 
-      if( k % 100 == 0)
-	printf("k = %d\n", k);
- 
+
+            if( k % 100 == 0 || k == kMax_ - 1){
+	float progressPercent = float(k+1) / float(kMax_);
+	int progressBarW = 50;
+	struct winsize ws;
+	if(ioctl(1, TIOCGWINSZ, &ws) >= 0)
+	  progressBarW = ws.ws_col - 30;
+	int progressPos = progressPercent * progressBarW;
+	if(progressBarW >= 50){
+	  std::cout << "["; 
+	  for(int i = 0; i < progressBarW; i++){
+	    if(i < progressPos)
+	      std::cout << "=";
+	    else if(i == progressPos)
+	      std::cout << ">";
+	    else
+	      std::cout << " ";
+	  }
+	  std::cout << "] ";
+	}
+	std::cout << "k = " << k << " (" << int(progressPercent * 100.0) << " %)\r"; 
+	std::cout.flush();
+      }
+      if(k == kMax_ - 1)
+	std::cout << std::endl << std::endl;
+
+#ifdef _PERFTOOLS_HEAP
+      if( k % 20 == 0)
+	HeapProfilerDump("Timestep interval dump");
+#endif
       
       ////////// Prediction Step //////////
 
@@ -585,8 +623,15 @@ public:
 	}
       }
     }
+        
+#ifdef _PERFTOOLS_HEAP
+    HeapProfilerStop();
+#endif
+#ifdef _PERFTOOLS_CPU
+    ProfilerStop();
+#endif
 
-        printf("Elapsed Timing Information [nsec]\n");
+    printf("Elapsed Timing Information [nsec]\n");
     printf("Prediction    -- wall: %lld   cpu: %lld\n", 
 	   pFilter_->getTimingInfo()->predict_wall, pFilter_->getTimingInfo()->predict_cpu);
     printf("Map Update    -- wall: %lld   cpu: %lld\n", 
@@ -699,22 +744,7 @@ int main(int argc, char* argv[]){
 
   boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
 
-
-#ifdef _PERFTOOLS_CPU
-  ProfilerStart("./fastslam2dSim_cpu.prof");
-#endif
-#ifdef _PERFTOOLS_HEAP
-  HeapProfilerStart("./fastslam2dSim_heap.prof");
-#endif
-
   sim.run(); 
-  
-#ifdef _PERFTOOLS_HEAP
-  HeapProfilerStop();
-#endif
-#ifdef _PERFTOOLS_CPU
-  ProfilerStop();
-#endif
 
   delete timer;
 

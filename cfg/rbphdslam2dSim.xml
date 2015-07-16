@@ -4,7 +4,7 @@
   
   <logging>
     <logToFile>1</logToFile>
-    <logDirPrefix>data/rbphdslam/</logDirPrefix>
+    <logDirPrefix>data/rbphdslam</logDirPrefix>
   </logging>
 
   <timesteps>3000</timesteps>

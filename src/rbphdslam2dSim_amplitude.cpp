@@ -1,7 +1,7 @@
 /*
  * Software License Agreement (New BSD License)
  *
- * Copyright (c) 2013, Keith Leung, Felipe Inostroza
+ * Copyright (c) 2015, Keith Leung, Felipe Inostroza
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -50,8 +50,8 @@ using namespace rfs;
 
 /**
  * \class Simulator_RBPHDSLAM_2d_amplitude
- * \brief A 2d SLAM Simulator using the RB-PHD Filter
- * \author Keith Leung
+ * \brief A 2d SLAM Simulator using the RB-PHD Filter with measurement amplitude information 
+ * \author Felipe Inostroza
  */
 class Simulator_RBPHDSLAM_2d_amplitude{
 
@@ -61,12 +61,12 @@ public:
 
   Simulator_RBPHDSLAM_2d_amplitude(){
     pFilter_ = NULL;
-        gen_norm_ = new ::boost::variate_generator< ::boost::mt19937, 
-					       ::boost::normal_distribution<double> >
-	  (::boost::mt19937(rand()), ::boost::normal_distribution<double>());
+    gen_norm_ = new ::boost::variate_generator< ::boost::mt19937, 
+						::boost::normal_distribution<double> >
+      (::boost::mt19937(rand()), ::boost::normal_distribution<double>());
     gen_exp_ = new ::boost::variate_generator< ::boost::mt19937, 
 					       ::boost::exponential_distribution<double> >
-	  (::boost::mt19937(rand()), ::boost::exponential_distribution<double>());
+      (::boost::mt19937(rand()), ::boost::exponential_distribution<double>());
   }
   
   ~Simulator_RBPHDSLAM_2d_amplitude(){
@@ -89,6 +89,8 @@ public:
     if( pt.get("config.logging.logToFile", 0) == 1 )
       logToFile_ = true;
     logDirPrefix_ = pt.get<std::string>("config.logging.logDirPrefix", "./");
+    if( *logDirPrefix_.rbegin() != '/')
+      logDirPrefix_ += '/';
 
     kMax_ = pt.get<int>("config.timesteps");
     dT_ = pt.get<double>("config.sec_per_timestep");
@@ -380,7 +382,7 @@ public:
 
     boost::filesystem::path cfgFilePathSrc( cfgFileName_ );
     std::string cfgFileDst( logDirPrefix_ );
-    cfgFileDst += "simSettings.cfg";
+    cfgFileDst += "simSettings.xml";
     boost::filesystem::path cfgFilePathDst( cfgFileDst.data() );
     boost::filesystem::copy_file( cfgFilePathSrc, cfgFilePathDst, boost::filesystem::copy_option::overwrite_if_exists);
 
