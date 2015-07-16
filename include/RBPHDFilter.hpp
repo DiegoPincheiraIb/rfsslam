@@ -479,7 +479,6 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     if(nThreads_ == 1){
       timer_mapUpdate_.stop();
     }
-    //std::cout << "Map Update mem use: " << MemProfile::getCurrentRSS() << "(" << MemProfile::getPeakRSS() << ")\n";
 
     ////////// Particle Weighintg ////////// 
     if(!config.useClusterProcess_){
@@ -494,7 +493,6 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	timer_particleWeighting_.stop();
       }
     }
-    //std::cout << "Particle weight mem use: " << MemProfile::getCurrentRSS() << "(" << MemProfile::getPeakRSS() << ")\n";
       
     //////////// Merge and prune //////////
     if(nThreads_ == 1){
@@ -539,7 +537,6 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     this->normalizeWeights();
   }
   timer_particleResample_.stop();
-  //std::cout << "Resampling mem use: " << MemProfile::getCurrentRSS() << "(" << MemProfile::getPeakRSS() << ")\n";
 
 }
 
