@@ -631,22 +631,50 @@ public:
     ProfilerStop();
 #endif
 
-    printf("Elapsed Timing Information [nsec]\n");
-    printf("Prediction    -- wall: %lld   cpu: %lld\n", 
-	   pFilter_->getTimingInfo()->predict_wall, pFilter_->getTimingInfo()->predict_cpu);
-    printf("Map Update    -- wall: %lld   cpu: %lld\n", 
-	   pFilter_->getTimingInfo()->mapUpdate_wall, pFilter_->getTimingInfo()->mapUpdate_cpu);
-    printf("Resampling    -- wall: %lld   cpu: %lld\n", 
-	   pFilter_->getTimingInfo()->particleResample_wall, pFilter_->getTimingInfo()->particleResample_cpu);
-    printf("Total         -- wall: %lld   cpu: %lld\n",
-	   pFilter_->getTimingInfo()->predict_wall +
-	   pFilter_->getTimingInfo()->mapUpdate_wall +
-	   pFilter_->getTimingInfo()->particleResample_wall,
-	   pFilter_->getTimingInfo()->predict_cpu +
-	   pFilter_->getTimingInfo()->mapUpdate_cpu +
-	   pFilter_->getTimingInfo()->particleResample_cpu);
-    printf("\n");
+    
 
+    std::cout << "Elapsed Timing Information [nsec]\n";
+    std::cout << std::setw(15) << std::left << "Prediction" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->predict_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->predict_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Map Update" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Resampling" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_wall
+	      << std::setw(6) << std::left << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Total" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15)
+	      << pFilter_->getTimingInfo()->predict_wall +
+                 pFilter_->getTimingInfo()->mapUpdate_wall +
+                 pFilter_->getTimingInfo()->particleResample_wall 
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15)
+	      << pFilter_->getTimingInfo()->predict_cpu +
+                 pFilter_->getTimingInfo()->mapUpdate_cpu +
+                 pFilter_->getTimingInfo()->particleResample_cpu << std::endl;
+
+    std::ofstream timingFile( (logDirPrefix_ + "timing.dat").data() );
+    timingFile << "Elapsed Timing Information [nsec]\n";
+    timingFile << std::setw(15) << std::left << "Prediction" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->predict_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->predict_cpu << std::endl;
+    timingFile << std::setw(15) << std::left << "Map Update" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_cpu << std::endl;
+    timingFile << std::setw(15) << std::left << "Resampling" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_wall
+	      << std::setw(6) << std::left << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_cpu << std::endl;
+    timingFile << std::setw(15) << std::left << "Total" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15)
+	      << pFilter_->getTimingInfo()->predict_wall +
+                 pFilter_->getTimingInfo()->mapUpdate_wall +
+                 pFilter_->getTimingInfo()->particleResample_wall 
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15)
+	      << pFilter_->getTimingInfo()->predict_cpu +
+                 pFilter_->getTimingInfo()->mapUpdate_cpu +
+                 pFilter_->getTimingInfo()->particleResample_cpu << std::endl;    
+    timingFile.close();
+    
     if(logToFile_){
       fclose(pParticlePoseFile);
       fclose(pLandmarkEstFile);
