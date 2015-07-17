@@ -104,7 +104,9 @@ INCLUDE_DIRECTORIES(src)
 INCLUDE_DIRECTORIES(test)
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIRS})
-INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
+IF(GTEST_FOUND)
+  INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIRS})
+ENDIF()
 #LINK_DIRECTORIES()
 
 ADD_LIBRARY(rfsslam 
@@ -146,10 +148,6 @@ TARGET_LINK_LIBRARIES(rbphdslam_VictoriaPark ${Boost_LIBRARIES} rfsslam ${Perfto
 ADD_EXECUTABLE(fastslam_VictoriaPark src/fastslam_VictoriaPark.cpp)
 TARGET_LINK_LIBRARIES(fastslam_VictoriaPark ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
 
-#ADD_EXECUTABLE(unitTest test/test.cpp src/Measurement.cpp src/Pose.cpp)
-#TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread TimeStamp MeasurementModel ProcessModel LinearAssignment)
-#ADD_TEST(unitTest bin/unitTest)
-
 ADD_EXECUTABLE(analysis2dSim src/analysis2dSim.cpp)
 TARGET_LINK_LIBRARIES(analysis2dSim ${Boost_LIBRARIES} rfsslam)
 
@@ -159,13 +157,21 @@ TARGET_LINK_LIBRARIES(spatialIndexTree ${Boost_LIBRARIES} rfsslam)
 ADD_EXECUTABLE(convertLogFiles src/convertLogFiles.cpp)
 TARGET_LINK_LIBRARIES(convertLogFiles ${Boost_LIBRARIES})
 
-ADD_EXECUTABLE(spatialIndexTreeTest test/SpatialIndexTreeTest.cpp)
-TARGET_LINK_LIBRARIES(spatialIndexTreeTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} rfsslam pthread)
-ADD_TEST(unitTest spatialIndexTreeTest)
+IF(GTEST_FOUND)
 
-ADD_EXECUTABLE(matrixPermanentTest test/MatrixPermanentTest.cpp)
-TARGET_LINK_LIBRARIES(matrixPermanentTest ${GTEST_LIBRARIES} rfsslam pthread)
-ADD_TEST(unitTest matrixPermanentTest)
+  #ADD_EXECUTABLE(unitTest test/test.cpp src/Measurement.cpp src/Pose.cpp)
+  #TARGET_LINK_LIBRARIES(unitTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} pthread TimeStamp MeasurementModel ProcessModel LinearAssignment)
+  #ADD_TEST(unitTest bin/unitTest)
+  
+  ADD_EXECUTABLE(spatialIndexTreeTest test/SpatialIndexTreeTest.cpp)
+  TARGET_LINK_LIBRARIES(spatialIndexTreeTest ${GTEST_LIBRARIES} ${Boost_LIBRARIES} rfsslam pthread)
+  ADD_TEST(unitTest spatialIndexTreeTest)
+
+  ADD_EXECUTABLE(matrixPermanentTest test/MatrixPermanentTest.cpp)
+  TARGET_LINK_LIBRARIES(matrixPermanentTest ${GTEST_LIBRARIES} rfsslam pthread)
+  ADD_TEST(unitTest matrixPermanentTest)
+
+ENDIF()
 
 # Examples
 
@@ -197,12 +203,14 @@ set_target_properties(linearAssignment_CostMatrixPartitioning
 	RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/examples"
 )
 
-set_target_properties(cpu_timer_test jcbb_test
-        spatialIndexTreeTest
-	matrixPermanentTest
-	PROPERTIES
-	RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test"
-)
+IF(GTEST_FOUND)
+  set_target_properties(cpu_timer_test jcbb_test
+    spatialIndexTreeTest
+    matrixPermanentTest
+    PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test"
+    )
+ENDIF()
 
 
 # Installation
