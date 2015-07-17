@@ -31,6 +31,7 @@
 #define BOOST_NO_CXX11_SCOPED_ENUMS // required for boost/filesystem to work with C++11
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include "FastSLAM.hpp"
@@ -137,7 +138,6 @@ public:
   /** Generate a random trajectory in 2d space */
   void generateTrajectory(int randSeed = 0){
 
-    printf("Generating trajectory with random seed = %d\n", randSeed);
     srand48( randSeed );
 
     TimeStamp t;
@@ -431,7 +431,7 @@ public:
   }
 
   /** FastSLAM Setup */
-  void setupRBPHDFilter(){
+  void setupFastSLAMFilter(){
     
     pFilter_ = new FastSLAM<MotionModel_Odometry2d,
 			    StaticProcessModel<Landmark2d>,
@@ -747,34 +747,59 @@ private:
 
 int main(int argc, char* argv[]){   
 
-  int initRandSeed = 0;
-  const char* cfgFileName = "cfg/fastslam2dSim.cfg";
-  if( argc >= 2 ){
-    initRandSeed = boost::lexical_cast<int>(argv[1]);
-  }
-  if( argc >= 3 ){
-    cfgFileName = argv[2];
+  Simulator_FastSLAM_2d sim;
+
+  int seed = time(NULL);
+  srand(seed);
+  int trajNum = rand();
+  std::string cfgFileName;
+  boost::program_options::options_description desc("Options");
+  desc.add_options()
+    ("help,h", "produce this help message")
+    ("cfg,c", boost::program_options::value<std::string>(&cfgFileName)->default_value("cfg/fastslam2dSim.xml"), "configuration xml file")
+    ("trajectory,t", boost::program_options::value<int>(&trajNum), "trajectory number (default: a random integer)")
+    ("seed,s", boost::program_options::value<int>(&seed), "random seed for running the simulation (default: based on current system time)");
+  boost::program_options::variables_map vm;
+  boost::program_options::store( boost::program_options::parse_command_line(argc, argv, desc), vm);
+  boost::program_options::notify(vm);
+
+  if( vm.count("help") ){
+    std::cout << desc << "\n";
+    return 1;
   }
 
-  Simulator_FastSLAM_2d sim;
-  if( !sim.readConfigFile( cfgFileName ) ){
+  if( vm.count("cfg") ){
+    cfgFileName = vm["cfg"].as<std::string>();
+  }
+  std::cout << "Configuration file: " << cfgFileName << std::endl;
+  if( !sim.readConfigFile( cfgFileName.data() ) ){
     return -1;
   }
-  sim.generateTrajectory( initRandSeed );
+  
+  if( vm.count("trajectory") ){
+    trajNum = vm["trajectory"].as<int>();
+  }
+  std::cout << "Trajectory: " << trajNum << std::endl;
+  sim.generateTrajectory( trajNum );  
+  
   sim.generateLandmarks();
-
   sim.generateOdometry();
   sim.generateMeasurements();
   sim.exportSimData();
-  sim.setupRBPHDFilter();
+  sim.setupFastSLAMFilter();
 
-  srand48( time(NULL) );
+  if( vm.count("seed") ){
+    seed = vm["seed"].as<int>();
+    std::cout << "Simulation random seed manually set to: " << seed << std::endl;
+  }
+  srand48( seed );
 
-  boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
+  // boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
 
-  sim.run(); 
+  sim.run();
 
-  delete timer;
+  // std::cout << "mem use: " << MemProfile::getCurrentRSS() << "(" << MemProfile::getPeakRSS() << ")\n";
+  //delete timer;
 
   return 0;
 

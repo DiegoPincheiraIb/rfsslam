@@ -33,6 +33,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include "ProcessModel_Ackerman2D.hpp"
@@ -826,22 +827,30 @@ public:
 
 int main(int argc, char* argv[]){
 
-  int initRandSeed = 0;
-  const char* cfgFileName = "cfg/rbphdslam_VictoriaPark.xml";
-  if( argc >= 2 ){
-    initRandSeed = boost::lexical_cast<int>(argv[1]);
-  }
-  if( argc >= 3 ){
-    cfgFileName = argv[2];
-  }
-  std::cout << "rbphdslam_VictoraPark [randomSeed] [cfgFile]\n";
-  std::cout << "[randomSeed] = " << initRandSeed << std::endl;
-  std::cout << "[cfgFile] = " << cfgFileName << std::endl;
-
   RBPHDSLAM_VictoriaPark slam;
 
-  // Read config file
-  if( !slam.readConfigFile( cfgFileName ) ){
+  int seed = time(NULL);
+  srand(seed);
+  std::string cfgFileName;
+  boost::program_options::options_description desc("Options");
+  desc.add_options()
+    ("help,h", "produce this help message")
+    ("cfg,c", boost::program_options::value<std::string>(&cfgFileName)->default_value("cfg/rbphdslam_VictoriaPark.xml"), "configuration xml file")
+    ("seed,s", boost::program_options::value<int>(&seed), "random seed for running the simulation (default: based on current system time)");
+  boost::program_options::variables_map vm;
+  boost::program_options::store( boost::program_options::parse_command_line(argc, argv, desc), vm);
+  boost::program_options::notify(vm);
+
+  if( vm.count("help") ){
+    std::cout << desc << "\n";
+    return 1;
+  }
+
+  if( vm.count("cfg") ){
+    cfgFileName = vm["cfg"].as<std::string>();
+  }
+  std::cout << "Configuration file: " << cfgFileName << std::endl;
+  if( !slam.readConfigFile( cfgFileName.data() ) ){
     std::cout << "[Error] Unable to read config file: " << cfgFileName << std::endl;
     return -1;
   }
@@ -850,12 +859,17 @@ int main(int argc, char* argv[]){
   slam.setupRBPHDFilter();
   slam.deadReckoning();
 
-  srand48( time(NULL) );
-  boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Run time: %ws\n");
+  if( vm.count("seed") ){
+    seed = vm["seed"].as<int>();
+    std::cout << "Simulation random seed manually set to: " << seed << std::endl;
+  }
+  srand48( seed );
+
+  //boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Run time: %ws\n");
 
   slam.run(); 
 
-  delete timer;
+  //delete timer;
  
   return 0;
 

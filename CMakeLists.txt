@@ -46,7 +46,7 @@ IF(USE_OPENMP)
 ENDIF()
 
 # Boost
-FIND_PACKAGE(Boost COMPONENTS timer chrono system filesystem graph REQUIRED)
+FIND_PACKAGE(Boost COMPONENTS timer chrono system filesystem graph program_options REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON) 
 set(Boost_USE_STATIC_RUNTIME ON)
