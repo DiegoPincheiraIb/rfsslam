@@ -166,6 +166,14 @@ public:
     long long predict_cpu;
     long long mapUpdate_wall;
     long long mapUpdate_cpu;
+    long long dataAssoc_wall;
+    long long dataAssoc_cpu;
+    long long mapUpdate_KF_wall;
+    long long mapUpdate_KF_cpu;
+    long long weighting_wall;
+    long long weighting_cpu;
+    long long mapManage_wall;
+    long long mapManage_cpu;
     long long particleResample_wall;
     long long particleResample_cpu;
   } timingInfo_;
@@ -258,6 +266,10 @@ private:
 
   Timer timer_predict_; /**< Timer for prediction step */
   Timer timer_mapUpdate_; /**< Timer for map update */
+  Timer timer_dataAssoc_; /**< Timer for data assoication */
+  Timer timer_mapUpdate_KF_; /**< Timer for map update with the Kalman Filter */
+  Timer timer_weighting_; /**< Timer for particle weighting */
+  Timer timer_mapManage_; /**< Timer for map management */
   Timer timer_particleResample_; /**<Timer for particle resampling */ 
 
   unsigned int nUpdatesSinceResample_; /**< Number of updates performed since the last resmaple */
@@ -430,7 +442,10 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
   const uint i = particleIdx;
 
   //----------  1. Data Association --------------------
-    
+  #ifndef _OPENMP
+  timer_dataAssoc_.resume();
+  #endif
+  
   // Look for landmarks within sensor range
   const TPose *pose = this->particleSet_[i]->getPose();
   unsigned int nM = this->particleSet_[i]->getData()->getGaussianCount();
@@ -547,6 +562,10 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     }
   }
 
+  #ifndef _OPENMP
+  timer_dataAssoc_.stop();
+  #endif
+  
   for(unsigned int h = 0; h < nH; h++){
     
     //----------  2. Kalman Filter map update ----------
@@ -561,6 +580,10 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     for(unsigned int z = 0; z < nZ; z++){
       zUsed[z] = false;
     }
+
+    #ifndef _OPENMP
+    timer_mapUpdate_KF_.resume();
+    #endif
 
     for(unsigned int m = 0; m < nM; m++){
       
@@ -597,7 +620,11 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       this->particleSet_[pi[h]]->getData()->setWeight(idx_inRange[m], w);
     }
      
-
+    #ifndef _OPENMP
+    timer_mapUpdate_KF_.stop();
+    timer_mapManage_.resume();
+    #endif
+  
     //---------- 3. Map Management (Add and remove landmarks)  ------------
     //if(nLandmarksInFOV_[pi[h]] >= 3 && nZ >= 3)
     if(nZ >= config.pruningMeasurementsThreshold_)
@@ -675,16 +702,21 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       }
     }
 
-
-
+    #ifndef _OPENMP
+    timer_mapManage_.stop();
+    timer_weighting_.resume();
+    #endif
 
     //---------- 4. Importance Weighting --------------
     // Some of the work has already been done in the map update step
     double prev_p_weight = this->particleSet_[pi[h]]->getWeight();
     this->particleSet_[pi[h]]->setWeight( prev_p_weight * exp(logParticleWeight) );
 
-  }
+    #ifndef _OPENMP
+    timer_weighting_.stop();
+    #endif
 
+  }
 
   //---------- 5. Cleanup - Free memory ---------
   for( int d = 0; d < da.size(); d++ ){
@@ -773,6 +805,10 @@ getTimingInfo(){
 
   timer_predict_.elapsed(timingInfo_.predict_wall, timingInfo_.predict_cpu);
   timer_mapUpdate_.elapsed(timingInfo_.mapUpdate_wall, timingInfo_.mapUpdate_cpu);
+  timer_dataAssoc_.elapsed(timingInfo_.dataAssoc_wall, timingInfo_.dataAssoc_cpu);
+  timer_mapUpdate_KF_.elapsed(timingInfo_.mapUpdate_KF_wall, timingInfo_.mapUpdate_KF_cpu);
+  timer_weighting_.elapsed(timingInfo_.weighting_wall, timingInfo_.weighting_cpu);
+  timer_mapManage_.elapsed(timingInfo_.mapManage_wall, timingInfo_.mapManage_cpu);
   timer_particleResample_.elapsed(timingInfo_.particleResample_wall, timingInfo_.particleResample_cpu);
   
   return &timingInfo_;

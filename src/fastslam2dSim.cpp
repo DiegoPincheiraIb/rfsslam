@@ -82,9 +82,12 @@ public:
     boost::property_tree::ptree pt;
     boost::property_tree::xml_parser::read_xml(fileName, pt);
 
-    logToFile_ = false;
-    if( pt.get("config.logging.logToFile", 0) == 1 )
-      logToFile_ = true;
+    logResultsToFile_ = false;
+    if( pt.get("config.logging.logResultsToFile", 0) == 1 )
+      logResultsToFile_ = true;
+    logTimingToFile_ = false;
+    if( pt.get("config.logging.logTimingToFile", 0) == 1 )
+      logTimingToFile_ = true;
     logDirPrefix_ = pt.get<std::string>("config.logging.logDirPrefix", "./");
     if( *logDirPrefix_.rbegin() != '/')
       logDirPrefix_ += '/';
@@ -358,17 +361,18 @@ public:
   /** Data Logging */
   void exportSimData(){
 
-    if(!logToFile_)
+    if(logResultsToFile_ || logTimingToFile_ ){
+      boost::filesystem::path dir(logDirPrefix_);
+      boost::filesystem::create_directories(dir);
+      boost::filesystem::path cfgFilePathSrc( cfgFileName_ );
+      std::string cfgFileDst( logDirPrefix_ );
+      cfgFileDst += "simSettings.xml";
+      boost::filesystem::path cfgFilePathDst( cfgFileDst.data() );
+      boost::filesystem::copy_file( cfgFilePathSrc, cfgFilePathDst, boost::filesystem::copy_option::overwrite_if_exists);
+    }
+      
+    if(!logResultsToFile_)
       return;
-
-    boost::filesystem::path dir(logDirPrefix_);
-    boost::filesystem::create_directories(dir);
-
-    boost::filesystem::path cfgFilePathSrc( cfgFileName_ );
-    std::string cfgFileDst( logDirPrefix_ );
-    cfgFileDst += "simSettings.xml";
-    boost::filesystem::path cfgFilePathDst( cfgFileDst.data() );
-    boost::filesystem::copy_file( cfgFilePathSrc, cfgFilePathDst, boost::filesystem::copy_option::overwrite_if_exists);
 
     TimeStamp t;
 
@@ -493,14 +497,17 @@ public:
 
     //////// Initialization at first timestep //////////
 
+    if(!logResultsToFile_){
+      std::cout << "Note: results are NOT being logged to file (see config xml file)\n";
+    }
     FILE* pParticlePoseFile;
-    if(logToFile_){
+    if(logResultsToFile_){
       std::string filenameParticlePoseFile( logDirPrefix_ );
       filenameParticlePoseFile += "particlePose.dat";
       pParticlePoseFile = fopen(filenameParticlePoseFile.data(), "w");
     }
     FILE* pLandmarkEstFile;
-    if(logToFile_){
+    if(logResultsToFile_){
       std::string filenameLandmarkEstFile( logDirPrefix_ );
       filenameLandmarkEstFile += "landmarkEst.dat";
       pLandmarkEstFile = fopen(filenameLandmarkEstFile.data(), "w");
@@ -508,7 +515,7 @@ public:
     MotionModel_Odometry2d::TState x_i;
     int zIdx = 0;
 
-    if(logToFile_){
+    if(logResultsToFile_){
       for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	x_i = *(pFilter_->getParticleSet()->at(i));
 	fprintf( pParticlePoseFile, "%f   %d   %f   %f   %f   1.0\n", 0.0, i, x_i.get(0), x_i.get(1), x_i.get(2));
@@ -592,7 +599,7 @@ public:
       // Log particle poses
       int i_w_max = 0;
       double w_max = 0;
-      if(logToFile_){
+      if(logResultsToFile_){
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
 	  x_i = *(pFilter_->getParticleSet()->at(i));
 	  double w = pFilter_->getParticleSet()->at(i)->getWeight();
@@ -606,7 +613,7 @@ public:
       }
 
       // Log landmark estimates
-      if(logToFile_){
+      if(logResultsToFile_){
 
 	int mapSize = pFilter_->getGMSize(i_w_max);
 	for( int m = 0; m < mapSize; m++ ){
@@ -640,42 +647,81 @@ public:
     std::cout << std::setw(15) << std::left << "Map Update" << std::setw(15)
 	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_wall
 	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Data Assoc" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->dataAssoc_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->dataAssoc_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Map Update (KF)" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_KF_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_KF_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Weighting" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->weighting_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->weighting_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Map Manage" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapManage_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapManage_cpu << std::endl;
     std::cout << std::setw(15) << std::left << "Resampling" << std::setw(15)
 	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_wall
 	      << std::setw(6) << std::left << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_cpu << std::endl;
     std::cout << std::setw(15) << std::left << "Total" << std::setw(15)
 	      << std::setw(6) << std::right << "wall:" << std::setw(15)
 	      << pFilter_->getTimingInfo()->predict_wall +
-                 pFilter_->getTimingInfo()->mapUpdate_wall +
+                 pFilter_->getTimingInfo()->dataAssoc_wall +
+                 pFilter_->getTimingInfo()->mapUpdate_KF_wall +
+                 pFilter_->getTimingInfo()->weighting_wall +
+                 pFilter_->getTimingInfo()->mapManage_wall +
                  pFilter_->getTimingInfo()->particleResample_wall 
 	      << std::setw(6) << std::right << "cpu:" << std::setw(15)
 	      << pFilter_->getTimingInfo()->predict_cpu +
-                 pFilter_->getTimingInfo()->mapUpdate_cpu +
+                 pFilter_->getTimingInfo()->dataAssoc_cpu +
+                 pFilter_->getTimingInfo()->mapUpdate_KF_cpu +
+                 pFilter_->getTimingInfo()->weighting_cpu +
+                 pFilter_->getTimingInfo()->mapManage_cpu +
                  pFilter_->getTimingInfo()->particleResample_cpu << std::endl;
 
-    std::ofstream timingFile( (logDirPrefix_ + "timing.dat").data() );
-    timingFile << "Elapsed Timing Information [nsec]\n";
-    timingFile << std::setw(15) << std::left << "Prediction" << std::setw(15)
-	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->predict_wall
-	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->predict_cpu << std::endl;
-    timingFile << std::setw(15) << std::left << "Map Update" << std::setw(15)
-	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_wall
-	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_cpu << std::endl;
-    timingFile << std::setw(15) << std::left << "Resampling" << std::setw(15)
-	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_wall
-	      << std::setw(6) << std::left << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_cpu << std::endl;
-    timingFile << std::setw(15) << std::left << "Total" << std::setw(15)
-	      << std::setw(6) << std::right << "wall:" << std::setw(15)
-	      << pFilter_->getTimingInfo()->predict_wall +
-                 pFilter_->getTimingInfo()->mapUpdate_wall +
-                 pFilter_->getTimingInfo()->particleResample_wall 
-	      << std::setw(6) << std::right << "cpu:" << std::setw(15)
-	      << pFilter_->getTimingInfo()->predict_cpu +
-                 pFilter_->getTimingInfo()->mapUpdate_cpu +
-                 pFilter_->getTimingInfo()->particleResample_cpu << std::endl;    
-    timingFile.close();
+    if(logTimingToFile_){
+      std::ofstream timingFile( (logDirPrefix_ + "timing.dat").data() );
+      timingFile << "Elapsed Timing Information [nsec]\n";
+      timingFile << std::setw(15) << std::left << "Prediction" << std::setw(15)
+		 << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->predict_wall
+		 << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->predict_cpu << std::endl;
+      timingFile << std::setw(15) << std::left << "Map Update" << std::setw(15)
+		 << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_wall
+		 << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_cpu << std::endl;
+      timingFile << std::setw(15) << std::left << "Data Assoc" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->dataAssoc_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->dataAssoc_cpu << std::endl;
+      timingFile << std::setw(15) << std::left << "Map Update (KF)" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_KF_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_KF_cpu << std::endl;
+      timingFile << std::setw(15) << std::left << "Weighting" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->weighting_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->weighting_cpu << std::endl;
+      timingFile << std::setw(15) << std::left << "Map Manage" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapManage_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapManage_cpu << std::endl;
+      timingFile << std::setw(15) << std::left << "Resampling" << std::setw(15)
+		 << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_wall
+		 << std::setw(6) << std::left << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_cpu << std::endl;
+      timingFile << std::setw(15) << std::left << "Total" << std::setw(15)
+		 << std::setw(6) << std::right << "wall:" << std::setw(15)
+		 << pFilter_->getTimingInfo()->predict_wall +
+                 pFilter_->getTimingInfo()->dataAssoc_wall +
+                 pFilter_->getTimingInfo()->mapUpdate_KF_wall +
+                 pFilter_->getTimingInfo()->weighting_wall +
+                 pFilter_->getTimingInfo()->mapManage_wall +
+                 pFilter_->getTimingInfo()->particleResample_wall   
+		 << std::setw(6) << std::right << "cpu:" << std::setw(15)
+		 << pFilter_->getTimingInfo()->predict_cpu +
+                 pFilter_->getTimingInfo()->dataAssoc_cpu +
+                 pFilter_->getTimingInfo()->mapUpdate_KF_cpu +
+                 pFilter_->getTimingInfo()->weighting_cpu +
+                 pFilter_->getTimingInfo()->mapManage_cpu +
+                 pFilter_->getTimingInfo()->particleResample_cpu << std::endl;
+      
+      timingFile.close();
+    }
     
-    if(logToFile_){
+    if(logResultsToFile_){
       fclose(pParticlePoseFile);
       fclose(pLandmarkEstFile);
     }
@@ -738,7 +784,8 @@ private:
   double maxDataAssocLogLikelihoodDiff_;
   double landmarkExistencePruningThreshold_;
   
-  bool logToFile_;
+  bool logResultsToFile_;
+  bool logTimingToFile_;
   std::string logDirPrefix_;
 };
 

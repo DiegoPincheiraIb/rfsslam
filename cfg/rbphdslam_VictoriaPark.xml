@@ -14,7 +14,8 @@
   </dataset>
 
   <logging>
-    <logToFile>1</logToFile>
+    <logResultsToFile>1</logResultsToFile>
+    <logTimingToFile>1</logTimingToFile>
     <logDirPrefix>data/VictoriaPark/rbphdslam/results/</logDirPrefix>
   </logging>
 
@@ -90,7 +91,7 @@
       <nEvalPt>15</nEvalPt> <!-- number of points to use for evaluation particle weights (weighting strategy) -->
       <minWeight>0.75</minWeight> <!-- Gaussians must have a weight about this for their mean to be considered for particle weighting -->
       <threshold>3.0</threshold> <!-- likelihood calculated from Mahalanobis distance above this will be assumed to be 0 -->
-      <useClusterProcess>0</useClusterProcess> <!-- Use single cluster process for particle weighting-->
+      <useClusterProcess>1</useClusterProcess> <!-- Use single cluster process for particle weighting-->
     </weighting>
 
     <resampling>

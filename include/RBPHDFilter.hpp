@@ -480,7 +480,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       timer_mapUpdate_.stop();
     }
 
-    ////////// Particle Weighintg ////////// 
+    ////////// Particle Weighting ////////// 
     if(!config.useClusterProcess_){
       if(nThreads_ == 1){
 	timer_particleWeighting_.resume();
@@ -566,12 +566,17 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     int landmarkCloseToSensingLimit[nM];
 
     // For cluster process particle weighting
+
     double w_km_sum = std::numeric_limits<double>::denorm_min();
     double likelihoodProd = 1;
     if(config.useClusterProcess_){
+      if(nThreads_ == 1){
+	timer_particleWeighting_.resume();
+      }
       for(int m = 0; m < nM; m++){
 	w_km_sum += this->particleSet_[i]->getData()->getWeight(m);
       }
+      timer_particleWeighting_.stop();
     }
 
     // nM x nZ table for Gaussian weighting
@@ -652,9 +657,14 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	wTables_[threadnum][m][z] = wTables_[threadnum][m][z] / sum;
       }
     }
+
     if(config.useClusterProcess_){
-      double prev_particle_i_weight = this->particleSet_[i]->getWeight();
-      this->particleSet_[i]->setWeight( exp(w_km_sum) * likelihoodProd);
+      if(nThreads_ == 1){
+	timer_particleWeighting_.resume();
+      }
+	double prev_particle_i_weight = this->particleSet_[i]->getWeight();
+	this->particleSet_[i]->setWeight( exp(w_km_sum) * likelihoodProd * prev_particle_i_weight);
+      timer_particleWeighting_.stop();
     }
 
     if(nThreads_ == 1)
