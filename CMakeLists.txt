@@ -225,7 +225,6 @@ CONFIGURE_FILE(rfsslam-config-version.cmake.in "rfsslam-config-version.cmake" @O
 INSTALL(FILES ${CMAKE_BINARY_DIR}/rfsslam-config.cmake ${CMAKE_BINARY_DIR}/rfsslam-config-version.cmake
   DESTINATION /usr/local/lib/rfsslam)
 
-FILE(GLOB headerFiles "include/*.hpp")
-INSTALL(FILES ${headerFiles}
-  DESTINATION /usr/local/include/rfsslam
+INSTALL(DIRECTORY include/ DESTINATION /usr/local/include/rfsslam
+  FILES_MATCHING PATTERN "*.hpp"
   PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
