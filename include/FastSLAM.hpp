@@ -90,6 +90,7 @@ public:
   typedef GaussianMixture<TLandmark> TGM;
   typedef typename TGM::Gaussian TGaussian;
   typedef ParticleFilter<RobotProcessModel, MeasurementModel, TGM > TPF;
+  typedef typename TPF::pParticle pParticle;
   typedef typename TPF::TParticle TParticle;
   typedef typename TPF::TParticleSet TParticleSet;
 
@@ -440,20 +441,24 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
   const unsigned int nZ = this->measurements_.size();
   const uint i = particleIdx;
-
+  pParticle particle;
+  #pragma omp critical(increaseParticles) 
+  {
+    particle = this->particleSet_[i];
+  }
   //----------  1. Data Association --------------------
   #ifndef _OPENMP
   timer_dataAssoc_.resume();
   #endif
   
   // Look for landmarks within sensor range
-  const TPose *pose = this->particleSet_[i]->getPose();
-  unsigned int nM = this->particleSet_[i]->getData()->getGaussianCount();
+  const TPose *pose = particle->getPose();
+  unsigned int nM = particle->getData()->getGaussianCount();
   std::vector<int> idx_inRange;
   std::vector<double> pd_inRange;
   std::vector<TLandmark*> lm_inRange;
   for( int m = 0; m < nM; m++ ){
-    TLandmark* lm = this->particleSet_[i]->getData()->getGaussian(m);
+    TLandmark* lm = particle->getData()->getGaussian(m);
     bool closeToLimit = false;
     double pd = this->pMeasurementModel_->probabilityOfDetection(*pose, *lm, closeToLimit); 
     if( pd != 0 || closeToLimit ){
@@ -546,19 +551,23 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
   
   // particle indices for update
   unsigned int pi[nH];
+  std::vector<pParticle> h_particle;
   pi[0] = i; 
   if(nH > 1){
-    double newWeight = this->particleSet_[i]->getWeight() / nH;
-    this->particleSet_[i]->setWeight(newWeight); 
+    double newWeight = particle->getWeight() / nH;
+    particle->setWeight(newWeight); 
     #pragma omp critical(increaseParticles)
     {
       this->copyParticle(i, nH-1, newWeight);
+      h_particle.push_back(this->particleSet_[pi[0]]);
       for(unsigned int h = 1; h < nH; h++){
-	pi[h] = this->nParticles_ - h;
-	if(resampleOccured_){
-	   landmarkCandidates_[pi[h]] = landmarkCandidates_[pi[0]];
-	}
+	      pi[h] = this->nParticles_ - h;
+	      h_particle.push_back(this->particleSet_[pi[h]]);
+	      if(resampleOccured_){
+	        landmarkCandidates_[pi[h]] = landmarkCandidates_[pi[0]];
+	      }
       }
+      
     }
   }
 
@@ -587,7 +596,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
     for(unsigned int m = 0; m < nM; m++){
       
-      TLandmark* lm = this->particleSet_[pi[h]]->getData()->getGaussian( idx_inRange[m] );
+      TLandmark* lm = h_particle[h]->getData()->getGaussian( idx_inRange[m] );
 
       // Update landmark estimate m with the associated measurement
       int z = da[h][m];
@@ -597,7 +606,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       }
       
       // calculate change to existence probability      
-      double w = this->particleSet_[pi[h]]->getData()->getWeight( idx_inRange[m] );
+      double w = h_particle[h]->getData()->getWeight( idx_inRange[m] );
       if(isUpdatePerformed){
 
 	nLandmarksInFOV_[pi[h]]++;
@@ -617,7 +626,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
       }
       
       w += log( (p_exist_given_Z) / (1 - p_exist_given_Z) ); 
-      this->particleSet_[pi[h]]->getData()->setWeight(idx_inRange[m], w);
+      h_particle[h]->getData()->setWeight(idx_inRange[m], w);
     }
      
     #ifndef _OPENMP
@@ -628,7 +637,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
     //---------- 3. Map Management (Add and remove landmarks)  ------------
     //if(nLandmarksInFOV_[pi[h]] >= 3 && nZ >= 3)
     if(nZ >= config.pruningMeasurementsThreshold_)
-      int nRemoved = this->particleSet_[pi[h]]->getData()->prune(config.mapExistencePruneThreshold_); 
+      int nRemoved = h_particle[h]->getData()->prune(config.mapExistencePruneThreshold_); 
     
     double newLandmarkWeight = log(config.landmarkExistencePrior_ / (1 - config.landmarkExistencePrior_));
 
@@ -645,7 +654,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 	     it != landmarkCandidates_[pi[h]].end(); it++ ){
 	  
 	  TMeasurement z_exp;
-	  TPose x = *(this->particleSet_[pi[h]]);
+	  TPose x = *(h_particle[h]);
 	  this->pMeasurementModel_->measure(x, *it, z_exp);
 	  double d2 = z_exp.mahalanobisDist2( unused_z );
 	  if(d2 <= config.landmarkCandidateMeasurementSupportDist_ * config.landmarkCandidateMeasurementSupportDist_){
@@ -659,7 +668,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 	if(isNewCandidate){
 
 	  // use inverse measurement model to get landmark
-	  TPose robot_pose = *(this->particleSet_[pi[h]]);
+	  TPose robot_pose = *(h_particle[h]);
 	  LandmarkCandidate c;
 	  c.nSupportingMeasurements = 1;
 	  c.nChecks = 0;
@@ -668,7 +677,7 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 	  if(config.landmarkCandidateMeasurementCountThreshold_ == 1 ||
 	     nLandmarksInFOV_[pi[h]] <= config.landmarkCandidateCurrentMeasurementCountThreshold_){
 	    // add birth landmark to Gaussian mixture (last param = true to allocate mem)
-	    this->particleSet_[pi[h]]->getData()->addGaussian( &c, newLandmarkWeight, true);	  
+	    h_particle[h]->getData()->addGaussian( &c, newLandmarkWeight, true);	  
 	  }else{
 	    landmarkCandidates_[pi[h]].push_back(c);
 	  }
@@ -685,10 +694,10 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 	    
 	    if (it->nSupportingMeasurements >= config.landmarkCandidateMeasurementCountThreshold_){
 	      
-	      this->particleSet_[pi[h]]->getData()->addGaussian( &(*it), newLandmarkWeight * it->nChecks, true);
+	      h_particle[h]->getData()->addGaussian( &(*it), newLandmarkWeight * it->nChecks, true);
 
 	    }else if( nLandmarksInFOV_[pi[h]] <= config.landmarkCandidateCurrentMeasurementCountThreshold_){
-	      this->particleSet_[pi[h]]->getData()->addGaussian( &(*it), newLandmarkWeight * it->nChecks, true);
+	      h_particle[h]->getData()->addGaussian( &(*it), newLandmarkWeight * it->nChecks, true);
 	    }
 	    it = landmarkCandidates_[pi[h]].erase( it );
 	    if( it != landmarkCandidates_[pi[h]].end() ){
@@ -709,8 +718,8 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
 
     //---------- 4. Importance Weighting --------------
     // Some of the work has already been done in the map update step
-    double prev_p_weight = this->particleSet_[pi[h]]->getWeight();
-    this->particleSet_[pi[h]]->setWeight( prev_p_weight * exp(logParticleWeight) );
+    double prev_p_weight = h_particle[h]->getWeight();
+    h_particle[h]->setWeight( prev_p_weight * exp(logParticleWeight) );
 
     #ifndef _OPENMP
     timer_weighting_.stop();
