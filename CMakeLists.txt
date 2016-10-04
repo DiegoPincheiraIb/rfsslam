@@ -24,7 +24,7 @@ message(STATUS "RFSSLAM Version ${RFSSLAM_VERSION}")
 # cmake -D CMAKE_C_COMPILER=gcc CMAKE_CXX_COMPILER=c++ .
 SET(CMAKE_C_COMPILER "gcc")
 SET(CMAKE_CXX_COMPILER "g++")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native ")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++11")
 #MESSAGE("CMAKE_CXX_COMPILTER_ID = ${CMAKE_CXX_COMPILER_ID}")
 IF(APPLE)
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-qualifiers ") # For Eigen const warnings
@@ -81,6 +81,10 @@ IF(Perftools_FOUND)
   ENDIF()
 ENDIF()
 
+# VTK visualization
+find_package(VTK REQUIRED)
+include(${VTK_USE_FILE})
+
 # GTest
 # If using Ubuntu apt-get to install, go to /usr/src/gtest,
 # run cmake . and make  . After compiling , 
@@ -115,11 +119,14 @@ ADD_LIBRARY(rfsslam
   src/Frame.cpp
   src/ProcessModel_Odometry1D.cpp 
   src/ProcessModel_Odometry2D.cpp
+  src/ProcessModel_Odometry6D.cpp
   src/ProcessModel_Ackerman2D.cpp
   src/MeasurementModel_Rng1D.cpp
   src/MeasurementModel_RngBrg.cpp
   src/MeasurementModel_RngBrg_amplitude.cpp
   src/MeasurementModel_XY.cpp
+  src/MeasurementModel_6D.cpp
+  src/Visualizer6D.cpp
   src/MeasurementModel_VictoriaPark.cpp
   src/KalmanFilter_RngBrg.cpp
   src/KalmanFilter_RngBrg_amplitude.cpp
@@ -135,6 +142,9 @@ TARGET_LINK_LIBRARIES(rfsslam ${Boost_LIBRARIES})
 
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
+
+ADD_EXECUTABLE(rbphdslam6dSim src/rbphdslam6dSim.cpp)
+TARGET_LINK_LIBRARIES(rbphdslam6dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY} ${VTK_LIBRARIES})
 
 ADD_EXECUTABLE(rbphdslam2dSim_amplitude src/rbphdslam2dSim_amplitude.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dSim_amplitude ${Boost_LIBRARIES} rfsslam)

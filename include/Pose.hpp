@@ -116,6 +116,13 @@ namespace rfs{
     void getPos(PosVec &x) const {
       x = this->x_.template head<nPosDim>();
     }
+    /**
+     * \brief Set the position vector
+     * @param[in] x position vector
+     */
+    void setPos(const PosVec &x){
+    	this->x_.template  head<nPosDim>() = x;
+    }
 
     /** \brief Get the position vector with the time stamp 
      *  \param[out] x position vector 
@@ -124,6 +131,15 @@ namespace rfs{
     void getPos(PosVec &x, TimeStamp &t) const{
       x = this->x_.template head<nPosDim>();
       t = this->t_;
+    }
+
+    /** \brief Set the position vector with the time stamp
+     *  \param[in] x position vector
+     *  \param[in] t timestamp
+     */
+    void setPos(const PosVec &x,const TimeStamp &t){
+      this->x_.template head<nPosDim>() = x;
+      this->t_ = t;
     }
 
     /** \brief Get the position vector 
@@ -140,6 +156,13 @@ namespace rfs{
       r = this->x_.template segment<nRotDim>(nPosDim);
     }
 
+    /** \brief Set the rotation vector
+     *  \param[in] r rotation vector
+     */
+    void setRot(const RotVec &r) {
+      this->x_.template segment<nRotDim>(nPosDim) = r;
+    }
+
     /** \brief Get the rotation vector with the time stamp 
      *  \param[out] r rotation vector
      *  \param[out] t timestamp
@@ -147,6 +170,15 @@ namespace rfs{
     void getRot(RotVec &r, TimeStamp &t) const{
       r = this->x_.template segment<nRotDim>(nPosDim);
       t = this->t_;
+    }
+
+    /** \brief Set the rotation vector with the time stamp
+     *  \param[in] r rotation vector
+     *  \param[in] t timestamp
+     */
+    void setRot(const RotVec &r, const TimeStamp &t) {
+      this->x_.template segment<nRotDim>(nPosDim) = r;
+      this->t_ = t;
     }
 
     /** \brief Get the rotation vector
@@ -356,6 +388,7 @@ namespace rfs{
   typedef Pose<1, 1, 0> Pose1d;
   typedef Pose<3, 2, 1> Pose2d;
   typedef Pose<6, 3, 3> Pose3d;
+  typedef Pose<7, 3, 4> Pose6d; //< uses quaternions
 
   typedef Pose<1, 1, 0> Position1d;
   typedef Pose<2, 2, 0> Position2d;
