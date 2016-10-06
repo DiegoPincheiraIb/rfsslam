@@ -4,14 +4,14 @@
   
   <logging>
     <logToFile>1</logToFile>
-    <logDirPrefix>data/rbphdslam/</logDirPrefix>
+    <logDirPrefix>data/rbcbmember2dslam/</logDirPrefix>
   </logging>
 
-  <timesteps>3000</timesteps>
+  <timesteps>200</timesteps>
   <sec_per_timestep>0.1</sec_per_timestep>
 
   <trajectory>
-    <nSegments>20</nSegments> <!-- number of constant velocity segments -->
+    <nSegments>1</nSegments> <!-- number of constant velocity segments -->
     <max_dx_per_sec>0.30</max_dx_per_sec> <!-- max x-displacement per second -->
     <max_dy_per_sec>0.00</max_dy_per_sec> <!-- max y-displacement per second -->
     <max_dz_per_sec>0.50</max_dz_per_sec> <!-- max rotation per second -->
@@ -22,7 +22,7 @@
   </trajectory>
 
   <landmarks>
-    <nLandmarks>50</nLandmarks> <!-- number of landmarks -->
+    <nLandmarks>10</nLandmarks> <!-- number of landmarks -->
     <varlmx>0.0002</varlmx> <!-- increase in landmark x uncertainty per second -->
     <varlmy>0.0002</varlmy> <!-- increase in landmark y uncertainty per second -->
   </landmarks>
@@ -42,7 +42,7 @@
     
     <predict>
       <processNoiseInflationFactor>1.5</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
-      <birthTrackPE>0.01</birthTrackPE> <!-- weight assigned to new birth Gaussians -->
+      <birthTrackPE>0.5</birthTrackPE> <!-- weight assigned to new birth Gaussians -->
     </predict>
 
     <update>
@@ -59,7 +59,7 @@
     
 
     <weighting>
-      <nEvalPt>15</nEvalPt> <!-- number of points to use for evaluation particle weights (weighting strategy) -->
+      <nEvalPt>1</nEvalPt> <!-- number of points to use for evaluation particle weights (weighting strategy) -->
       <minPE>0.75</minPE> <!-- Tracks must have a probability of existence above this for their mean to be considered for particle weighting -->
       <threshold>3.0</threshold> <!-- likelihood calculated from Mahalanobis distance above this will be assumed to be 0 -->
       <useClusterProcess>0</useClusterProcess> <!-- Use single cluster process for particle weighting-->

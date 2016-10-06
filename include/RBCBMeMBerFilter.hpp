@@ -804,11 +804,24 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
         useMurtyAlgorithm = false;
 
       isZeroPartition = !likelihoodMatrix.getPartition(p, Cp, nRows, nCols, rowIdx, colIdx, useMurtyAlgorithm);
+      if (nRows < nCols){
+    	  std::cerr << "one of the evalpoints does not exist!!\n";
+    	  return 0;
+      }
 
-      if (isZeroPartition || nRows < nCols) { // all landmarks in this partition are mis-detected. All measurements are outliers
+      if (isZeroPartition ) { // No tracks in this partition exist, nCols should be zero
 
-        std::cerr << "Error: Prev Map likelihood is zero \n";
-        return 0;
+    	  if (nCols != 0){
+    		  std::cerr << "one of the evalpoints does not exist!!\n";
+    		  std::cerr << "Error: Prev Map likelihood is zero \n";
+    		  std::cerr << "ZeroP: " << isZeroPartition << "  nRows: " << nRows << "  nCols:  " << nCols << "\n";
+    		  std::cerr << "nP:  " << nP << "  p: "<<p  << "  nMM: " << nMM << "  nM: " << nM <<"\n";
+    		  return 0;
+    	  }
+    	  partition_likelihood = 1;
+    	  for (int r = 0; r<nRows; r++){
+    		  partition_likelihood *=1 - this->particleSet_[i]->getData()->tracks_[rowIdx[r]].getPrevP();
+    	  }
 
       }
       else {
@@ -984,10 +997,25 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
       isZeroPartition = !likelihoodMatrix.getPartition(p, Cp, nRows, nCols, rowIdx, colIdx, useMurtyAlgorithm);
 
-      if (isZeroPartition || nRows < nCols) { // all landmarks in this partition are mis-detected. All measurements are outliers
+      isZeroPartition = !likelihoodMatrix.getPartition(p, Cp, nRows, nCols, rowIdx, colIdx, useMurtyAlgorithm);
+      if (nRows < nCols){
+    	  std::cerr << "one of the evalpoints does not exist!!\n";
+    	  return 0;
+      }
 
-        std::cerr << "Error: Map likelihood is zero \n";
-        return 0;
+      if (isZeroPartition ) { // No tracks in this partition exist, nCols should be zero
+
+    	  if (nCols != 0){
+    		  std::cerr << "one of the evalpoints does not exist!!\n";
+    		  std::cerr << "Error: Prev Map likelihood is zero \n";
+    		  std::cerr << "ZeroP: " << isZeroPartition << "  nRows: " << nRows << "  nCols:  " << nCols << "\n";
+    		  std::cerr << "nP:  " << nP << "  p: "<<p  << "  nMM: " << nMM << "  nM: " << nM <<"\n";
+    		  return 0;
+    	  }
+    	  partition_likelihood = 1;
+    	  for (int r = 0; r<nRows; r++){
+    		  partition_likelihood *=1 - this->particleSet_[i]->getData()->tracks_[rowIdx[r]].getP();
+    	  }
 
       }
       else {

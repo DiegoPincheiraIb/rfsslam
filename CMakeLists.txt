@@ -27,7 +27,7 @@ message(STATUS "RFSSLAM Version ${RFSSLAM_VERSION}")
 SET(CMAKE_C_COMPILER "gcc")
 SET(CMAKE_CXX_COMPILER "c++")
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 
 SET(USE_OPENMP ON CACHE BOOL "Use OpenMP to compile multithreaded versions of SLAM algorithms.")
 IF(USE_OPENMP)

@@ -531,7 +531,7 @@ public:
 
       pFilter_->predict(odometry_[k], dTimeStamp_);
 
-      if (k <= 100) {
+      if (k <= 50) {
         for (int i = 0; i < nParticles_; i++)
           pFilter_->setParticlePose(i, groundtruth_pose_[k]);
       }
@@ -574,6 +574,7 @@ public:
               MeasurementModel_RngBrg::TLandmark *landmark;
               double w;
               track.getGaussian(g, landmark, w);
+              landmark->get(u,S);
 
               fprintf(pLandmarkEstFile, "%f   %d   ", time.getTimeAsDouble(), i);
               fprintf(pLandmarkEstFile, "%f   %f      ", u(0), u(1));

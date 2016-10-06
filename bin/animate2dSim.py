@@ -5,7 +5,7 @@
  #
  # Copyright (c) 2013, Keith Leung
  # All rights reserved.
- # 
+ #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions are met:
  #     * Redistributions of source code must retain the above copyright
@@ -14,19 +14,19 @@
  #       notice, this list of conditions and the following disclaimer in the
  #       documentation and/or other materials provided with the distribution.
  #     * Neither the name of the Advanced Mining Technology Center (AMTC), the
- #       Universidad de Chile, nor the names of its contributors may be 
- #       used to endorse or promote products derived from this software without 
+ #       Universidad de Chile, nor the names of its contributors may be
+ #       used to endorse or promote products derived from this software without
  #       specific prior written permission.
- # 
+ #
  # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  # ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- # DISCLAIMED. IN NO EVENT SHALL THE AMTC, UNIVERSIDAD DE CHILE, OR THE COPYRIGHT 
- # HOLDERS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- # CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE 
- # GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
- # HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
- # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
+ # DISCLAIMED. IN NO EVENT SHALL THE AMTC, UNIVERSIDAD DE CHILE, OR THE COPYRIGHT
+ # HOLDERS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ # CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ # GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ # HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
  # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  #
 
@@ -43,11 +43,11 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from matplotlib.patches import Ellipse, Circle
 from matplotlib import transforms
-import matplotlib.ticker as ticker   
+import matplotlib.ticker as ticker
 
 saveMovie = False;
 
-nLandmarksDrawMax = 300;
+nLandmarksDrawMax = 10000;
 nMeasurementsDrawMax = 100;
 
 if len(sys.argv) < 2:
@@ -143,12 +143,13 @@ while p[0] == p_t:
     p_idx += 1;
 px_best = gtPose_x * 0;
 py_best = gtPose_y * 0;
+mapline = estMapFileHandle.readline()
+m = np.fromstring(mapline,dtype=float,sep=' ');
 
-m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
 
 z = np.fromfile(measurementFileHandle, count=3, sep=" ", dtype=float);
 
-# Plotting 
+# Plotting
 
 fig = plt.figure( figsize=(12,10), facecolor='w')
 gtMapHandle, = plt.plot(gtMap_x, gtMap_y, 'k.');
@@ -162,14 +163,14 @@ gtPoseCurrentPos, = plt.plot([], [], 'ro');
 gtPoseCurrentDir, = plt.plot([], [], 'r-');
 
 measurements = [];
-for i in range(0, nMeasurementsDrawMax) : 
+for i in range(0, nMeasurementsDrawMax) :
     measurement_line, = plt.plot([], [], 'b-');
     measurements.append( measurement_line );
 
 landmarks = [];
-for i in range(0, nLandmarksDrawMax) : 
+for i in range(0, nLandmarksDrawMax) :
     landmark_ellipse = Ellipse(xy=(0,0), width=0, height=0, angle=0);
-    landmarks.append(landmark_ellipse); 
+    landmarks.append(landmark_ellipse);
     ax.add_patch(landmarks[i]);
 
 particles, = plt.plot([], [], 'b.');
@@ -197,7 +198,7 @@ def animateInit():
     return [];
 
 def animate(i):
-    
+
     global p;
     global m;
     global z;
@@ -209,7 +210,7 @@ def animate(i):
     txt.set_text("Time: {0}".format(currentTime));
     drawnObjects.append(txt);
 
-    # Groundtruth 
+    # Groundtruth
     gtPoseCurrentPos.set_xdata(gtPose_x[i]);
     gtPoseCurrentPos.set_ydata(gtPose_y[i]); # Append to drawn objects later so it shows above measurements
     gtPoseHead = [gtPose_x[i] + 0.3*np.cos(gtPose_r[i]), gtPose_y[i] + 0.3*np.sin(gtPose_r[i]) ];
@@ -247,11 +248,11 @@ def animate(i):
         if round(m[1]) == round(p_idx_maxWeight):
 
             cov = np.array([ [ m[4], m[5] ], [ m[5], m[6] ] ]);
-            w = m[7];
+            w = m[7]*m[8];
             eVal, eVec = np.linalg.eig(cov);
             eVal = eVal.real;
             a1 = 5*np.sqrt(eVal[0]); # Assume this is semi-major axis first
-            a2 = 5*np.sqrt(eVal[1]); 
+            a2 = 5*np.sqrt(eVal[1]);
             semiMajorAxis = eVec[:,0];
             if a2 > a1:
                 aTmp = a1
@@ -271,8 +272,10 @@ def animate(i):
             drawnObjects.append(landmarks[m_idx]);
             m_idx += 1;
 
-        m = np.fromfile(estMapFileHandle, count=8, sep=" ", dtype=float);
 
+
+        mapline = estMapFileHandle.readline()
+        m = np.fromstring(mapline,dtype=float,sep=' ');
     while landmarks[m_idx].height != 0:
         landmarks[m_idx].set_alpha(0);
         landmarks[m_idx].center = (0, 0);
@@ -292,7 +295,7 @@ def animate(i):
     while measurements[nZ].get_xdata() != []:
         measurements[nZ].set_data([], []);
         nZ += 1;
-    
+
     drawnObjects.append(gtPoseCurrentPos);
     drawnObjects.append(gtPoseCurrentDir);
     drawnObjects.append(gtPoseHandle);
@@ -301,12 +304,12 @@ def animate(i):
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, len(gtPose_t)), interval=1, 
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, len(gtPose_t)), interval=1,
                                init_func=animateInit, blit=True, repeat=False);
 if saveMovie:
     animation.save(estimateMovieFile, fps=30, extra_args=['-loglevel','quiet','-vcodec','libx264'])
     estPoseHandle, = plt.plot(px_best, py_best, 'b-');
-    for i in range(0, nMeasurementsDrawMax) : 
+    for i in range(0, nMeasurementsDrawMax) :
         measurements[i].remove();
     plt.setp(gtPoseHandle, linewidth=2.0)
     txt.set_text(" ");
@@ -322,5 +325,3 @@ else:
     plt.show()
 
 measurementFileHandle.close();
-
-
