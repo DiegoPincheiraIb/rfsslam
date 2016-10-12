@@ -77,8 +77,7 @@ namespace rfs
     RandomVec() : 
       isValid_Sx_L_(false), 
       isValid_Sx_inv_(false),
-      isValid_Sx_det_(false),
-      gen_(NULL)
+      isValid_Sx_det_(false)
     {
       dimCheck();
 
@@ -96,8 +95,7 @@ namespace rfs
     RandomVec(const Vec &x, const Mat &Sx, const TimeStamp &t = TimeStamp() ) :
       isValid_Sx_L_(false), 
       isValid_Sx_inv_(false),
-      isValid_Sx_det_(false),
-      gen_(NULL)
+      isValid_Sx_det_(false)
     {
       dimCheck();
       set(x);
@@ -115,8 +113,7 @@ namespace rfs
     RandomVec(const Vec &x, double const * const &SxVec, const TimeStamp &t = TimeStamp() ) :
       isValid_Sx_L_(false), 
       isValid_Sx_inv_(false),
-      isValid_Sx_det_(false),
-      gen_(NULL)
+      isValid_Sx_det_(false)
     {
       dimCheck();
       set(x);
@@ -137,8 +134,7 @@ namespace rfs
     RandomVec(const Vec &x, const TimeStamp t = TimeStamp()) :
       isValid_Sx_L_(false), 
       isValid_Sx_inv_(false),
-      isValid_Sx_det_(false),
-      gen_(NULL)
+      isValid_Sx_det_(false)
     {
       dimCheck();
       set(x);
@@ -154,8 +150,7 @@ namespace rfs
     RandomVec(const TimeStamp &t) :
       isValid_Sx_L_(false), 
       isValid_Sx_inv_(false),
-      isValid_Sx_det_(false),
-      gen_(NULL)
+      isValid_Sx_det_(false)
     {
       dimCheck();
       x_.setZero();
@@ -178,9 +173,7 @@ namespace rfs
     Sx_L_( other.Sx_L_ ),
     isValid_Sx_L_( other.isValid_Sx_L_), 
     t_(other.t_) 
-    {
-      gen_ = NULL;
-    }
+    {}
 
     /**
      * Assignment operator
@@ -198,16 +191,11 @@ namespace rfs
       isValid_Sx_L_ = rhs.isValid_Sx_L_;
       t_ = rhs.t_;
 
-      gen_ = NULL;
-
       return *this;
     }
 
     /** Default destructor */
-    ~RandomVec(){
-      if( gen_ != NULL )
-	delete gen_;
-    };
+    ~RandomVec(){};
 
     /** 
      * [] Operator for looking up the value of an element of x			       
@@ -477,15 +465,9 @@ namespace rfs
 	isValid_Sx_L_ = true;
       }
 
-      if(gen_ == NULL){
-	gen_ = new ::boost::variate_generator< ::boost::mt19937, 
-					       ::boost::normal_distribution<double> >
-	  (::boost::mt19937(rand()), ::boost::normal_distribution<double>());
-      }
-    
       int n = Sx_L_.cols();
       for(int i = 0; i < n; i++){
-	indep_noise(i) = (*gen_)();
+	indep_noise(i) = genGaussian_();
       }
       x_sample = x_ + Sx_L_ * indep_noise;
       s_sample.set( x_sample, Sx_, t_ );
@@ -505,16 +487,10 @@ namespace rfs
 	Sx_L_ = cholesky.matrixL();
 	isValid_Sx_L_ = true;
       }
-
-      if(gen_ == NULL){
-	gen_ = new ::boost::variate_generator< ::boost::mt19937, 
-					       ::boost::normal_distribution<double> >
-	  (::boost::mt19937(rand()), ::boost::normal_distribution<double>());
-      }
     
       int n = Sx_L_.cols();
       for(int i = 0; i < n; i++){
-	indep_noise(i) = (*gen_)();
+	indep_noise(i) = genGaussian_();
       }
       x_ += Sx_L_ * indep_noise;
 
@@ -546,8 +522,9 @@ namespace rfs
 
     Vec e_; /**< temporary */
 
-    ::boost::variate_generator< ::boost::mt19937, 
-				::boost::normal_distribution<double> >* gen_;/**< normal distribution random number generator */ 
+    /** normal distribution random number generator */ 
+    static ::boost::variate_generator< ::boost::mt19937, 
+				       ::boost::normal_distribution<double> > genGaussian_;
 
     /** \brief Dimensionality check during initialization */
     void dimCheck(){
@@ -555,6 +532,14 @@ namespace rfs
     }
 
   };
+
+  template<unsigned int nDim>
+  ::boost::variate_generator< ::boost::mt19937, 
+			      ::boost::normal_distribution<double> >
+  RandomVec<nDim>::genGaussian_ =
+    ::boost::variate_generator< ::boost::mt19937, 
+				::boost::normal_distribution<double> >
+    (::boost::mt19937(rand()), ::boost::normal_distribution<double>());
 
 } // namespace rfs
 

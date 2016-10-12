@@ -353,13 +353,13 @@ namespace rfs{
 
   };
 
-  
-
-  /********** Define a 1d vehicle pose state **********/
-
   typedef Pose<1, 1, 0> Pose1d;
   typedef Pose<3, 2, 1> Pose2d;
   typedef Pose<6, 3, 3> Pose3d;
+
+  typedef Pose<1, 1, 0> Position1d;
+  typedef Pose<2, 2, 0> Position2d;
+  typedef Pose<3, 3, 0> Position3d;
 
 
 }

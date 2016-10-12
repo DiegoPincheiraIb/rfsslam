@@ -132,6 +132,7 @@ namespace rfs{
     typedef typename MeasurementModelType::TMeasurement TMeasurement;
     typedef typename MeasurementModelType::TJacobianPose TJacobianPose;
     typedef typename MeasurementModelType::TJacobianLmk TJacobianLmk;
+    typedef boost::shared_ptr<JCBB_TreeNode> JCBB_TreeNodePtr;
 
     /**
      * Constructor: Setup and initiate the JCBB algorithm. For correlated robot and landmark estimates,
@@ -173,7 +174,7 @@ namespace rfs{
 
     double confidence_interval_; /**< Chi-square confidence interval for gating  */
 
-    JCBB_TreeNode iTreeRoot_; /**< Interpretation tree */
+    JCBB_TreeNodePtr iTreeRoot_; /**< Interpretation tree */
     
     MeasurementModelType *measurementModel_; /**< measurement model */
     std::vector<TMeasurement> *Z_actual_ptr_; /**< vector of actual measurements */
@@ -186,11 +187,11 @@ namespace rfs{
     bool isEstCovBlockDiag_; /**< flag for block diagonal or dense estimate covariance matrix */
     const ::Eigen::MatrixXd *estCovDense_; /**< Dense estimate covariance matrix */
 
-    std::priority_queue<JCBB_TreeNode*> branchList_; /**< priority queue of nodes in the interpretation tree to branch */
+    std::priority_queue<JCBB_TreeNodePtr> branchList_; /**< priority queue of nodes in the interpretation tree to branch */
 
     int nAssociations_best_; /**< the number of assoications in the best hypothesis */
     double dist_mahalanobis2_best_; /**< the mahalanobis distance of the best hypothesis */
-    JCBB_TreeNode* node_best_; /**< the node in the interpretation tree associated with the best hypothesis */
+    JCBB_TreeNodePtr node_best_; /**< the node in the interpretation tree associated with the best hypothesis */
     std::vector<int> hypothesis_best_; /**< data association indices for the best hypothesis */
 
     /**
@@ -200,8 +201,9 @@ namespace rfs{
     
     /**
      * Branch a node of the interpretation tree
+     * \param[in] node Node to be branched
      */
-    void branch(JCBB_TreeNode *node);
+    void branch(JCBB_TreeNodePtr node);
 
   };
 
@@ -264,6 +266,9 @@ namespace rfs{
 				   TPose const *robot,
 				   std::vector< TLandmark* > *landmarks,
 				   ::Eigen::MatrixXd const *estCovDense){
+
+    
+    iTreeRoot_ = JCBB_TreeNodePtr(new JCBB_TreeNode() );
     
     confidence_interval_ = confidenceItvl;
     measurementModel_ = measurementModel;
@@ -277,25 +282,24 @@ namespace rfs{
     }
     nAssociations_best_ = 0;
     dist_mahalanobis2_best_ = DBL_MAX;
-    node_best_ = NULL;
 
     if(confidence_interval_ > 1)
       return;
 
     calcExpectedMeasurements();
 
-    iTreeRoot_.setAssociation(-1, -1, 0);
-    branchList_.push(&iTreeRoot_);
+    iTreeRoot_->setAssociation(-1, -1, 0);
+    branchList_.push(iTreeRoot_);
     while(!branchList_.empty()){
-      JCBB_TreeNode *topNode = branchList_.top();
+      JCBB_TreeNodePtr topNode = branchList_.top();
       branchList_.pop();
       branch( topNode );
     }
 
     hypothesis_best_.clear();
     hypothesis_best_.resize( Z_actual_ptr_->size(), -1 );
-    JCBB_TreeNode* n = node_best_;
-    while(n != &iTreeRoot_){
+    JCBB_TreeNodePtr n = node_best_;
+    while(n != iTreeRoot_){
       int z_idx, m_idx;
       n->getAssociation(z_idx, m_idx);
       hypothesis_best_[z_idx] = m_idx;
@@ -338,7 +342,7 @@ namespace rfs{
   }
 
   template<class MeasurementModelType>
-  void JCBB<MeasurementModelType>::branch(JCBB_TreeNode *node){
+  void JCBB<MeasurementModelType>::branch(JCBB_TreeNodePtr node){
 
     // Check if all measurements have been used up
     int z_idx_current;
@@ -350,10 +354,10 @@ namespace rfs{
 
     // Check previous associations
     int z_idx;
-    JCBB_TreeNode *node_current = node;
+    JCBB_TreeNodePtr node_current = node;
     std::vector<int> isUsed_lmk_idx(landmarks_->size(), 0);
     std::vector<int> used_lmk_indices;
-    while(node_current->getParent() != &iTreeRoot_ && node_current->getParent() != NULL){
+    while(node_current->getParent() != iTreeRoot_ && node_current->getParent() != NULL){
       node_current->getAssociation(z_idx, m_idx);
       if(m_idx >= 0){
 	isUsed_lmk_idx[ m_idx ] = 1;
@@ -463,7 +467,7 @@ namespace rfs{
 	if(dist_mahalanobis2 < threshold){
 
 	  // gating passed - new node in interpretation tree 
-	  JCBB_TreeNode* new_node = node->addChild();
+	  JCBB_TreeNodePtr new_node = node->addChild();
 	  new_node->setAssociation(z_idx, m_idx, dist_mahalanobis2);
 	  int new_innov_size = innov_m->size() + innov.size();
 	  new_node->getInnovation()->resize(new_innov_size);
@@ -499,7 +503,7 @@ namespace rfs{
     }// BOOST_FOREACH (unused landmark index)
     
     // Add node for outlier measuremnet
-    JCBB_TreeNode* new_node = node->addChild();
+    JCBB_TreeNodePtr new_node = node->addChild();
     new_node->setAssociation(z_idx, -1, d2_m);
     *(new_node->getInnovation()) = *(node->getInnovation());
     *(new_node->getInnovationCovInv()) = *(node->getInnovationCovInv());

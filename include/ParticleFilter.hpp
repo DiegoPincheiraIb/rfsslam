@@ -55,6 +55,7 @@ public:
   typedef typename ProcessModel::TState TPose;
   typedef typename ProcessModel::TInput TInput;
   typedef typename MeasurementModel::TMeasurement TMeasure;
+  typedef Trajectory<TPose> TTrajectory;
   typedef Particle<TPose, ParticleExtraData> TParticle;
   typedef boost::shared_ptr<TParticle> pParticle;
   typedef std::vector<pParticle> TParticleSet;
@@ -124,10 +125,12 @@ public:
    * \param[in] dT time-step of input 
    * \param[in] useModelNoise use the additive noise for the process model
    * \param[in] useInputNoise use the noise fn the input
+   * \param[in] maintainTrajectory keep trajectory information
    */
   void propagate( TInput &input, TimeStamp const &dT, 
 		  bool useModelNoise = true,
-		  bool useInputNoise = false);
+		  bool useInputNoise = false,
+		  bool maintainTrajectory = false);
 
   /**
    * Calculate and update importance weights for one particle.
@@ -151,7 +154,14 @@ public:
    * Get the pointer to the particle container
    * \return a pointer
    */
-  TParticleSet* getParticleSet(){return &particleSet_;}
+  TParticleSet* getParticleSet();
+
+  /**
+   * Get particle pose
+   * \param[in] i index of particle
+   * \return pointer to particle. NULL if index i is invalid
+   */
+  TParticle* getParticle(uint const i);
 
   /** 
    * Set the effective particle count below which we initiate resampling
@@ -313,13 +323,21 @@ template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
 void ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::propagate( TInput &input, 
 										   TimeStamp const &dT,
 										   bool useModelNoise,
-										   bool useInputNoise){
-  TPose x_km, x_k;
-  for( int i = 0 ; i < nParticles_ ; i++ ){
-    particleSet_[i]->getPose( x_km );
-    pProcessModel_->sample( x_k, x_km, input, dT, useModelNoise, useInputNoise);
-    particleSet_[i]->setPose( x_k );
-  } 
+										   bool useInputNoise,
+										   bool maintainTrajectory ){
+
+    TPose x_km, x_k;
+    for( int i = 0 ; i < nParticles_ ; i++ ){
+      if(maintainTrajectory){
+	pParticle p_km( new Particle<TPose, ParticleExtraData>() );
+	*p_km = *(particleSet_[i]);
+	particleSet_[i]->prev = p_km;
+      }
+      x_km = *(particleSet_[i]);
+      pProcessModel_->sample( x_k, x_km, input, dT, useModelNoise, useInputNoise);
+      *(particleSet_[i]) = x_k;
+    } 
+  
 }
 
 template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
@@ -348,6 +366,21 @@ void ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::normaliz
 template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
 int ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::getParticleCount(){
   return nParticles_;
+}
+
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+typename ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::TParticleSet* 
+ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::getParticleSet(){
+  return &particleSet_;
+}
+
+template< class ProcessModel, class MeasurementModel, class ParticleExtraData>
+typename ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::TParticle* 
+ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::getParticle(uint const i){
+  if(i < particleSet_.size() ){
+    return particleSet_[i].get();
+  }
+  return NULL;
 }
 
 template< class ProcessModel, class MeasurementModel, class ParticleExtraData>

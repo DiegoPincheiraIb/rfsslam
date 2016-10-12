@@ -33,90 +33,117 @@
 
 #include <cstddef>
 #include <vector>
+#include <boost/shared_ptr.hpp>
+#include <boost/weak_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
+#include <iostream>
+
+typedef unsigned int uint;
 
 namespace rfs{
 
 /** 
  * \class TreeNode
- * A generic tree node
  * \brief A generic tree node, defined using curiously recurring template pattern (CRTP)
  * \tparam Derived the derived class
  */
 template<class Derived>
-class TreeNode{
+class TreeNode : 
+    public boost::enable_shared_from_this<Derived>{
 
 public:
 
-  /** Constructor 
+  typedef boost::shared_ptr<Derived> DerivedPtr;
+  typedef boost::weak_ptr<Derived> DerivedWeakPtr;
+
+  /** 
+   * \brief Constructor 
    * \param[in] n_children_exp the number of children this node is expected to have,
    * used for more efficient memory allocation. Not mandatory.
    */
   TreeNode(size_t n_children_exp = 0);
   
-  /** Destructor, virtual becuase other classes will be derived from this class*/
+  /** \brief Destructor, virtual becuase other classes will be derived from this class*/
   virtual ~TreeNode();
 
   /** 
-   * Get a pointer to the parent node
+   * \brief Get a pointer to the parent node
    * \return pointer to parent, or NULL if this node has no parent
    */
-  Derived* getParent();
+  DerivedPtr getParent();
   
   /**
-   * Get pointers to a child
+   * \brief Get pointers to a child
    * \param[in] idx child index
    * \return a pointer to the child
    */ 
-  Derived* getChild(size_t idx);
+  DerivedPtr getChild(size_t idx);
 
   /**
-   * Get the number of children that this node has
+   * \brief Get the number of children that this node has
    * \return number of children
    */
   size_t getChildrenCount();
 
   /**
-   * Add a new child to this node. 
+   * \brief Create a new child for this node. 
    * \return pointer to new child node
    */
-  Derived* addChild();
+  DerivedPtr addChild();
 
-private:
+  /**
+   * \brief Replace a current child with a new one
+   * \param[in] idx Child index
+   * \param[in] c new child
+   * \return True if successful
+   */
+  bool replaceChild(uint idx, const DerivedPtr& c);
 
-  std::vector< boost::shared_ptr<Derived> > children_;
-  Derived* parent_;
+  /**
+   * \brief Add a new child to this node.
+   * \param child pointer to child
+   */
+  void addChild(DerivedPtr child);
+
+  /**
+   * \brief Remove all children
+   */
+  void removeChildren();
+
+protected:
+
+  std::vector< boost::shared_ptr<Derived> > children_; /**< \brief children of this node */
+  DerivedWeakPtr parent_; /**< \brief parent of this node */
 };
 
 }
 
 // Implementation
 
-
-#include <boost/shared_ptr.hpp>
-#include "Tree.hpp"
-
 namespace rfs{
 
   template<class Derived>
-  TreeNode<Derived>::TreeNode(size_t n_children_exp):parent_(NULL){
+  TreeNode<Derived>::TreeNode(size_t n_children_exp){
     if(n_children_exp > 0)
-      children_.resize(n_children_exp);
+      children_.reserve(n_children_exp);
   }
   
   template<class Derived>
-  TreeNode<Derived>::~TreeNode(){}
-  
-  template<class Derived>
-  Derived* TreeNode<Derived>::getParent(){
-    return parent_;
+  TreeNode<Derived>::~TreeNode(){
+    children_.clear();
   }
   
   template<class Derived>
-  Derived* TreeNode<Derived>::getChild(size_t idx){
+  typename TreeNode<Derived>::DerivedPtr TreeNode<Derived>::getParent(){
+    return parent_.lock();
+  }
+  
+  template<class Derived>
+  typename TreeNode<Derived>::DerivedPtr TreeNode<Derived>::getChild(size_t idx){
     if(idx < children_.size())
-      return children_[idx].get();
+      return children_[idx];
     else
-      return NULL;
+      return TreeNode<Derived>::DerivedPtr();
   }
 
   template<class Derived>
@@ -125,11 +152,38 @@ namespace rfs{
   }
 
   template<class Derived>
-  Derived* TreeNode<Derived>::addChild(){
-    boost::shared_ptr<Derived> child(new Derived);
-    child->parent_ = static_cast<Derived*>(this);
+  typename TreeNode<Derived>::DerivedPtr TreeNode<Derived>::addChild(){
+    
+    DerivedPtr child(new Derived);
+    child->parent_ = this->shared_from_this();
     children_.push_back(child);
-    return child.get();
+    return child;
+  }
+
+  template<class Derived>
+  void TreeNode<Derived>::addChild(boost::shared_ptr<Derived> child){
+    child->parent_ = this->shared_from_this();
+    children_.push_back(child);
+    return;
+  }
+
+  template<class Derived>
+  bool TreeNode<Derived>::replaceChild(uint idx, const TreeNode<Derived>::DerivedPtr& c){
+    
+    if( idx >= this->getChildrenCount() )
+      return false;
+    this->children_[idx]->parent_.reset();
+    this->children_[idx] = c;
+    this->children_[idx]->parent_ = this->shared_from_this();
+    return true;
+  }
+
+  template<class Derived>
+  void TreeNode<Derived>::removeChildren(){
+    for(int i = 0; i < children_.size(); i++){
+      children_[i]->parent_ = DerivedPtr();
+    }
+    children_.clear();
   }
 
 }

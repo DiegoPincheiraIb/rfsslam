@@ -28,8 +28,10 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define BOOST_NO_CXX11_SCOPED_ENUMS // required for boost/filesystem to work with C++11
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include "FastSLAM.hpp"
@@ -38,6 +40,14 @@
 #include "ProcessModel_Odometry2D.hpp"
 #include <stdio.h>
 #include <string>
+#include <sys/ioctl.h>
+
+#ifdef _PERFTOOLS_CPU
+#include <gperftools/profiler.h>
+#endif
+#ifdef _PERFTOOLS_HEAP
+#include <gperfools/heap-profiler.h>
+#endif
 
 using namespace rfs;
 
@@ -72,10 +82,15 @@ public:
     boost::property_tree::ptree pt;
     boost::property_tree::xml_parser::read_xml(fileName, pt);
 
-    logToFile_ = false;
-    if( pt.get("config.logging.logToFile", 0) == 1 )
-      logToFile_ = true;
+    logResultsToFile_ = false;
+    if( pt.get("config.logging.logResultsToFile", 0) == 1 )
+      logResultsToFile_ = true;
+    logTimingToFile_ = false;
+    if( pt.get("config.logging.logTimingToFile", 0) == 1 )
+      logTimingToFile_ = true;
     logDirPrefix_ = pt.get<std::string>("config.logging.logDirPrefix", "./");
+    if( *logDirPrefix_.rbegin() != '/')
+      logDirPrefix_ += '/';
 
     kMax_ = pt.get<int>("config.timesteps");
     dT_ = pt.get<double>("config.sec_per_timestep");
@@ -126,7 +141,6 @@ public:
   /** Generate a random trajectory in 2d space */
   void generateTrajectory(int randSeed = 0){
 
-    printf("Generating trajectory with random seed = %d\n", randSeed);
     srand48( randSeed );
 
     TimeStamp t;
@@ -347,17 +361,18 @@ public:
   /** Data Logging */
   void exportSimData(){
 
-    if(!logToFile_)
+    if(logResultsToFile_ || logTimingToFile_ ){
+      boost::filesystem::path dir(logDirPrefix_);
+      boost::filesystem::create_directories(dir);
+      boost::filesystem::path cfgFilePathSrc( cfgFileName_ );
+      std::string cfgFileDst( logDirPrefix_ );
+      cfgFileDst += "simSettings.xml";
+      boost::filesystem::path cfgFilePathDst( cfgFileDst.data() );
+      boost::filesystem::copy_file( cfgFilePathSrc, cfgFilePathDst, boost::filesystem::copy_option::overwrite_if_exists);
+    }
+      
+    if(!logResultsToFile_)
       return;
-
-    boost::filesystem::path dir(logDirPrefix_);
-    boost::filesystem::create_directories(dir);
-
-    boost::filesystem::path cfgFilePathSrc( cfgFileName_ );
-    std::string cfgFileDst( logDirPrefix_ );
-    cfgFileDst += "simSettings.cfg";
-    boost::filesystem::path cfgFilePathDst( cfgFileDst.data() );
-    boost::filesystem::copy_file( cfgFilePathSrc, cfgFilePathDst, boost::filesystem::copy_option::overwrite_if_exists);
 
     TimeStamp t;
 
@@ -420,7 +435,7 @@ public:
   }
 
   /** FastSLAM Setup */
-  void setupRBPHDFilter(){
+  void setupFastSLAMFilter(){
     
     pFilter_ = new FastSLAM<MotionModel_Odometry2d,
 			    StaticProcessModel<Landmark2d>,
@@ -471,16 +486,28 @@ public:
     
     printf("Running simulation\n\n");
 
+#ifdef _PERFTOOLS_CPU
+    std::string perfCPU_file = logDirPrefix_ + "fastslam2dSim_cpu.prof";
+    ProfilerStart(perfCPU_file.data());
+#endif
+#ifdef _PERFTOOLS_HEAP
+    std::string perfHEAP_file = logDirPrefix_ + "fastslam2dSim_heap.prof";
+    HeapProfilerStart(perfHEAP_file.data());
+#endif
+
     //////// Initialization at first timestep //////////
 
+    if(!logResultsToFile_){
+      std::cout << "Note: results are NOT being logged to file (see config xml file)\n";
+    }
     FILE* pParticlePoseFile;
-    if(logToFile_){
+    if(logResultsToFile_){
       std::string filenameParticlePoseFile( logDirPrefix_ );
       filenameParticlePoseFile += "particlePose.dat";
       pParticlePoseFile = fopen(filenameParticlePoseFile.data(), "w");
     }
     FILE* pLandmarkEstFile;
-    if(logToFile_){
+    if(logResultsToFile_){
       std::string filenameLandmarkEstFile( logDirPrefix_ );
       filenameLandmarkEstFile += "landmarkEst.dat";
       pLandmarkEstFile = fopen(filenameLandmarkEstFile.data(), "w");
@@ -488,9 +515,9 @@ public:
     MotionModel_Odometry2d::TState x_i;
     int zIdx = 0;
 
-    if(logToFile_){
+    if(logResultsToFile_){
       for(int i = 0; i < pFilter_->getParticleCount(); i++){
-	pFilter_->getParticleSet()->at(i)->getPose(x_i);
+	x_i = *(pFilter_->getParticleSet()->at(i));
 	fprintf( pParticlePoseFile, "%f   %d   %f   %f   %f   1.0\n", 0.0, i, x_i.get(0), x_i.get(1), x_i.get(2));
       }  
     }
@@ -503,10 +530,36 @@ public:
     for(int k = 1; k < kMax_; k++){
 
       time += dTimeStamp_;
- 
-      if( k % 100 == 0)
-	printf("k = %d\n", k);
- 
+
+            if( k % 100 == 0 || k == kMax_ - 1){
+	float progressPercent = float(k+1) / float(kMax_);
+	int progressBarW = 50;
+	struct winsize ws;
+	if(ioctl(1, TIOCGWINSZ, &ws) >= 0)
+	  progressBarW = ws.ws_col - 30;
+	int progressPos = progressPercent * progressBarW;
+	if(progressBarW >= 50){
+	  std::cout << "["; 
+	  for(int i = 0; i < progressBarW; i++){
+	    if(i < progressPos)
+	      std::cout << "=";
+	    else if(i == progressPos)
+	      std::cout << ">";
+	    else
+	      std::cout << " ";
+	  }
+	  std::cout << "] ";
+	}
+	std::cout << "k = " << k << " (" << int(progressPercent * 100.0) << " %)\r"; 
+	std::cout.flush();
+      }
+      if(k == kMax_ - 1)
+	std::cout << std::endl << std::endl;
+
+#ifdef _PERFTOOLS_HEAP
+      if( k % 20 == 0)
+	HeapProfilerDump("Timestep interval dump");
+#endif
       
       ////////// Prediction Step //////////
 
@@ -544,51 +597,131 @@ public:
       pFilter_->update(Z);
 
       // Log particle poses
-      if(logToFile_){
+      int i_w_max = 0;
+      double w_max = 0;
+      if(logResultsToFile_){
 	for(int i = 0; i < pFilter_->getParticleCount(); i++){
-	  pFilter_->getParticleSet()->at(i)->getPose(x_i);
+	  x_i = *(pFilter_->getParticleSet()->at(i));
 	  double w = pFilter_->getParticleSet()->at(i)->getWeight();
+	  if(w > w_max){
+	    i_w_max = i;
+	    w_max = w;
+	  }
 	  fprintf( pParticlePoseFile, "%f   %d   %f   %f   %f   %f\n", time.getTimeAsDouble(), i, x_i.get(0), x_i.get(1), x_i.get(2), w);
 	}
 	fprintf( pParticlePoseFile, "\n");
       }
 
       // Log landmark estimates
-      if(logToFile_){
-	for(int i = 0; i < pFilter_->getParticleCount(); i++){
-	  int mapSize = pFilter_->getGMSize(i);
-	  for( int m = 0; m < mapSize; m++ ){
-	    MeasurementModel_RngBrg::TLandmark::Vec u;
-	    MeasurementModel_RngBrg::TLandmark::Mat S;
-	    double w;
-	    pFilter_->getLandmark(i, m, u, S, w);
+      if(logResultsToFile_){
+
+	int mapSize = pFilter_->getGMSize(i_w_max);
+	for( int m = 0; m < mapSize; m++ ){
+	  MeasurementModel_RngBrg::TLandmark::Vec u;
+	  MeasurementModel_RngBrg::TLandmark::Mat S;
+	  double w;
+	  pFilter_->getLandmark(i_w_max, m, u, S, w);
 	    
-	    fprintf( pLandmarkEstFile, "%f   %d   ", time.getTimeAsDouble(), i);
-	    fprintf( pLandmarkEstFile, "%f   %f      ", u(0), u(1));
-	    fprintf( pLandmarkEstFile, "%f   %f   %f", S(0,0), S(0,1), S(1,1));
-	    fprintf( pLandmarkEstFile, "   %f\n", 1 - 1/(1 + exp(w)) );
-	  }
+	  fprintf( pLandmarkEstFile, "%f   %d   ", time.getTimeAsDouble(), i_w_max);
+	  fprintf( pLandmarkEstFile, "%f   %f      ", u(0), u(1));
+	  fprintf( pLandmarkEstFile, "%f   %f   %f", S(0,0), S(0,1), S(1,1));
+	  fprintf( pLandmarkEstFile, "   %f\n", 1 - 1/(1 + exp(w)) );
+	  
 	}
       }
     }
+        
+#ifdef _PERFTOOLS_HEAP
+    HeapProfilerStop();
+#endif
+#ifdef _PERFTOOLS_CPU
+    ProfilerStop();
+#endif
 
-        printf("Elapsed Timing Information [nsec]\n");
-    printf("Prediction    -- wall: %lld   cpu: %lld\n", 
-	   pFilter_->getTimingInfo()->predict_wall, pFilter_->getTimingInfo()->predict_cpu);
-    printf("Map Update    -- wall: %lld   cpu: %lld\n", 
-	   pFilter_->getTimingInfo()->mapUpdate_wall, pFilter_->getTimingInfo()->mapUpdate_cpu);
-    printf("Resampling    -- wall: %lld   cpu: %lld\n", 
-	   pFilter_->getTimingInfo()->particleResample_wall, pFilter_->getTimingInfo()->particleResample_cpu);
-    printf("Total         -- wall: %lld   cpu: %lld\n",
-	   pFilter_->getTimingInfo()->predict_wall +
-	   pFilter_->getTimingInfo()->mapUpdate_wall +
-	   pFilter_->getTimingInfo()->particleResample_wall,
-	   pFilter_->getTimingInfo()->predict_cpu +
-	   pFilter_->getTimingInfo()->mapUpdate_cpu +
-	   pFilter_->getTimingInfo()->particleResample_cpu);
-    printf("\n");
+    
 
-    if(logToFile_){
+    std::cout << "Elapsed Timing Information [nsec]\n";
+    std::cout << std::setw(15) << std::left << "Prediction" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->predict_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->predict_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Map Update" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Data Assoc" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->dataAssoc_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->dataAssoc_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Map Update (KF)" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_KF_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_KF_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Weighting" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->weighting_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->weighting_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Map Manage" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapManage_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapManage_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Resampling" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_wall
+	      << std::setw(6) << std::left << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Total" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15)
+	      << pFilter_->getTimingInfo()->predict_wall +
+                 pFilter_->getTimingInfo()->dataAssoc_wall +
+                 pFilter_->getTimingInfo()->mapUpdate_KF_wall +
+                 pFilter_->getTimingInfo()->weighting_wall +
+                 pFilter_->getTimingInfo()->mapManage_wall +
+                 pFilter_->getTimingInfo()->particleResample_wall 
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15)
+	      << pFilter_->getTimingInfo()->predict_cpu +
+                 pFilter_->getTimingInfo()->dataAssoc_cpu +
+                 pFilter_->getTimingInfo()->mapUpdate_KF_cpu +
+                 pFilter_->getTimingInfo()->weighting_cpu +
+                 pFilter_->getTimingInfo()->mapManage_cpu +
+                 pFilter_->getTimingInfo()->particleResample_cpu << std::endl;
+
+    if(logTimingToFile_){
+      std::ofstream timingFile( (logDirPrefix_ + "timing.dat").data() );
+      timingFile << "Elapsed Timing Information [nsec]\n";
+      timingFile << std::setw(15) << std::left << "Prediction" << std::setw(15)
+		 << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->predict_wall
+		 << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->predict_cpu << std::endl;
+      timingFile << std::setw(15) << std::left << "Map Update" << std::setw(15)
+		 << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_wall
+		 << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_cpu << std::endl;
+      timingFile << std::setw(15) << std::left << "Data Assoc" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->dataAssoc_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->dataAssoc_cpu << std::endl;
+      timingFile << std::setw(15) << std::left << "Map Update (KF)" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_KF_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_KF_cpu << std::endl;
+      timingFile << std::setw(15) << std::left << "Weighting" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->weighting_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->weighting_cpu << std::endl;
+      timingFile << std::setw(15) << std::left << "Map Manage" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapManage_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapManage_cpu << std::endl;
+      timingFile << std::setw(15) << std::left << "Resampling" << std::setw(15)
+		 << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_wall
+		 << std::setw(6) << std::left << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_cpu << std::endl;
+      timingFile << std::setw(15) << std::left << "Total" << std::setw(15)
+		 << std::setw(6) << std::right << "wall:" << std::setw(15)
+		 << pFilter_->getTimingInfo()->predict_wall +
+                 pFilter_->getTimingInfo()->dataAssoc_wall +
+                 pFilter_->getTimingInfo()->mapUpdate_KF_wall +
+                 pFilter_->getTimingInfo()->weighting_wall +
+                 pFilter_->getTimingInfo()->mapManage_wall +
+                 pFilter_->getTimingInfo()->particleResample_wall   
+		 << std::setw(6) << std::right << "cpu:" << std::setw(15)
+		 << pFilter_->getTimingInfo()->predict_cpu +
+                 pFilter_->getTimingInfo()->dataAssoc_cpu +
+                 pFilter_->getTimingInfo()->mapUpdate_KF_cpu +
+                 pFilter_->getTimingInfo()->weighting_cpu +
+                 pFilter_->getTimingInfo()->mapManage_cpu +
+                 pFilter_->getTimingInfo()->particleResample_cpu << std::endl;
+      
+      timingFile.close();
+    }
+    
+    if(logResultsToFile_){
       fclose(pParticlePoseFile);
       fclose(pLandmarkEstFile);
     }
@@ -651,7 +784,8 @@ private:
   double maxDataAssocLogLikelihoodDiff_;
   double landmarkExistencePruningThreshold_;
   
-  bool logToFile_;
+  bool logResultsToFile_;
+  bool logTimingToFile_;
   std::string logDirPrefix_;
 };
 
@@ -660,34 +794,59 @@ private:
 
 int main(int argc, char* argv[]){   
 
-  int initRandSeed = 0;
-  const char* cfgFileName = "cfg/fastslam2dSim.cfg";
-  if( argc >= 2 ){
-    initRandSeed = boost::lexical_cast<int>(argv[1]);
-  }
-  if( argc >= 3 ){
-    cfgFileName = argv[2];
+  Simulator_FastSLAM_2d sim;
+
+  int seed = time(NULL);
+  srand(seed);
+  int trajNum = rand();
+  std::string cfgFileName;
+  boost::program_options::options_description desc("Options");
+  desc.add_options()
+    ("help,h", "produce this help message")
+    ("cfg,c", boost::program_options::value<std::string>(&cfgFileName)->default_value("cfg/fastslam2dSim.xml"), "configuration xml file")
+    ("trajectory,t", boost::program_options::value<int>(&trajNum), "trajectory number (default: a random integer)")
+    ("seed,s", boost::program_options::value<int>(&seed), "random seed for running the simulation (default: based on current system time)");
+  boost::program_options::variables_map vm;
+  boost::program_options::store( boost::program_options::parse_command_line(argc, argv, desc), vm);
+  boost::program_options::notify(vm);
+
+  if( vm.count("help") ){
+    std::cout << desc << "\n";
+    return 1;
   }
 
-  Simulator_FastSLAM_2d sim;
-  if( !sim.readConfigFile( cfgFileName ) ){
+  if( vm.count("cfg") ){
+    cfgFileName = vm["cfg"].as<std::string>();
+  }
+  std::cout << "Configuration file: " << cfgFileName << std::endl;
+  if( !sim.readConfigFile( cfgFileName.data() ) ){
     return -1;
   }
-  sim.generateTrajectory( initRandSeed );
+  
+  if( vm.count("trajectory") ){
+    trajNum = vm["trajectory"].as<int>();
+  }
+  std::cout << "Trajectory: " << trajNum << std::endl;
+  sim.generateTrajectory( trajNum );  
+  
   sim.generateLandmarks();
-
   sim.generateOdometry();
   sim.generateMeasurements();
   sim.exportSimData();
-  sim.setupRBPHDFilter();
+  sim.setupFastSLAMFilter();
 
-  srand48( time(NULL) );
+  if( vm.count("seed") ){
+    seed = vm["seed"].as<int>();
+    std::cout << "Simulation random seed manually set to: " << seed << std::endl;
+  }
+  srand48( seed );
 
-  boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
+  // boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
 
   sim.run();
 
-  delete timer;
+  // std::cout << "mem use: " << MemProfile::getCurrentRSS() << "(" << MemProfile::getPeakRSS() << ")\n";
+  //delete timer;
 
   return 0;
 

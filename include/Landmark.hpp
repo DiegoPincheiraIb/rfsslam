@@ -52,7 +52,7 @@ namespace rfs
    * \author Keith Leung
    */
 
-  template<unsigned int dim, unsigned int nVecSpaceDim = 2, class DescriptorType = int>
+  template<unsigned int dim, unsigned int nVecSpaceDim = dim, class DescriptorType = int>
   class Landmark : public RandomVec<dim>
   {
   public:
