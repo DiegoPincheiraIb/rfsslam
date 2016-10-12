@@ -123,7 +123,7 @@ public:
 
     importanceWeightingEvalPointCount_ = pt.get("config.filter.weighting.nEvalPt", 15);
     importanceWeightingEvalPointTrackPE_ = pt.get("config.filter.weighting.minPE", 0.75);
-    importanceWeightingMeasurementLikelihoodMDThreshold_ = pt.get("config.filter.weighting.threshold", 3.0);
+    importanceWeightingMeasurementLikelihoodThreshold_ = pt.get("config.filter.weighting.threshold", 1e-4);
     useClusterProcess_ = false;
     if (pt.get("config.filter.weighting.useClusterProcess", 0) == 1)
       useClusterProcess_ = true;
@@ -471,8 +471,8 @@ public:
     pFilter_->setEffectiveParticleCountThreshold(effNParticleThreshold_);
     pFilter_->config.minUpdatesBeforeResample_ = minUpdatesBeforeResample_;
     pFilter_->config.newGaussianCreateInnovMDThreshold_ = newGaussianCreateInnovMDThreshold_;
-    pFilter_->config.importanceWeightingMeasurementLikelihoodMDThreshold_ =
-        importanceWeightingMeasurementLikelihoodMDThreshold_;
+    pFilter_->config.importanceWeightingMeasurementLikelihoodThreshold_ =
+        importanceWeightingMeasurementLikelihoodThreshold_;
     pFilter_->config.importanceWeightingEvalPointCount_ = importanceWeightingEvalPointCount_;
     pFilter_->config.importanceWeightingEvalPointTrackPE_ = importanceWeightingEvalPointTrackPE_;
     pFilter_->config.gaussianMergingThreshold_ = gaussianMergingThreshold_;
@@ -700,7 +700,7 @@ private:
   double innovationBearingThreshold_;
   double birthTrackPE_;
   double newGaussianCreateInnovMDThreshold_;
-  double importanceWeightingMeasurementLikelihoodMDThreshold_;
+  double importanceWeightingMeasurementLikelihoodThreshold_;
   double importanceWeightingEvalPointTrackPE_;
   double effNParticleThreshold_;
   int minUpdatesBeforeResample_;

@@ -101,7 +101,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
       /** The Mahalanobis distance threshold used to determine if a possible meaurement-landmark
        *  pairing is significant to worth considering
        */
-      double importanceWeightingMeasurementLikelihoodMDThreshold_;
+      double importanceWeightingMeasurementLikelihoodThreshold_;
 
       /** Gaussian merging Mahalanobis distance threshold */
       double gaussianMergingThreshold_;
@@ -238,13 +238,13 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
      * a new landmark track will be created.
      * \param[in] particleIdx index of the particle for which the map will be updated
      */
-    void updateMap(const uint particleIdx);
+    double updateMap(const uint particleIdx);
 
     /**
-     * Importance weighting. Overrides the abstract function in ParticleFilter
+     * Importance weighting does nothing, this is done together with the map update!
      * \param[in] idx particle index
      */
-    void importanceWeighting(const uint idx);
+    void importanceWeighting(const uint idx){};
 
     /**
      * Random Finite Set measurement likelihood evaluation
@@ -255,29 +255,9 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
      * \param[in] evalPtPd probability of detection of evaluation point
      * \return measurement likelihood
      */
-    double rfsMeasurementLikelihood(const int particleIdx, std::vector<unsigned int> &evalPtIdx,
-                                    std::vector<double> &evalPtPd);
+    double rfsMeasurementLikelihood( const int particleIdx, std::vector<unsigned int> &tracksinfov, std::vector<double> &Pd, double** L, CostMatrixGeneral &likelihoodMatrix);
 
-    /**
-     * Random Finite Set map likelihood evaluation
-     * \brief The current map estimate is  used to determine the
-     * RFS likelihood of the set set of landmarks provided in evalPtIdx
-     * \param[in] particleIdx particle for which the likelihood is calcuated
-     * \param[in] evalPtIdx indices of evaluation points in maps_[particleIdx]
-     * \return measurement likelihood
-     */
 
-    double rfsMapLikelihood(const int particleIdx, std::vector<unsigned int> &evalPtIdx);
-    /**
-     * Random Finite Set map likelihood evaluation for the unupdated map, this uses the legacy tracks and recalculates the previous weights.
-     *\brief The previous map estimate is  used to determine the
-     * RFS likelihood of the set set of landmarks provided in evalPtIdx
-     * \param[in] particleIdx particle for which the likelihood is calcuated
-     * \param[in] evalPtIdx indices of evaluation points in maps_[particleIdx]
-     * \return measurement likelihood
-     */
-
-    double rfsPrevMapLikelihood(const int particleIdx, std::vector<unsigned int> &evalPtIdx);
 
     /**
      * Calculate the sum of all permutations of measurement likelihood from a likelihood
@@ -378,7 +358,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
     config.gaussianPruningThreshold_ = 0.2;
     config.trackPruningThreshold_ = 0.001;
     config.importanceWeightingEvalPointCount_ = 8;
-    config.importanceWeightingMeasurementLikelihoodMDThreshold_ = 3.0;
+    config.importanceWeightingMeasurementLikelihoodThreshold_ = 1e-4;
     config.newGaussianCreateInnovMDThreshold_ = 0.2;
     config.minUpdatesBeforeResample_ = 1;
 
@@ -482,19 +462,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
         timer_mapUpdate_.stop();
       }
 
-      ////////// Particle Weighintg //////////
-      if (!config.useClusterProcess_) {
-        if (nThreads_ == 1) {
-          timer_particleWeighting_.resume();
-        }
-#pragma omp for
-        for (unsigned int i = startIdx; i < stopIdx; i++) {
-          importanceWeighting(i);
-        }
-        if (nThreads_ == 1) {
-          timer_particleWeighting_.stop();
-        }
-      }
+
 
       //////////// Merge and prune //////////
       if (nThreads_ == 1) {
@@ -543,7 +511,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
   }
 
 template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter>
-  void RBCBMeMBerFilter<RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter>::updateMap(
+  double  RBCBMeMBerFilter<RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter>::updateMap(
       const uint particleIdx) {
 
     const unsigned int i = particleIdx;
@@ -562,10 +530,11 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
       for (int z = 0; z < nZ; z++) {
         unused_measurements_[i].push_back(z);
       }
-      return; // goto next particle
+      return 1; // goto next particle
     }
-    double Pd[nM];
-    int landmarkCloseToSensingLimit[nM];
+
+
+
 
     //----------  2. Kalman Filter map update ----------
 
@@ -579,54 +548,74 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
     double innovationMahalanobisDist2;
     this->particleSet_[i]->getData()->tracks_.resize(nM + nZ);
     TLandmark lmNew;
-    // determine the probability of detection
+    // determine the probability of detection for tracks in FoV
+
+
+    std::vector<unsigned int> tracksInFovIdx;
+    std::vector<double> tracksInFovPd;
+    std::vector<int> landmarkCloseToSensingLimit;
+
+
     for (unsigned int m = 0; m < nM; m++) {
 
       bool isCloseToSensingLimit = false;
-      Pd[m] = 0;
+      double Pd = 0;
       for (unsigned int g = 0; g < this->particleSet_[i]->getData()->tracks_[m].getGaussianCount(); g++) {
         TLandmark* lm = this->particleSet_[i]->getData()->tracks_[m].getGaussian(g);
 
         bool isClose;
-        Pd[m] += this->particleSet_[i]->getData()->tracks_[m].getWeight(g)
+        Pd += this->particleSet_[i]->getData()->tracks_[m].getWeight(g)
             * this->pMeasurementModel_->probabilityOfDetection(*pose, *lm, isClose);
         isCloseToSensingLimit = isCloseToSensingLimit || isClose;
       } // gaussian in track m for loop
-      landmarkCloseToSensingLimit[m] = isCloseToSensingLimit;
-
+      if(Pd>0){
+        tracksInFovIdx.push_back(m);
+        tracksInFovPd.push_back(Pd);
+        landmarkCloseToSensingLimit.push_back(isCloseToSensingLimit);
+      }
       // update weights for legacy tracks
       double prevP = this->particleSet_[i]->getData()->tracks_[m].getP();
-      this->particleSet_[i]->getData()->tracks_[m].setP(prevP * (1 - Pd[m]) / (1 - prevP * Pd[m]));
+      this->particleSet_[i]->getData()->tracks_[m].setP(prevP * (1 - Pd) / (1 - prevP * Pd));
       this->particleSet_[i]->getData()->tracks_[m].setPrevP(prevP);
 
     }
+
+    // setup Likelihood matrix
+
+     double** L;
+     CostMatrixGeneral likelihoodMatrix(L, tracksInFovIdx.size(), nZ);
+
     // generate updated tracks
     for (unsigned int z = 0; z < nZ; z++) {
       double num = 0; // numerator in eq 56 in CBMeMBer paper
       double denom = 0; // denominator in eq 56 in CBMeMBer paper
 
-      for (unsigned int m = 0; m < nM; m++) {
+      for (unsigned int m =0; m < tracksInFovIdx.size();m++) {
 
         double p = this->particleSet_[i]->getData()->tracks_[m].getPrevP(); // previous probability of existence of track m (changed earlier in this method)
         double rho = 0; // from eq 56 in CBMeMBer paper
 
-        for (unsigned int g = 0; g < this->particleSet_[i]->getData()->tracks_[m].getGaussianCount(); g++) {
-          TLandmark* lm = this->particleSet_[i]->getData()->tracks_[m].getGaussian(g);
+        for (unsigned int g = 0; g < this->particleSet_[i]->getData()->tracks_[tracksInFovIdx[m]].getGaussianCount(); g++) {
+          TLandmark* lm = this->particleSet_[i]->getData()->tracks_[tracksInFovIdx[m]].getGaussian(g);
 
           if (kfs_[threadnum].correct(*pose, this->measurements_[z], *lm, lmNew, &innovationLikelihood,
                                       &innovationMahalanobisDist2)) {
 
-            rho += innovationLikelihood * this->particleSet_[i]->getData()->tracks_[m].getWeight(g) * Pd[m];
+            rho += innovationLikelihood * this->particleSet_[i]->getData()->tracks_[tracksInFovIdx[m]].getWeight(g) * tracksInFovPd[m];
             this->particleSet_[i]->getData()->tracks_[nM + z].addGaussian(
                 &lmNew,
-                innovationLikelihood * this->particleSet_[i]->getData()->tracks_[m].getWeight(g) * Pd[m] * p / (1 - p),
+                innovationLikelihood * this->particleSet_[i]->getData()->tracks_[tracksInFovIdx[m]].getWeight(g) * tracksInFovPd[m] * p / (1 - p),
                 true);
           }
 
         } // gaussian in track m for loop
-
-        num += rho * p * (1 - p) / pow(1 - p * Pd[m], 2);
-        denom += rho * p / (1 - p * Pd[m]);
+        if(rho > config.importanceWeightingMeasurementLikelihoodThreshold_){
+          L[m][z]=rho; // fill likelihood matrix
+        }else{
+          L[m][z]=0;
+        }
+        num += rho * p * (1 - p) / pow(1 - p * tracksInFovPd[m], 2);
+        denom += rho * p / (1 - p * tracksInFovPd[m]);
       } // existing track for loop
       this->particleSet_[i]->getData()->tracks_[nM + z].normalizeWeights();
       denom += this->pMeasurementModel_->clutterIntensity(this->measurements_[z], nZ);
@@ -650,535 +639,31 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
     }
     this->particleSet_[i]->getData()->tracks_.resize(nM+nZ-num_unused);
 
-  }
-
-template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter>
-  void RBCBMeMBerFilter<RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter>::importanceWeighting(
-      const uint idx) {
-
-    const uint particleIdx = idx;
-    TPose x = * this->particleSet_[particleIdx]->getPose();
-
-
-    // 1. select evaluation points from highest probability of existence tracks after update, that are within sensor FOV
-    const unsigned int nM = this->particleSet_[particleIdx]->getData()->tracks_.size();
-    int nEvalPoints = config.importanceWeightingEvalPointCount_ > nM ? nM : config.importanceWeightingEvalPointCount_;
-    std::vector<unsigned int> evalPointIdx;
-    std::vector<double> evalPointPd;
-    evalPointIdx.reserve(nEvalPoints);
-    evalPointPd.reserve(nEvalPoints);
-    if (nEvalPoints == 0) {
-      this->particleSet_[particleIdx]->setWeight(std::numeric_limits<double>::denorm_min());
-      return;
-    }
-    this->particleSet_[particleIdx]->getData()->sortByPE(); // sort by probability of existence so that we can pick off the top nEvalPoints Gaussians
-    for (int m = 0; m < nM; m++) {
-      TLandmark* plm_temp;
-      double w, w_prev;
-      bool closeToSensingLim;
-      if (this->particleSet_[particleIdx]->getData()->tracks_[m].getP() < config.importanceWeightingEvalPointTrackPE_)
-        break;
-      double Pd = 0;
-      for (int i = 0; i < this->particleSet_[particleIdx]->getData()->tracks_[m].getGaussianCount(); i++) {
-        this->particleSet_[particleIdx]->getData()->tracks_[m].getGaussian(i, plm_temp, w, w_prev);
-        if (plm_temp != NULL) {
-          Pd += this->pMeasurementModel_->probabilityOfDetection(x, *plm_temp, closeToSensingLim);
-
-        }
-      } // loop over gaussians
-      Pd = Pd / this->particleSet_[particleIdx]->getData()->tracks_[m].getGaussianCount();
-
-      if (Pd > 0) {
-        evalPointIdx.push_back(m);
-        evalPointPd.push_back(Pd);
-      }
-      if (nEvalPoints != -1 && evalPointIdx.size() >= nEvalPoints)
-        break;
-    } // loop over tracks
-    nEvalPoints = evalPointIdx.size();
-
-    double mapLikelihood = this->rfsMapLikelihood(particleIdx, evalPointIdx);
-    double prevMapLikelihood = this->rfsPrevMapLikelihood(particleIdx, evalPointIdx);
-
-    // 4. calculate measurement likelihood at eval points
-    // note that rfsMeasurementLikelihood uses maps_[particleIdx] which is already sorted by weight
-    double measurementLikelihood = rfsMeasurementLikelihood(particleIdx, evalPointIdx, evalPointPd);
-    //printf("Particle %d measurement likelihood = %f\n", i, measurementLikelihood);
-
-
-    // 5. calculate overall weight
-    double overall_weight = measurementLikelihood * mapLikelihood / prevMapLikelihood;
-    //std::cout << "Measurement Likelihood: " << measurementLikelihood << "  prevLike: " << prevMapLikelihood << "  maplike: " << mapLikelihood
-    //    << "\n overall: " <<overall_weight<< " nevalpoints" << nEvalPoints << std::endl;
+    // Update importance Weight
+    double importance_weight=rfsMeasurementLikelihood(particleIdx,tracksInFovIdx,tracksInFovPd,L,likelihoodMatrix);
     double prev_weight = this->particleSet_[particleIdx]->getWeight();
-    this->particleSet_[particleIdx]->setWeight(overall_weight * prev_weight);
-
-
+    this->particleSet_[particleIdx]->setWeight(importance_weight * prev_weight);
+    return importance_weight;
   }
 
-template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter>
-  double RBCBMeMBerFilter<RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter>::rfsPrevMapLikelihood(
-      const int particleIdx, std::vector<unsigned int>& evalPtIdx) {
 
-    TPose x = * this->particleSet_[particleIdx]->getPose();
 
-    // find all the tracks in the field of view of the robot in the previous map estimate.
-    std::vector<unsigned int> tracksInFoVIdx;
-    tracksInFoVIdx.reserve(evalPtIdx.size());
-
-    for (int m = 0; m < this->particleSet_[particleIdx]->getData()->tracks_.size(); m++) {
-      TLandmark* plm_temp;
-      double w, w_prev;
-      bool closeToSensingLim;
-
-      if (this->particleSet_[particleIdx]->getData()->tracks_[m].getP() > 0) {
-
-        for (int i = 0; i < this->particleSet_[particleIdx]->getData()->tracks_[m].getGaussianCount(); i++) {
-          this->particleSet_.at(particleIdx)->getData()->tracks_[m].getGaussian(i, plm_temp, w, w_prev);
-          if (plm_temp != NULL && this->particleSet_[particleIdx]->getData()->tracks_[m].getPrevP() > 0) {
-            double Pd = this->pMeasurementModel_->probabilityOfDetection(x, *plm_temp, closeToSensingLim);
-            if (Pd > 0) {
-              tracksInFoVIdx.push_back(m);
-              break;
-            }
-          }
-        } // loop over gaussians
-      } // loop over tracks
-
-    }
-
-    // eval points are first nEvalPoints elements of maps_[i], which are already ordered by weight;
-
-    const int i = particleIdx;
-
-    const int nM = evalPtIdx.size();
-    const int nMM = tracksInFoVIdx.size();
-
-    TLandmark* evalPt;
-    TLandmark evalPt_copy;
-    double const threshold = config.importanceWeightingMeasurementLikelihoodMDThreshold_
-        * config.importanceWeightingMeasurementLikelihoodMDThreshold_;
-    double md2; // Mahalanobis distance squared
-
-    // Create and fill in likelihood table (nMM x nM)
-    double** L;
-    CostMatrixGeneral likelihoodMatrix(L, nMM, nM);
-
-    for (int m = 0; m < nM; m++) {
-
-      this->particleSet_[i]->getData()->tracks_[evalPtIdx[m]].getMaxGaussian(evalPt); // get location of m
-      evalPt_copy = *evalPt; // so that we don't change the actual data //
-      evalPt_copy.setCov(MeasurementModel::TLandmark::Mat::Zero()); //
-
-      for (int n = 0; n < nMM; n++) {
-
-        // calculate the likelihood with existence probability
-        L[n][m] = 0;
-        for (unsigned int g = 0; g < this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getGaussianCount(); g++) {
-          TLandmark* lm = this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getGaussian(g);
-          double weight = this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getWeight(g);
-          double like = lm->evalGaussianLikelihood(*evalPt);
-          L[n][m] += like*weight;
-        } // gaussian in track m for loop
-        L[n][m] *= this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getPrevP(); // new line
-
-      }
-    }
-
-    // Partition the Likelihood Table and turn into a log-likelihood table
-    int nP = likelihoodMatrix.partition();
-    double l = 1;
-    double const BIG_NEG_NUM = -1000; // to represent log(0)
-
-    // Go through each partition and determine the likelihood
-    for (int p = 0; p < nP; p++) {
-
-      double partition_likelihood = 0;
-
-      unsigned int nCols, nRows;
-      double** Cp;
-      unsigned int* rowIdx;
-      unsigned int* colIdx;
-
-      bool isZeroPartition = !likelihoodMatrix.getPartitionSize(p, nRows, nCols);
-      bool useMurtyAlgorithm = true;
-      //if (nRows + nCols <= 8 || isZeroPartition)
-      //  useMurtyAlgorithm = false;
-
-      isZeroPartition = !likelihoodMatrix.getPartition(p, Cp, nRows, nCols, rowIdx, colIdx, useMurtyAlgorithm);
-      if (nRows < nCols){
-    	  std::cerr << "one of the evalpoints does not exist!!\n";
-    	  return 0;
-      }
-
-      if (isZeroPartition ) { // No tracks in this partition exist, nCols should be zero
-
-    	  if (nCols != 0){
-    		  std::cerr << "one of the evalpoints does not exist!!\n";
-    		  std::cerr << "Error: Prev Map likelihood is zero \n";
-    		  std::cerr << "ZeroP: " << isZeroPartition << "  nRows: " << nRows << "  nCols:  " << nCols << "\n";
-    		  std::cerr << "nP:  " << nP << "  p: "<<p  << "  nMM: " << nMM << "  nM: " << nM <<"\n";
-    		  return 0;
-    	  }
-    	  partition_likelihood = 1;
-    	  for (int r = 0; r<nRows; r++){
-    		  partition_likelihood *=1 - this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[rowIdx[r]]].getPrevP();
-    	  }
-
-      }
-      else {
-        // turn the matrix into a log likelihood matrix with detection statistics,
-        // and fill in the extended part of the partition
-
-        for (int r = 0; r < nRows; r++) {
-          for (int c = 0; c < nCols; c++) {
-            if (Cp[r][c] == 0)
-              Cp[r][c] = BIG_NEG_NUM;
-            else {
-              Cp[r][c] = log(Cp[r][c]);
-              if (Cp[r][c] < BIG_NEG_NUM)
-                Cp[r][c] = BIG_NEG_NUM;
-            }
-          }
-        }
-
-        if (useMurtyAlgorithm) { // use Murty's algorithm
-
-          // mis-detections
-          for (int r = 0; r < nRows; r++) {
-            for (int c = nCols; c < nRows + nCols; c++) {
-              if (r == c - nCols)
-                Cp[r][c] = log(1 - this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[rowIdx[r]]].getPrevP());
-              else
-                Cp[r][c] = BIG_NEG_NUM;
-            }
-          }
-          // clutter -- no clutter allowed
-          for(int r = nRows; r < nRows + nCols; r++){
-            for(int c = 0; c < nCols; c++){
-
-              Cp[r][c] = BIG_NEG_NUM;
-            }
-          }
-
-          // the lower right corner
-          for(int r = nRows; r < nRows + nCols; r++){
-            for(int c = nCols; c < nRows + nCols; c++){
-              Cp[r][c] = 0;
-            }
-          }
-
-          Murty murtyAlgo(Cp, nRows+nCols);
-          Murty::Assignment a;
-          partition_likelihood = 0;
-          double permutation_log_likelihood = 0;
-          murtyAlgo.setRealAssignmentBlock(nRows, nCols);
-          for (int k = 0; k < 200; k++) {
-            int rank = murtyAlgo.findNextBest(a, permutation_log_likelihood);
-            if (rank == -1 || permutation_log_likelihood < BIG_NEG_NUM)
-              break;
-            partition_likelihood += exp(permutation_log_likelihood);
-          }
-
-        }
-        else { // use lexicographic ordering
-
-          partition_likelihood = 0;
-          double permutation_log_likelihood = 0;
-
-          uint o[nRows + nCols];
-
-          PermutationLexicographic pl(nRows, nCols, true);
-          unsigned int nPerm = pl.next(o);
-          while (nPerm != 0) {
-            permutation_log_likelihood = 0;
-            for (int a = 0; a < nRows; a++) {
-              if (o[a] < nCols) { // detection
-                permutation_log_likelihood += Cp[a][o[a]];
-              }
-              else { // mis-detection
-                permutation_log_likelihood += log(1 - this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[rowIdx[a]]].getP());
-              }
-            }
-            for (int a = nRows; a < nRows + nCols; a++) { // outliers
-              if (o[a] < nCols) {
-                return 0;
-              }
-            }
-            partition_likelihood += exp(permutation_log_likelihood);
-            nPerm = pl.next(o);
-          }
-
-        } // End lexicographic ordering
-
-      } // End non zero partition
-
-      l *= partition_likelihood;
-      /*
-      if (partition_likelihood < 10e-6){
-        std::cerr << "warning low likelihood\n";
-        std::cerr << "Nrows: " << nRows <<" nCols: " << nCols <<"\n";
-        for (int r = 0; r < nRows+nCols; r++) {
-          for (int c = 0; c < nRows+nCols; c++) {
-            std::cerr << Cp[r][c] <<"\t";
-          }
-          std::cerr << std::endl;
-        }
-        std::cerr << "break!\n";
-
-      }*/
-
-    } // End partitions
-
-    return (l);
-  }
-
-template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter>
-  double RBCBMeMBerFilter<RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter>::rfsMapLikelihood(
-      const int particleIdx, std::vector<unsigned int>& evalPtIdx) {
-
-    TPose x = *this->particleSet_[particleIdx]->getPose();
-    // find all the tracks in the field of view of the robot in the updated map estimate.
-    std::vector<unsigned int> tracksInFoVIdx;
-    tracksInFoVIdx.reserve(evalPtIdx.size());
-
-    for (int m = 0; m < this->particleSet_[particleIdx]->getData()->tracks_.size(); m++) {
-      TLandmark* plm_temp;
-      double w, w_prev;
-      bool closeToSensingLim;
-
-      if (this->particleSet_[particleIdx]->getData()->tracks_[m].getP() > 0) {
-
-        for (int i = 0; i < this->particleSet_[particleIdx]->getData()->tracks_[m].getGaussianCount(); i++) {
-          this->particleSet_[particleIdx]->getData()->tracks_[m].getGaussian(i, plm_temp, w, w_prev);
-          if (plm_temp != NULL) {
-            double Pd = this->pMeasurementModel_->probabilityOfDetection(x, *plm_temp, closeToSensingLim);
-            if (Pd > 0) {
-              tracksInFoVIdx.push_back(m);
-              break;
-            }
-          }
-        } // loop over gaussians
-      } // loop over tracks
-
-    }
-
-    // eval points are first nEvalPoints elements of maps_[i], which are already ordered by weight;
-
-    const int i = particleIdx;
-
-    const int nM = evalPtIdx.size();
-    const int nMM = tracksInFoVIdx.size();
-   // std::cout << "nEvalpt: " << nM << " ntrackinfov: " << nMM<< std::endl;
-
-    TLandmark* evalPt;
-    TLandmark evalPt_copy;
-    double const threshold = config.importanceWeightingMeasurementLikelihoodMDThreshold_
-        * config.importanceWeightingMeasurementLikelihoodMDThreshold_;
-    double md2; // Mahalanobis distance squared
-
-    // Create and fill in likelihood table (nMM x nM)
-    double** L;
-    CostMatrixGeneral likelihoodMatrix(L, nMM, nM);
-
-    for (int m = 0; m < nM; m++) {
-
-      this->particleSet_[i]->getData()->tracks_[evalPtIdx[m]].getMaxGaussian(evalPt); // get location of m
-      evalPt_copy = *evalPt; // so that we don't change the actual data //
-      evalPt_copy.setCov(MeasurementModel::TLandmark::Mat::Zero()); //
-
-      for (int n = 0; n < nMM; n++) {
-
-        // calculate the likelihood with existence probability
-        L[n][m] = 0;
-        for (unsigned int g = 0; g < this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getGaussianCount(); g++) {
-          TLandmark* lm = this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getGaussian(g);
-          if (lm != NULL) {
-            double weight =this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getWeight(g);
-            double like = lm->evalGaussianLikelihood(*evalPt);
-            L[n][m] += weight*like;
-          }
-        } // gaussian in track m for loop
-        L[n][m] *= this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[n]].getP(); // new line
-
-      }
-    }
-
-    // Partition the Likelihood Table and turn into a log-likelihood table
-    int nP = likelihoodMatrix.partition();
-    double l = 1;
-    double const BIG_NEG_NUM = -1000; // to represent log(0)
-
-    // Go through each partition and determine the likelihood
-    for (int p = 0; p < nP; p++) {
-
-      double partition_likelihood = 0;
-
-      unsigned int nCols, nRows;
-      double** Cp;
-      unsigned int* rowIdx;
-      unsigned int* colIdx;
-
-      bool isZeroPartition = !likelihoodMatrix.getPartitionSize(p, nRows, nCols);
-      bool useMurtyAlgorithm = true;
-      //if (nRows + nCols <= 8 || isZeroPartition)
-      //  useMurtyAlgorithm = false;
-
-      isZeroPartition = !likelihoodMatrix.getPartition(p, Cp, nRows, nCols, rowIdx, colIdx, useMurtyAlgorithm);
-
-      isZeroPartition = !likelihoodMatrix.getPartition(p, Cp, nRows, nCols, rowIdx, colIdx, useMurtyAlgorithm);
-      if (nRows < nCols){
-    	  std::cerr << "one of the evalpoints does not exist!!\n";
-    	  return 0;
-      }
-
-      if (isZeroPartition ) { // No tracks in this partition exist, nCols should be zero
-
-    	  if (nCols != 0){
-    		  std::cerr << "one of the evalpoints does not exist!!\n";
-    		  std::cerr << "Error: Prev Map likelihood is zero \n";
-    		  std::cerr << "ZeroP: " << isZeroPartition << "  nRows: " << nRows << "  nCols:  " << nCols << "\n";
-    		  std::cerr << "nP:  " << nP << "  p: "<<p  << "  nMM: " << nMM << "  nM: " << nM <<"\n";
-    		  return 0;
-    	  }
-    	  partition_likelihood = 1;
-    	  for (int r = 0; r<nRows; r++){
-    		  partition_likelihood *=1 - this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[rowIdx[r]]].getP();
-    	  }
-
-      }
-      else {
-        // turn the matrix into a log likelihood matrix with detection statistics,
-        // and fill in the extended part of the partition
-
-        for (int r = 0; r < nRows; r++) {
-          for (int c = 0; c < nCols; c++) {
-            if (Cp[r][c] == 0)
-              Cp[r][c] = BIG_NEG_NUM;
-            else {
-              Cp[r][c] = log(Cp[r][c]);
-              if (Cp[r][c] < BIG_NEG_NUM)
-                Cp[r][c] = BIG_NEG_NUM;
-            }
-          }
-        }
-
-        if (useMurtyAlgorithm) { // use Murty's algorithm
-
-          // mis-detections
-          for (int r = 0; r < nRows; r++) {
-            for (int c = nCols; c < nRows+nCols; c++) {
-
-              Cp[r][c] = log(1 - this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[rowIdx[r]]].getP());
-
-            }
-          }
-          // clutter -- no clutter allowed
-          for(int r = nRows; r < nRows + nCols; r++){
-            for(int c = 0; c < nCols; c++){
-
-              Cp[r][c] = BIG_NEG_NUM;
-            }
-          }
-
-          // the lower right corner
-          for(int r = nRows; r < nRows + nCols; r++){
-            for(int c = nCols; c < nRows + nCols; c++){
-              Cp[r][c] = 0;
-            }
-          }
-
-          Murty murtyAlgo(Cp, nRows+ nCols );
-          Murty::Assignment a;
-          partition_likelihood = 0;
-          double permutation_log_likelihood = 0;
-          murtyAlgo.setRealAssignmentBlock(nRows, nCols);
-          for (int k = 0; k < 200; k++) {
-            int rank = murtyAlgo.findNextBest(a, permutation_log_likelihood);
-            if (rank == -1 || permutation_log_likelihood < BIG_NEG_NUM)
-              break;
-            partition_likelihood += exp(permutation_log_likelihood);
-          }
-        }
-        else { // use lexicographic ordering
-
-          partition_likelihood = 0;
-          double permutation_log_likelihood = 0;
-
-          uint o[nRows + nCols];
-
-          PermutationLexicographic pl(nRows, nCols, true);
-          unsigned int nPerm = pl.next(o);
-          while (nPerm != 0) {
-            permutation_log_likelihood = 0;
-            for (int a = 0; a < nRows; a++) {
-              if (o[a] < nCols) { // detection
-                permutation_log_likelihood += Cp[a][o[a]];
-              }
-              else { // mis-detection
-                permutation_log_likelihood += log(1 - this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[rowIdx[a]]].getP());
-              }
-            }
-            for (int a = nRows; a < nRows + nCols; a++) { // outliers
-              if (o[a] < nCols) {
-                return 0;
-              }
-            }
-            partition_likelihood += exp(permutation_log_likelihood);
-            nPerm = pl.next(o);
-          }
-
-        } // End lexicographic ordering
-
-      } // End non zero partition
-
-      l *= partition_likelihood;
-
-    } // End partitions
-
-    return (l);
-  }
 template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter>
   double RBCBMeMBerFilter<RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter>::rfsMeasurementLikelihood(
-      const int particleIdx, std::vector<unsigned int> &evalPtIdx, std::vector<double> &evalPtPd) {
+      const int particleIdx, std::vector<unsigned int> &tracksinfov, std::vector<double> &Pd, double** L, CostMatrixGeneral &likelihoodMatrix) {
 
     // eval points are first nEvalPoints elements of maps_[i], which are already ordered by weight;
 
     const int i = particleIdx;
-    TPose x = * this->particleSet_[i]->getPose();
 
-    const int nM = evalPtIdx.size();
+    const int nM = Pd.size();
     const int nZ = this->measurements_.size();
 
-    TLandmark* evalPt;
-    TLandmark evalPt_copy;
-    TMeasurement expected_z;
-    double const threshold = config.importanceWeightingMeasurementLikelihoodMDThreshold_
-        * config.importanceWeightingMeasurementLikelihoodMDThreshold_;
-    double md2; // Mahalanobis distance squared
 
-    // Create and fill in likelihood table (nM x nZ)
-    double** L;
-    CostMatrixGeneral likelihoodMatrix(L, nM, nZ);
 
-    for (int m = 0; m < nM; m++) {
 
-      this->particleSet_[i]->getData()->tracks_.at(evalPtIdx[m]).getMaxGaussian(evalPt); // get location of m
-      evalPt_copy = *evalPt; // so that we don't change the actual data //
-      assert(!evalPt_copy.get().isZero());
-      evalPt_copy.setCov(MeasurementModel::TLandmark::Mat::Zero()); //
-      this->pMeasurementModel_->measure(x, evalPt_copy, expected_z); // get expected measurement for m
-      double Pd = evalPtPd[m]; // get the prob of detection of m
 
-      for (int n = 0; n < nZ; n++) {
 
-        // calculate measurement likelihood with detection statistics
-        L[m][n] = expected_z.evalGaussianLikelihood(this->measurements_[n], &md2) * Pd; // new line
-        if (md2 > threshold) {
-          L[m][n] = 0;
-        }
-      }
-    }
 
     // Partition the Likelihood Table and turn into a log-likelihood table
     int nP = likelihoodMatrix.partition();
@@ -1210,7 +695,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
         partition_likelihood = 1;
         for (int r = 0; r < nRows; r++) {
-          partition_likelihood *= evalPtPd[rowIdx[r]];
+          partition_likelihood *= Pd[rowIdx[r]];
         }
 
         for (int c = 0; c < nCols; c++) {
@@ -1240,7 +725,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
           for (int r = 0; r < nRows; r++) {
             for (int c = nCols; c < nRows + nCols; c++) {
               if (r == c - nCols)
-                Cp[r][c] = log(1 - evalPtPd[rowIdx[r]]);
+                Cp[r][c] = log(1 - Pd[rowIdx[r]]);
               else
                 Cp[r][c] = BIG_NEG_NUM;
             }
@@ -1292,7 +777,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
                 permutation_log_likelihood += Cp[a][o[a]];
               }
               else { // mis-detection
-                permutation_log_likelihood += log(1 - evalPtPd[rowIdx[a]]);
+                permutation_log_likelihood += log(1 - Pd[rowIdx[a]]);
               }
             }
             for (int a = nRows; a < nRows + nCols; a++) { // outliers

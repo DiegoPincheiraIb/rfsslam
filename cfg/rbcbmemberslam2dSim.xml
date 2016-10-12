@@ -42,7 +42,7 @@
     
     <predict>
       <processNoiseInflationFactor>1.5</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
-      <birthTrackPE>0.1</birthTrackPE> <!-- weight assigned to new birth Gaussians -->
+      <birthTrackPE>0.06</birthTrackPE> <!-- weight assigned to new birth Gaussians -->
     </predict>
 
     <update>
@@ -61,7 +61,7 @@
     <weighting>
       <nEvalPt>15</nEvalPt> <!-- number of points to use for evaluation particle weights (weighting strategy) -->
       <minPE>0.75</minPE> <!-- Tracks must have a probability of existence above this for their mean to be considered for particle weighting -->
-      <threshold>3.0</threshold> <!-- likelihood calculated from Mahalanobis distance above this will be assumed to be 0 -->
+      <threshold>1e-4</threshold> <!-- likelihood calculated from Mahalanobis distance above this will be assumed to be 0 -->
       <useClusterProcess>0</useClusterProcess> <!-- Use single cluster process for particle weighting-->
     </weighting>
 
