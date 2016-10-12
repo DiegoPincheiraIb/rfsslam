@@ -7,11 +7,11 @@
     <logDirPrefix>data/rbcbmember2dslam/</logDirPrefix>
   </logging>
 
-  <timesteps>200</timesteps>
+  <timesteps>3000</timesteps>
   <sec_per_timestep>0.1</sec_per_timestep>
 
   <trajectory>
-    <nSegments>1</nSegments> <!-- number of constant velocity segments -->
+    <nSegments>20</nSegments> <!-- number of constant velocity segments -->
     <max_dx_per_sec>0.30</max_dx_per_sec> <!-- max x-displacement per second -->
     <max_dy_per_sec>0.00</max_dy_per_sec> <!-- max y-displacement per second -->
     <max_dz_per_sec>0.50</max_dz_per_sec> <!-- max rotation per second -->
@@ -22,17 +22,17 @@
   </trajectory>
 
   <landmarks>
-    <nLandmarks>10</nLandmarks> <!-- number of landmarks -->
-    <varlmx>0.0002</varlmx> <!-- increase in landmark x uncertainty per second -->
-    <varlmy>0.0002</varlmy> <!-- increase in landmark y uncertainty per second -->
+    <nLandmarks>50</nLandmarks> <!-- number of landmarks -->
+    <varlmx>0.0001</varlmx> <!-- increase in landmark x uncertainty per second -->
+    <varlmy>0.0001</varlmy> <!-- increase in landmark y uncertainty per second -->
   </landmarks>
 
   <measurements>
     <rangeLimitMax>2.5</rangeLimitMax> <!-- measurement range limit -->
     <rangeLimitMin>0.5</rangeLimitMin> <!-- measurement range limit				 -->
     <rangeLimitBuffer>0.05</rangeLimitBuffer> <!-- buffer zone around range limit in which negative information has no effects -->
-    <probDetection>0.90</probDetection> <!-- probability of detection -->
-    <clutterIntensity>0.01</clutterIntensity> <!-- uniform clutter intensity -->
+    <probDetection>0.50</probDetection> <!-- probability of detection -->
+    <clutterIntensity>0.5</clutterIntensity> <!-- uniform clutter intensity -->
     <varzr>0.0005</varzr> <!-- range measurement variance -->
     <varzb>0.00005</varzb> <!-- bearing measurement variance (0.0001 is roughly 0.6 deg standard deviation) -->
   </measurements>
@@ -42,7 +42,7 @@
     
     <predict>
       <processNoiseInflationFactor>1.5</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
-      <birthTrackPE>0.5</birthTrackPE> <!-- weight assigned to new birth Gaussians -->
+      <birthTrackPE>0.1</birthTrackPE> <!-- weight assigned to new birth Gaussians -->
     </predict>
 
     <update>
@@ -59,7 +59,7 @@
     
 
     <weighting>
-      <nEvalPt>1</nEvalPt> <!-- number of points to use for evaluation particle weights (weighting strategy) -->
+      <nEvalPt>15</nEvalPt> <!-- number of points to use for evaluation particle weights (weighting strategy) -->
       <minPE>0.75</minPE> <!-- Tracks must have a probability of existence above this for their mean to be considered for particle weighting -->
       <threshold>3.0</threshold> <!-- likelihood calculated from Mahalanobis distance above this will be assumed to be 0 -->
       <useClusterProcess>0</useClusterProcess> <!-- Use single cluster process for particle weighting-->
@@ -76,8 +76,8 @@
     </merge>
 
     <prune>
-      <trackthreshold>0.01</trackthreshold> <!-- Tracks with probability of existence below this are pruned -->
-      <gaussianthreshold>0.01</gaussianthreshold> <!-- Gaussians with weights below this are pruned -->
+      <trackthreshold>0.05</trackthreshold> <!-- Tracks with probability of existence below this are pruned -->
+      <gaussianthreshold>0.05</gaussianthreshold> <!-- Gaussians with weights below this are pruned -->
     </prune>
 
   </filter>

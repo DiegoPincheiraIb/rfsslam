@@ -259,6 +259,11 @@ GaussianMixture<Landmark>::~GaussianMixture(){
 
 template< class Landmark >
 void GaussianMixture<Landmark>::copyTo( GaussianMixture *other) const{
+  for(int i = 0 ; i < other->gList_.size() ; i++){
+    if(other->gList_[i].landmark != NULL){
+      delete other->gList_[i].landmark;
+    }
+  }
   other->n_ = n_;
   other->gList_ = gList_;
   for(int i = 0; i < gList_.size(); i++){

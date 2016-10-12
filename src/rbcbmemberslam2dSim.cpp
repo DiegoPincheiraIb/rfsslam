@@ -39,6 +39,13 @@
 #include <stdio.h>
 #include <string>
 
+#ifdef _PERFTOOLS_CPU
+#include <gperftools/profiler.h>
+#endif
+#ifdef _PERFTOOLS_HEAP
+#include <gperftools/heap-profiler.h>
+#endif
+
 using namespace rfs;
 
 /**
@@ -478,9 +485,18 @@ public:
   /** Run the simulator */
   void run() {
 
-    printf("Running simulation\n\n");
+	  printf("Running simulation\n\n");
 
-    //////// Initialization at first timestep //////////
+
+#ifdef _PERFTOOLS_CPU
+	  std::string perfCPU_file = logDirPrefix_ + "rbphdslam2dSim_cpu.prof";
+	  ProfilerStart(perfCPU_file.data());
+#endif
+#ifdef _PERFTOOLS_HEAP
+	  std::string perfHEAP_file = logDirPrefix_ + "rbphdslam2dSim_heap.prof";
+	  HeapProfilerStart(perfHEAP_file.data());
+#endif
+	  //////// Initialization at first timestep //////////
 
     FILE* pParticlePoseFile;
     if (logToFile_) {
@@ -499,7 +515,7 @@ public:
 
     if (logToFile_) {
       for (int i = 0; i < pFilter_->getParticleCount(); i++) {
-        pFilter_->getParticleSet()->at(i)->getPose(x_i);
+    	  x_i = * pFilter_->getParticleSet()->at(i)->getPose();
         fprintf(pParticlePoseFile, "%f   %d   %f   %f   %f   1.0\n", 0.0, i, x_i.get(0), x_i.get(1), x_i.get(2));
       }
     }
@@ -515,6 +531,12 @@ public:
       if (k % 100 == 0)
         printf("k = %d\n", k);
 
+
+
+#ifdef _PERFTOOLS_HEAP
+      if( k % 20 == 0)
+	HeapProfilerDump("Timestep interval dump");
+#endif
       ////////// Prediction Step //////////
 
       // configure robot motion model ( not necessary since in simulation, timesteps are constant)
@@ -551,41 +573,52 @@ public:
       pFilter_->update(Z);
 
       // Log particle poses
-      if (logToFile_) {
-        for (int i = 0; i < pFilter_->getParticleCount(); i++) {
-          pFilter_->getParticleSet()->at(i)->getPose(x_i);
+      int i_w_max = 0;
+      double w_max = 0;
+      if(logToFile_){
+        for(int i = 0; i < pFilter_->getParticleCount(); i++){
+          x_i = *(pFilter_->getParticleSet()->at(i));
           double w = pFilter_->getParticleSet()->at(i)->getWeight();
-          fprintf(pParticlePoseFile, "%f   %d   %f   %f   %f   %f\n", time.getTimeAsDouble(), i, x_i.get(0), x_i.get(1),
-                  x_i.get(2), w);
+          if(w > w_max){
+            i_w_max = i;
+            w_max = w;
+          }
+          fprintf( pParticlePoseFile, "%f   %d   %f   %f   %f   %f\n", time.getTimeAsDouble(), i, x_i.get(0), x_i.get(1), x_i.get(2), w);
         }
-        fprintf(pParticlePoseFile, "\n");
+        fprintf( pParticlePoseFile, "\n");
       }
 
       // Log landmark estimates
       if (logToFile_) {
-        for (int i = 0; i < pFilter_->getParticleCount(); i++) {
-          int trackNumber = pFilter_->getTrackNum(i);
-          for (int m = 0; m < trackNumber; m++) {
-            MeasurementModel_RngBrg::TLandmark::Vec u;
-            MeasurementModel_RngBrg::TLandmark::Mat S;
-            GMBernoulliComponent<MeasurementModel_RngBrg::TLandmark> track;
-            pFilter_->getTrack(i, m, track);
-            for (int g = 0; g < track.getGaussianCount(); g++) {
-              MeasurementModel_RngBrg::TLandmark *landmark;
-              double w;
-              track.getGaussian(g, landmark, w);
-              landmark->get(u,S);
 
-              fprintf(pLandmarkEstFile, "%f   %d   ", time.getTimeAsDouble(), i);
-              fprintf(pLandmarkEstFile, "%f   %f      ", u(0), u(1));
-              fprintf(pLandmarkEstFile, "%f   %f   %f", S(0, 0), S(0, 1), S(1, 1));
-              fprintf(pLandmarkEstFile, "   %f   %f\n", track.getP(), w);
-            }
+        int trackNumber = pFilter_->getTrackNum(i_w_max);
+        for (int m = 0; m < trackNumber; m++) {
+          MeasurementModel_RngBrg::TLandmark::Vec u;
+          MeasurementModel_RngBrg::TLandmark::Mat S;
+          GMBernoulliComponent<MeasurementModel_RngBrg::TLandmark> track;
+          pFilter_->getTrack(i_w_max, m, track);
+          for (int g = 0; g < track.getGaussianCount(); g++) {
+            MeasurementModel_RngBrg::TLandmark *landmark;
+            double w;
+            track.getGaussian(g, landmark, w);
+            landmark->get(u,S);
+
+            fprintf(pLandmarkEstFile, "%f   %d   ", time.getTimeAsDouble(), i_w_max);
+            fprintf(pLandmarkEstFile, "%f   %f      ", u(0), u(1));
+            fprintf(pLandmarkEstFile, "%f   %f   %f", S(0, 0), S(0, 1), S(1, 1));
+            fprintf(pLandmarkEstFile, "   %f   %f\n", track.getP(), w);
           }
+
         }
       }
 
     }
+#ifdef _PERFTOOLS_HEAP
+    HeapProfilerStop();
+#endif
+#ifdef _PERFTOOLS_CPU
+    ProfilerStop();
+#endif
 
     printf("Elapsed Timing Information [nsec]\n");
     printf("Prediction    -- wall: %lld   cpu: %lld\n", pFilter_->getTimingInfo()->predict_wall,

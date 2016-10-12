@@ -337,7 +337,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
         // use inverse measurement model to get landmark
         TPose robot_pose;
         TLandmark landmark_pos;
-        this->particleSet_[i]->getPose(robot_pose);
+        robot_pose= * this->particleSet_[i]->getPose();
         this->pMeasurementModel_->inverseMeasure(robot_pose, unused_z, landmark_pos);
 
         // add birth landmark to Gaussian mixture (last param = true to allocate mem)
@@ -394,7 +394,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
   void RBCBMeMBerFilter<RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter>::setParticlePose(int i,
                                                                                                              TPose &p) {
 
-    this->particleSet_[i]->setPose(p);
+	*(this->particleSet_[i]) = p;
 
   }
 
@@ -657,8 +657,8 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
       const uint idx) {
 
     const uint particleIdx = idx;
-    TPose x;
-    this->particleSet_[particleIdx]->getPose(x);
+    TPose x = * this->particleSet_[particleIdx]->getPose();
+
 
     // 1. select evaluation points from highest probability of existence tracks after update, that are within sensor FOV
     const unsigned int nM = this->particleSet_[particleIdx]->getData()->tracks_.size();
@@ -705,12 +705,14 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
     double measurementLikelihood = rfsMeasurementLikelihood(particleIdx, evalPointIdx, evalPointPd);
     //printf("Particle %d measurement likelihood = %f\n", i, measurementLikelihood);
 
+
     // 5. calculate overall weight
     double overall_weight = measurementLikelihood * mapLikelihood / prevMapLikelihood;
-
+    //std::cout << "Measurement Likelihood: " << measurementLikelihood << "  prevLike: " << prevMapLikelihood << "  maplike: " << mapLikelihood
+    //    << "\n overall: " <<overall_weight<< " nevalpoints" << nEvalPoints << std::endl;
     double prev_weight = this->particleSet_[particleIdx]->getWeight();
     this->particleSet_[particleIdx]->setWeight(overall_weight * prev_weight);
-    //printf("Particle %d overall weight = %f\n\n", i, overall_weight);
+
 
   }
 
@@ -718,8 +720,8 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
   double RBCBMeMBerFilter<RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter>::rfsPrevMapLikelihood(
       const int particleIdx, std::vector<unsigned int>& evalPtIdx) {
 
-    TPose x;
-    this->particleSet_[particleIdx]->getPose(x);
+    TPose x = * this->particleSet_[particleIdx]->getPose();
+
     // find all the tracks in the field of view of the robot in the previous map estimate.
     std::vector<unsigned int> tracksInFoVIdx;
     tracksInFoVIdx.reserve(evalPtIdx.size());
@@ -800,8 +802,8 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
       bool isZeroPartition = !likelihoodMatrix.getPartitionSize(p, nRows, nCols);
       bool useMurtyAlgorithm = true;
-      if (nRows + nCols <= 8 || isZeroPartition)
-        useMurtyAlgorithm = false;
+      //if (nRows + nCols <= 8 || isZeroPartition)
+      //  useMurtyAlgorithm = false;
 
       isZeroPartition = !likelihoodMatrix.getPartition(p, Cp, nRows, nCols, rowIdx, colIdx, useMurtyAlgorithm);
       if (nRows < nCols){
@@ -820,7 +822,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
     	  }
     	  partition_likelihood = 1;
     	  for (int r = 0; r<nRows; r++){
-    		  partition_likelihood *=1 - this->particleSet_[i]->getData()->tracks_[rowIdx[r]].getPrevP();
+    		  partition_likelihood *=1 - this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[rowIdx[r]]].getPrevP();
     	  }
 
       }
@@ -846,13 +848,27 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
           for (int r = 0; r < nRows; r++) {
             for (int c = nCols; c < nRows + nCols; c++) {
               if (r == c - nCols)
-                Cp[r][c] = log(1 - this->particleSet_[i]->getData()->tracks_[rowIdx[r]].getPrevP());
+                Cp[r][c] = log(1 - this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[rowIdx[r]]].getPrevP());
               else
                 Cp[r][c] = BIG_NEG_NUM;
             }
           }
+          // clutter -- no clutter allowed
+          for(int r = nRows; r < nRows + nCols; r++){
+            for(int c = 0; c < nCols; c++){
 
-          Murty murtyAlgo(Cp, nRows);
+              Cp[r][c] = BIG_NEG_NUM;
+            }
+          }
+
+          // the lower right corner
+          for(int r = nRows; r < nRows + nCols; r++){
+            for(int c = nCols; c < nRows + nCols; c++){
+              Cp[r][c] = 0;
+            }
+          }
+
+          Murty murtyAlgo(Cp, nRows+nCols);
           Murty::Assignment a;
           partition_likelihood = 0;
           double permutation_log_likelihood = 0;
@@ -881,7 +897,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
                 permutation_log_likelihood += Cp[a][o[a]];
               }
               else { // mis-detection
-                permutation_log_likelihood += log(1 - this->particleSet_[i]->getData()->tracks_[rowIdx[a]].getP());
+                permutation_log_likelihood += log(1 - this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[rowIdx[a]]].getP());
               }
             }
             for (int a = nRows; a < nRows + nCols; a++) { // outliers
@@ -898,6 +914,19 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
       } // End non zero partition
 
       l *= partition_likelihood;
+      /*
+      if (partition_likelihood < 10e-6){
+        std::cerr << "warning low likelihood\n";
+        std::cerr << "Nrows: " << nRows <<" nCols: " << nCols <<"\n";
+        for (int r = 0; r < nRows+nCols; r++) {
+          for (int c = 0; c < nRows+nCols; c++) {
+            std::cerr << Cp[r][c] <<"\t";
+          }
+          std::cerr << std::endl;
+        }
+        std::cerr << "break!\n";
+
+      }*/
 
     } // End partitions
 
@@ -908,8 +937,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
   double RBCBMeMBerFilter<RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilter>::rfsMapLikelihood(
       const int particleIdx, std::vector<unsigned int>& evalPtIdx) {
 
-    TPose x;
-    this->particleSet_[particleIdx]->getPose(x);
+    TPose x = *this->particleSet_[particleIdx]->getPose();
     // find all the tracks in the field of view of the robot in the updated map estimate.
     std::vector<unsigned int> tracksInFoVIdx;
     tracksInFoVIdx.reserve(evalPtIdx.size());
@@ -941,6 +969,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
     const int nM = evalPtIdx.size();
     const int nMM = tracksInFoVIdx.size();
+   // std::cout << "nEvalpt: " << nM << " ntrackinfov: " << nMM<< std::endl;
 
     TLandmark* evalPt;
     TLandmark evalPt_copy;
@@ -992,8 +1021,8 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
       bool isZeroPartition = !likelihoodMatrix.getPartitionSize(p, nRows, nCols);
       bool useMurtyAlgorithm = true;
-      if (nRows + nCols <= 8 || isZeroPartition)
-        useMurtyAlgorithm = false;
+      //if (nRows + nCols <= 8 || isZeroPartition)
+      //  useMurtyAlgorithm = false;
 
       isZeroPartition = !likelihoodMatrix.getPartition(p, Cp, nRows, nCols, rowIdx, colIdx, useMurtyAlgorithm);
 
@@ -1014,7 +1043,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
     	  }
     	  partition_likelihood = 1;
     	  for (int r = 0; r<nRows; r++){
-    		  partition_likelihood *=1 - this->particleSet_[i]->getData()->tracks_[rowIdx[r]].getP();
+    		  partition_likelihood *=1 - this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[rowIdx[r]]].getP();
     	  }
 
       }
@@ -1038,14 +1067,28 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
           // mis-detections
           for (int r = 0; r < nRows; r++) {
-            for (int c = nCols; c < nRows; c++) {
+            for (int c = nCols; c < nRows+nCols; c++) {
 
-              Cp[r][c] = log(1 - this->particleSet_[i]->getData()->tracks_[rowIdx[r]].getP());
+              Cp[r][c] = log(1 - this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[rowIdx[r]]].getP());
 
             }
           }
+          // clutter -- no clutter allowed
+          for(int r = nRows; r < nRows + nCols; r++){
+            for(int c = 0; c < nCols; c++){
 
-          Murty murtyAlgo(Cp, nRows );
+              Cp[r][c] = BIG_NEG_NUM;
+            }
+          }
+
+          // the lower right corner
+          for(int r = nRows; r < nRows + nCols; r++){
+            for(int c = nCols; c < nRows + nCols; c++){
+              Cp[r][c] = 0;
+            }
+          }
+
+          Murty murtyAlgo(Cp, nRows+ nCols );
           Murty::Assignment a;
           partition_likelihood = 0;
           double permutation_log_likelihood = 0;
@@ -1073,7 +1116,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
                 permutation_log_likelihood += Cp[a][o[a]];
               }
               else { // mis-detection
-                permutation_log_likelihood += log(1 - this->particleSet_[i]->getData()->tracks_[rowIdx[a]].getP());
+                permutation_log_likelihood += log(1 - this->particleSet_[i]->getData()->tracks_[tracksInFoVIdx[rowIdx[a]]].getP());
               }
             }
             for (int a = nRows; a < nRows + nCols; a++) { // outliers
@@ -1102,8 +1145,8 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
     // eval points are first nEvalPoints elements of maps_[i], which are already ordered by weight;
 
     const int i = particleIdx;
-    TPose x;
-    this->particleSet_[i]->getPose(x);
+    TPose x = * this->particleSet_[i]->getPose();
+
     const int nM = evalPtIdx.size();
     const int nZ = this->measurements_.size();
 

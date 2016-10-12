@@ -140,7 +140,7 @@ ADD_EXECUTABLE(rbphdslam2dSim_amplitude src/rbphdslam2dSim_amplitude.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dSim_amplitude ${Boost_LIBRARIES} rfsslam)
 
 ADD_EXECUTABLE(rbcbmemberslam2dSim src/rbcbmemberslam2dSim.cpp)
-TARGET_LINK_LIBRARIES(rbcbmemberslam2dSim ${Boost_LIBRARIES} rfsslam)
+TARGET_LINK_LIBRARIES(rbcbmemberslam2dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
 
 ADD_EXECUTABLE(fastslam2dSim src/fastslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(fastslam2dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY}) 

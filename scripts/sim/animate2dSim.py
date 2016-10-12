@@ -50,7 +50,7 @@ matplotlib.rcParams.update({'font.size': 20})
 
 saveMovie = False;
 saveFig = True
-timestepStart = 2950
+timestepStart = 0
 
 nLandmarksDrawMax = 500;
 nMeasurementsDrawMax = 500;
@@ -278,7 +278,10 @@ def animate(i):
         if round(m[1]) == round(p_idx_maxWeight):
 
             cov = np.array([ [ m[4], m[5] ], [ m[5], m[6] ] ]);
-            w = m[7]*m[8];
+            if len(m)==9:
+              w = m[7]*m[8];
+            else:
+              w = m[7]
             eVal, eVec = np.linalg.eig(cov);
             eVal = eVal.real;
             a1 = 5*np.sqrt(eVal[0]); # Assume this is semi-major axis first
