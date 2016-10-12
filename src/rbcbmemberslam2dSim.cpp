@@ -28,16 +28,18 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define BOOST_NO_CXX11_SCOPED_ENUMS // required for boost/filesystem to work with C++11
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
-#include <boost/timer/timer.hpp>
 #include "ProcessModel_Odometry2D.hpp"
 #include "RBCBMeMBerFilter.hpp"
 #include "KalmanFilter_RngBrg.hpp"
 #include <stdio.h>
 #include <string>
+#include <sys/ioctl.h>
 
 #ifdef _PERFTOOLS_CPU
 #include <gperftools/profiler.h>
@@ -58,8 +60,7 @@ class Simulator_RBCBMeMBerSLAM_2d
 
 public:
 
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  ;
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
   Simulator_RBCBMeMBerSLAM_2d() {
     pFilter_ = NULL;
@@ -140,11 +141,12 @@ public:
     return true;
   }
 
-  /** Generate a random trajectory in 2d space */
-  void generateTrajectory(int randSeed = 0) {
+  /** Generate a trajectory in 2d space 
+   *  \param[in] randSeed random seed for generating trajectory
+   */
+  void generateTrajectory(int randSeed = 0){
 
-    printf("Generating trajectory with random seed = %d\n", randSeed);
-    srand48(randSeed);
+    srand48( randSeed);
 
     TimeStamp t;
     int seg = 0;
@@ -154,38 +156,37 @@ public:
     MotionModel_Odometry2d::TInput input_k(t);
     MotionModel_Odometry2d::TState pose_k(t);
     MotionModel_Odometry2d::TState pose_km(t);
-    groundtruth_displacement_.reserve(kMax_);
-    groundtruth_pose_.reserve(kMax_);
+    groundtruth_displacement_.reserve( kMax_ );
+    groundtruth_pose_.reserve( kMax_ );
     groundtruth_displacement_.push_back(input_k);
     groundtruth_pose_.push_back(pose_k);
 
-    for (int k = 1; k < kMax_; k++) {
+    for( int k = 1; k < kMax_; k++ ){
 
       t += dTimeStamp_;
 
-      if (k <= 50) {
-        double dx = 0;
-        double dy = 0;
-        double dz = 0;
-        MotionModel_Odometry2d::TInput::Vec d;
-        MotionModel_Odometry2d::TInput::Vec dCovDiag;
-        d << dx, dy, dz;
-        dCovDiag << 0, 0, 0;
-        input_k = MotionModel_Odometry2d::TInput(d, dCovDiag.asDiagonal(), k);
-      }
-      else if (k >= kMax_ / nSegments_ * seg) {
-        seg++;
-        double dx = drand48() * max_dx_ * dT_;
-        while (dx < min_dx_ * dT_) {
-          dx = drand48() * max_dx_ * dT_;
-        }
-        double dy = (drand48() * max_dy_ * 2 - max_dy_) * dT_;
-        double dz = (drand48() * max_dz_ * 2 - max_dz_) * dT_;
-        MotionModel_Odometry2d::TInput::Vec d;
-        MotionModel_Odometry2d::TInput::Vec dCovDiag;
-        d << dx, dy, dz;
-        dCovDiag << Q(0, 0), Q(1, 1), Q(2, 2);
-        input_k = MotionModel_Odometry2d::TInput(d, dCovDiag.asDiagonal(), k);
+      if( k <= 50 ){
+	double dx = 0;
+	double dy = 0;
+	double dz = 0;
+	MotionModel_Odometry2d::TInput::Vec d;
+	MotionModel_Odometry2d::TInput::Vec dCovDiag;
+	d << dx, dy, dz;
+	dCovDiag << 0, 0, 0;
+	input_k = MotionModel_Odometry2d::TInput(d, dCovDiag.asDiagonal(), k);
+      }else if( k >= kMax_ / nSegments_ * seg ){
+	seg++;
+	double dx = drand48() * max_dx_ * dT_;
+	while( dx < min_dx_ * dT_ ){
+	  dx = drand48() * max_dx_ * dT_;
+	}
+	double dy = (drand48() * max_dy_ * 2 - max_dy_) * dT_;
+	double dz = (drand48() * max_dz_ * 2 - max_dz_) * dT_;
+	MotionModel_Odometry2d::TInput::Vec d;
+	MotionModel_Odometry2d::TInput::Vec dCovDiag;
+	d << dx, dy, dz;
+	dCovDiag << Q(0,0), Q(1,1), Q(2,2);
+	input_k = MotionModel_Odometry2d::TInput(d, dCovDiag.asDiagonal(), k);  
       }
 
       groundtruth_displacement_.push_back(input_k);
@@ -218,8 +219,8 @@ public:
 
     TimeStamp t;
 
-    for (int k = 1; k < kMax_; k++) {
-
+    for( int k = 1; k < kMax_; k++){
+      
       t += dTimeStamp_;
       double dt = dTimeStamp_.getTimeAsDouble();
 
@@ -228,13 +229,13 @@ public:
       in.setCov(Qk);
       MotionModel_Odometry2d::TInput out;
       in.sample(out);
-
-      odometry_.push_back(out);
+      
+      odometry_.push_back( out );
 
       MotionModel_Odometry2d::TState p;
       motionModel.step(p, deadReckoning_pose_[k - 1], odometry_[k], dTimeStamp_);
       p.setTime(t);
-      deadReckoning_pose_.push_back(p);
+      deadReckoning_pose_.push_back( p );
     }
 
   }
@@ -489,11 +490,11 @@ public:
 
 
 #ifdef _PERFTOOLS_CPU
-	  std::string perfCPU_file = logDirPrefix_ + "rbphdslam2dSim_cpu.prof";
+	  std::string perfCPU_file = logDirPrefix_ + "rbcbmemberslam2dSim_cpu.prof";
 	  ProfilerStart(perfCPU_file.data());
 #endif
 #ifdef _PERFTOOLS_HEAP
-	  std::string perfHEAP_file = logDirPrefix_ + "rbphdslam2dSim_heap.prof";
+	  std::string perfHEAP_file = logDirPrefix_ + "rbcbmemberslam2dSim_heap.prof";
 	  HeapProfilerStart(perfHEAP_file.data());
 #endif
 	  //////// Initialization at first timestep //////////
@@ -527,11 +528,31 @@ public:
     for (int k = 1; k < kMax_; k++) {
 
       time += dTimeStamp_;
-
-      if (k % 100 == 0)
-        printf("k = %d\n", k);
-
-
+      
+      if( k % 100 == 0 || k == kMax_ - 1){
+	float progressPercent = float(k+1) / float(kMax_);
+	int progressBarW = 50;
+	struct winsize ws;
+	if(ioctl(1, TIOCGWINSZ, &ws) >= 0)
+	  progressBarW = ws.ws_col - 30;
+	int progressPos = progressPercent * progressBarW;
+	if(progressBarW >= 50){
+	  std::cout << "["; 
+	  for(int i = 0; i < progressBarW; i++){
+	    if(i < progressPos)
+	      std::cout << "=";
+	    else if(i == progressPos)
+	      std::cout << ">";
+	    else
+	      std::cout << " ";
+	  }
+	  std::cout << "] ";
+	}
+	std::cout << "k = " << k << " (" << int(progressPercent * 100.0) << " %)\r"; 
+	std::cout.flush();
+      }
+      if(k == kMax_ - 1)
+	std::cout << std::endl << std::endl;
 
 #ifdef _PERFTOOLS_HEAP
       if( k % 20 == 0)
@@ -620,30 +641,44 @@ public:
     ProfilerStop();
 #endif
 
-    printf("Elapsed Timing Information [nsec]\n");
-    printf("Prediction    -- wall: %lld   cpu: %lld\n", pFilter_->getTimingInfo()->predict_wall,
-           pFilter_->getTimingInfo()->predict_cpu);
-    printf("Map Update    -- wall: %lld   cpu: %lld\n", pFilter_->getTimingInfo()->mapUpdate_wall,
-           pFilter_->getTimingInfo()->mapUpdate_cpu);
-    printf("Map Update KF -- wall: %lld   cpu: %lld\n", pFilter_->getTimingInfo()->mapUpdate_kf_wall,
-           pFilter_->getTimingInfo()->mapUpdate_kf_cpu);
-    printf("Weighting     -- wall: %lld   cpu: %lld\n", pFilter_->getTimingInfo()->particleWeighting_wall,
-           pFilter_->getTimingInfo()->particleWeighting_cpu);
-    printf("Map Merge     -- wall: %lld   cpu: %lld\n", pFilter_->getTimingInfo()->mapMerge_wall,
-           pFilter_->getTimingInfo()->mapMerge_cpu);
-    printf("Map Prune     -- wall: %lld   cpu: %lld\n", pFilter_->getTimingInfo()->mapPrune_wall,
-           pFilter_->getTimingInfo()->mapPrune_cpu);
-    printf("Resampling    -- wall: %lld   cpu: %lld\n", pFilter_->getTimingInfo()->particleResample_wall,
-           pFilter_->getTimingInfo()->particleResample_cpu);
-    printf(
-        "Total         -- wall: %lld   cpu: %lld\n",
-        pFilter_->getTimingInfo()->predict_wall + pFilter_->getTimingInfo()->mapUpdate_wall
-            + pFilter_->getTimingInfo()->particleWeighting_wall + pFilter_->getTimingInfo()->mapMerge_wall
-            + pFilter_->getTimingInfo()->mapPrune_wall + pFilter_->getTimingInfo()->particleResample_wall,
-        pFilter_->getTimingInfo()->predict_cpu + pFilter_->getTimingInfo()->mapUpdate_cpu
-            + pFilter_->getTimingInfo()->particleWeighting_cpu + pFilter_->getTimingInfo()->mapMerge_cpu
-            + pFilter_->getTimingInfo()->mapPrune_cpu + pFilter_->getTimingInfo()->particleResample_cpu);
-    printf("\n");
+
+    std::cout << "Elapsed Timing Information [nsec]\n";
+    std::cout << std::setw(15) << std::left << "Prediction" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->predict_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->predict_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Map Update" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Map Update (KF)" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_kf_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapUpdate_kf_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Weighting" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->particleWeighting_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->particleWeighting_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Map Merge" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapMerge_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapMerge_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Map Prune" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->mapPrune_wall
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->mapPrune_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Resampling" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_wall
+	      << std::setw(6) << std::left << std::right << "cpu:" << std::setw(15) << pFilter_->getTimingInfo()->particleResample_cpu << std::endl;
+    std::cout << std::setw(15) << std::left << "Total" << std::setw(15)
+	      << std::setw(6) << std::right << "wall:" << std::setw(15)
+	      << pFilter_->getTimingInfo()->predict_wall +
+                 pFilter_->getTimingInfo()->mapUpdate_wall +
+                 pFilter_->getTimingInfo()->particleWeighting_wall +
+                 pFilter_->getTimingInfo()->mapMerge_wall +
+                 pFilter_->getTimingInfo()->mapPrune_wall +
+                 pFilter_->getTimingInfo()->particleResample_wall 
+	      << std::setw(6) << std::right << "cpu:" << std::setw(15)
+	      << pFilter_->getTimingInfo()->predict_cpu +
+                 pFilter_->getTimingInfo()->mapUpdate_cpu +
+                 pFilter_->getTimingInfo()->particleWeighting_cpu +
+                 pFilter_->getTimingInfo()->mapMerge_cpu +
+                 pFilter_->getTimingInfo()->mapPrune_cpu + 
+                 pFilter_->getTimingInfo()->particleResample_cpu << std::endl;
 
     if (logToFile_) {
       fclose(pParticlePoseFile);
@@ -719,20 +754,42 @@ public:
 
 int main(int argc, char* argv[]) {
 
-  int initRandSeed = 0;
-  const char* cfgFileName = "cfg/rbcbmemberslam2dSim.xml";
-  if (argc >= 2) {
-    initRandSeed = boost::lexical_cast<int>(argv[1]);
-  }
-  if (argc >= 3) {
-    cfgFileName = argv[2];
-  }
+
 
   Simulator_RBCBMeMBerSLAM_2d sim;
-  if (!sim.readConfigFile(cfgFileName)) {
+  int seed = time(NULL);
+  srand(seed);
+  int trajNum = rand();
+  std::string cfgFileName;
+  boost::program_options::options_description desc("Options");
+  desc.add_options()
+    ("help,h", "produce this help message")
+    ("cfg,c", boost::program_options::value<std::string>(&cfgFileName)->default_value("cfg/rbcbmemberslam2dSim.xml"), "configuration xml file")
+    ("trajectory,t", boost::program_options::value<int>(&trajNum), "trajectory number (default: a random integer)")
+    ("seed,s", boost::program_options::value<int>(&seed), "random seed for running the simulation (default: based on current system time)");
+  boost::program_options::variables_map vm;
+  boost::program_options::store( boost::program_options::parse_command_line(argc, argv, desc), vm);
+  boost::program_options::notify(vm);
+
+  if( vm.count("help") ){
+    std::cout << desc << "\n";
+    return 1;
+  }
+
+  if( vm.count("cfg") ){
+    cfgFileName = vm["cfg"].as<std::string>();
+  }
+  std::cout << "Configuration file: " << cfgFileName << std::endl;
+  if( !sim.readConfigFile( cfgFileName.data() ) ){
     return -1;
   }
-  sim.generateTrajectory(initRandSeed);
+  
+  if( vm.count("trajectory") ){
+    trajNum = vm["trajectory"].as<int>();
+  }
+  std::cout << "Trajectory: " << trajNum << std::endl;
+  sim.generateTrajectory( trajNum );  
+  
   sim.generateLandmarks();
   sim.generateOdometry();
   sim.generateMeasurements();
@@ -740,14 +797,18 @@ int main(int argc, char* argv[]) {
   sim.exportSimData();
 
   sim.setupRBCBMeMBerFilter();
+  if( vm.count("seed") ){
+    seed = vm["seed"].as<int>();
+    std::cout << "Simulation random seed manually set to: " << seed << std::endl;
+  }
+  srand48( seed );
 
-  srand48(time(NULL));
-
-  boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
+  // boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
 
   sim.run();
 
-  delete timer;
+  // std::cout << "mem use: " << MemProfile::getCurrentRSS() << "(" << MemProfile::getPeakRSS() << ")\n";
+  //delete timer;
 
   return 0;
 
