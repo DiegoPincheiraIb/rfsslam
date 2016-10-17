@@ -185,7 +185,14 @@ public:
    */
   bool resample( unsigned int n = 0, bool forceResample = false );
 
- 
+  /**
+   * Getter for the measurement vector.
+   *
+   * \return the measurement vector
+   */
+	const std::vector<TMeasure>& getMeasurements() const {
+		return measurements_;
+	}
 
 protected:
 

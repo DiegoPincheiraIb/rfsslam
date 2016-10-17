@@ -28,37 +28,54 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// Measurement Classes
+#include "ProcessModel_Odometry6D.hpp"
 
-#ifndef MEASUREMENT_HPP
-#define MEASUREMENT_HPP
+using namespace rfs;
 
-#include "Pose.hpp"
+MotionModel_Odometry6d::MotionModel_Odometry6d(){}
 
-namespace rfs{
+MotionModel_Odometry6d::MotionModel_Odometry6d( Pose6d::Mat &Q ) : ProcessModel(Q) {}
 
-  /** \brief Definition for a NULL measurement */
-  typedef RandomVec < 1 > NullInput;
+MotionModel_Odometry6d::~MotionModel_Odometry6d(){}
 
-  /** \brief Definition for 1d measurement */
-  typedef RandomVec < 1 > Measurement1d;
-
-  /** \brief Definition for 2d measurement */
-  typedef RandomVec < 2 > Measurement2d;
-
-  /** \brief Definition for 3d measurement */
-  typedef RandomVec < 3 > Measurement3d;
+void MotionModel_Odometry6d::step(  Pose6d &s_k,
+				   Pose6d &s_km,
+				   Odometry6d &input_k,
+				   TimeStamp const &dT ){
+ 
 
 
-  /** \brief Definition for 1d odometry */
-  typedef RandomVec < 1 > Odometry1d;
+  Pose6d::PosVec p_k_i_;   /* \f[ \begin{bmatrix} x \\ y \\ z\end{bmatrix}_{k} \f]*/
+  Pose6d::PosVec p_km_i_;  /* \f[ \begin{bmatrix} x \\ y \\ z\end{bmatrix}_{k-1} \f]*/
+  Eigen::Quaterniond q_k_;          /* \f[ q_k \f\] */
+  
 
-  /** \brief Definition for 2d odometry */
-  typedef Pose < 3, 2 ,1 > Odometry2d;
+  Eigen::Matrix3d Sd_k_km_; /* uncertainty of translation input */
+  Odometry6d::PosVec dp_k_km_; /* translation input */
 
-  /** \brief Definition for 6d odometry using quaternion */
-  typedef Pose < 7, 3 ,4 > Odometry6d;
+ 
+  /* State at k-1 */
+  s_km.getPos(p_km_i_);
+  Eigen::Quaterniond q_km_(s_km.getRot());          /* \f[ q_{k-1} \f\] */
+  TimeStamp t_km=s_km.getTime();
 
+  /* Odometry */
+  input_k.getPos(dp_k_km_);
+  Eigen::Quaterniond q_input_(input_k.getRot());  /* rotation Input */
+  q_input_.normalize();
+
+  /* Step forward */
+
+  p_k_i_ = p_km_i_ + q_km_.conjugate()._transformVector(dp_k_km_);
+  q_k_ = q_input_ * q_km_  ;
+
+  /* Write state at k */
+  TimeStamp t_k = t_km + dT;
+
+
+
+
+  s_k.setPos(p_k_i_);
+  s_k.setRot(q_k_.coeffs(), t_k);
 }
 
-#endif
