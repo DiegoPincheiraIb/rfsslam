@@ -42,7 +42,7 @@
     
     <predict>
       <processNoiseInflationFactor>1.5</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
-      <birthTrackPE>0.06</birthTrackPE> <!-- weight assigned to new birth Gaussians -->
+      <birthTrackPE>0.1</birthTrackPE> <!-- weight assigned to new birth Gaussians -->
     </predict>
 
     <update>
@@ -76,7 +76,7 @@
     </merge>
 
     <prune>
-      <trackthreshold>0.05</trackthreshold> <!-- Tracks with probability of existence below this are pruned -->
+      <trackthreshold>0.01</trackthreshold> <!-- Tracks with probability of existence below this are pruned -->
       <gaussianthreshold>0.05</gaussianthreshold> <!-- Gaussians with weights below this are pruned -->
     </prune>
 

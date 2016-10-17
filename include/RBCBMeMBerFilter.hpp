@@ -592,7 +592,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
       for (unsigned int m =0; m < tracksInFovIdx.size();m++) {
 
-        double p = this->particleSet_[i]->getData()->tracks_[m].getPrevP(); // previous probability of existence of track m (changed earlier in this method)
+        double p = this->particleSet_[i]->getData()->tracks_[tracksInFovIdx[m]].getPrevP(); // previous probability of existence of track m (changed earlier in this method)
         double rho = 0; // from eq 56 in CBMeMBer paper
 
         for (unsigned int g = 0; g < this->particleSet_[i]->getData()->tracks_[tracksInFovIdx[m]].getGaussianCount(); g++) {
