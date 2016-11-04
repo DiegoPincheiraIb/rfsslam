@@ -90,6 +90,24 @@ public:
    */
   unsigned int addGaussian( pLandmark p, double w = 1, bool allocateMem = false);
 
+  /**
+   * Add a Gaussian Mixture to this GaussianMixture, removing them from the input mixture
+   * \param[in] other reference to the Gaussian Mixture to add (its components are removed)
+   * \param[in] w Multiply all GM weights by this value before adding them.
+   *
+   * \return number of Gaussians in the mixture
+   */
+  unsigned int addGM( GaussianMixture& other, double w = 1);
+
+  /**
+   * Multiply all weights in this GM by a constant value
+   *
+   * \param[in] w Multiply all GM weights by this value
+   *
+   * \return number of Gaussians in the mixture
+   */
+  void multiplyWeights(double w);
+
   /** 
    * Remove a Gaussian from the mixture 
    * \param[in] idx index number of the Gaussian to remove
@@ -293,6 +311,28 @@ unsigned int GaussianMixture<Landmark>::addGaussian( pLandmark p, double w,
   gList_.push_back(g);
   n_++;
   return n_;
+}
+
+template< class Landmark >
+unsigned int GaussianMixture<Landmark>::addGM( GaussianMixture& other,  double w){
+  isSorted_ = false;
+
+
+  for(int i=0; i<other.gList_.size();i++){
+    other.gList_[i].weight*=w;
+  }
+
+  gList_.insert(gList_.end(),other.gList_.begin(),other.gList_.end());
+  n_+=other.n_;
+  other.gList_.clear();
+  other.n_=0;
+  return n_;
+}
+template< class Landmark >
+void GaussianMixture<Landmark>::multiplyWeights(double w){
+  for(int i=0; i<gList_.size();i++){
+      gList_[i].weight*=w;
+    }
 }
 
 template< class Landmark >

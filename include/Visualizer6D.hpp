@@ -33,7 +33,6 @@
 
 #include <RBPHDFilter.hpp>
 #include <ProcessModel_Odometry6D.hpp>
-#include <ProcessModel6D_static.hpp>
 #include <MeasurementModel_6D.hpp>
 #include <thread>
 #include <mutex>
