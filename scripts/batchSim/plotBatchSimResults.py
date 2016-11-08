@@ -87,7 +87,7 @@ for i in range(1, data.shape[0]):
         mapColas.append(data[i,3])
     else:
         # Calculate statistics
-        if(Pd_current > 0.2):
+        if(Pd_current > 0.3):
             data_add = np.array([Pd_current, np.log10(c_current)-2, np.mean(trajErrors), np.std(trajErrors), np.mean(mapColas), np.std(mapColas) ])
             data_stat = np.vstack( [data_stat, data_add])
             c_unique.append(np.log10(c_current)-2)
@@ -99,7 +99,7 @@ for i in range(1, data.shape[0]):
         trajErrors = [data[i,2]]
         mapColas = [data[i,3]]
 
-if(Pd_current > 0.2):
+if(Pd_current > 0.3):
     data_add = np.array([Pd_current, np.log10(c_current)-2, np.mean(trajErrors), np.std(trajErrors), np.mean(mapColas), np.std(mapColas) ])
     data_stat = np.vstack( [data_stat, data_add])
 
@@ -129,7 +129,7 @@ ax.plot_trisurf(X, Y, Z, cmap=cm.coolwarm, linewidth=0, vmin=0, vmax=50)
 ax.set_zlim3d(0, 50)
 ax.set_xlabel("Prob. of detection")
 ax.set_ylabel("log clutter intensity")
-ax.set_zlabel(r"Avg. landmark position error [m]")
+ax.set_zlabel(r"Avg. landmark position error")
 if(args.saveFig):
     plt.savefig("batch_map_error.pdf", format='pdf', bbox_inches='tight')
 
