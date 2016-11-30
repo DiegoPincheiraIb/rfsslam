@@ -36,7 +36,12 @@ void Visualizer6D::setup(const std::vector<MeasurementModel_6D::TLandmark> &grou
 	mapPolydata_->GetPointData()->SetScalars(mapColors_);
 	mapGlyph3D_ = vtkSmartPointer<vtkGlyph3D>::New();
 	mapGlyph3D_->SetSourceConnection(sphereSource_->GetOutputPort());
-	mapGlyph3D_->SetInputData(mapPolydata_);
+#if VTK_MAJOR_VERSION <= 5
+	mapGlyph3D_->SetInput(mapPolydata_);
+#else
+        mapGlyph3D_->SetInputData(mapPolydata_);
+#endif
+
 	mapGlyph3D_->SetColorModeToColorByScalar();
 	mapGlyph3D_->ScalingOn();
 	mapGlyph3D_->SetScaleModeToDataScalingOff();
@@ -56,7 +61,12 @@ void Visualizer6D::setup(const std::vector<MeasurementModel_6D::TLandmark> &grou
 	gtmapPolydata_->GetPointData()->SetScalars(gtmapColors_);
 	gtmapGlyph3D_ = vtkSmartPointer<vtkGlyph3D>::New();
 	gtmapGlyph3D_->SetSourceConnection(sphereSource_->GetOutputPort());
-	gtmapGlyph3D_->SetInputData(gtmapPolydata_);
+#if VTK_MAJOR_VERSION <= 5
+	gtmapGlyph3D_->SetInput(gtmapPolydata_);
+#else
+        gtmapGlyph3D_->SetInputData(gtmapPolydata_);
+#endif
+
 	gtmapGlyph3D_->SetColorModeToColorByScalar();
 	gtmapGlyph3D_->ScalingOff();
 	gtmapGlyph3D_->Update();
@@ -75,7 +85,12 @@ void Visualizer6D::setup(const std::vector<MeasurementModel_6D::TLandmark> &grou
 	particlePolydata_->GetPointData()->SetScalars(particleColors_);
 	particleGlyph3D_ = vtkSmartPointer<vtkGlyph3D>::New();
 	particleGlyph3D_->SetSourceConnection(sphereSource_->GetOutputPort());
-	particleGlyph3D_->SetInputData(particlePolydata_);
+#if VTK_MAJOR_VERSION <= 5
+        particleGlyph3D_->SetInput(particlePolydata_);
+#else
+        particleGlyph3D_->SetInputData (particlePolydata_);
+#endif
+
 	particleGlyph3D_->SetColorModeToColorByScalar();
 	particleGlyph3D_->ScalingOn();
 	particleGlyph3D_->SetScaleModeToDataScalingOff();
@@ -103,7 +118,12 @@ void Visualizer6D::setup(const std::vector<MeasurementModel_6D::TLandmark> &grou
 	gtTrajectoryPolydata_->SetPoints(gtTrajectoryPoints_);
 	gtTrajectoryPolydata_->SetLines(gtTrajectoryCells_);
 	gtTrajectoryMapper_ = vtkSmartPointer<vtkPolyDataMapper>::New();
-	gtTrajectoryMapper_->SetInputData(gtTrajectoryPolydata_);
+#if VTK_MAJOR_VERSION <= 5
+	gtTrajectoryMapper_->SetInput(gtTrajectoryPolydata_);
+#else
+        gtTrajectoryMapper_->SetInputData(gtTrajectoryPolydata_);
+#endif
+
 	gtTrajectoryMapper_->Update();
 	gtTrajectoryActor_ =  vtkSmartPointer<vtkActor>::New();
 	gtTrajectoryActor_->SetMapper(gtTrajectoryMapper_);
@@ -124,7 +144,13 @@ void Visualizer6D::setup(const std::vector<MeasurementModel_6D::TLandmark> &grou
 	drTrajectoryPolydata_->SetPoints(drTrajectoryPoints_);
 	drTrajectoryPolydata_->SetLines(drTrajectoryCells_);
 	drTrajectoryMapper_ = vtkSmartPointer<vtkPolyDataMapper>::New();
-	drTrajectoryMapper_->SetInputData(drTrajectoryPolydata_);
+
+#if VTK_MAJOR_VERSION <= 5
+	drTrajectoryMapper_->SetInput(drTrajectoryPolydata_);
+#else
+        drTrajectoryMapper_->SetInputData(drTrajectoryPolydata_);
+#endif
+
 	drTrajectoryMapper_->Update();
 	drTrajectoryActor_ =  vtkSmartPointer<vtkActor>::New();
 	drTrajectoryActor_->SetMapper(drTrajectoryMapper_);
@@ -143,7 +169,12 @@ void Visualizer6D::setup(const std::vector<MeasurementModel_6D::TLandmark> &grou
 	estTrajectoryPolydata_->SetPoints(estTrajectoryPoints_);
 	estTrajectoryPolydata_->SetLines(estTrajectoryCells_);
 	estTrajectoryMapper_ = vtkSmartPointer<vtkPolyDataMapper>::New();
-	estTrajectoryMapper_->SetInputData(estTrajectoryPolydata_);
+#if VTK_MAJOR_VERSION <= 5
+	estTrajectoryMapper_->SetInput(estTrajectoryPolydata_);
+#else
+        estTrajectoryMapper_->SetInputData(estTrajectoryPolydata_);
+#endif
+
 	estTrajectoryMapper_->Update();
 	estTrajectoryActor_ =  vtkSmartPointer<vtkActor>::New();
 	estTrajectoryActor_->SetMapper(estTrajectoryMapper_);
@@ -161,7 +192,12 @@ void Visualizer6D::setup(const std::vector<MeasurementModel_6D::TLandmark> &grou
 	measurementPolydata_->SetPoints(measurementPoints_);
 	measurementPolydata_->SetLines(measurementCells_);
 	measurementMapper_ = vtkSmartPointer<vtkPolyDataMapper>::New();
-	measurementMapper_->SetInputData(measurementPolydata_);
+#if VTK_MAJOR_VERSION <= 5
+	measurementMapper_->SetInput(measurementPolydata_);
+#else
+        measurementMapper_->SetInputData(measurementPolydata_);
+#endif
+
 	measurementMapper_->Update();
 	measurementActor_ =  vtkSmartPointer<vtkActor>::New();
 	measurementActor_->SetMapper(measurementMapper_);
