@@ -9,7 +9,7 @@ get_filename_component(RFSSLAM_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 
 find_path(RFSSLAM_INCLUDE_DIR "rfsslam" PATHS "/usr/local/include")
 find_path(RFSSLAM_LIBRARY "rfsslam/librfsslam.a" PATHS "/usr/local/lib")
-set(RFSSLAM_INCLUDE_DIRS ${RFS_INCLIDE_DIR} "@Boost_INCLUDE_DIRS@" "@EIGEN_INCLUDE_DIRS@")
+set(RFSSLAM_INCLUDE_DIRS ${RFSSLAM_INCLUDE_DIR} "@Boost_INCLUDE_DIRS@" "@EIGEN_INCLUDE_DIRS@")
 
 
 # Our library dependencies (contains definitions for IMPORTED targets)
