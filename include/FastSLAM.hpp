@@ -553,13 +553,14 @@ void FastSLAM< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFilte
   unsigned int pi[nH];
   std::vector<pParticle> h_particle;
   pi[0] = i; 
+  h_particle.push_back(particle);
   if(nH > 1){
     double newWeight = particle->getWeight() / nH;
     particle->setWeight(newWeight); 
     #pragma omp critical(increaseParticles)
     {
       this->copyParticle(i, nH-1, newWeight);
-      h_particle.push_back(this->particleSet_[pi[0]]);
+
       for(unsigned int h = 1; h < nH; h++){
 	      pi[h] = this->nParticles_ - h;
 	      h_particle.push_back(this->particleSet_[pi[h]]);
