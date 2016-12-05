@@ -45,6 +45,12 @@ IF(USE_OPENMP)
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp ")
 ENDIF()
 
+#Threads
+
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+find_package(Threads REQUIRED)
+
 # Boost
 FIND_PACKAGE(Boost COMPONENTS timer chrono system filesystem graph program_options REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
@@ -144,7 +150,7 @@ ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
 
 ADD_EXECUTABLE(rbphdslam6dSim src/rbphdslam6dSim.cpp)
-TARGET_LINK_LIBRARIES(rbphdslam6dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY} ${VTK_LIBRARIES})
+TARGET_LINK_LIBRARIES(rbphdslam6dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY} ${VTK_LIBRARIES} Threads::Threads)
 
 ADD_EXECUTABLE(rbphdslam2dSim_amplitude src/rbphdslam2dSim_amplitude.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dSim_amplitude ${Boost_LIBRARIES} rfsslam)
