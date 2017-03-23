@@ -206,6 +206,27 @@ namespace rfs
       return x_(n);
     }
 
+    /** Comparison operator */
+    bool operator> (const RandomVec &rhs) const{
+      return this->t_ > rhs.t_;
+
+    }
+
+    /** Comparison operator */
+    bool operator>= (const RandomVec &rhs) const{
+      return this->t_ >= rhs.t_;
+    }
+
+    /** Comparison operator */
+    bool operator< (const RandomVec &rhs) const{
+      return this->t_ < rhs.t_;
+    }
+
+    /** Comparison operator */
+    bool operator<= (const RandomVec &rhs) const{
+      return this->t_ <= rhs.t_;
+    }
+
     /** 
      * Set the vector
      * \param[in] x vector to be set
