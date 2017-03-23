@@ -39,6 +39,9 @@
 
 //double const PI = acos(-1);
 
+namespace rfs
+{
+
 /**
  * \class RandomVecMathTools
  * \brief A collection of methods for use on a RandomVec derived class.
@@ -66,6 +69,15 @@ public:
     x_to.get(x1);
     return mahalanobisDist2( x_fm, x1 );
   }
+
+  static double euclidianDist( RandomVecDerived x_fm,
+                                    RandomVecDerived x_to){
+    typename RandomVecDerived::Vec x1,x2,d;
+    x_to.get(x1);
+    x_fm.get(x2);
+    d=x1-x2;
+      return d.norm();
+    }
 
   /** 
    * Calculate the sqaured Mahalanobis distance from a random vector,
@@ -227,4 +239,5 @@ public:
 
 };
 
+}
 #endif
