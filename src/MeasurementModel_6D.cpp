@@ -85,7 +85,7 @@ bool MeasurementModel_6D::measure(const Pose6d &pose,
   pose.getPos(robotPosition);
   landmark.get(landmarkState);
   Eigen::Quaterniond robotQ(pose.getRot());
-  H_lmk = robotQ.toRotationMatrix();
+  H_lmk = robotQ.conjugate().toRotationMatrix();
 
 
   mean= H_lmk * (landmarkState-robotPosition);
@@ -136,7 +136,7 @@ void MeasurementModel_6D::inverseMeasure(const Pose6d &pose,
 
   pose.getPos(robotPosition);
   Eigen::Quaterniond robotQ(pose.getRot());
-  Hinv = robotQ.conjugate().toRotationMatrix();
+  Hinv = robotQ.toRotationMatrix();
 
 
   measurement.get(measurementState);

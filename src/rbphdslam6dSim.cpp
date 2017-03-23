@@ -689,7 +689,7 @@ public:
 
 			pFilter_->predict(odometry_[k], dTimeStamp_);
 
-			if (k <= 100) {
+			if (k <= 50) {
 				for (int i = 0; i < nParticles_; i++)
 					pFilter_->setParticlePose(i, groundtruth_pose_[k]);
 			}

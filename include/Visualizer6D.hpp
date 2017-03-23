@@ -32,6 +32,7 @@
 #define VISUALIZER6D_HPP
 
 #include "RBPHDFilter.hpp"
+#include "RBLMBFilter.hpp"
 #include "ProcessModel_Odometry6D.hpp"
 #include "MeasurementModel_6D.hpp"
 #include <thread>
@@ -73,9 +74,12 @@ public:
 			const std::vector<MotionModel_Odometry6d::TState> &groundtruth_pose_,
 			const std::vector<MotionModel_Odometry6d::TState> &deadreckoning_pose_);
 
-	void update(RBPHDFilter<MotionModel_Odometry6d, StaticProcessModel<Landmark3d>,
-			MeasurementModel_6D,
-			KalmanFilter<StaticProcessModel<Landmark3d>, MeasurementModel_6D> > *pFilter_);
+        void update(RBPHDFilter<MotionModel_Odometry6d, StaticProcessModel<Landmark3d>,
+                        MeasurementModel_6D,
+                        KalmanFilter<StaticProcessModel<Landmark3d>, MeasurementModel_6D> > *pFilter_);
+        void update(RBLMBFilter<MotionModel_Odometry6d, StaticProcessModel<Landmark3d>,
+                        MeasurementModel_6D,
+                        KalmanFilter<StaticProcessModel<Landmark3d>, MeasurementModel_6D> > *pFilter_);
 
 	void start();
 
@@ -99,6 +103,7 @@ public:
 	std::vector<MotionModel_Odometry6d::TState> const *groundtruth_pose_;
 	double sphere_radius_ = 0.1;
 	bool stopped=false;
+	bool init_trajectory=false;
 	std::thread *display_thread_;
 	std::mutex *display_mutex_;
 	int i_trajectory = 0; // number of steps to show

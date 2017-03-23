@@ -609,6 +609,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
 
     // generate updated tracks
+
     for (unsigned int z = 0; z < nZ; z++) {
 
 
@@ -641,9 +642,14 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
           L[m][z]=0;
         }
 
+
       } // existing track for loop
 
     } // measurements for loop
+
+
+
+
 
     // Partition the Likelihood Table and turn into a log-likelihood table
     int nP = likelihoodMatrix.partition();
@@ -663,12 +669,13 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
 
       bool isZeroPartition = !likelihoodMatrix.getPartitionSize(p, nRows, nCols);
       bool useMurtyAlgorithm = true;
+
       if (nRows + nCols <= 8 || isZeroPartition)
         useMurtyAlgorithm = false;
 
       isZeroPartition = !likelihoodMatrix.getPartition(p, Cp, nRows, nCols, rowIdx, colIdx, useMurtyAlgorithm);
 
-      if (isZeroPartition) { // all landmarks in this partition are mis-detected. All measurements are outliers
+      if (isZeroPartition || nCols == 0 ) { // all landmarks in this partition are mis-detected. All measurements are outliers
 
         partition_likelihood = 1;
         for (int r = 0; r < nRows; r++) {
@@ -845,7 +852,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
     }
 
     for(int z = 0; z < nZ; z++) {
-      double p= std::min(config.birthTrackMaxPE_ , config.expectedBirths_*(1-associationP[z])/noAssociationPsum);
+      double p= std::min(config.birthTrackMaxPE_ , (1-associationP[z]));
 
       if (p>config.birthTrackMinPE_){
 
@@ -869,6 +876,8 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
     double prev_weight = this->particleSet_[particleIdx]->getWeight();
     this->particleSet_[particleIdx]->setWeight(l * prev_weight);
     return l;
+
+
 }
 
 

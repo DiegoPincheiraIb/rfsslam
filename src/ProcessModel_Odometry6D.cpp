@@ -66,8 +66,8 @@ void MotionModel_Odometry6d::step(  Pose6d &s_k,
 
   /* Step forward */
 
-  p_k_i_ = p_km_i_ + q_km_.conjugate()._transformVector(dp_k_km_);
-  q_k_ = q_input_ * q_km_  ;
+  p_k_i_ = p_km_i_ + q_km_._transformVector(dp_k_km_);
+  q_k_ =   q_km_ * q_input_;
 
   /* Write state at k */
   TimeStamp t_k = t_km + dT;
