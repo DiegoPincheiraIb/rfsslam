@@ -54,14 +54,15 @@ public:
   }
   ~MM(){}
 
-  double operator-(const MM& other){
 
-    rfs::Landmark2d::Vec dx = x_ - other.x_;
-    return dx.norm();
-    
-    //return sqrt(mahalanobisDist2( other )); For Mahalanobis distance
+  static double distance (const MM x1 , const MM x2){
 
-  }
+     rfs::Landmark2d::Vec dx = x1.x_ - x2.x_;
+     return dx.norm();
+
+     //return sqrt(mahalanobisDist2( other )); For Mahalanobis distance
+
+   }
   
 };
 
@@ -242,7 +243,7 @@ public:
 
     COLA_Error e_cola;
     e_cola.t = t_currentStep_;
-    COLA<MM> cola(emap_e_M_, map_e_k_M, cutoff, order);
+    COLA<MM> cola(emap_e_M_, map_e_k_M, cutoff, order, &MM::distance);
     e_cola.error = cola.calcError(&(e_cola.loc), &(e_cola.card));
 
     return e_cola;
