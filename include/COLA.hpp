@@ -53,11 +53,13 @@ namespace rfs{
      * \param set2 a std::vector containing the elements in set 2
      * \param cutoff value c
      * \param order value p
+     * \param distance function pointer to the single object distance to use, if not provided it will assume that the difference operator(-) is defined as a distance
      */
     COLA(std::vector<SetElementType> &set1,
 	 std::vector<SetElementType> &set2,
 	 double cutoff,
-	 double order);
+	 double order,
+         double (*distance)(SetElementType,SetElementType));
 
     /** Destructor */
     ~COLA();
@@ -78,8 +80,9 @@ namespace rfs{
   COLA<SetElementType>::COLA(std::vector<SetElementType> &set1,
 			     std::vector<SetElementType> &set2,
 			     double cutoff,
-			     double order) : 
-    OSPA<SetElementType>(set1, set2, cutoff, order)
+			     double order,
+                             double (*distance)(SetElementType,SetElementType)) :
+    OSPA<SetElementType>(set1, set2, cutoff, order, distance)
   {
   }
     

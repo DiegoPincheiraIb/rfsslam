@@ -72,11 +72,13 @@ namespace rfs{
      * \param set2 a std::vector containing the elements in set 2
      * \param cutoff value c
      * \param order value p
+     * \param distance function pointer to the single object distance to use, if not provided it will assume that the difference operator(-) is defined as a distance
      */
     OSPA(std::vector<SetElementType> &set1,
 	 std::vector<SetElementType> &set2,
 	 double cutoff,
-	 double order);
+	 double order,
+	 double (*distance)(SetElementType,SetElementType) );
 
     /** Destructor */
     ~OSPA();
@@ -124,7 +126,8 @@ namespace rfs{
   OSPA<SetElementType>::OSPA(std::vector<SetElementType> &set1,
 			     std::vector<SetElementType> &set2,
 			     double cutoff,
-			     double order) : c_(cutoff),
+			     double order,
+			     double (*distance)(SetElementType,SetElementType)) : c_(cutoff),
 					     p_(order)
 							      
   {
@@ -138,7 +141,9 @@ namespace rfs{
     C_.resize(boost::extents[n_][n_]); 
     for( Idx i = 0; i < n1_; i++ ){
       for( Idx j = 0; j < n2_; j++){ 
-	C_[i][j] = fabs(set1[i] - set2[j]); 
+
+        C_[i][j] = distance(set1[i] , set2[j]);
+
 	if(C_[i][j] > c_)
 	  C_[i][j] = c_;
       }

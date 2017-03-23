@@ -40,9 +40,9 @@ public:
   Pos2d(double x, double y): x_(x), y_(y){}
   ~Pos2d(){}
 
-  double operator-(const Pos2d& other){
-    double dx = x_ - other.x_;
-    double dy = y_ - other.y_;
+  static double distance( const Pos2d x1 , const Pos2d x2 ){
+    double dx = x1.x_ - x2.x_;
+    double dy = x1.y_ - x2.y_;
     return sqrt(dx*dx + dy*dy);
   }
   
@@ -152,7 +152,7 @@ int main(int argc, char *argv[]){
   set2.push_back(Pos2d(700, 501));
   */
 
-  rfs::OSPA<Pos2d> ospa(set1, set2, cutoff, order);
+  rfs::OSPA<Pos2d> ospa(set1, set2, cutoff, order, &Pos2d::distance);
   double e, e_d, e_c;
   e = ospa.calcError(&e_d, &e_c, true);
   ospa.reportSoln();
