@@ -115,6 +115,8 @@ public:
     psoslam_->config.card_phi_g = pt.get<double>("config.optimizer.card_phi_global");
     psoslam_->config.phi_p = pt.get<double>("config.optimizer.phi_particle");
     psoslam_->config.card_phi_p = pt.get<double>("config.optimizer.card_phi_particle");
+    psoslam_->config.K = pt.get<int>("config.optimizer.K");
+    psoslam_->config.use_global = pt.get<bool>("config.optimizer.global");
 
 
     pNoiseInflation_ = pt.get("config.optimizer.predict.processNoiseInflationFactor", 1.0);
@@ -163,10 +165,8 @@ public:
 	input_k = MotionModel_Odometry1d::TInput(d, dCovDiag.asDiagonal(), k);
       }else if( k >= kMax_ / nSegments_ * seg ){
 	seg++;
-	double dx = drand48() * max_dx_ * dT_;
-	while( dx < min_dx_ * dT_ ){
-	  dx = drand48() * max_dx_ * dT_;
-	}
+	double dx = (drand48() * (max_dx_ - min_dx_) +  min_dx_ )* dT_;
+
 	MotionModel_Odometry1d::TInput::Vec d;
 	MotionModel_Odometry1d::TInput::Vec dCovDiag;
 	d << dx;

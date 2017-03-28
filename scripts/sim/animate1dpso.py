@@ -52,11 +52,11 @@ saveMovie = False;
 saveFig = True
 timestepStart = 0
 
-nLandmarksDrawMax = 1000;
-nMeasurementsDrawMax = 1000;
-nTrDrawMax = 1000
+nLandmarksDrawMax = 2000;
+nMeasurementsDrawMax =2000;
+nTrDrawMax = 2000
 if len(sys.argv) < 2:
-    print "Usage: animate2dSim DATA_DIR\n";
+    print "Usage: animate1dSim DATA_DIR\n";
     sys.exit(0);
 
 # Setting for file names
@@ -178,9 +178,9 @@ for i in range(0, nLandmarksDrawMax) :
 
 
 
-xLim = plt.getp(ax, 'xlim');
-yLim = plt.getp(ax, 'ylim');
-txt = plt.text(xLim[1]-1, yLim[1]-1, " ");
+xLim = axTr.get_xlim();
+yLim = axTr.get_ylim();
+txt = axTr.text(xLim[1]*0.5, yLim[1]*0.9, " ");
 
 def animateInit():
 
@@ -197,11 +197,10 @@ def animate(i):
     global m;
     global z;
 
-    txt.set_text("Time: "+ str(i));
+    txt.set_text("Iteration: "+ str(i));
     drawnObjects = [];
 
-    # Time
-    txt.set_text("Time: {0}".format(i));
+
     drawnObjects.append(txt);
 
     timeStart = gtPose_x[timestepStart]
@@ -221,6 +220,7 @@ def animate(i):
         if(bestweight<p[1]):
           bestparticle = nparticle
           bestweight = p[1]
+
         trajectories[nparticle].set_data(gtPose_t, p[2:]);
         drawnObjects.append(trajectories[nparticle]);
         poseLine = estPoseFileHandle.readline()
@@ -255,7 +255,7 @@ def animate(i):
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timestepStart, 1000,10), interval=10,
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timestepStart, 10000,100), interval=10,
                                init_func=animateInit, blit=True, repeat=False);
 if saveMovie:
     FFMpegWriter = matplotlib.animation.writers['ffmpeg']

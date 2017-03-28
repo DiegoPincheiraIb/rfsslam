@@ -96,6 +96,10 @@ namespace rfs {
 
         double card_phi_g; /**< global minimum influence on cardinality */
 
+        int K; /**< average number of neighbors */
+
+        bool use_global; /**< use global  topology*/
+
       } config;
 
       /**
@@ -196,24 +200,35 @@ namespace rfs {
        */
       void
       moveParticles ();
+      /**
+       * Reset the topology randomly according to standard PSO see chapter 1 of the "Handbook of Swarm Intelligence" Springer 2011
+       *
+       */
+      void
+      updateTopology();
 
       /***
        * Update the particle map velocity using the ospa inspired motion
        * @param particleIdx The particle index , trajectory and map
+       * @param bestParticleIdx The particle index of the best particle in neighborhood
        */
       void
-      updateLandmarkVelocity (const int particleIdx);
+      updateLandmarkVelocity (const int particleIdx, const int bestParticleIdx);
 
       MeasurementModel *mModelPtr_;
       RobotProcessModel *robotProcessModelPtr_;
     private:
 
       int nThreads_; /**< Number of threads  */
+      int iteration_;
+      bool hasImproved_;
       std::vector<TInput> inputs_; /**< vector containing all odometry inputs */
       std::vector<std::vector<TMeasurement> > Z_; /**< vector containing all feature measurements */
       std::vector<TimeStamp> time_;
       std::vector<TParticle> particles_;
       TParticle bestParticle_;
+
+      std::vector< std::vector<int > > topology_;
 
     };
 
@@ -234,6 +249,8 @@ namespace rfs {
   template<class RobotProcessModel, class MeasurementModel>
     RFSPSOSLAM<RobotProcessModel, MeasurementModel>::RFSPSOSLAM () {
       nThreads_ = 1;
+      iteration_ = 0;
+      hasImproved_ = false;
 
 #ifdef _OPENMP
       nThreads_ = omp_get_max_threads();
@@ -291,13 +308,59 @@ namespace rfs {
       Z_[k].push_back(z);
 
     }
+  template<class RobotProcessModel, class MeasurementModel>
+    void
+    RFSPSOSLAM<RobotProcessModel, MeasurementModel>::updateTopology(){
 
+      //std::cout << "updating topology\n";
+      if (config.use_global) {
+        if (topology_.size() != config.nParticles_) {
+          topology_.resize(config.nParticles_);
+          for (int i = 0; i < config.nParticles_; i++) {
+            topology_[i].resize(config.nParticles_);
+            for (int j = 0; j < config.nParticles_; j++) {
+            topology_[i][j] = j;
+            }
+          }
+        }
+
+        return;
+      }
+
+    if (topology_.size() !=  config.nParticles_){
+      topology_.resize(config.nParticles_);
+    }
+    for (int i = 0; i < config.nParticles_; i++) {
+        topology_[i].resize(1);
+        topology_[i][0] = i;
+    }
+
+    for (int i = 0; i < config.nParticles_; i++) {
+      for (int j =0; j < config.K; j++){
+        topology_[floor(drand48()*config.nParticles_)].push_back(i);
+      }
+    }
+  }
   template<class RobotProcessModel, class MeasurementModel>
     void
     RFSPSOSLAM<RobotProcessModel, MeasurementModel>::moveParticles () {
+      if (! hasImproved_){
+        updateTopology();
+      }
 
-#pragma omp parallel for
+
       for (int i = 0; i < config.nParticles_; i++) {
+
+        // find the best particle in the neighborhood defined by current topology
+        int best_i = i;
+        double best_w = particles_[i].bestLikelihood;
+        for (int n = 0; n < topology_[i].size() ;  n++){
+          if (particles_[topology_[i][n]].bestLikelihood > best_w){
+            best_i = topology_[i][n];
+            best_w = particles_[topology_[i][n]].bestLikelihood;
+          }
+        }
+
 
         for (int k = 0; k < particles_[i].inputs.size(); k++) {
           typename TInput::Vec v = particles_[i].inputs_velocity[k].get(), p = particles_[i].inputs[k].get();
@@ -305,7 +368,7 @@ namespace rfs {
           v *= config.w;
           for (int dim = 0; dim < particles_[i].inputs_velocity[k].getNDim(); dim++) {
             v[dim] += config.phi_p * drand48() * (particles_[i].bestInputs[k].get()[dim] - particles_[i].inputs[k].get()[dim]);
-            v[dim] += config.phi_g * drand48() * (bestParticle_.inputs[k].get()[dim] - particles_[i].inputs[k].get()[dim]);
+            v[dim] += config.phi_g * drand48() * (particles_[best_i].bestInputs[k].get()[dim] - particles_[i].inputs[k].get()[dim]);
           }
           particles_[i].inputs_velocity[k].set(v);
 
@@ -314,31 +377,32 @@ namespace rfs {
           robotProcessModelPtr_->step(particles_[i].trajectory[k + 1], particles_[i].trajectory[k], particles_[i].inputs[k], time_[k + 1] - time_[k]);
         }
 
-        updateLandmarkVelocity(i);
+          updateLandmarkVelocity(i , best_i);
 
         for (int m = 0; m < particles_[i].landmarks.size(); m++) {
           typename TLandmark::Vec lm = particles_[i].landmarks[m].get();
           lm += particles_[i].landmarks_velocity[m].get();
           particles_[i].landmarks[m].set(lm);
         }
-      }
 
+      }
+      iteration_++;
     }
 
   template<class RobotProcessModel, class MeasurementModel>
     void
-    RFSPSOSLAM<RobotProcessModel, MeasurementModel>::updateLandmarkVelocity (const int particleIdx) {
+    RFSPSOSLAM<RobotProcessModel, MeasurementModel>::updateLandmarkVelocity (const int particleIdx, const int bestParticleIdx) {
 
       // first use the particle optimum
 
       unsigned int nM1 = particles_[particleIdx].landmarks.size();
       unsigned int nM2 = particles_[particleIdx].bestLandmarks.size();
-      unsigned int nM3 = bestParticle_.landmarks.size();
+      unsigned int nM3 = particles_[bestParticleIdx].bestLandmarks.size();
 
       // Associate with OSPA and euclidian distance
       rfs::OSPA<TLandmark> ospa_particle(particles_[particleIdx].landmarks, particles_[particleIdx].bestLandmarks, config.ospa_c_, 1,
                                          &(RandomVecMathTools<TLandmark>::euclidianDist));
-      rfs::OSPA<TLandmark> ospa_global(particles_[particleIdx].landmarks, bestParticle_.landmarks, config.ospa_c_, 1,
+      rfs::OSPA<TLandmark> ospa_global(particles_[particleIdx].landmarks, particles_[bestParticleIdx].bestLandmarks, config.ospa_c_, 1,
                                        &(RandomVecMathTools<TLandmark>::euclidianDist));
 
       boost::shared_array<int> SolnArr_particle = ospa_particle.getOptAssignment();
@@ -391,7 +455,7 @@ namespace rfs {
         else {
           toadd_global[j_g] = false;
           for (int dim = 0; dim < particles_[particleIdx].landmarks_velocity[i].getNDim(); dim++) {
-            v[dim] += config.phi_g * drand48() * (bestParticle_.landmarks[j_g].get()[dim] - particles_[particleIdx].landmarks[i].get()[dim]);
+            v[dim] += config.phi_g * drand48() * (particles_[bestParticleIdx].bestLandmarks[j_g].get()[dim] - particles_[particleIdx].landmarks[i].get()[dim]);
           }
         }
 
@@ -420,8 +484,8 @@ namespace rfs {
       for (int i = 0; i < nM3; i++) {
         if (toadd_global[i]) {
           if (drand48() < config.card_phi_g) {
-            particles_[particleIdx].landmarks.push_back(bestParticle_.landmarks[i]);
-            particles_[particleIdx].landmarks_velocity.push_back(bestParticle_.landmarks_velocity[i]);
+            particles_[particleIdx].landmarks.push_back(particles_[bestParticleIdx].bestLandmarks[i]);
+            particles_[particleIdx].landmarks_velocity.push_back(particles_[bestParticleIdx].bestLandmarks_velocity[i]);
           }
         }
       }
@@ -451,8 +515,16 @@ namespace rfs {
     RFSPSOSLAM<RobotProcessModel, MeasurementModel>::init () {
       particles_.resize(config.nParticles_);
 
+      // initialize the number of neighbors distribution
+      double c=0;
+
+      for(int n = 0 ; n < config.K; n++){
+
+      }
+
       initTrajectories();
       initMaps();
+      updateTopology();
     }
 
   template<class RobotProcessModel, class MeasurementModel>
@@ -525,9 +597,10 @@ namespace rfs {
           }
         }
       }
-
+      hasImproved_ = false;
       if (particles_[besti].currentLikelihood > bestParticle_.currentLikelihood) {
         bestParticle_ = particles_[besti];
+        hasImproved_ = true;
         std::cout << "new best particle :   " << bestParticle_.currentLikelihood << "\n";
       }
 
