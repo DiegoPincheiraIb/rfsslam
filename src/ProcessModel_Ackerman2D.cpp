@@ -46,7 +46,12 @@ void MotionModel_Ackerman2d::setAckermanParams(double h, double l, double dx, do
   poi_offset_y_ = dy;
 }
 
-void MotionModel_Ackerman2d::step( Pose2d &s_k, Pose2d &s_km, AckermanInput &input_k, TimeStamp const &dT){
+void MotionModel_Ackerman2d::step( Pose2d &s_k, Pose2d &s_km, AckermanInput &input_k, TimeStamp const &dT, Pose2d::Mat *H){
+
+  if (H != NULL){
+    std::cerr << "Ackerman2d: jacobian calculation not implemented!!!\n";
+    exit(1);
+  }
 
   double u_v = input_k[0]; // velocity
   double u_r = input_k[1]; // steering

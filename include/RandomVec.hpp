@@ -61,12 +61,13 @@ namespace rfs
    * \tparam nDim Dimension of the vector
    * \author Keith Leung
    */
-  template<unsigned int nDim = 1>
+  template<unsigned int nDimension = 1>
   class RandomVec
   {
 
   public:
 
+    static const unsigned int nDim = nDimension;
     typedef ::Eigen::Matrix<double, nDim, 1> Vec;
     typedef ::Eigen::Matrix<double, nDim, nDim> Mat;
     typedef Mat Cov;
@@ -449,6 +450,35 @@ namespace rfs
 	*mDist2 = md2;
       return l;
     }
+
+      /**
+       * Calculate the Gaussian likelihood of a given evaluation point, also gives normalized error, useful for calculating gradients
+       * \param[in] x_eval the evaluation point
+       * \param[out] n_error pointer to vector to store normalized error
+       * \param[out] mDist2 if not NULL, the pointed to variable will be overwritten by the
+       * squared mahalanobis distance used to calculate the likelihood
+       */
+      double
+      evalGaussianLikelihood (const RandomVec<nDim> &x_eval, Vec &n_error, double* mDist2 = NULL) {
+        if (!isValid_Sx_det_) {
+          Sx_det_ = Sx_.determinant();
+          gaussian_pdf_factor_ = sqrt(pow(2 * PI, nDim) * Sx_det_);
+          isValid_Sx_det_ = true;
+        }
+        if (!isValid_Sx_inv_) {
+          Sx_inv_ = Sx_.inverse();
+          isValid_Sx_inv_ = true;
+        }
+        e_ = x_eval.x_ - x_;
+        n_error = Sx_inv_ * e_;
+        double md2 = e_.transpose() *n_error;
+        double l = (exp(-0.5 * md2) / gaussian_pdf_factor_);
+        if (l != l) //If md2 is very large, l will become NAN;
+          l = 0;
+        if (mDist2 != NULL)
+          *mDist2 = md2;
+        return l;
+      }
 
     /**
      * Calculate likelihood

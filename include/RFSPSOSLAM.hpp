@@ -196,6 +196,12 @@ namespace rfs {
       evaluateLikelihoods ();
 
       /**
+       * Optimize each particle's state using gradient-based algorithms
+       */
+      void
+      optimizeParticles ();
+
+      /**
        * Update the particles velocities according to the PSO algorithm and move the particles accordingly
        */
       void
@@ -388,6 +394,13 @@ namespace rfs {
       }
       iteration_++;
     }
+
+  template<class RobotProcessModel, class MeasurementModel>
+    void
+    RFSPSOSLAM<RobotProcessModel, MeasurementModel>::optimizeParticles (){
+
+
+  }
 
   template<class RobotProcessModel, class MeasurementModel>
     void

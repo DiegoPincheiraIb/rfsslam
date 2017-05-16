@@ -41,10 +41,13 @@ MotionModel_Odometry6d::~MotionModel_Odometry6d(){}
 void MotionModel_Odometry6d::step(  Pose6d &s_k,
 				   Pose6d &s_km,
 				   Odometry6d &input_k,
-				   TimeStamp const &dT ){
+				   TimeStamp const &dT , Eigen::Matrix<double,7,7> *H){
  
 
-
+  if (H != NULL){
+    std::cerr << "MotionModel_Odometry6d: jacobian calculation not implemented!!!\n";
+    exit(1);
+  }
   Pose6d::PosVec p_k_i_;   /* \f[ \begin{bmatrix} x \\ y \\ z\end{bmatrix}_{k} \f]*/
   Pose6d::PosVec p_km_i_;  /* \f[ \begin{bmatrix} x \\ y \\ z\end{bmatrix}_{k-1} \f]*/
   Eigen::Quaterniond q_k_;          /* \f[ q_k \f\] */

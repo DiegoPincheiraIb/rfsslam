@@ -287,7 +287,7 @@ namespace rfs{
     
     /** \brief Check if the template parameters for dimensionality are valid */
     void dimCheck(){
-      assert(nDim <= nRotDim);
+      assert(nDim == nRotDim);
     }
 
   };
@@ -380,7 +380,7 @@ namespace rfs{
     
     /** \brief Check if the template parameters for dimensionality are valid */
     void dimCheck(){
-      assert(nDim < nPosDim);
+      assert(nDim == nPosDim);
     }
 
   };

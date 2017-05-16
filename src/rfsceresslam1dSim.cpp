@@ -35,7 +35,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include "ProcessModel_Odometry1D.hpp"
-#include "RFSPSOSLAM.hpp"
+#include "RFSCeresSLAM.hpp"
 #include "MeasurementModel_Rng1D.hpp"
 #include <stdio.h>
 #include <string>
@@ -55,22 +55,22 @@ using namespace rfs;
  * \brief A 1d SLAM Simulator using PSO
  * \author Felipe Inostroza
  */
-class Simulator_RFSPSOSLAM_1d
+class Simulator_RFSCERESSLAM_1d
 {
 
 public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-  Simulator_RFSPSOSLAM_1d() {
-    psoslam_  = new  RFSPSOSLAM<MotionModel_Odometry1d, MeasurementModel_Rng1D >();
+  Simulator_RFSCERESSLAM_1d() {
+    ceresslam_  = new  RFSCeresSLAM<MotionModel_Odometry1d, MeasurementModel_Rng1D >();
   }
 
-  ~Simulator_RFSPSOSLAM_1d() {
-
-    if (psoslam_ != NULL) {
-      delete psoslam_;
-    }
+  ~Simulator_RFSCERESSLAM_1d() {
+/*
+    if (ceresslam_ != NULL) {
+      delete ceresslam_;
+    }*/
 
   }
 
@@ -105,18 +105,12 @@ public:
     c_ = pt.get<double>("config.measurements.clutterIntensity");
     varzr_ = pt.get<double>("config.measurements.varzr");
 
-    nParticles_ = pt.get("config.optimizer.nParticles", 200);
+
     maxiter_ = pt.get("config.optimizer.iterations", 200);
     ospa_c_ = pt.get("config.optimizer.ospaC", 1.0);
     initMapProb_ =  pt.get("config.optimizer.initMapProb", 0.01);
 
-    psoslam_->config.w = pt.get<double>("config.optimizer.w");
-    psoslam_->config.phi_g = pt.get<double>("config.optimizer.phi_global");
-    psoslam_->config.card_phi_g = pt.get<double>("config.optimizer.card_phi_global");
-    psoslam_->config.phi_p = pt.get<double>("config.optimizer.phi_particle");
-    psoslam_->config.card_phi_p = pt.get<double>("config.optimizer.card_phi_particle");
-    psoslam_->config.K = pt.get<int>("config.optimizer.K");
-    psoslam_->config.use_global = pt.get<bool>("config.optimizer.global");
+
 
 
     pNoiseInflation_ = pt.get("config.optimizer.predict.processNoiseInflationFactor", 1.0);
@@ -429,7 +423,7 @@ public:
     MotionModel_Odometry1d::TState::Mat Q;
     Q << vardx_;
     Q *= (pNoiseInflation_ * dt * dt);
-    psoslam_->robotProcessModelPtr_->setNoise(Q);
+    ceresslam_->robotProcessModelPtr_->setNoise(Q);
 
     // configure landmark process model (only need to set once since timesteps are constant)
 
@@ -438,24 +432,23 @@ public:
     MeasurementModel_Rng1D::TMeasurement::Mat R;
     R << varzr_;
     R *= zNoiseInflation_;
-    psoslam_->mModelPtr_->setNoise(R);
-    psoslam_->mModelPtr_->config.probabilityOfDetection_ = Pd_;
-    psoslam_->mModelPtr_->config.uniformClutterIntensity_ = c_;
-    psoslam_->mModelPtr_->config.rangeLimMax_ = rangeLimitMax_;
-    psoslam_->mModelPtr_->config.rangeLimMin_ = rangeLimitMin_;
-    psoslam_->mModelPtr_->config.rangeLimMin_ = rangeLimitMin_;
-    psoslam_->mModelPtr_->config.rangeLimBuffer_ = rangeLimitBuffer_;
+    ceresslam_->mModelPtr_->setNoise(R);
+    ceresslam_->mModelPtr_->config.probabilityOfDetection_ = Pd_;
+    ceresslam_->mModelPtr_->config.uniformClutterIntensity_ = c_;
+    ceresslam_->mModelPtr_->config.rangeLimMax_ = rangeLimitMax_;
+    ceresslam_->mModelPtr_->config.rangeLimMin_ = rangeLimitMin_;
+    ceresslam_->mModelPtr_->config.rangeLimBuffer_ = rangeLimitBuffer_;
 
 
 
     // configure the filter
-    psoslam_->config.nParticles_ = nParticles_;
-    psoslam_->config.ospa_c_ = ospa_c_;
-    psoslam_->config.mapFromMeasurementProb_ = initMapProb_;
-    psoslam_->config.MeasurementLikelihoodThreshold_ = MeasurementLikelihoodThreshold_;
 
-    psoslam_->setInputs(odometry_);
-    psoslam_->addMeasurement(measurements_);
+    ceresslam_->config.ospa_c_ = ospa_c_;
+    ceresslam_->config.mapFromMeasurementProb_ = initMapProb_;
+    ceresslam_->config.MeasurementLikelihoodThreshold_ = MeasurementLikelihoodThreshold_;
+
+    ceresslam_->setInputs(odometry_);
+    ceresslam_->addMeasurement(measurements_);
 
 
 
@@ -506,111 +499,108 @@ public:
     MotionModel_Odometry1d::TState x_i;
     int zIdx = 0;
 
-    psoslam_->init();
+    double * initParams = ceresslam_->init();
+
     int iteration=0;
 
 
-    if (logToFile_) {
-      /////////// log particle trajectories  //////////////
-      for (int i = 0; i < psoslam_->config.nParticles_; i++) {
-          fprintf(pParticlePoseFile,"%d   ", iteration);
-          fprintf(pParticlePoseFile, "%f   ",  psoslam_->getParticles()->at(i).currentLikelihood);
-          for (int k  = 0; k < psoslam_->getParticles()->at(i).trajectory.size() ; k++){
-            x_i =  psoslam_->getParticles()->at(i).trajectory[k];
-            fprintf(pParticlePoseFile, "%f   ",  x_i.get(0));
-          }
-          fprintf(pParticlePoseFile, "\n");
-      }
+
+
+            if (logToFile_) {
+              /////////// log particle trajectories  //////////////
+              ///
+
+              fprintf(pParticlePoseFile,"%d   ", iteration);
+
+              fprintf(pParticlePoseFile, "%f   ",  0.0);
+              for (int k  = 0; k < ceresslam_->trajectory_.size() ; k++){
+
+                fprintf(pParticlePoseFile, "%f   ",  initParams[k]);
+              }
+              fprintf(pParticlePoseFile, "\n");
 
 
 
-      ///////////// log landmarks ///////////////////
 
-      for (int i = 0; i < psoslam_->config.nParticles_; i++) {
-        fprintf(pLandmarkEstFile, "%d    ",  iteration);
-        for (int l  = 0; l < psoslam_->getParticles()->at(i).landmarks.size() ; l++){
-          MeasurementModel_Rng1D::TLandmark landmark;
-          landmark = psoslam_->getParticles()->at(i).landmarks[l];
-          fprintf(pLandmarkEstFile, "%f   ",landmark[0]);
-        }
-        fprintf(pLandmarkEstFile, "\n");
-
-      }
+          ///////////// log landmarks ///////////////////
 
 
-    }
+            fprintf(pLandmarkEstFile, "%d    ",  iteration);
+            for (int l  = 0; l < ceresslam_->landmarks_.size() ; l++){
+              MeasurementModel_Rng1D::TLandmark landmark;
+
+              fprintf(pLandmarkEstFile, "%f   ",initParams[ceresslam_->trajectory_.size()+l]);
+            }
+            fprintf(pLandmarkEstFile, "\n");
+
+
+            }
+
 
     // run the optimization process
-    for(iteration++; iteration < maxiter_ ; iteration++){
+    ceres::GradientProblem problem(ceresslam_);
+    ceres::GradientProblemSolver::Options options;
+    options.minimizer_progress_to_stdout = true;
+    ceres::GradientProblemSolver::Summary summary;
+    ceres::Solve(options, problem, initParams, &summary);
 
-      psoslam_->evaluateLikelihoods();
-      psoslam_->moveParticles();
+    std::cout << summary.FullReport() << "\n";
 
 
-      if( iteration % 10 == 0 || iteration == maxiter_ - 1){
-        float progressPercent = float(iteration+1) / float(maxiter_);
-        int progressBarW = 50;
-        struct winsize ws;
-        if(ioctl(1, TIOCGWINSZ, &ws) >= 0)
-          progressBarW = ws.ws_col - 30;
-        int progressPos = progressPercent * progressBarW;
-        if(progressBarW >= 50){
-          std::cout << "[";
-          for(int i = 0; i < progressBarW; i++){
-            if(i < progressPos)
-              std::cout << "=";
-            else if(i == progressPos)
-              std::cout << ">";
-            else
-              std::cout << " ";
-          }
-          std::cout << "] ";
-        }
-        std::cout << "iteration = " << iteration << " (" << int(progressPercent * 100.0) << " %)\r";
-        std::cout.flush();
-      }
-      if(iteration == maxiter_ - 1)
-        std::cout << std::endl << std::endl;
+    iteration=1;
+
 
 
 
       if (logToFile_) {
         /////////// log particle trajectories  //////////////
-        for (int i = 0; i < psoslam_->config.nParticles_; i++) {
-            fprintf(pParticlePoseFile,"%d   ", iteration);
-            fprintf(pParticlePoseFile, "%f   ",  psoslam_->getParticles()->at(i).currentLikelihood);
-            for (int k  = 0; k < psoslam_->getParticles()->at(i).trajectory.size() ; k++){
-              x_i =  psoslam_->getParticles()->at(i).trajectory[k];
-              fprintf(pParticlePoseFile, "%f   ",  x_i.get(0));
-            }
-            fprintf(pParticlePoseFile, "\n");
+        ///
+
+        fprintf(pParticlePoseFile,"%d   ", iteration);
+
+        fprintf(pParticlePoseFile, "%f   ",  0.0);
+        for (int k  = 0; k < ceresslam_->trajectory_.size() ; k++){
+
+          fprintf(pParticlePoseFile, "%f   ",  initParams[k]);
         }
+        fprintf(pParticlePoseFile, "\n");
 
-        ///////////// log landmarks ///////////////////
 
-        for (int i = 0; i < psoslam_->config.nParticles_; i++) {
-          fprintf(pLandmarkEstFile, "%d    ",  iteration);
-          for (int l  = 0; l < psoslam_->getParticles()->at(i).landmarks.size() ; l++){
-            MeasurementModel_Rng1D::TLandmark landmark;
-            landmark = psoslam_->getParticles()->at(i).landmarks[l];
-            fprintf(pLandmarkEstFile, "%f   ",landmark[0]);
-          }
-          fprintf(pLandmarkEstFile, "\n");
 
-        }
+
+    ///////////// log landmarks ///////////////////
+
+
+      fprintf(pLandmarkEstFile, "%d    ",  iteration);
+      for (int l  = 0; l < ceresslam_->landmarks_.size() ; l++){
+        MeasurementModel_Rng1D::TLandmark landmark;
+
+        fprintf(pLandmarkEstFile, "%f   ",initParams[ceresslam_->trajectory_.size()+l]);
+      }
+      fprintf(pLandmarkEstFile, "\n");
 
 
       }
 
-    }
 
-    // measure ground truth likelihood!
 
-    psoslam_->getParticles()->at(0).landmarks = groundtruth_landmark_;
-    psoslam_->getParticles()->at(0).trajectory = groundtruth_pose_;
 
-    psoslam_->evaluateLikelihoods();
-    std::cout << "GT likelihood:  " << psoslam_->getParticles()->at(0).currentLikelihood << "\n";
+    // calculate ground truth likelihood!!!
+
+
+    ceresslam_->landmarks_.resize(groundtruth_landmark_.size());
+
+        double * gtparams =  new double[ceresslam_->NumParameters()];
+        for(int i = 0 ; i < groundtruth_pose_.size() ; i++){
+          gtparams[i]= groundtruth_pose_[i][0];
+        }
+        for(int i = 0 ; i < groundtruth_landmark_.size() ; i++){
+              gtparams[i+groundtruth_pose_.size()]= groundtruth_landmark_[i][0];
+            }
+        double cost ;
+        ceresslam_->Evaluate(gtparams, &cost, NULL);
+        std::cout << "gt likelihood:  " << cost << "\n";
+
 
 
     if (logToFile_) {
@@ -653,9 +643,9 @@ private:
   std::vector<MeasurementModel_Rng1D::TMeasurement> measurements_;
 
   // Filters
-  RFSPSOSLAM<MotionModel_Odometry1d,
-              MeasurementModel_Rng1D > *psoslam_;
-  int nParticles_;
+  RFSCeresSLAM<MotionModel_Odometry1d,
+              MeasurementModel_Rng1D > *ceresslam_;
+
   double ospa_c_;
   double initMapProb_;
   int maxiter_;
@@ -679,7 +669,7 @@ int main(int argc, char* argv[]) {
 
 
 
-  Simulator_RFSPSOSLAM_1d sim;
+  Simulator_RFSCERESSLAM_1d sim;
   int seed = time(NULL);
   srand(seed);
   int trajNum = rand();
@@ -687,7 +677,7 @@ int main(int argc, char* argv[]) {
   boost::program_options::options_description desc("Options");
   desc.add_options()
     ("help,h", "produce this help message")
-    ("cfg,c", boost::program_options::value<std::string>(&cfgFileName)->default_value("cfg/rfspsoslam1dSim.xml"), "configuration xml file")
+    ("cfg,c", boost::program_options::value<std::string>(&cfgFileName)->default_value("cfg/rfsceresslam1dSim.xml"), "configuration xml file")
     ("trajectory,t", boost::program_options::value<int>(&trajNum), "trajectory number (default: a random integer)")
     ("seed,s", boost::program_options::value<int>(&seed), "random seed for running the simulation (default: based on current system time)");
   boost::program_options::variables_map vm;

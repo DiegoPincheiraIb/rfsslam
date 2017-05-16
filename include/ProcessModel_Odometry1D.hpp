@@ -75,7 +75,7 @@ public:
    * \param[in] dT size of time-step (not used)
    */
   void step( Pose1d &s_k, Pose1d &s_km, Odometry1d &input_k, 
-	     TimeStamp const &dT);
+	     TimeStamp const &dT , Eigen::Matrix< double, 1 , 1 > * H = NULL);
 
 };
 

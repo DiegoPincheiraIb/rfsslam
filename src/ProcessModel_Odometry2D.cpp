@@ -41,9 +41,12 @@ MotionModel_Odometry2d::~MotionModel_Odometry2d(){}
 void MotionModel_Odometry2d::step(  Pose2d &s_k, 
 				   Pose2d &s_km, 
 				   Odometry2d &input_k, 
-				   TimeStamp const &dT ){
+				   TimeStamp const &dT , Pose2d::Mat *H){
  
-
+  if (H != NULL){
+    std::cerr << "MotionModel_Odometry2d: jacobian calculation not implemented!!!\n";
+    exit(1);
+  }
   Pose2d::Vec x_k_i_;       /* \f[ \begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_{k} \f]*/
   Pose2d::Vec x_km_i_;      /* \f[ \begin{bmatrix} x \\ y \\ \theta \end{bmatrix}_{k-1} \f]*/
   Eigen::Vector2d p_k_i_;   /* \f[ \begin{bmatrix} x \\ y \end{bmatrix}_{k} \f]*/

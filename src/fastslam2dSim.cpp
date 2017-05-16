@@ -46,7 +46,7 @@
 #include <gperftools/profiler.h>
 #endif
 #ifdef _PERFTOOLS_HEAP
-#include <gperfools/heap-profiler.h>
+#include <gperftools/heap-profiler.h>
 #endif
 
 using namespace rfs;

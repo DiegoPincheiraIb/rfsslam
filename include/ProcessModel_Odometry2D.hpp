@@ -111,7 +111,7 @@ public:
    * \param[in] dT size of time-step
    */
   void step( Pose2d &s_k, Pose2d &s_km, Odometry2d &input_k, 
-	     TimeStamp const &dT);
+	     TimeStamp const &dT, Pose2d::Mat *H = NULL);
   
 };
 

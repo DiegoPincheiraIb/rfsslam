@@ -34,6 +34,7 @@
 import sys
 import os.path
 import numpy as np
+import time
 
 import matplotlib
 matplotlib.use("TkAgg");
@@ -140,12 +141,6 @@ gtMap_x = gtMap[:,0];
 
 
 
-
-
-
-
-
-
 # Plotting
 
 fig = plt.figure( figsize=(12,10), facecolor='w')
@@ -156,7 +151,7 @@ axMap = plt.subplot2grid((2, 1), (1, 0))
 gtMapHandle, = axMap.plot(gtMap_x, -1*np.ones(len(gtMap_x)), 'r*', markersize=15);
 ax = plt.gca();
 
-axMap.set_ylim([-2 , 1000])
+axMap.set_ylim([-2 , 500])
 gtPoseHandle, = axTr.plot(gtPose_t, gtPose_x, 'r-', zorder=12);
 
 drPoseHandle, = axTr.plot(drPose_t, drPose_x, 'r--', zorder=10);
@@ -180,12 +175,17 @@ for i in range(0, nLandmarksDrawMax) :
 
 xLim = axTr.get_xlim();
 yLim = axTr.get_ylim();
-txt = axTr.text(xLim[1]*0.5, yLim[1]*0.9, " ");
+txt = axTr.text(xLim[1]*0.5, yLim[1]*0.9, " ",zorder=20);
 
 def animateInit():
 
     txt.set_text("Iteration: ");
-
+    global p;
+    global m;
+    poseLine = estPoseFileHandle.readline()
+    p =np.fromstring(poseLine,dtype=float,sep=' ');
+    mapline = estMapFileHandle.readline()
+    m = np.fromstring(mapline,dtype=float,sep=' ');
 
     for i in range(0, nLandmarksDrawMax):
         landmarks[i].set_data([],[])
@@ -203,12 +203,12 @@ def animate(i):
 
     drawnObjects.append(txt);
 
-    timeStart = gtPose_x[timestepStart]
+    timeStart = gtPose_t[timestepStart]
 
     p_idx_maxWeight = 0
     p_maxWeight = 0
-    poseLine = estPoseFileHandle.readline()
-    p =np.fromstring(poseLine,dtype=float,sep=' ');
+
+
     nparticle=0;
     while len(p)>0 and p[0] < i:
       poseLine = estPoseFileHandle.readline()
@@ -223,13 +223,13 @@ def animate(i):
 
         trajectories[nparticle].set_data(gtPose_t, p[2:]);
         drawnObjects.append(trajectories[nparticle]);
+
         poseLine = estPoseFileHandle.readline()
         p =np.fromstring(poseLine,dtype=float,sep=' ');
         nparticle = nparticle + 1
+
     #print('traj ' + str(nparticle) + ' i ' + str(i) + '  p   '+ str(p))
     bestPoseHandle.set_data(trajectories[bestparticle].get_xdata() , trajectories[bestparticle].get_ydata())
-    mapline = estMapFileHandle.readline()
-    m = np.fromstring(mapline,dtype=float,sep=' ');
     nparticle=0;
     while len(m)>0 and m[0] < i:
       mapline = estMapFileHandle.readline()
@@ -253,10 +253,12 @@ def animate(i):
     drawnObjects.append(bestPoseHandle);
 
 
+
+
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timestepStart, 10000,100), interval=10,
-                               init_func=animateInit, blit=True, repeat=False);
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timestepStart, 5000 ,50), interval=1,
+                               init_func=animateInit, blit=True,  repeat=False);
 if saveMovie:
     FFMpegWriter = matplotlib.animation.writers['ffmpeg']
     animation.save(estimateMovieFile, writer=FFMpegWriter(fps = 30))

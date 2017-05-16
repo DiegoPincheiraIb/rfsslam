@@ -111,7 +111,7 @@ public:
    * \param[in] dT size of time-step
    */
   void step( Pose6d &s_k, Pose6d &s_km, Odometry6d &input_k,
-	     TimeStamp const &dT);
+	     TimeStamp const &dT , Eigen::Matrix<double,7,7> *H = NULL);
   
 };
 

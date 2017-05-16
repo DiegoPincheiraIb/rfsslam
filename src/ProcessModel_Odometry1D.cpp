@@ -35,7 +35,7 @@ using namespace rfs;
 MotionModel_Odometry1d::MotionModel_Odometry1d( Pose1d::Mat &Q ) : ProcessModel(Q) {}
 
 void MotionModel_Odometry1d::step ( Pose1d &s_k, Pose1d &s_km, Odometry1d &input_k, 
-				   TimeStamp const &dT){
+				   TimeStamp const &dT, Eigen::Matrix< double ,1 , 1 > *H){
 
   Pose1d::Vec x_km_; /**< position at k-1 */
   Pose1d::Vec x_k_;  /**< position at k */
@@ -52,5 +52,9 @@ void MotionModel_Odometry1d::step ( Pose1d &s_k, Pose1d &s_km, Odometry1d &input
 
   /* write state at k */
   s_k.set(x_k_);
+
+  if(H != NULL){
+    H->setIdentity();
+  }
 
 }

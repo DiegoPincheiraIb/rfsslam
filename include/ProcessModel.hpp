@@ -103,7 +103,7 @@ public:
    * \param[in] dT size of time-step
    */
   virtual void step( StateType &s_k, StateType &s_km, 
-		     InputType &input_k , TimeStamp const &dT) = 0;		     
+		     InputType &input_k , TimeStamp const &dT ,typename StateType::Mat * H = NULL) = 0;
 
   /**
    * Sample the process noise to predict the pose at k from k-1
@@ -151,38 +151,79 @@ public:
       s_k.sample();
     }
   }
-/**
- * Calculate the likelihood of a given motion using the process model
- * \note This function can be overwritten in derived classes for implementing
- * other user-defined sampling methods.
- * \warning This function does not check that the noise covariance matrices
- * are valid (i.e., semi-positive definite)
- * @param[in] s_k  \f$\mathbf{x}_k\f$ pose at current time-step k.
- * @param[in] s_km \f$\mathbf{x}_{k-1}\f$ pose at previous time-step k-1
- * @param[in] input_k \f$\mathbf{u}_k\f$ input to process model. If using useInputWhiteGaussianNoise, the assoicated noise needs
- * to be manually set according to dT.
- * @param[in] dT size of time-step
- * @param[in] useAdditiveWhiteGaussianNoise useAdditiveWhiteGaussianNoise if true, the output includes
- * the zero-mean additive white Gaussian noise specified for this ProcessModel
- * @param[in] useInputWhiteGaussianNoise if true, the output includes
- * the noise specified in the input vector, and assumes that it is zero-mean white
- * Gaussian noise.
- * @return the likelihood for the motion
- */
-  virtual double  likelihood( StateType &s_k, StateType &s_km,
-                         InputType &input_k, TimeStamp const &dT,
-                         bool useAdditiveWhiteGaussianNoise = true,
-                         bool useInputWhiteGaussianNoise = false ){
-    if(useAdditiveWhiteGaussianNoise && ! useInputWhiteGaussianNoise){
-      StateType prediction;
-      step( prediction, s_km, input_k, dT );
-      prediction.setCov(Q_);
-      return prediction.evalGaussianLikelihood(s_k);
+  /**
+   * Calculate the likelihood of a given motion using the process model
+   * \note This function can be overwritten in derived classes for implementing
+   * other user-defined sampling methods.
+   * \warning This function does not check that the noise covariance matrices
+   * are valid (i.e., semi-positive definite)
+   * @param[in] s_k  \f$\mathbf{x}_k\f$ pose at current time-step k.
+   * @param[in] s_km \f$\mathbf{x}_{k-1}\f$ pose at previous time-step k-1
+   * @param[in] input_k \f$\mathbf{u}_k\f$ input to process model. If using useInputWhiteGaussianNoise, the assoicated noise needs
+   * to be manually set according to dT.
+   * @param[in] dT size of time-step
+   * @param[in] useAdditiveWhiteGaussianNoise useAdditiveWhiteGaussianNoise if true, the output includes
+   * the zero-mean additive white Gaussian noise specified for this ProcessModel
+   * @param[in] useInputWhiteGaussianNoise if true, the output includes
+   * the noise specified in the input vector, and assumes that it is zero-mean white
+   * Gaussian noise.
+   * @return the likelihood for the motion
+   */
+    virtual double  likelihood( StateType &s_k, StateType &s_km,
+                           InputType &input_k, TimeStamp const &dT,
+                           bool useAdditiveWhiteGaussianNoise = true,
+                           bool useInputWhiteGaussianNoise = false ){
+      if(useAdditiveWhiteGaussianNoise && ! useInputWhiteGaussianNoise){
+        StateType prediction;
+        step( prediction, s_km, input_k, dT );
+        prediction.setCov(Q_);
+        return prediction.evalGaussianLikelihood(s_k);
 
+      }
+      std::cerr << "Error motion likelihood not implemented, only implemented with additive Gaussian noise\n\n";
+      std::exit(1);
     }
-    std::cerr << "Error motion likelihood not implemented, only implemented with additive Gaussian noise\n\n";
-    std::exit(1);
-  }
+
+    /**
+     * Calculate the likelihood of a given motion using the process model
+     * \note This function can be overwritten in derived classes for implementing
+     * other user-defined sampling methods.
+     * \warning This function does not check that the noise covariance matrices
+     * are valid (i.e., semi-positive definite)
+     * @param[in] s_k  \f$\mathbf{x}_k\f$ pose at current time-step k.
+     * @param[in] s_km \f$\mathbf{x}_{k-1}\f$ pose at previous time-step k-1
+     * @param[in] input_k \f$\mathbf{u}_k\f$ input to process model. If using useInputWhiteGaussianNoise, the assoicated noise needs
+     * to be manually set according to dT.
+     * @param[in] dT size of time-step
+     * @param[in] useAdditiveWhiteGaussianNoise useAdditiveWhiteGaussianNoise if true, the output includes
+     * the zero-mean additive white Gaussian noise specified for this ProcessModel
+     * @param[in] useInputWhiteGaussianNoise if true, the output includes
+     * the noise specified in the input vector, and assumes that it is zero-mean white
+     * Gaussian noise.
+     * @return the likelihood for the motion
+     */
+      virtual double  likelihood( StateType &s_k, StateType &s_km,
+                             InputType &input_k, TimeStamp const &dT, typename StateType::Vec * pose_grad ,
+                             bool useAdditiveWhiteGaussianNoise = true,
+                             bool useInputWhiteGaussianNoise = false ){
+        if(useAdditiveWhiteGaussianNoise && ! useInputWhiteGaussianNoise){
+          StateType prediction;
+          typename StateType::Vec n_error;
+          typename StateType::Mat H;
+          step( prediction, s_km, input_k, dT , &H);
+          prediction.setCov(Q_);
+          double likelihood = prediction.evalGaussianLikelihood(s_k, n_error);
+
+          if (pose_grad != NULL){
+            (*pose_grad) = H.transpose()*n_error;
+          }
+
+          return likelihood;
+
+        }
+        std::cerr << "Error motion likelihood not implemented, only implemented with additive Gaussian noise\n\n";
+        std::exit(1);
+      }
 
 
 protected:
@@ -229,7 +270,7 @@ public:
    * \param[in] dT size of time-step
    */
   void step( StateType &s_k, StateType &s_km, 
-	     NullInput &input_k , TimeStamp const &dT){
+	     NullInput &input_k , TimeStamp const &dT , typename StateType::Mat *H = NULL){
     TimeStamp t_; 
     if( this->inputNoiseDefined_ ){
       typename StateType::Vec x;
