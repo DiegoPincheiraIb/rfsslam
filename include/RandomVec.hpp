@@ -80,6 +80,7 @@ namespace rfs
       isValid_Sx_inv_(false),
       isValid_Sx_det_(false)
     {
+      genGaussian_.engine().seed(lrand48());
       dimCheck();
 
       x_.setZero();
@@ -98,6 +99,7 @@ namespace rfs
       isValid_Sx_inv_(false),
       isValid_Sx_det_(false)
     {
+      genGaussian_.engine().seed(lrand48());
       dimCheck();
       set(x);
       setCov(Sx);
@@ -116,6 +118,7 @@ namespace rfs
       isValid_Sx_inv_(false),
       isValid_Sx_det_(false)
     {
+      genGaussian_.engine().seed(lrand48());
       dimCheck();
       set(x);
       Vec SxVecTmp;
@@ -137,6 +140,7 @@ namespace rfs
       isValid_Sx_inv_(false),
       isValid_Sx_det_(false)
     {
+      genGaussian_.engine().seed(lrand48());
       dimCheck();
       set(x);
       Sx_.setZero();
@@ -153,6 +157,7 @@ namespace rfs
       isValid_Sx_inv_(false),
       isValid_Sx_det_(false)
     {
+      genGaussian_.engine().seed(lrand48());
       dimCheck();
       x_.setZero();
       Sx_.setZero();
@@ -174,13 +179,15 @@ namespace rfs
     Sx_L_( other.Sx_L_ ),
     isValid_Sx_L_( other.isValid_Sx_L_), 
     t_(other.t_) 
-    {}
+    {
+      genGaussian_.engine().seed(lrand48());}
 
     /**
      * Assignment operator
      * \param[in] rhs the right-hand-side from which data is copied
      */
     RandomVec& operator=( const RandomVec& rhs ){
+      genGaussian_.engine().seed(lrand48());
     
       x_ = rhs.x_;
       Sx_ = rhs.Sx_;
@@ -590,7 +597,7 @@ namespace rfs
   RandomVec<nDim>::genGaussian_ =
     ::boost::variate_generator< ::boost::mt19937, 
 				::boost::normal_distribution<double> >
-    (::boost::mt19937(rand()), ::boost::normal_distribution<double>());
+    (::boost::mt19937(lrand48()), ::boost::normal_distribution<double>());
 
 } // namespace rfs
 

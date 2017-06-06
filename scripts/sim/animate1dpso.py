@@ -151,7 +151,7 @@ axMap = plt.subplot2grid((2, 1), (1, 0))
 gtMapHandle, = axMap.plot(gtMap_x, -1*np.ones(len(gtMap_x)), 'r*', markersize=15);
 ax = plt.gca();
 
-axMap.set_ylim([-2 , 500])
+axMap.set_ylim([-2 , 2000])
 gtPoseHandle, = axTr.plot(gtPose_t, gtPose_x, 'r-', zorder=12);
 
 drPoseHandle, = axTr.plot(drPose_t, drPose_x, 'r--', zorder=10);
@@ -161,7 +161,7 @@ measurementHandle, = axTr.plot([], [], 'g*',zorder = 9);
 
 trajectories = [];
 for i in range(0, nTrDrawMax) :
-    trajectories_line, = axTr.plot([], [], 'b-');
+    trajectories_line, = axTr.plot([], [], 'b-', zorder=5);
     trajectories.append( trajectories_line );
 
 bestLandmarks, = axMap.plot([],[], linestyle='', marker='o', color='r', zorder=9)
@@ -257,7 +257,7 @@ def animate(i):
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timestepStart, 5000 ,50), interval=1,
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timestepStart, 10000 ,1), interval=1,
                                init_func=animateInit, blit=True,  repeat=False);
 if saveMovie:
     FFMpegWriter = matplotlib.animation.writers['ffmpeg']

@@ -117,11 +117,12 @@ public:
     psoslam_->config.card_phi_p = pt.get<double>("config.optimizer.card_phi_particle");
     psoslam_->config.K = pt.get<int>("config.optimizer.K");
     psoslam_->config.use_global = pt.get<bool>("config.optimizer.global");
-
+    optimizeEveryIterations_ =  pt.get<int>("config.optimizer.optimizeIter");
 
     pNoiseInflation_ = pt.get("config.optimizer.predict.processNoiseInflationFactor", 1.0);
 
     zNoiseInflation_ = pt.get("config.optimizer.update.measurementNoiseInflationFactor", 1.0);
+
 
 
     MeasurementLikelihoodThreshold_ = pt.get("config.optimizer.weighting.threshold", 1e-4);
@@ -309,11 +310,12 @@ public:
             z_m_k.setTime(t);
             // z_m_k.setCov(R);
             measurements_.push_back(z_m_k);
+            if (lmkFirstObsTime_[m] == -1) {
+              lmkFirstObsTime_[m] = t.getTimeAsDouble();
+            }
           }
 
-          if (lmkFirstObsTime_[m] == -1) {
-            lmkFirstObsTime_[m] = t.getTimeAsDouble();
-          }
+
         }
 
       }
@@ -542,7 +544,8 @@ public:
 
     // run the optimization process
     for(iteration++; iteration < maxiter_ ; iteration++){
-
+      if(optimizeEveryIterations_>0  && iteration%optimizeEveryIterations_ ==0)
+        psoslam_->optimizeParticles();
       psoslam_->evaluateLikelihoods();
       psoslam_->moveParticles();
 
@@ -662,6 +665,8 @@ private:
 
   double pNoiseInflation_;
   double zNoiseInflation_;
+
+  int optimizeEveryIterations_;
 
 
 

@@ -286,12 +286,12 @@ namespace rfs {
       initTrajectory();
       initMap();
       double * parameters = new double[NumParameters()];
-      for (int k = 0; k < trajectory_.size(); k++) {
+      for (int k = 1; k < trajectory_.size(); k++) {
         for (int d = 0; d < PoseDim; d++) {
-          parameters[k * PoseDim + d] = trajectory_[k][d];
+          parameters[(k-1) * PoseDim + d] = trajectory_[k][d];
         }
       }
-      int trajectoryDim = trajectory_.size() * PoseDim;
+      int trajectoryDim = (trajectory_.size()-1) * PoseDim;
       for (int m = 0; m < landmarks_.size(); m++) {
         for (int d = 0; d < LandmarkDim; d++) {
           parameters[trajectoryDim + m * LandmarkDim + d] = landmarks_[m][d];
@@ -306,7 +306,8 @@ namespace rfs {
       trajectory_.resize(inputs_.size() + 1);
       for (int k = 0; k < inputs_.size(); k++) {
         TimeStamp dT = inputs_[k].getTime() - trajectory_[k].getTime();
-        robotProcessModelPtr_->sample(trajectory_[k + 1], trajectory_[k], inputs_[k], dT, false, true);
+        robotProcessModelPtr_->sample(trajectory_[k + 1], trajectory_[k], inputs_[k], dT, true, false);
+
       }
 
     }
@@ -337,7 +338,7 @@ namespace rfs {
   template<class RobotProcessModel, class MeasurementModel>
         int
         RFSCeresSLAM<RobotProcessModel, MeasurementModel>::NumParameters() const {
-    return trajectory_.size()*PoseDim + landmarks_.size()*LandmarkDim;
+    return (trajectory_.size()-1)*PoseDim + landmarks_.size()*LandmarkDim;
   }
 
   template<class RobotProcessModel, class MeasurementModel>
@@ -358,14 +359,15 @@ namespace rfs {
     copy.robotProcessModelPtr_ = new RobotProcessModel();
     *copy.robotProcessModelPtr_ = *this->robotProcessModelPtr_;
 
+
     copy.trajectory_.resize(trajectory_.size());
-    for (int k = 0; k < copy.trajectory_.size() ; k++ ){
+    for (int k = 1; k < copy.trajectory_.size() ; k++ ){
       for (int d = 0; d < copy.PoseDim ; d++){
 
-        copy.trajectory_[k][d] = parameters[k*PoseDim + d];
+        copy.trajectory_[k][d] = parameters[(k-1)*PoseDim + d];
       }
     }
-    int trajectoryDim = copy.trajectory_.size()*copy.PoseDim;
+    int trajectoryDim = (copy.trajectory_.size()-1)*copy.PoseDim;
     copy.landmarks_.resize(landmarks_.size());
     for(int m = 0; m <  copy.landmarks_.size() ;  m++){
       for(int d = 0; d < copy.LandmarkDim ; d++){
@@ -373,6 +375,9 @@ namespace rfs {
         copy.landmarks_[m][d] = parameters[trajectoryDim + m*LandmarkDim +d];
       }
     }
+
+
+
     Eigen::VectorXd trajectory_gradient , landmark_gradient;
     (*cost) = -copy.rfsMeasurementLikelihood(trajectory_gradient , landmark_gradient);
 
@@ -387,9 +392,7 @@ namespace rfs {
     for(int i = 0; i <  landmark_gradient.size() ;  i++){
         gradient[trajectoryDim + i] = -landmark_gradient[i];
 
-
     }
-
     }
     return true;
   }
@@ -399,22 +402,32 @@ namespace rfs {
   template<class RobotProcessModel, class MeasurementModel>
     double
     RFSCeresSLAM<RobotProcessModel, MeasurementModel>::rfsMeasurementLikelihood (Eigen::VectorXd &trajectory_gradient, Eigen::VectorXd &landmark_gradient) {
-    trajectory_gradient.resize(PoseDim * trajectory_.size(),1);
+    trajectory_gradient.resize(PoseDim * (trajectory_.size()-1),1);
     landmark_gradient.resize(LandmarkDim * landmarks_.size(),1);
     trajectory_gradient.setZero();
     landmark_gradient.setZero();
     typename TPose::Vec pose_gradient ;
       double l =  log(rfsMeasurementLikelihood( 0, pose_gradient , landmark_gradient));
-      trajectory_gradient.segment<PoseDim>(0) = pose_gradient;
+      //trajectory_gradient.segment<PoseDim>(0) = pose_gradient;
       TimeStamp dT;
+      dT = time_[1] - time_[0];
+      typename TPose::Vec pose_process_gradient;
+      l += log(robotProcessModelPtr_->likelihood(trajectory_[1], trajectory_[0], inputs_[0],  dT, &pose_process_gradient));
+      trajectory_gradient.segment<PoseDim>(PoseDim * (0) ) += pose_process_gradient;
+
+      for (int k = 2; k < trajectory_.size(); k++) {
+
+        dT = time_[k] - time_[k - 1];
+        typename TPose::Vec pose_process_gradient;
+        l += log(robotProcessModelPtr_->likelihood(trajectory_[k], trajectory_[k-1], inputs_[k - 1],  dT, &pose_process_gradient));
+        trajectory_gradient.segment<PoseDim>(PoseDim * (k-1) ) += pose_process_gradient;
+        trajectory_gradient.segment<PoseDim>(PoseDim * (k-2) ) -= pose_process_gradient;
+      }
       for (int k = 1; k < trajectory_.size(); k++) {
         Eigen::VectorXd lmgrad;
         pose_gradient.setZero();
         l += log(rfsMeasurementLikelihood(k, pose_gradient , lmgrad));
-        trajectory_gradient.segment<PoseDim>(PoseDim * k ) = pose_gradient;
-        dT = time_[k] - time_[k - 1];
-        typename TPose::Vec pose_process_gradient;
-        l += log(robotProcessModelPtr_->likelihood(trajectory_[k], trajectory_[k-1], inputs_[k - 1],  dT, &pose_process_gradient));
+        trajectory_gradient.segment<PoseDim>(PoseDim * (k-1) ) += pose_gradient;
 
         landmark_gradient += lmgrad;
       }
@@ -519,8 +532,8 @@ namespace rfs {
 
             typename MeasurementModel::TLandmark::Vec lm_grad ;
             typename MeasurementModel::TPose::Vec pose_grad ;
-            lm_grad = jacobian_wrt_lmk.transpose() * n_error;
-            pose_grad = jacobian_wrt_pose.transpose() * n_error;
+            lm_grad =  L[m][n]*jacobian_wrt_lmk.transpose() * n_error;
+            pose_grad = L[m][n]*jacobian_wrt_pose.transpose() * n_error;
 
             landmark_gradients.insert(std::make_pair(m*nZ+n ,lm_grad ));
             pose_gradients.insert(std::make_pair(m*nZ+n,pose_grad));

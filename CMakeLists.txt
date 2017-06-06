@@ -168,7 +168,7 @@ ADD_EXECUTABLE(rblmbslam2dSim src/rblmbslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(rblmbslam2dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
 
 ADD_EXECUTABLE(rfspsoslam1dSim src/rfspsoslam1dSim.cpp)
-TARGET_LINK_LIBRARIES(rfspsoslam1dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
+TARGET_LINK_LIBRARIES(rfspsoslam1dSim ${Boost_LIBRARIES} rfsslam ${CERES_LIBRARIES} ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
 
 ADD_EXECUTABLE(rfsceresslam1dSim src/rfsceresslam1dSim.cpp)
 
@@ -222,6 +222,10 @@ TARGET_LINK_LIBRARIES(linearAssignment_MurtyAlgorithm ${Boost_LIBRARIES} rfsslam
 
 ADD_EXECUTABLE(ospaError src/examples/ospaError.cpp)
 TARGET_LINK_LIBRARIES(ospaError ${Boost_LIBRARIES} rfsslam)
+
+
+ADD_EXECUTABLE(ospaErrorFromFile src/examples/ospaErrorFromFile.cpp)
+TARGET_LINK_LIBRARIES(ospaErrorFromFile ${Boost_LIBRARIES} rfsslam)
 
 ADD_EXECUTABLE(cpu_timer_test src/tests/cpu_timer_info.cpp)
 TARGET_LINK_LIBRARIES(cpu_timer_test ${Boost_LIBRARIES})

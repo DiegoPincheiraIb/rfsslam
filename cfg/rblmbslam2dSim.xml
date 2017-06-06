@@ -7,7 +7,7 @@
     <logDirPrefix>data/rblmb2dslam/</logDirPrefix>
   </logging>
 
-  <timesteps>3000</timesteps>
+  <timesteps>50</timesteps>
   <sec_per_timestep>0.1</sec_per_timestep>
 
   <trajectory>

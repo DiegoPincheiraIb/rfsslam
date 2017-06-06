@@ -45,6 +45,7 @@
 #include <stdio.h>
 #include "OSPA.hpp"
 #include "RandomVecMathTools.hpp"
+#include "RFSCeresSLAM.hpp"
 
 namespace rfs {
 
@@ -70,6 +71,8 @@ namespace rfs {
       typedef typename MeasurementModel::TMeasurement TMeasurement;
       typedef RFSPSOParticle<RobotProcessModel, MeasurementModel> TParticle;
       typedef std::vector<TParticle> TParticleSet;
+      static const int PoseDim =  TPose::Vec::RowsAtCompileTime;
+      static const int LandmarkDim =  TLandmark::Vec::RowsAtCompileTime;
       /**
        * \brief Configurations for this RFSBatchPSO optimizer
        */
@@ -372,9 +375,11 @@ namespace rfs {
           typename TInput::Vec v = particles_[i].inputs_velocity[k].get(), p = particles_[i].inputs[k].get();
 
           v *= config.w;
+          double rand_num_1 = drand48();
+          double rand_num_2 = drand48();
           for (int dim = 0; dim < particles_[i].inputs_velocity[k].getNDim(); dim++) {
-            v[dim] += config.phi_p * drand48() * (particles_[i].bestInputs[k].get()[dim] - particles_[i].inputs[k].get()[dim]);
-            v[dim] += config.phi_g * drand48() * (particles_[best_i].bestInputs[k].get()[dim] - particles_[i].inputs[k].get()[dim]);
+            v[dim] += config.phi_p * (drand48()+10*rand_num_1)/11.0 * (particles_[i].bestInputs[k].get()[dim] - particles_[i].inputs[k].get()[dim]);
+            v[dim] += config.phi_g * (drand48()+10*rand_num_2)/11.0 * (particles_[best_i].bestInputs[k].get()[dim] - particles_[i].inputs[k].get()[dim]);
           }
           particles_[i].inputs_velocity[k].set(v);
 
@@ -397,10 +402,72 @@ namespace rfs {
 
   template<class RobotProcessModel, class MeasurementModel>
     void
-    RFSPSOSLAM<RobotProcessModel, MeasurementModel>::optimizeParticles (){
+    RFSPSOSLAM<RobotProcessModel, MeasurementModel>::optimizeParticles () {
+
+#pragma omp parallel for
+      for (int i = 0; i < config.nParticles_; i++) {
+        RFSCeresSLAM<RobotProcessModel, MeasurementModel> &ceresSlam = * new RFSCeresSLAM<RobotProcessModel, MeasurementModel>();
 
 
-  }
+
+        ceresSlam.mModelPtr_ = new MeasurementModel();
+        typename MeasurementModel::TMeasurement::Mat R;
+        this->mModelPtr_->getNoise(R);
+        ceresSlam.mModelPtr_->setNoise(R);
+        ceresSlam.mModelPtr_->config = this->mModelPtr_->config;
+        ceresSlam.robotProcessModelPtr_ = new RobotProcessModel();
+        *ceresSlam.robotProcessModelPtr_ = *this->robotProcessModelPtr_;
+
+        ceresSlam.config.MeasurementLikelihoodThreshold_ = config.MeasurementLikelihoodThreshold_;
+        ceresSlam.config.mapFromMeasurementProb_ = config.mapFromMeasurementProb_;
+
+        ceresSlam.setInputs(inputs_);
+
+        for (int k =0; k < Z_.size() ; k++)
+          ceresSlam.addMeasurement(Z_[k]);
+        ceresSlam.trajectory_.resize(particles_[i].trajectory.size());
+        ceresSlam.landmarks_.resize(particles_[i].landmarks.size());
+
+        double * parameters = new double[ceresSlam.NumParameters()];
+        for (int k = 1; k < particles_[i].trajectory.size(); k++) {
+          for (int d = 0; d < PoseDim; d++) {
+            parameters[(k - 1) * PoseDim + d] = particles_[i].trajectory[k][d];
+          }
+        }
+        int trajectoryDim = (particles_[i].trajectory.size() - 1) * PoseDim;
+        for (int m = 0; m < particles_[i].landmarks.size(); m++) {
+          for (int d = 0; d < LandmarkDim; d++) {
+            parameters[trajectoryDim + m * LandmarkDim + d] = particles_[i].landmarks[m][d];
+          }
+        }
+
+        ceres::GradientProblem problem(&ceresSlam);
+        ceres::GradientProblemSolver::Options options;
+        //options.line_search_direction_type = ceres::STEEPEST_DESCENT;
+        //options.line_search_type = ceres::ARMIJO;
+        //options.minimizer_progress_to_stdout = true;
+        ceres::GradientProblemSolver::Summary summary;
+        ceres::Solve(options, problem, parameters, &summary);
+
+        //std::cout << summary.FullReport() << "\n";
+
+        for (int k = 1; k < particles_[i].trajectory.size(); k++) {
+          for (int d = 0; d < PoseDim; d++) {
+            particles_[i].trajectory[k][d] = parameters[(k - 1) * PoseDim + d] ;
+            particles_[i].inputs[k-1][d] =particles_[i].trajectory[k][d]-particles_[i].trajectory[k-1][d];
+          }
+
+        }
+
+        for (int m = 0; m < particles_[i].landmarks.size(); m++) {
+          for (int d = 0; d < LandmarkDim; d++) {
+            particles_[i].landmarks[m][d] = parameters[trajectoryDim + m * LandmarkDim + d] ;
+          }
+        }
+
+      }
+
+    }
 
   template<class RobotProcessModel, class MeasurementModel>
     void
@@ -528,12 +595,7 @@ namespace rfs {
     RFSPSOSLAM<RobotProcessModel, MeasurementModel>::init () {
       particles_.resize(config.nParticles_);
 
-      // initialize the number of neighbors distribution
-      double c=0;
 
-      for(int n = 0 ; n < config.K; n++){
-
-      }
 
       initTrajectories();
       initMaps();

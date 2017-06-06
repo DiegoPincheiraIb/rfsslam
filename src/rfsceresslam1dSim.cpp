@@ -303,11 +303,13 @@ public:
             z_m_k.setTime(t);
             // z_m_k.setCov(R);
             measurements_.push_back(z_m_k);
+            if (lmkFirstObsTime_[m] == -1) {
+              lmkFirstObsTime_[m] = t.getTimeAsDouble();
+
+            }
           }
 
-          if (lmkFirstObsTime_[m] == -1) {
-            lmkFirstObsTime_[m] = t.getTimeAsDouble();
-          }
+
         }
 
       }
@@ -499,11 +501,27 @@ public:
     MotionModel_Odometry1d::TState x_i;
     int zIdx = 0;
 
+
     double * initParams = ceresslam_->init();
+
+    std::cout << "initparams:   ";
+    for (int i=0; i < ceresslam_->NumParameters() ; i++){
+      std::cout << initParams[i] << "   ";
+    }
+    std::cout << "\n";
 
     int iteration=0;
 
+    ceresslam_->landmarks_.resize(groundtruth_landmark_.size());
+                double* gtparams =  new double[ceresslam_->NumParameters()];
+                 for(int i = 1 ; i < groundtruth_pose_.size() ; i++){
+                           gtparams[i-1]= initParams[i-1];
+                         }
 
+                    for(int i = 0 ; i < groundtruth_landmark_.size() ; i++){
+                      gtparams[i+groundtruth_pose_.size()-1]= groundtruth_landmark_[i][0];
+                        }
+    initParams = gtparams;
 
 
             if (logToFile_) {
@@ -513,7 +531,8 @@ public:
               fprintf(pParticlePoseFile,"%d   ", iteration);
 
               fprintf(pParticlePoseFile, "%f   ",  0.0);
-              for (int k  = 0; k < ceresslam_->trajectory_.size() ; k++){
+              fprintf(pParticlePoseFile, "%f   ",  0.0);
+              for (int k  = 0; k < ceresslam_->trajectory_.size()-1 ; k++){
 
                 fprintf(pParticlePoseFile, "%f   ",  initParams[k]);
               }
@@ -529,7 +548,7 @@ public:
             for (int l  = 0; l < ceresslam_->landmarks_.size() ; l++){
               MeasurementModel_Rng1D::TLandmark landmark;
 
-              fprintf(pLandmarkEstFile, "%f   ",initParams[ceresslam_->trajectory_.size()+l]);
+              fprintf(pLandmarkEstFile, "%f   ",initParams[ceresslam_->trajectory_.size()-1+l]);
             }
             fprintf(pLandmarkEstFile, "\n");
 
@@ -537,10 +556,15 @@ public:
             }
 
 
+
     // run the optimization process
     ceres::GradientProblem problem(ceresslam_);
     ceres::GradientProblemSolver::Options options;
     options.minimizer_progress_to_stdout = true;
+    options.line_search_direction_type = ceres::STEEPEST_DESCENT;
+    options.max_num_iterations = 10000;
+    options.function_tolerance = 1e-10;
+
     ceres::GradientProblemSolver::Summary summary;
     ceres::Solve(options, problem, initParams, &summary);
 
@@ -559,7 +583,8 @@ public:
         fprintf(pParticlePoseFile,"%d   ", iteration);
 
         fprintf(pParticlePoseFile, "%f   ",  0.0);
-        for (int k  = 0; k < ceresslam_->trajectory_.size() ; k++){
+        fprintf(pParticlePoseFile, "%f   ",  0.0);
+        for (int k  = 0; k < ceresslam_->trajectory_.size()-1 ; k++){
 
           fprintf(pParticlePoseFile, "%f   ",  initParams[k]);
         }
@@ -575,7 +600,7 @@ public:
       for (int l  = 0; l < ceresslam_->landmarks_.size() ; l++){
         MeasurementModel_Rng1D::TLandmark landmark;
 
-        fprintf(pLandmarkEstFile, "%f   ",initParams[ceresslam_->trajectory_.size()+l]);
+        fprintf(pLandmarkEstFile, "%f   ",initParams[ceresslam_->trajectory_.size()-1+l]);
       }
       fprintf(pLandmarkEstFile, "\n");
 
@@ -590,12 +615,12 @@ public:
 
     ceresslam_->landmarks_.resize(groundtruth_landmark_.size());
 
-        double * gtparams =  new double[ceresslam_->NumParameters()];
-        for(int i = 0 ; i < groundtruth_pose_.size() ; i++){
-          gtparams[i]= groundtruth_pose_[i][0];
+        //double * gtparams =  new double[ceresslam_->NumParameters()];
+        for(int i = 1 ; i < groundtruth_pose_.size() ; i++){
+          gtparams[i-1]= groundtruth_pose_[i][0];
         }
         for(int i = 0 ; i < groundtruth_landmark_.size() ; i++){
-              gtparams[i+groundtruth_pose_.size()]= groundtruth_landmark_[i][0];
+              gtparams[i+groundtruth_pose_.size()-1]= groundtruth_landmark_[i][0];
             }
         double cost ;
         ceresslam_->Evaluate(gtparams, &cost, NULL);
@@ -714,6 +739,7 @@ int main(int argc, char* argv[]) {
     seed = vm["seed"].as<int>();
     std::cout << "Simulation random seed manually set to: " << seed << std::endl;
   }
+
   srand48( seed );
 
   // boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");

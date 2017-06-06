@@ -148,7 +148,7 @@ public:
     if( useAdditiveWhiteGaussianNoise && Q_ != StateType::Mat::Zero() ){
 
       s_k.setCov(Q_);
-      s_k.sample();
+      s_k.sample(s_k);
     }
   }
   /**
@@ -215,8 +215,9 @@ public:
           double likelihood = prediction.evalGaussianLikelihood(s_k, n_error);
 
           if (pose_grad != NULL){
-            (*pose_grad) = H.transpose()*n_error;
+            (*pose_grad) = -n_error;
           }
+
 
           return likelihood;
 
