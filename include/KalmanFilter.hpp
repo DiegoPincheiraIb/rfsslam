@@ -32,6 +32,7 @@
 #define KALMANFILTER_HPP
 
 #include "MeasurementModel.hpp"
+#include "MeasurementModel_RngBrg.hpp"
 #include "ProcessModel.hpp"
 #include <vector>
 
@@ -151,9 +152,17 @@ public:
 				   ::Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_act,
 				   ::Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTime, 1> &z_innov);
 
-
+  
+  struct Config{ /**< Configuration data that can be defined in template specializations */
+    /** If positive, the innovation threshold above which an update is not processed for stability reasons. */
+    double rangeInnovationThreshold_; 
+    /** If positive, the innovation threshold above which an update is not processed for stability reasons. */
+    double bearingInnovationThreshold_;
+  }config;
 protected:
 
+  
+  
   MeasurementModelType *pMeasurementModel_;
   ProcessModelType *pProcessModel_;
  
@@ -350,5 +359,31 @@ calculateInnovation(::Eigen::Matrix< double, TMeasurement::Vec::RowsAtCompileTim
   return true;
 }
 
+  // KalmanFilter Specialization for range bearing measurement model
+
+  // 
+  
+  
+
+  template<>
+  KalmanFilter<StaticProcessModel<Landmark2d>, MeasurementModel_RngBrg>::KalmanFilter();
+  
+  template<>
+  KalmanFilter<StaticProcessModel<Landmark2d>, MeasurementModel_RngBrg>::KalmanFilter(StaticProcessModel<Landmark2d> *pProcessModel,
+										      MeasurementModel_RngBrg *pMeasurementModel);
+  template<>
+  bool KalmanFilter<StaticProcessModel<Landmark2d>, MeasurementModel_RngBrg>::calculateInnovation(TMeasurement::Vec &z_exp, TMeasurement::Vec &z_act, TMeasurement::Vec &z_innov);
+
+  template<>
+  KalmanFilter<StaticProcessModel<Landmark2d>, MeasurementModel_RngBrg>::KalmanFilter();
+  
+  template<>
+  KalmanFilter<StaticProcessModel<Landmark2d>, MeasurementModel_RngBrg>::KalmanFilter(StaticProcessModel<Landmark2d> *pProcessModel,
+										      MeasurementModel_RngBrg *pMeasurementModel);
+  template<>
+  bool KalmanFilter<StaticProcessModel<Landmark2d>, MeasurementModel_RngBrg>::calculateInnovation(TMeasurement::Vec &z_exp, TMeasurement::Vec &z_act, TMeasurement::Vec &z_innov);
+
+  typedef KalmanFilter<StaticProcessModel<Landmark2d>, MeasurementModel_RngBrg> KalmanFilter_RngBrg;
+  
 }
 #endif

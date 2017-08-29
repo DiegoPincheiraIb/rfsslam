@@ -140,8 +140,8 @@ ADD_LIBRARY(rfsslam
   src/MeasurementModel_6D.cpp
   src/Visualizer6D.cpp
   src/MeasurementModel_VictoriaPark.cpp
-  src/KalmanFilter_RngBrg.cpp
   src/KalmanFilter_RngBrg_amplitude.cpp
+  src/KalmanFilter.cpp
   src/HungarianMethod.cpp
   src/MurtyAlgorithm.cpp
   src/BruteForceAssignment.cpp
@@ -154,6 +154,10 @@ TARGET_LINK_LIBRARIES(rfsslam ${Boost_LIBRARIES})
 
 ADD_EXECUTABLE(rbphdslam2dSim src/rbphdslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
+
+ADD_EXECUTABLE(rbphdslam2dCityTrees10000 src/rbphdslamCityTrees10000.cpp)
+TARGET_LINK_LIBRARIES(rbphdslam2dCityTrees10000 ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
+
 
 ADD_EXECUTABLE(rbphdslam6dSim src/rbphdslam6dSim.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam6dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY} ${VTK_LIBRARIES} Threads::Threads)

@@ -36,7 +36,7 @@
 #include <boost/property_tree/xml_parser.hpp>
 #include "ProcessModel_Odometry2D.hpp"
 #include "RBLMBFilter.hpp"
-#include "KalmanFilter_RngBrg.hpp"
+#include "KalmanFilter.hpp"
 #include <stdio.h>
 #include <string>
 #include <sys/ioctl.h>
