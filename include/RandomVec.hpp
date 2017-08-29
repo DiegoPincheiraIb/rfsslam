@@ -78,9 +78,9 @@ namespace rfs
     RandomVec() : 
       isValid_Sx_L_(false), 
       isValid_Sx_inv_(false),
-      isValid_Sx_det_(false)
+      isValid_Sx_det_(false),
+      genGaussian_(::boost::mt19937(lrand48()), ::boost::normal_distribution<double>())
     {
-      genGaussian_.engine().seed(lrand48());
       dimCheck();
 
       x_.setZero();
@@ -97,9 +97,9 @@ namespace rfs
     RandomVec(const Vec &x, const Mat &Sx, const TimeStamp &t = TimeStamp() ) :
       isValid_Sx_L_(false), 
       isValid_Sx_inv_(false),
-      isValid_Sx_det_(false)
+      isValid_Sx_det_(false),
+      genGaussian_(::boost::mt19937(lrand48()), ::boost::normal_distribution<double>())
     {
-      genGaussian_.engine().seed(lrand48());
       dimCheck();
       set(x);
       setCov(Sx);
@@ -116,9 +116,9 @@ namespace rfs
     RandomVec(const Vec &x, double const * const &SxVec, const TimeStamp &t = TimeStamp() ) :
       isValid_Sx_L_(false), 
       isValid_Sx_inv_(false),
-      isValid_Sx_det_(false)
+      isValid_Sx_det_(false),
+      genGaussian_(::boost::mt19937(lrand48()), ::boost::normal_distribution<double>())
     {
-      genGaussian_.engine().seed(lrand48());
       dimCheck();
       set(x);
       Vec SxVecTmp;
@@ -138,9 +138,9 @@ namespace rfs
     RandomVec(const Vec &x, const TimeStamp t = TimeStamp()) :
       isValid_Sx_L_(false), 
       isValid_Sx_inv_(false),
-      isValid_Sx_det_(false)
+      isValid_Sx_det_(false),
+      genGaussian_(::boost::mt19937(lrand48()), ::boost::normal_distribution<double>())
     {
-      genGaussian_.engine().seed(lrand48());
       dimCheck();
       set(x);
       Sx_.setZero();
@@ -155,9 +155,10 @@ namespace rfs
     RandomVec(const TimeStamp &t) :
       isValid_Sx_L_(false), 
       isValid_Sx_inv_(false),
-      isValid_Sx_det_(false)
+      isValid_Sx_det_(false),
+      genGaussian_(::boost::mt19937(lrand48()), ::boost::normal_distribution<double>())
     {
-      genGaussian_.engine().seed(lrand48());
+      genGaussian_.engine().seed((unsigned int)lrand48());
       dimCheck();
       x_.setZero();
       Sx_.setZero();
@@ -178,16 +179,16 @@ namespace rfs
     isValid_Sx_det_( other.isValid_Sx_det_),
     Sx_L_( other.Sx_L_ ),
     isValid_Sx_L_( other.isValid_Sx_L_), 
-    t_(other.t_) 
-    {
-      genGaussian_.engine().seed(lrand48());}
+    t_(other.t_) ,
+    genGaussian_(::boost::mt19937(lrand48()), ::boost::normal_distribution<double>())
+    {}
 
     /**
      * Assignment operator
      * \param[in] rhs the right-hand-side from which data is copied
      */
     RandomVec& operator=( const RandomVec& rhs ){
-      genGaussian_.engine().seed(lrand48());
+      genGaussian_.engine().seed((unsigned int)lrand48());
     
       x_ = rhs.x_;
       Sx_ = rhs.Sx_;
@@ -581,7 +582,7 @@ namespace rfs
     Vec e_; /**< temporary */
 
     /** normal distribution random number generator */ 
-    static ::boost::variate_generator< ::boost::mt19937, 
+     ::boost::variate_generator< ::boost::mt19937,
 				       ::boost::normal_distribution<double> > genGaussian_;
 
     /** \brief Dimensionality check during initialization */
@@ -590,14 +591,14 @@ namespace rfs
     }
 
   };
-
+/*
   template<unsigned int nDim>
   ::boost::variate_generator< ::boost::mt19937, 
 			      ::boost::normal_distribution<double> >
   RandomVec<nDim>::genGaussian_ =
     ::boost::variate_generator< ::boost::mt19937, 
 				::boost::normal_distribution<double> >
-    (::boost::mt19937(lrand48()), ::boost::normal_distribution<double>());
+    (::boost::mt19937(lrand48()), ::boost::normal_distribution<double>());*/
 
 } // namespace rfs
 
