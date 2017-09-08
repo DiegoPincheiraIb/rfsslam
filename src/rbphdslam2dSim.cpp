@@ -29,7 +29,7 @@
  */
 
 #include "RBPHDSLAM_2D.hpp"
-
+#include "MeasurementModel_XY.hpp"
 
 
 
@@ -37,7 +37,7 @@
 
 int main(int argc, char* argv[]){
 
-  RBPHDSLAM_2D<MeasurementModel_RngBrg> sim;
+  RBPHDSLAM_2D<MeasurementModel_XY> sim;
 
   int seed = time(NULL);
   srand(seed);
@@ -70,19 +70,21 @@ int main(int argc, char* argv[]){
     trajNum = vm["trajectory"].as<int>();
   }
   std::cout << "Trajectory: " << trajNum << std::endl;
+
+  sim.setupRBPHDFilter();
   sim.generateTrajectory( trajNum );  
   
   sim.generateLandmarks();
   sim.generateOdometry();
   sim.generateMeasurements();
   sim.exportSimData();
-  sim.setupRBPHDFilter();
 
   if( vm.count("seed") ){
     seed = vm["seed"].as<int>();
     std::cout << "Simulation random seed manually set to: " << seed << std::endl;
   }
   srand48( seed );
+  initializeGaussianGenerators();
 
   // boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
 

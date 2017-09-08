@@ -185,6 +185,7 @@ public:
 	void generateTrajectory(int randSeed = 0) {
 
 		srand48(randSeed);
+		initializeGaussianGenerators();
 
 		TimeStamp t;
 		int seg = 0;

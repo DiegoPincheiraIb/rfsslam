@@ -132,6 +132,7 @@ public:
   void generateTrajectory(int randSeed = 0){
 
     srand48( randSeed);
+    initializeGaussianGenerators();
 
     TimeStamp t;
     int seg = 0;
@@ -741,6 +742,7 @@ int main(int argc, char* argv[]) {
   }
 
   srand48( seed );
+  initializeGaussianGenerators();
 
   // boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
 

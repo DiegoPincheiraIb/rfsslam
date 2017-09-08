@@ -8,7 +8,7 @@
     <logDirPrefix>data/rbphdslam</logDirPrefix>
   </logging>
 
-  <timesteps>3000</timesteps>
+  <timesteps>1000</timesteps>
   <sec_per_timestep>0.1</sec_per_timestep>
 
   <trajectory>
@@ -32,10 +32,10 @@
     <rangeLimitMax>2.5</rangeLimitMax> <!-- measurement range limit -->
     <rangeLimitMin>0.5</rangeLimitMin> <!-- measurement range limit -->
     <rangeLimitBuffer>0.05</rangeLimitBuffer> <!-- buffer zone around range limit in which negative information has no effects -->
-    <probDetection>0.50</probDetection> <!-- probability of detection -->
-    <clutterIntensity>0.5</clutterIntensity> <!-- uniform clutter intensity -->
-    <varzx>0.005</varzr> <!-- range measurement variance -->
-    <varzy>0.005</varzb> <!-- bearing measurement variance (0.0001 is roughly 0.6 deg standard deviation) -->
+    <probDetection>0.99</probDetection> <!-- probability of detection -->
+    <clutterIntensity>0.005</clutterIntensity> <!-- uniform clutter intensity -->
+    <varzx>0.0005</varzr> <!-- range measurement variance -->
+    <varzy>0.0005</varzb> <!-- bearing measurement variance (0.0001 is roughly 0.6 deg standard deviation) -->
   </measurements>
   
   <filter>
@@ -47,7 +47,7 @@
     </predict>
 
     <update>
-      <measurementNoiseInflationFactor>10.0</measurementNoiseInflationFactor> <!-- inflation factor of measurement covariance -->
+      <measurementNoiseInflationFactor>100.0</measurementNoiseInflationFactor> <!-- inflation factor of measurement covariance -->
       <KalmanFilter>
 	<innovationThreshold> <!-- exceeding innovation will cause Kalman Filter update to not occur, set this according to noise -->
 	  <range>1.0</range>  

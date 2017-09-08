@@ -41,6 +41,7 @@
 #include <stdio.h>
 #include <vector>
 #include <list>
+#include <iomanip>
 
 #include "GaussianMixture.hpp"
 #include "KalmanFilter.hpp"
@@ -652,9 +653,10 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       if(config.useClusterProcess_){
 	likelihoodProd *= sum;
       }
-
-      for(unsigned int m = 0; m < nM; m++){
-	wTables_[threadnum][m][z] = wTables_[threadnum][m][z] / sum;
+      if(sum != 0){
+        for(unsigned int m = 0; m < nM; m++){
+          wTables_[threadnum][m][z] = wTables_[threadnum][m][z] / sum;
+        }
       }
     }
 
@@ -810,11 +812,12 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     
     double prev_weight = this->particleSet_[particleIdx]->getWeight();
     this->particleSet_[particleIdx]->setWeight( overall_weight * prev_weight );
-    /*std::cout << "P" << idx << ".w " 
+    /*if (overall_weight == 0 || overall_weight!=overall_weight )
+      std::cout << "P" << idx << ".w "
 	      << std::setw(15) << intensityProd_beforeUpdate
 	      << std::setw(15) << intensityProd_afterUpdate
 	      << std::setw(15) << measurementLikelihood
-	      << std::setw(15) << overall_weight << std::endl;*/
+	      << std::setw(15) << overall_weight << std::setw(15) << prev_weight << std::endl;*/
 
 }
 
@@ -1009,9 +1012,9 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	birthGaussians_[i] = birthGaussians_[i_prev];
       }
     }
-    
+
     while( unused_measurements_[i].size() > 0){
-     
+
       // get measurement
       int unused_idx = unused_measurements_[i].back();
       TMeasurement unused_z = this->measurements_[unused_idx];
@@ -1034,7 +1037,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	  break;
 	}
       }
-	
+
       if(isNewBirthGaussianCandidate){
 
 	// use inverse measurement model to get landmark
@@ -1049,7 +1052,8 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 	if(config.birthGaussianMeasurementCountThreshold_ == 1 ||
 	   nLandmarksInFOV_[i] <= config.birthGaussianCurrentMeasurementCountThreshold_){
 	  // add birth landmark to Gaussian mixture (last param = true to allocate mem)
-	  this->particleSet_[i]->getData()->addGaussian( &c, config.birthGaussianWeight_, true);	  
+	  this->particleSet_[i]->getData()->addGaussian( &c, config.birthGaussianWeight_, true);
+
 	}else{
 	  birthGaussians_[i].push_back(c);
 	}

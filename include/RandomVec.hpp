@@ -46,6 +46,7 @@
 #include <iostream>
 #include <stdio.h>
 #include "TimeStamp.hpp"
+#include "GaussianGenerators.hpp"
 
 
 namespace rfs
@@ -53,6 +54,7 @@ namespace rfs
 
 
   double const PI = acos(-1);
+
 
   /**
    * \class RandomVec
@@ -72,14 +74,16 @@ namespace rfs
     typedef ::Eigen::Matrix<double, nDim, nDim> Mat;
     typedef Mat Cov;
 
+
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
+
 
     /** \brief Default constructor */
     RandomVec() : 
       isValid_Sx_L_(false), 
       isValid_Sx_inv_(false),
-      isValid_Sx_det_(false),
-      genGaussian_(::boost::mt19937(lrand48()), ::boost::normal_distribution<double>())
+      isValid_Sx_det_(false)
     {
       dimCheck();
 
@@ -97,8 +101,7 @@ namespace rfs
     RandomVec(const Vec &x, const Mat &Sx, const TimeStamp &t = TimeStamp() ) :
       isValid_Sx_L_(false), 
       isValid_Sx_inv_(false),
-      isValid_Sx_det_(false),
-      genGaussian_(::boost::mt19937(lrand48()), ::boost::normal_distribution<double>())
+      isValid_Sx_det_(false)
     {
       dimCheck();
       set(x);
@@ -116,8 +119,7 @@ namespace rfs
     RandomVec(const Vec &x, double const * const &SxVec, const TimeStamp &t = TimeStamp() ) :
       isValid_Sx_L_(false), 
       isValid_Sx_inv_(false),
-      isValid_Sx_det_(false),
-      genGaussian_(::boost::mt19937(lrand48()), ::boost::normal_distribution<double>())
+      isValid_Sx_det_(false)
     {
       dimCheck();
       set(x);
@@ -138,8 +140,7 @@ namespace rfs
     RandomVec(const Vec &x, const TimeStamp t = TimeStamp()) :
       isValid_Sx_L_(false), 
       isValid_Sx_inv_(false),
-      isValid_Sx_det_(false),
-      genGaussian_(::boost::mt19937(lrand48()), ::boost::normal_distribution<double>())
+      isValid_Sx_det_(false)
     {
       dimCheck();
       set(x);
@@ -155,10 +156,9 @@ namespace rfs
     RandomVec(const TimeStamp &t) :
       isValid_Sx_L_(false), 
       isValid_Sx_inv_(false),
-      isValid_Sx_det_(false),
-      genGaussian_(::boost::mt19937(lrand48()), ::boost::normal_distribution<double>())
+      isValid_Sx_det_(false)
     {
-      genGaussian_.engine().seed((unsigned int)lrand48());
+
       dimCheck();
       x_.setZero();
       Sx_.setZero();
@@ -180,7 +180,7 @@ namespace rfs
     Sx_L_( other.Sx_L_ ),
     isValid_Sx_L_( other.isValid_Sx_L_), 
     t_(other.t_) ,
-    genGaussian_(::boost::mt19937(lrand48()), ::boost::normal_distribution<double>())
+    gaussian_pdf_factor_(other.gaussian_pdf_factor_)
     {}
 
     /**
@@ -188,7 +188,7 @@ namespace rfs
      * \param[in] rhs the right-hand-side from which data is copied
      */
     RandomVec& operator=( const RandomVec& rhs ){
-      genGaussian_.engine().seed((unsigned int)lrand48());
+
     
       x_ = rhs.x_;
       Sx_ = rhs.Sx_;
@@ -517,7 +517,10 @@ namespace rfs
     void sample( RandomVec<nDim> &s_sample ){
     
       Vec x_sample, indep_noise;
-
+      int threadnum=0;
+#ifdef _OPENMP
+      threadnum = omp_get_thread_num();
+#endif
       if(!isValid_Sx_L_){
 	::Eigen::LLT<Mat> cholesky( Sx_ );
 	Sx_L_ = cholesky.matrixL();
@@ -526,7 +529,7 @@ namespace rfs
 
       int n = Sx_L_.cols();
       for(int i = 0; i < n; i++){
-	indep_noise(i) = genGaussian_();
+	indep_noise(i) = gaussianGenerators_[threadnum]();
       }
       x_sample = x_ + Sx_L_ * indep_noise;
       s_sample.set( x_sample, Sx_, t_ );
@@ -540,6 +543,10 @@ namespace rfs
     void sample(){
     
       Vec x_sample, indep_noise;
+      int threadnum=0;
+#ifdef _OPENMP
+      threadnum = omp_get_thread_num();
+#endif
 
       if(!isValid_Sx_L_){
 	::Eigen::LLT<Mat> cholesky( Sx_ );
@@ -549,7 +556,7 @@ namespace rfs
     
       int n = Sx_L_.cols();
       for(int i = 0; i < n; i++){
-	indep_noise(i) = genGaussian_();
+	indep_noise(i) = gaussianGenerators_[threadnum]();
       }
       x_ += Sx_L_ * indep_noise;
 
@@ -581,9 +588,7 @@ namespace rfs
 
     Vec e_; /**< temporary */
 
-    /** normal distribution random number generator */ 
-     ::boost::variate_generator< ::boost::mt19937,
-				       ::boost::normal_distribution<double> > genGaussian_;
+
 
     /** \brief Dimensionality check during initialization */
     void dimCheck(){

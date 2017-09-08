@@ -149,6 +149,7 @@ ADD_LIBRARY(rfsslam
   src/PermutationLexicographic.cpp
   src/MatrixPermanent.cpp
   src/misc/memProfile.cpp
+  src/GaussianGenerators.cpp
   )
 TARGET_LINK_LIBRARIES(rfsslam ${Boost_LIBRARIES})
 
@@ -157,6 +158,10 @@ TARGET_LINK_LIBRARIES(rbphdslam2dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROF
 
 ADD_EXECUTABLE(rbphdslam2dCityTrees10000 src/rbphdslamCityTrees10000.cpp)
 TARGET_LINK_LIBRARIES(rbphdslam2dCityTrees10000 ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
+
+
+ADD_EXECUTABLE(rblmbslam2dCityTrees10000 src/rblmbslamCityTrees10000.cpp)
+TARGET_LINK_LIBRARIES(rblmbslam2dCityTrees10000 ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
 
 
 ADD_EXECUTABLE(rbphdslam6dSim src/rbphdslam6dSim.cpp)
@@ -176,7 +181,7 @@ TARGET_LINK_LIBRARIES(rfspsoslam1dSim ${Boost_LIBRARIES} rfsslam ${CERES_LIBRARI
 
 ADD_EXECUTABLE(rfsceresslam1dSim src/rfsceresslam1dSim.cpp)
 
-TARGET_LINK_LIBRARIES(rfsceresslam1dSim ${Boost_LIBRARIES} rfsslam ${CERES_LIBRARIES})# ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY} )
+TARGET_LINK_LIBRARIES(rfsceresslam1dSim ${Boost_LIBRARIES} rfsslam ${CERES_LIBRARIES} ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
 
 ADD_EXECUTABLE(fastslam2dSim src/fastslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(fastslam2dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY}) 

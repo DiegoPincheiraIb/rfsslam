@@ -285,6 +285,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
     this->propagate(u, dT, useModelNoise, useInputNoise);
 
     // propagate landmarks
+#pragma omp parallel for
     for (int i = 0; i < this->nParticles_; i++) {
       for (int m = 0; m < this->particleSet_[i]->getData()->tracks_.size(); m++) {
         for (int g = 0; g < this->particleSet_[i]->getData()->tracks_[m].getGaussianCount(); g++) {
@@ -438,6 +439,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
     const unsigned int nZ = this->measurements_.size();
 
     // make sure any setting changes to the Kalman Filter are set for all threads
+
     if (nThreads_ > 1) {
       for (int j = 1; j < nThreads_; j++) {
         kfs_[j] = kfs_[0];
@@ -497,6 +499,7 @@ template<class RobotProcessModel, class LmkProcessModel, class MeasurementModel,
     bool resampleOccured = false;
     if (nUpdatesSinceResample >= config.minUpdatesBeforeResample_) {
       resampleOccured = this->resample();
+
     }
 
     if (resampleOccured) {

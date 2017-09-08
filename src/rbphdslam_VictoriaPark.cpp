@@ -874,6 +874,7 @@ int main(int argc, char* argv[]){
     std::cout << "Simulation random seed manually set to: " << seed << std::endl;
   }
   srand48( seed );
+  initializeGaussianGenerators();
 
   //boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Run time: %ws\n");
 

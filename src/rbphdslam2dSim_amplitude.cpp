@@ -150,6 +150,7 @@ public:
 
     printf("Generating trajectory with random seed = %d\n", randSeed);
     srand48( randSeed);
+    initializeGaussianGenerators();
 
     TimeStamp t;
     int seg = 0;
