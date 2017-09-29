@@ -233,7 +233,7 @@ correct(const TPose &pose, const TMeasurement &measurement,
   ::Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, 1> m_updated; /**< mean - updated */
   ::Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime> P; /**< covariance */
   ::Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime> P_updated; /**< covariance - updated */
-  RandomVec< TMeasurement::Vec::RowsAtCompileTime > innov; /**< RandomVec form of innovation */
+
 
   
   if(!pMeasurementModel_->measure( pose , landmark_current , measurement_exp , &H))
@@ -254,11 +254,11 @@ correct(const TPose &pose, const TMeasurement &measurement,
   landmark_updated.set(m_updated, P_updated); 
   
   if(zLikelihood != NULL){
-    innov.set(z_exp, S);
+
     if(mahalanobisDist2 != NULL)
-      *zLikelihood = innov.evalGaussianLikelihood( measurement, mahalanobisDist2 );   
+      *zLikelihood = measurement_exp.evalGaussianLikelihood( measurement, mahalanobisDist2 );
     else
-      *zLikelihood = innov.evalGaussianLikelihood( measurement ); 
+      *zLikelihood = measurement_exp.evalGaussianLikelihood( measurement );
     if(*zLikelihood != *zLikelihood) // When likelihood is so small that it becomes NAN
       *zLikelihood = 0;  
   }
@@ -288,7 +288,7 @@ correct(const TPose &pose,
   ::Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, 1> m_updated; /**< mean - updated */
   ::Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime> P; /**< covariance */
   ::Eigen::Matrix <double, TLandmark::Vec::RowsAtCompileTime, TLandmark::Vec::RowsAtCompileTime> P_updated; /**< covariance - updated */
-  TMeasurement innov; /**< TMeasurement form of innovation */
+
 
  
   if(!pMeasurementModel_->measure( pose , landmark_current , measurement_exp , &H)){
@@ -323,13 +323,13 @@ correct(const TPose &pose,
 	m_updated = m + K * z_innov;
 	landmark_updated[i].set(m_updated, P_updated);
 	if(zLikelihood != NULL){
-	  innov.set(z_exp, S);
+
 	  if(mahalanobisDist2 != NULL){
-	    zl = innov.evalGaussianLikelihood( measurement[i], &md2 );
+	    zl = measurement_exp.evalGaussianLikelihood( measurement[i], &md2 );
 	    mahalanobisDist2->at(i) = md2;
 	  }
 	  else
-	    zl = innov.evalGaussianLikelihood( measurement[i] ); 
+	    zl = measurement_exp.evalGaussianLikelihood( measurement[i] );
 	  if(zl != zl) // When likelihood is so small that it becomes NAN
 	    zl = 0;
 	  zLikelihood->at(i) = zl;
