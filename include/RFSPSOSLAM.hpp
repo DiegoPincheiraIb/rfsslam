@@ -346,9 +346,18 @@ namespace rfs {
 
     for (int i = 0; i < config.nParticles_; i++) {
       for (int j =0; j < config.K; j++){
-        topology_[floor(drand48()*config.nParticles_)].push_back(i);
+        int rand_k =floor(drand48()*config.nParticles_);
+        if(topology_[rand_k].back() != i)
+          topology_[rand_k].push_back(i);
       }
     }
+//    std::cout << "topochanged\n";
+//    for( int i=0; i < topology_.size(); i++){
+//      for (int j=0; j< topology_[i].size() ; j++){
+//        std::cout << topology_[i][j] << "  ";
+//      }
+//      std::cout << std::endl;
+//    }
   }
   template<class RobotProcessModel, class MeasurementModel>
     void
@@ -364,13 +373,13 @@ namespace rfs {
         int best_i = i;
         double best_w = particles_[i].bestLikelihood;
         for (int n = 0; n < topology_[i].size() ;  n++){
-          if (particles_[topology_[i][n]].bestLikelihood > best_w){
+          if (particles_[topology_[i][n]].currentLikelihood > best_w){
             best_i = topology_[i][n];
-            best_w = particles_[topology_[i][n]].bestLikelihood;
+            best_w = particles_[topology_[i][n]].currentLikelihood;
           }
         }
 
-
+        /*
         for (int k = 0; k < particles_[i].inputs.size(); k++) {
           typename TInput::Vec v = particles_[i].inputs_velocity[k].get(), p = particles_[i].inputs[k].get();
 
@@ -378,14 +387,33 @@ namespace rfs {
           double rand_num_1 = drand48();
           double rand_num_2 = drand48();
           for (int dim = 0; dim < particles_[i].inputs_velocity[k].getNDim(); dim++) {
-            v[dim] += config.phi_p * (drand48()+10*rand_num_1)/11.0 * (particles_[i].bestInputs[k].get()[dim] - particles_[i].inputs[k].get()[dim]);
-            v[dim] += config.phi_g * (drand48()+10*rand_num_2)/11.0 * (particles_[best_i].bestInputs[k].get()[dim] - particles_[i].inputs[k].get()[dim]);
+            v[dim] += config.phi_p * (rand_num_1*10+drand48())/11.0 * (particles_[i].bestInputs[k].get()[dim] - particles_[i].inputs[k].get()[dim]);
+            if(best_i!=i)
+              v[dim] += config.phi_g * (rand_num_2*10+drand48())/11.0 * (particles_[best_i].bestInputs[k].get()[dim] - particles_[i].inputs[k].get()[dim]);
           }
           particles_[i].inputs_velocity[k].set(v);
 
           p += v;
           particles_[i].inputs[k].set(p);
           robotProcessModelPtr_->step(particles_[i].trajectory[k + 1], particles_[i].trajectory[k], particles_[i].inputs[k], time_[k + 1] - time_[k]);
+        }
+*/
+        for (int k = 0; k < particles_[i].trajectory.size(); k++) {
+          typename TPose::Vec v = particles_[i].trajectory_velocity[k].get(), p = particles_[i].trajectory[k].get();
+
+          v *= config.w;
+          double rand_num_1 = drand48();
+          double rand_num_2 = drand48();
+          for (int dim = 0; dim < particles_[i].trajectory_velocity[k].getNDim(); dim++) {
+            v[dim] += config.phi_p * (rand_num_1*100+drand48())/101.0 * (particles_[i].bestTrajectory[k].get()[dim] - particles_[i].trajectory[k].get()[dim]);
+            if(best_i!=i)
+              v[dim] += config.phi_g * (rand_num_2*100+drand48())/101.0 * (particles_[best_i].bestTrajectory[k].get()[dim] - particles_[i].trajectory[k].get()[dim]);
+          }
+          particles_[i].trajectory_velocity[k].set(v);
+
+          p += v;
+          particles_[i].trajectory[k].set(p);
+          //robotProcessModelPtr_->step(particles_[i].trajectory[k + 1], particles_[i].trajectory[k], particles_[i].inputs[k], time_[k + 1] - time_[k]);
         }
 
           updateLandmarkVelocity(i , best_i);
@@ -418,7 +446,7 @@ namespace rfs {
         ceresSlam.robotProcessModelPtr_ = new RobotProcessModel();
         *ceresSlam.robotProcessModelPtr_ = *this->robotProcessModelPtr_;
 
-        ceresSlam.config.MeasurementLikelihoodThreshold_ = config.MeasurementLikelihoodThreshold_;
+        ceresSlam.config.MeasurementLikelihoodThreshold_ = log(config.MeasurementLikelihoodThreshold_);
         ceresSlam.config.mapFromMeasurementProb_ = config.mapFromMeasurementProb_;
 
         ceresSlam.setInputs(inputs_);
@@ -443,6 +471,7 @@ namespace rfs {
 
         ceres::GradientProblem problem(&ceresSlam);
         ceres::GradientProblemSolver::Options options;
+        options.logging_type = ceres::LoggingType::SILENT;
         //options.line_search_direction_type = ceres::STEEPEST_DESCENT;
         //options.line_search_type = ceres::ARMIJO;
         //options.minimizer_progress_to_stdout = true;
@@ -454,7 +483,7 @@ namespace rfs {
         for (int k = 1; k < particles_[i].trajectory.size(); k++) {
           for (int d = 0; d < PoseDim; d++) {
             particles_[i].trajectory[k][d] = parameters[(k - 1) * PoseDim + d] ;
-            particles_[i].inputs[k-1][d] =particles_[i].trajectory[k][d]-particles_[i].trajectory[k-1][d];
+            particles_[i].inputs[k-1][d] = particles_[i].trajectory[k][d]-particles_[i].trajectory[k-1][d];
           }
 
         }
@@ -511,10 +540,11 @@ namespace rfs {
       std::cout << "nM1:  " << nM1 <<"  nM2: "<< nM2 << "  nM3:  " << nM3<<"  assoc: " ;*/
       for (int i = 0; i < nM1; i++) {
         typename TLandmark::Vec v = particles_[particleIdx].landmarks_velocity[i].get();
+
         v *= config.w;
         int j_p = SolnArr_particle[i];
 
-        if (j_p >= nM2) {
+        if (j_p >= nM2 || config.ospa_c_ <=  RandomVecMathTools<TLandmark>::euclidianDist(particles_[particleIdx].bestLandmarks[j_p] ,particles_[particleIdx].landmarks[i] ) ){
           if (drand48() < config.card_phi_p)
             todelete[i] = true;
         }
@@ -528,7 +558,7 @@ namespace rfs {
         }
         int j_g = SolnArr_global[i];
         //std::cout << "  " << j_g;
-        if (j_g >= nM3) {
+        if (j_g >= nM3 || config.ospa_c_ <=  RandomVecMathTools<TLandmark>::euclidianDist(particles_[bestParticleIdx].bestLandmarks[j_g] , particles_[particleIdx].landmarks[i] ) ) {
           if (drand48() < config.card_phi_g)
             todelete[i] = true;
         }
@@ -538,7 +568,9 @@ namespace rfs {
             v[dim] += config.phi_g * drand48() * (particles_[bestParticleIdx].bestLandmarks[j_g].get()[dim] - particles_[particleIdx].landmarks[i].get()[dim]);
           }
         }
-
+        if (v.norm()>30){
+          std::cout << "velocity too high\n";
+        }
         particles_[particleIdx].landmarks_velocity[i].set(v);
       }
       //std::cout << "\n";
@@ -568,6 +600,9 @@ namespace rfs {
             particles_[particleIdx].landmarks_velocity.push_back(particles_[bestParticleIdx].bestLandmarks_velocity[i]);
           }
         }
+      }
+      if (particles_[particleIdx].landmarks.size() != particles_[particleIdx].landmarks_velocity.size()){
+        std::cerr << "number of landmark velocities does not match number of landmarks\n";
       }
 /*
       std::cout << "new    map: " ;
@@ -609,6 +644,7 @@ namespace rfs {
       for (int i = 0; i < config.nParticles_; i++) {
 
         particles_[i].trajectory.resize(inputs_.size() + 1);
+        particles_[i].trajectory_velocity.resize(inputs_.size() + 1);
         particles_[i].inputs.resize(inputs_.size());
         particles_[i].inputs_velocity.resize(inputs_.size());
         for (int k = 0; k < inputs_.size(); k++) {
@@ -616,6 +652,7 @@ namespace rfs {
           robotProcessModelPtr_->sample(particles_[i].trajectory[k + 1], particles_[i].trajectory[k], inputs_[k], dT, false, true, &particles_[i].inputs[k]);
         }
         particles_[i].bestTrajectory = particles_[i].trajectory;
+        particles_[i].bestTrajectory_velocity = particles_[i].trajectory_velocity;
         particles_[i].bestInputs = particles_[i].inputs;
 
         particles_[i].bestInputs_velocity.resize(inputs_.size());
@@ -787,8 +824,8 @@ namespace rfs {
 
         bool isZeroPartition = !likelihoodMatrix.getPartitionSize(p, nRows, nCols);
         bool useMurtyAlgorithm = true;
-        if (nRows + nCols <= 8 || isZeroPartition)
-          useMurtyAlgorithm = false;
+        //if (nRows + nCols <= 8 || isZeroPartition)
+        //  useMurtyAlgorithm = false;
 
         isZeroPartition = !likelihoodMatrix.getPartition(p, Cp, nRows, nCols, rowIdx, colIdx, useMurtyAlgorithm);
 
@@ -859,6 +896,7 @@ namespace rfs {
               if (rank == -1 || permutation_log_likelihood < BIG_NEG_NUM)
                 break;
               partition_likelihood += exp(permutation_log_likelihood);
+
             }
 
           }

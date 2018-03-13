@@ -53,9 +53,9 @@ saveMovie = False;
 saveFig = True
 timestepStart = 0
 
-nLandmarksDrawMax = 2000;
-nMeasurementsDrawMax =2000;
-nTrDrawMax = 2000
+nLandmarksDrawMax = 5000;
+nMeasurementsDrawMax =5000;
+nTrDrawMax = 5000
 if len(sys.argv) < 2:
     print "Usage: animate1dSim DATA_DIR\n";
     sys.exit(0);
@@ -135,7 +135,8 @@ drPose_x = drPose[:,1];
 
 
 print('Reading ' + gtMapFile);
-gtMap = np.genfromtxt(gtMapFile);
+gtMap = np.atleast_2d( np.genfromtxt(gtMapFile)) ;
+
 gtMap_x = gtMap[:,0];
 
 
@@ -175,7 +176,7 @@ for i in range(0, nLandmarksDrawMax) :
 
 xLim = axTr.get_xlim();
 yLim = axTr.get_ylim();
-txt = axTr.text(xLim[1]*0.5, yLim[1]*0.9, " ",zorder=20);
+txt = axTr.text(xLim[0]+(xLim[1]-xLim[0])*0.1, yLim[0]+(yLim[1]-yLim[0])*0.9, " ",zorder=20);
 
 def animateInit():
 
@@ -227,7 +228,8 @@ def animate(i):
         poseLine = estPoseFileHandle.readline()
         p =np.fromstring(poseLine,dtype=float,sep=' ');
         nparticle = nparticle + 1
-
+    axMap.set_ylim([-2 , nparticle])
+    axMap.set_xlim([-10,10])
     #print('traj ' + str(nparticle) + ' i ' + str(i) + '  p   '+ str(p))
     bestPoseHandle.set_data(trajectories[bestparticle].get_xdata() , trajectories[bestparticle].get_ydata())
     nparticle=0;
@@ -256,8 +258,8 @@ def animate(i):
 
 
     return drawnObjects;
-
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timestepStart, 10000 ,1), interval=1,
+print(len(drPose_t))
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timestepStart, 10000 , 10), interval=1,
                                init_func=animateInit, blit=True,  repeat=False);
 if saveMovie:
     FFMpegWriter = matplotlib.animation.writers['ffmpeg']
@@ -267,17 +269,17 @@ else:
 
 if saveFig:
     # Necessary to generate Type 1 fonts for pdf figures as required by IEEE for paper submissions
-    #matplotlib.rcParams['pdf.fonttype'] = 42
-    #matplotlib.rcParams['ps.fonttype'] = 42
+    matplotlib.rcParams['pdf.fonttype'] = 42
+    matplotlib.rcParams['ps.fonttype'] = 42
     matplotlib.rcParams['ps.useafm'] = True
     matplotlib.rcParams['pdf.use14corefonts'] = True
-    #matplotlib.rcParams['text.usetex'] = True
+    matplotlib.rcParams['text.usetex'] = True
     #plt.rc('text', usetex=True)
 
 
     plt.setp(gtPoseHandle, linewidth=2.0)
     txt.set_text(" ");
-    plt.legend([gtPoseHandle,  gtMapHandle, landmarks[0]], ["Ground-truth trajectory", "Ground-truth landmark", "Estimated landmark" ], loc=4);
+    plt.legend([gtPoseHandle,  gtMapHandle, landmarks[0]], ["Ground-truth trajectory", "Ground-truth landmark", "Estimated landmark" ], loc='best');
     plt.setp(plt.gca().get_legend().get_texts(), fontsize='18')
     scale = 10;
     ticks = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*scale))

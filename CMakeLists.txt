@@ -22,8 +22,8 @@ message(STATUS "RFSSLAM Version ${RFSSLAM_VERSION}")
 # Compiler settings
 # Note: to change compiler, use for example...
 # cmake -D CMAKE_C_COMPILER=gcc CMAKE_CXX_COMPILER=c++ .
-SET(CMAKE_C_COMPILER "gcc")
-SET(CMAKE_CXX_COMPILER "g++")
+#SET(CMAKE_C_COMPILER "gcc")
+#SET(CMAKE_CXX_COMPILER "g++")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++11 ")
 #MESSAGE("CMAKE_CXX_COMPILTER_ID = ${CMAKE_CXX_COMPILER_ID}")
 IF(APPLE)
@@ -42,7 +42,11 @@ ELSE()
   SET(USE_OPENMP ON CACHE BOOL "Use OpenMP to compile multithreaded versions of SLAM algorithms.")
 ENDIF()
 IF(USE_OPENMP)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp ")
+  IF("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp=libomp ")
+  ELSE()
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp ")
+  ENDIF()
 ENDIF()
 
 #Threads
@@ -179,9 +183,14 @@ TARGET_LINK_LIBRARIES(rblmbslam2dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROF
 ADD_EXECUTABLE(rfspsoslam1dSim src/rfspsoslam1dSim.cpp)
 TARGET_LINK_LIBRARIES(rfspsoslam1dSim ${Boost_LIBRARIES} rfsslam ${CERES_LIBRARIES} ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
 
-ADD_EXECUTABLE(rfsceresslam1dSim src/rfsceresslam1dSim.cpp)
+ADD_EXECUTABLE(rfspsoslam2dSim src/rfspsoslam2dSim.cpp)
+TARGET_LINK_LIBRARIES(rfspsoslam2dSim ${Boost_LIBRARIES} rfsslam ${CERES_LIBRARIES} ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
 
+ADD_EXECUTABLE(rfsceresslam1dSim src/rfsceresslam1dSim.cpp)
 TARGET_LINK_LIBRARIES(rfsceresslam1dSim ${Boost_LIBRARIES} rfsslam ${CERES_LIBRARIES} ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
+
+ADD_EXECUTABLE(rfsceresslam2dSim src/rfsceresslam2dSim.cpp)
+TARGET_LINK_LIBRARIES(rfsceresslam2dSim ${Boost_LIBRARIES} rfsslam ${CERES_LIBRARIES} ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY})
 
 ADD_EXECUTABLE(fastslam2dSim src/fastslam2dSim.cpp)
 TARGET_LINK_LIBRARIES(fastslam2dSim ${Boost_LIBRARIES} rfsslam ${Perftools_PROFILER_LIBRARY} ${Perftools_TCMALLOC_LIBRARY}) 

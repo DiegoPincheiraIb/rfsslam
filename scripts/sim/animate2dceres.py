@@ -126,22 +126,28 @@ print('Reading ' + gtPoseFile);
 gtPose = np.genfromtxt(gtPoseFile);
 gtPose_t = gtPose[:,0];
 gtPose_x = gtPose[:,1];
+gtPose_y = gtPose[:,2];
+gtPose_th = gtPose[:,3];
 print('Number of poses: ' + str(len(gtPose)));
 print('Reading ' + drPoseFile);
 drPose = np.genfromtxt(drPoseFile);
 drPose_t = drPose[:,0];
 drPose_x = drPose[:,1];
+drPose_y = drPose[:,2];
+drPose_th = drPose[:,3];
 
 
 print('Reading ' + gtMapFile);
 gtMap = np.atleast_2d(np.genfromtxt(gtMapFile) );
 gtMap_x = gtMap[:,0];
+gtMap_y = gtMap[:,1];
 
 print('Reading ' + measurementFile);
 measurements = np.genfromtxt(measurementFile);
 measurements_i = measurements[:,0].astype(int);
 print(measurements_i);
-measurements_x = measurements[:,1];
+measurements_r = measurements[:,1];
+measurements_b = measurements[:,2];
 
 
 # Plotting
@@ -151,23 +157,24 @@ fig = plt.figure( figsize=(12,10), facecolor='w')
 axTr = plt.subplot2grid((2, 1), (0, 0))
 axMap = plt.subplot2grid((2, 1), (1, 0))
 
-gtMapHandle, = axMap.plot(gtMap_x, -1*np.ones(len(gtMap_x)), 'r*', markersize=15);
+gtMapHandle, = axMap.plot(gtMap_x, gtMap_y, 'r*', markersize=15);
 ax = plt.gca();
 
-axMap.set_ylim([-2 ,2])
 
-gtPoseHandle, = axTr.plot(gtPose_t, gtPose_x, 'r-', zorder=12);
 
-drPoseHandle, = axTr.plot(drPose_t, drPose_x, 'r--', zorder=10);
+gtPoseHandle, = axTr.plot(gtPose_x, gtPose_y, 'r-', zorder=12);
+
+drPoseHandle, = axTr.plot(drPose_x, drPose_y, 'r--', zorder=10);
 
 bestPoseHandle, = axTr.plot([], [], 'g-',linewidth=3,zorder = 9);
 
 
 trajectories = [];
+angles = [None] * nTrDrawMax
 for i in range(0, nTrDrawMax) :
     trajectories_line, = axTr.plot([], [], 'b-');
     trajectories.append( trajectories_line );
-
+    
 measurementHandle, = axMap.plot([], [], 'g*',zorder = 9);
 bestLandmarks, = axMap.plot([],[], linestyle='', marker='o', color='r', zorder=9)
 landmarks = [];
@@ -228,7 +235,8 @@ def animate(i):
           bestparticle = nparticle
           bestweight = p[1]
 
-        trajectories[nparticle].set_data(gtPose_t, p[2:]);
+        trajectories[nparticle].set_data(p[2::3], p[3::3]);
+        angles[nparticle] = p[4::3]
         drawnObjects.append(trajectories[nparticle]);
 
         poseLine = estPoseFileHandle.readline()
@@ -238,13 +246,16 @@ def animate(i):
     #print('traj ' + str(nparticle) + ' i ' + str(i) + '  p   '+ str(p))
     bestPoseHandle.set_data(trajectories[bestparticle].get_xdata() , trajectories[bestparticle].get_ydata())
     nparticle=0;
-    measurementHandle.set_data(measurements_x + trajectories[bestparticle].get_ydata()[measurements_i] , np.ones(len(measurements_x)))
+    measurement_x = np.multiply(measurements_r , np.cos(measurements_b + angles[bestparticle][measurements_i])) + trajectories[bestparticle].get_xdata()[measurements_i];
+    measurement_y = np.multiply(measurements_r , np.sin(measurements_b + angles[bestparticle][measurements_i])) + trajectories[bestparticle].get_ydata()[measurements_i];
+
+    measurementHandle.set_data(measurement_x , measurement_y)
     while len(m)>0 and m[0] < i:
       mapline = estMapFileHandle.readline()
       m = np.fromstring(mapline,dtype=float,sep=' ');
     while len(m)>0 and m[0] == i :
 
-      landmarks[nparticle].set_data(m[1:], nparticle*np.ones(len(m)-1))
+      landmarks[nparticle].set_data(m[1::2], m[2::2])
 
 
       drawnObjects.append(landmarks[nparticle]);

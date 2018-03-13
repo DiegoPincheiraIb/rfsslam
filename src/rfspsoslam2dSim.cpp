@@ -34,9 +34,9 @@
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
-#include "ProcessModel_Odometry1D.hpp"
+#include "ProcessModel_Odometry2D.hpp"
 #include "RFSPSOSLAM.hpp"
-#include "MeasurementModel_Rng1D.hpp"
+#include "MeasurementModel_RngBrg.hpp"
 #include <stdio.h>
 #include <string>
 #include <sys/ioctl.h>
@@ -51,22 +51,22 @@
 using namespace rfs;
 
 /**
- * \class Simulator_RFSPSOSLAM_1d
- * \brief A 1d SLAM Simulator using PSO
+ * \class Simulator_RFSPSOSLAM_2d
+ * \brief A 2d SLAM Simulator using PSO
  * \author Felipe Inostroza
  */
-class Simulator_RFSPSOSLAM_1d
+class Simulator_RFSPSOSLAM_2d
 {
 
 public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-  Simulator_RFSPSOSLAM_1d() {
-    psoslam_  = new  RFSPSOSLAM<MotionModel_Odometry1d, MeasurementModel_Rng1D >();
+  Simulator_RFSPSOSLAM_2d() {
+    psoslam_  = new  RFSPSOSLAM<MotionModel_Odometry2d, MeasurementModel_RngBrg >();
   }
 
-  ~Simulator_RFSPSOSLAM_1d() {
+  ~Simulator_RFSPSOSLAM_2d() {
 
     if (psoslam_ != NULL) {
       delete psoslam_;
@@ -93,8 +93,12 @@ public:
 
     nSegments_ = pt.get<int>("config.trajectory.nSegments");
     max_dx_ = pt.get<double>("config.trajectory.max_dx_per_sec");
+    max_dy_ = pt.get<double>("config.trajectory.max_dy_per_sec");
+    max_dz_ = pt.get<double>("config.trajectory.max_dz_per_sec");
     min_dx_ = pt.get<double>("config.trajectory.min_dx_per_sec");
     vardx_ = pt.get<double>("config.trajectory.vardx");
+    vardy_ = pt.get<double>("config.trajectory.vardy");
+    vardz_ = pt.get<double>("config.trajectory.vardz");
 
     nLandmarks_ = pt.get<int>("config.landmarks.nLandmarks");
 
@@ -104,6 +108,7 @@ public:
     Pd_ = pt.get<double>("config.measurements.probDetection");
     c_ = pt.get<double>("config.measurements.clutterIntensity");
     varzr_ = pt.get<double>("config.measurements.varzr");
+    varzb_ = pt.get<double>("config.measurements.varzb");
 
     nParticles_ = pt.get("config.optimizer.nParticles", 200);
     maxiter_ = pt.get("config.optimizer.iterations", 200);
@@ -132,292 +137,301 @@ public:
 
     return true;
   }
+  /** Generate a trajectory in 2d space
+       *  \param[in] randSeed random seed for generating trajectory
+       */
+      void generateTrajectory(int randSeed = 0){
 
-  /** Generate a trajectory in 2d space 
-   *  \param[in] randSeed random seed for generating trajectory
-   */
-  void generateTrajectory(int randSeed = 0){
+        srand48( randSeed);
+        initializeGaussianGenerators();
 
-    srand48( randSeed);
-    initializeGaussianGenerators();
+        TimeStamp t;
+        int seg = 0;
+        MotionModel_Odometry2d::TState::Mat Q;
+        Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
+        MotionModel_Odometry2d motionModel(Q);
+        MotionModel_Odometry2d::TInput input_k(t);
+        MotionModel_Odometry2d::TState pose_k(t);
+        MotionModel_Odometry2d::TState pose_km(t);
+        groundtruth_displacement_.reserve( kMax_ );
+        groundtruth_pose_.reserve( kMax_ );
+        groundtruth_displacement_.push_back(input_k);
+        groundtruth_pose_.push_back(pose_k);
 
-    TimeStamp t;
-    int seg = 0;
-    MotionModel_Odometry1d::TState::Mat Q;
-    Q << vardx_;
-    MotionModel_Odometry1d motionModel(Q);
-    MotionModel_Odometry1d::TInput input_k(t);
-    MotionModel_Odometry1d::TState pose_k(t);
-    MotionModel_Odometry1d::TState pose_km(t);
-    groundtruth_displacement_.reserve( kMax_ );
-    groundtruth_pose_.reserve( kMax_ );
-    groundtruth_displacement_.push_back(input_k);
-    groundtruth_pose_.push_back(pose_k);
+        for( int k = 1; k < kMax_; k++ ){
 
-    for( int k = 1; k < kMax_; k++ ){
+          t += dTimeStamp_;
 
-      t += dTimeStamp_;
-
-      if( k <= 0 ){
-	double dx = 0;
-	MotionModel_Odometry1d::TInput::Vec d;
-	MotionModel_Odometry1d::TInput::Vec dCovDiag;
-	d << dx;
-	dCovDiag << 0;
-	input_k = MotionModel_Odometry1d::TInput(d, dCovDiag.asDiagonal(), k);
-      }else if( k >= kMax_ / nSegments_ * seg ){
-	seg++;
-	double dx = (drand48() * (max_dx_ - min_dx_) +  min_dx_ )* dT_;
-
-	MotionModel_Odometry1d::TInput::Vec d;
-	MotionModel_Odometry1d::TInput::Vec dCovDiag;
-	d << dx;
-	dCovDiag << Q(0,0);
-	input_k = MotionModel_Odometry1d::TInput(d, dCovDiag.asDiagonal(), k);
-      }
-
-      groundtruth_displacement_.push_back(input_k);
-      groundtruth_displacement_.back().setTime(t);
-
-      MotionModel_Odometry1d::TState x_k;
-      motionModel.step(x_k, groundtruth_pose_[k - 1], input_k, dTimeStamp_);
-      groundtruth_pose_.push_back(x_k);
-      groundtruth_pose_.back().setTime(t);
-
-    }
-
-  }
-
-  /** Generate odometry measurements */
-  void generateOdometry() {
-
-    odometry_.reserve(kMax_);
-    MotionModel_Odometry1d::TInput zero;
-    MotionModel_Odometry1d::TInput::Vec u0;
-    u0.setZero();
-    zero.set(u0, 0);
-
-    MotionModel_Odometry1d::TState::Mat Q;
-    Q << vardx_;
-    MotionModel_Odometry1d motionModel(Q);
-    deadReckoning_pose_.reserve(kMax_);
-    deadReckoning_pose_.push_back(groundtruth_pose_[0]);
-
-    TimeStamp t;
-
-    for( int k = 1; k < kMax_; k++){
-      
-      t += dTimeStamp_;
-      double dt = dTimeStamp_.getTimeAsDouble();
-
-      MotionModel_Odometry1d::TInput in = groundtruth_displacement_[k];
-      MotionModel_Odometry1d::TState::Mat Qk = Q * dt * dt;
-      in.setCov(Qk);
-      MotionModel_Odometry1d::TInput out;
-      in.sample(out);
-      
-      odometry_.push_back( out );
-
-      MotionModel_Odometry1d::TState p;
-      motionModel.step(p, deadReckoning_pose_[k - 1], odometry_[k-1], dTimeStamp_);
-      p.setTime(t);
-
-      deadReckoning_pose_.push_back( p );
-    }
-
-  }
-
-  /** Generate landmarks */
-  void generateLandmarks() {
-
-    MeasurementModel_Rng1D measurementModel(varzr_);
-    MeasurementModel_Rng1D::TPose pose;
-
-    groundtruth_landmark_.reserve(nLandmarks_);
-
-    int nLandmarksCreated = 0;
-    for (int k = 0; k < kMax_; k++) {
-
-      if (k >= (double)kMax_ / nLandmarks_ * nLandmarksCreated) {
-
-        MeasurementModel_Rng1D::TPose pose;
-        MeasurementModel_Rng1D::TMeasurement measurementToCreateLandmark;
-        MeasurementModel_Rng1D::TMeasurement::Vec z;
-        double r = drand48() * rangeLimitMax_;
-        z << r;
-        measurementToCreateLandmark.set(z);
-        MeasurementModel_Rng1D::TLandmark lm;
-
-        measurementModel.inverseMeasure(groundtruth_pose_[k], measurementToCreateLandmark, lm);
-
-        groundtruth_landmark_.push_back(lm);
-
-        nLandmarksCreated++;
-
-      }
-
-    }
-
-  }
-
-  /** Generate landmark measurements */
-  void generateMeasurements() {
-
-    MeasurementModel_Rng1D measurementModel(varzr_);
-    MeasurementModel_Rng1D::TMeasurement::Mat R;
-    measurementModel.getNoise(R);
-    measurementModel.config.rangeLimMax_ = rangeLimitMax_;
-    measurementModel.config.rangeLimMin_ = rangeLimitMin_;
-    measurementModel.config.probabilityOfDetection_ = Pd_;
-    measurementModel.config.uniformClutterIntensity_ = c_;
-    double meanClutter = measurementModel.clutterIntensityIntegral();
-
-    double expNegMeanClutter = exp(-meanClutter);
-    double poissonPmf[100];
-    double poissonCmf[100];
-    double mean_pow_i = 1;
-    double i_factorial = 1;
-    poissonPmf[0] = expNegMeanClutter;
-    poissonCmf[0] = poissonPmf[0];
-    for (int i = 1; i < 100; i++) {
-      mean_pow_i *= meanClutter;
-      i_factorial *= i;
-      poissonPmf[i] = mean_pow_i / i_factorial * expNegMeanClutter;
-      poissonCmf[i] = poissonCmf[i - 1] + poissonPmf[i];
-    }
-
-    lmkFirstObsTime_.resize(groundtruth_landmark_.size());
-    for (int m = 0; m < lmkFirstObsTime_.size(); m++) {
-      lmkFirstObsTime_[m] = -1;
-    }
-
-    TimeStamp t;
-
-    for (int k = 0; k < kMax_; k++) {
-
-
-
-      groundtruth_pose_[k];
-
-      // Real detections
-      for (int m = 0; m < groundtruth_landmark_.size(); m++) {
-
-        bool success;
-        MeasurementModel_Rng1D::TMeasurement z_m_k;
-        success = measurementModel.sample(groundtruth_pose_[k], groundtruth_landmark_[m], z_m_k);
-        if (success) {
-
-          if (fabs(z_m_k.get(0)) <= rangeLimitMax_ && fabs(z_m_k.get(0)) >= rangeLimitMin_ && drand48() <= Pd_) {
-            z_m_k.setTime(t);
-            // z_m_k.setCov(R);
-            measurements_.push_back(z_m_k);
-            groundtruthDataAssociation_.push_back(m);
-            if (lmkFirstObsTime_[m] == -1) {
-              lmkFirstObsTime_[m] = t.getTimeAsDouble();
+          if( k <= 0 ){
+            double dx = 0;
+            double dy = 0;
+            double dz = 0;
+            MotionModel_Odometry2d::TInput::Vec d;
+            MotionModel_Odometry2d::TInput::Vec dCovDiag;
+            d << dx, dy, dz;
+            dCovDiag << 0, 0, 0;
+            input_k = MotionModel_Odometry2d::TInput(d, dCovDiag.asDiagonal(), k);
+          }else if( k >= kMax_ / nSegments_ * seg ){
+            seg++;
+            double dx = drand48() * max_dx_ * dT_;
+            while( dx < min_dx_ * dT_ ){
+              dx = drand48() * max_dx_ * dT_;
             }
+            double dy = (drand48() * max_dy_ * 2 - max_dy_) * dT_;
+            double dz = (drand48() * max_dz_ * 2 - max_dz_) * dT_;
+            MotionModel_Odometry2d::TInput::Vec d;
+            MotionModel_Odometry2d::TInput::Vec dCovDiag;
+            d << dx, dy, dz;
+            dCovDiag << Q(0,0), Q(1,1), Q(2,2);
+            input_k = MotionModel_Odometry2d::TInput(d, dCovDiag.asDiagonal(), k);
           }
 
+          groundtruth_displacement_.push_back(input_k);
+          groundtruth_displacement_.back().setTime(t);
+
+          MotionModel_Odometry2d::TState x_k;
+          motionModel.step(x_k, groundtruth_pose_[k - 1], input_k, dTimeStamp_);
+          groundtruth_pose_.push_back(x_k);
+          groundtruth_pose_.back().setTime(t);
 
         }
 
       }
 
-      // False alarms
-      double randomNum = drand48();
-      int nClutterToGen = 0;
-      while (randomNum > poissonCmf[nClutterToGen]) {
-        nClutterToGen++;
+      /** Generate odometry measurements */
+      void generateOdometry() {
+
+        odometry_.reserve(kMax_);
+        MotionModel_Odometry2d::TInput zero;
+        MotionModel_Odometry2d::TInput::Vec u0;
+        u0.setZero();
+        zero.set(u0, 0);
+        //odometry_.push_back(zero);
+
+        MotionModel_Odometry2d::TState::Mat Q;
+        Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
+        MotionModel_Odometry2d motionModel(Q);
+        deadReckoning_pose_.reserve(kMax_);
+        deadReckoning_pose_.push_back(groundtruth_pose_[0]);
+
+        TimeStamp t;
+
+        for( int k = 1; k < kMax_; k++){
+
+          t += dTimeStamp_;
+          double dt = dTimeStamp_.getTimeAsDouble();
+
+          MotionModel_Odometry2d::TInput in = groundtruth_displacement_[k];
+          MotionModel_Odometry2d::TState::Mat Qk = Q * dt * dt;
+          in.setCov(Qk);
+          MotionModel_Odometry2d::TInput out;
+          in.sample(out);
+
+          odometry_.push_back( out );
+
+          MotionModel_Odometry2d::TState p;
+          motionModel.step(p, deadReckoning_pose_[k - 1], odometry_[k], dTimeStamp_);
+          p.setTime(t);
+          deadReckoning_pose_.push_back( p );
+        }
+
       }
-      for (int i = 0; i < nClutterToGen; i++) {
 
-        double r = drand48() * rangeLimitMax_;
-        while (r < rangeLimitMin_)
-          r = drand48() * rangeLimitMax_;
-        MeasurementModel_Rng1D::TMeasurement z_clutter;
-        MeasurementModel_Rng1D::TMeasurement::Vec z;
-        z << r;
-        z_clutter.set(z, t);
-        measurements_.push_back(z_clutter);
-        groundtruthDataAssociation_.push_back(-1);
+      /** Generate landmarks */
+      void generateLandmarks() {
+
+        MeasurementModel_RngBrg measurementModel(varzr_, varzb_);
+        MeasurementModel_RngBrg::TPose pose;
+
+        groundtruth_landmark_.reserve(nLandmarks_);
+
+        int nLandmarksCreated = 0;
+        for (int k = 1; k < kMax_; k++) {
+
+          if (k >= kMax_ / nLandmarks_ * nLandmarksCreated) {
+
+            MeasurementModel_RngBrg::TPose pose;
+            MeasurementModel_RngBrg::TMeasurement measurementToCreateLandmark;
+            MeasurementModel_RngBrg::TMeasurement::Vec z;
+            double r = drand48() * rangeLimitMax_;
+            double b = drand48() * 2 * PI;
+            z << r, b;
+            measurementToCreateLandmark.set(z);
+            MeasurementModel_RngBrg::TLandmark lm;
+
+            measurementModel.inverseMeasure(groundtruth_pose_[k], measurementToCreateLandmark, lm);
+
+            groundtruth_landmark_.push_back(lm);
+
+            nLandmarksCreated++;
+
+          }
+
+        }
+
       }
-      t += dTimeStamp_;
-    }
 
-  }
+      /** Generate landmark measurements */
+      void generateMeasurements() {
 
-  /** Data Logging */
-  void exportSimData() {
+        MeasurementModel_RngBrg measurementModel(varzr_, varzb_);
+        MeasurementModel_RngBrg::TMeasurement::Mat R;
+        measurementModel.getNoise(R);
+        measurementModel.config.rangeLimMax_ = rangeLimitMax_;
+        measurementModel.config.rangeLimMin_ = rangeLimitMin_;
+        measurementModel.config.probabilityOfDetection_ = Pd_;
+        measurementModel.config.uniformClutterIntensity_ = c_;
+        double meanClutter = measurementModel.clutterIntensityIntegral();
 
-    if (!logToFile_)
-      return;
+        double expNegMeanClutter = exp(-meanClutter);
+        double poissonPmf[100];
+        double poissonCmf[100];
+        double mean_pow_i = 1;
+        double i_factorial = 1;
+        poissonPmf[0] = expNegMeanClutter;
+        poissonCmf[0] = poissonPmf[0];
+        for (int i = 1; i < 100; i++) {
+          mean_pow_i *= meanClutter;
+          i_factorial *= i;
+          poissonPmf[i] = mean_pow_i / i_factorial * expNegMeanClutter;
+          poissonCmf[i] = poissonCmf[i - 1] + poissonPmf[i];
+        }
 
-    boost::filesystem::path dir(logDirPrefix_);
-    boost::filesystem::create_directories(dir);
+        lmkFirstObsTime_.resize(groundtruth_landmark_.size());
+        for (int m = 0; m < lmkFirstObsTime_.size(); m++) {
+          lmkFirstObsTime_[m] = -1;
+        }
 
-    boost::filesystem::path cfgFilePathSrc(cfgFileName_);
-    std::string cfgFileDst(logDirPrefix_);
-    cfgFileDst += "simSettings.cfg";
-    boost::filesystem::path cfgFilePathDst(cfgFileDst.data());
-    boost::filesystem::copy_file(cfgFilePathSrc, cfgFilePathDst, boost::filesystem::copy_option::overwrite_if_exists);
+        TimeStamp t;
 
-    TimeStamp t;
+        for (int k = 1; k < kMax_; k++) {
 
-    FILE* pGTPoseFile;
-    std::string filenameGTPose(logDirPrefix_);
-    filenameGTPose += "gtPose.dat";
-    pGTPoseFile = fopen(filenameGTPose.data(), "w");
-    MotionModel_Odometry1d::TState::Vec x;
-    for (int i = 0; i < groundtruth_pose_.size(); i++) {
-      groundtruth_pose_[i].get(x, t);
-      fprintf(pGTPoseFile, "%f   %f\n", t.getTimeAsDouble(), x(0));
-    }
-    fclose(pGTPoseFile);
+          t += dTimeStamp_;
 
-    FILE* pGTLandmarkFile;
-    std::string filenameGTLandmark(logDirPrefix_);
-    filenameGTLandmark += "gtLandmark.dat";
-    pGTLandmarkFile = fopen(filenameGTLandmark.data(), "w");
-    MeasurementModel_Rng1D::TLandmark::Vec m;
-    for (int i = 0; i < groundtruth_landmark_.size(); i++) {
-      groundtruth_landmark_[i].get(m);
-      fprintf(pGTLandmarkFile, "%f   %f   %f\n", m(0),  lmkFirstObsTime_[i]);
-    }
-    fclose(pGTLandmarkFile);
+          groundtruth_pose_[k];
 
-    FILE* pOdomFile;
-    std::string filenameOdom(logDirPrefix_);
-    filenameOdom += "odometry.dat";
-    pOdomFile = fopen(filenameOdom.data(), "w");
-    MotionModel_Odometry1d::TInput::Vec u;
-    for (int i = 0; i < odometry_.size(); i++) {
-      odometry_[i].get(u, t);
-      fprintf(pOdomFile, "%f   %f\n", t.getTimeAsDouble(), u(0));
-    }
-    fclose(pOdomFile);
+          // Real detections
+          for (int m = 0; m < groundtruth_landmark_.size(); m++) {
 
-    FILE* pMeasurementFile;
-    std::string filenameMeasurement(logDirPrefix_);
-    filenameMeasurement += "measurement.dat";
-    pMeasurementFile = fopen(filenameMeasurement.data(), "w");
-    MeasurementModel_Rng1D::TMeasurement::Vec z;
-    for (int i = 0; i < measurements_.size(); i++) {
-      measurements_[i].get(z, t);
-      fprintf(pMeasurementFile, "%f   %f\n", t.getTimeAsDouble(), z(0));
-    }
-    fclose(pMeasurementFile);
+            bool success;
+            MeasurementModel_RngBrg::TMeasurement z_m_k;
+            success = measurementModel.sample(groundtruth_pose_[k], groundtruth_landmark_[m], z_m_k);
+            if (success) {
 
-    FILE* pDeadReckoningFile;
-    std::string filenameDeadReckoning(logDirPrefix_);
-    filenameDeadReckoning += "deadReckoning.dat";
-    pDeadReckoningFile = fopen(filenameDeadReckoning.data(), "w");
-    MotionModel_Odometry1d::TState::Vec odo;
-    for (int i = 0; i < deadReckoning_pose_.size(); i++) {
-      deadReckoning_pose_[i].get(odo, t);
-      fprintf(pDeadReckoningFile, "%f   %f\n", t.getTimeAsDouble(), odo(0));
-    }
-    fclose(pDeadReckoningFile);
+              if (z_m_k.get(0) <= rangeLimitMax_ && z_m_k.get(0) >= rangeLimitMin_ && drand48() <= Pd_) {
+                z_m_k.setTime(t);
+                // z_m_k.setCov(R);
+                measurements_.push_back(z_m_k);
+                groundtruthDataAssociation_.push_back(m);
 
-  }
+
+              if (lmkFirstObsTime_[m] == -1) {
+                lmkFirstObsTime_[m] = t.getTimeAsDouble();
+              }
+              }
+            }
+
+          }
+
+          // False alarms
+          double randomNum = drand48();
+          int nClutterToGen = 0;
+          while (randomNum > poissonCmf[nClutterToGen]) {
+            nClutterToGen++;
+          }
+          for (int i = 0; i < nClutterToGen; i++) {
+
+            double r = drand48() * rangeLimitMax_;
+            while (r < rangeLimitMin_)
+              r = drand48() * rangeLimitMax_;
+            double b = drand48() * 2 * PI - PI;
+            MeasurementModel_RngBrg::TMeasurement z_clutter;
+            MeasurementModel_RngBrg::TMeasurement::Vec z;
+            z << r, b;
+            z_clutter.set(z, t);
+            measurements_.push_back(z_clutter);
+            groundtruthDataAssociation_.push_back(-2);
+          }
+
+        }
+
+      }
+
+      /** Data Logging */
+      void exportSimData() {
+
+        if (!logToFile_)
+          return;
+
+        boost::filesystem::path dir(logDirPrefix_);
+        boost::filesystem::create_directories(dir);
+
+        boost::filesystem::path cfgFilePathSrc(cfgFileName_);
+        std::string cfgFileDst(logDirPrefix_);
+        cfgFileDst += "simSettings.cfg";
+        boost::filesystem::path cfgFilePathDst(cfgFileDst.data());
+        boost::filesystem::copy_file(cfgFilePathSrc, cfgFilePathDst, boost::filesystem::copy_option::overwrite_if_exists);
+
+        TimeStamp t;
+
+        FILE* pGTPoseFile;
+        std::string filenameGTPose(logDirPrefix_);
+        filenameGTPose += "gtPose.dat";
+        pGTPoseFile = fopen(filenameGTPose.data(), "w");
+        MotionModel_Odometry2d::TState::Vec x;
+        for (int i = 0; i < groundtruth_pose_.size(); i++) {
+          groundtruth_pose_[i].get(x, t);
+          fprintf(pGTPoseFile, "%f   %f   %f   %f\n", t.getTimeAsDouble(), x(0), x(1), x(2));
+        }
+        fclose(pGTPoseFile);
+
+        FILE* pGTLandmarkFile;
+        std::string filenameGTLandmark(logDirPrefix_);
+        filenameGTLandmark += "gtLandmark.dat";
+        pGTLandmarkFile = fopen(filenameGTLandmark.data(), "w");
+        MeasurementModel_RngBrg::TLandmark::Vec m;
+        for (int i = 0; i < groundtruth_landmark_.size(); i++) {
+          groundtruth_landmark_[i].get(m);
+          fprintf(pGTLandmarkFile, "%f   %f   %f\n", m(0), m(1), lmkFirstObsTime_[i]);
+        }
+        fclose(pGTLandmarkFile);
+
+        FILE* pOdomFile;
+        std::string filenameOdom(logDirPrefix_);
+        filenameOdom += "odometry.dat";
+        pOdomFile = fopen(filenameOdom.data(), "w");
+        MotionModel_Odometry2d::TInput::Vec u;
+        for (int i = 0; i < odometry_.size(); i++) {
+          odometry_[i].get(u, t);
+          fprintf(pOdomFile, "%f   %f   %f   %f\n", t.getTimeAsDouble(), u(0), u(1), u(2));
+        }
+        fclose(pOdomFile);
+
+        FILE* pMeasurementFile;
+        std::string filenameMeasurement(logDirPrefix_);
+        filenameMeasurement += "measurement.dat";
+        pMeasurementFile = fopen(filenameMeasurement.data(), "w");
+        MeasurementModel_RngBrg::TMeasurement::Vec z;
+        for (int i = 0; i < measurements_.size(); i++) {
+          measurements_[i].get(z, t);
+          fprintf(pMeasurementFile, "%f   %f   %f\n", t.getTimeAsDouble(), z(0), z(1));
+        }
+        fclose(pMeasurementFile);
+
+        FILE* pDeadReckoningFile;
+        std::string filenameDeadReckoning(logDirPrefix_);
+        filenameDeadReckoning += "deadReckoning.dat";
+        pDeadReckoningFile = fopen(filenameDeadReckoning.data(), "w");
+        MotionModel_Odometry2d::TState::Vec odo;
+        for (int i = 0; i < deadReckoning_pose_.size(); i++) {
+          deadReckoning_pose_[i].get(odo, t);
+          fprintf(pDeadReckoningFile, "%f   %f   %f   %f\n", t.getTimeAsDouble(), odo(0), odo(1), odo(2));
+        }
+        fclose(pDeadReckoningFile);
+
+      }
+
+
 
   /** PSO optimizer Setup */
   void setup() {
@@ -430,8 +444,8 @@ public:
     double dt = dTimeStamp_.getTimeAsDouble();
 
     // configure robot motion model (only need to set once since timesteps are constant)
-    MotionModel_Odometry1d::TState::Mat Q;
-    Q << vardx_;
+    MotionModel_Odometry2d::TState::Mat Q;
+    Q << vardx_, 0, 0, 0, vardy_, 0, 0, 0, vardz_;
     Q *= (pNoiseInflation_ * dt * dt);
     psoslam_->robotProcessModelPtr_->setNoise(Q);
 
@@ -439,8 +453,8 @@ public:
 
 
     // configure measurement model
-    MeasurementModel_Rng1D::TMeasurement::Mat R;
-    R << varzr_;
+    MeasurementModel_RngBrg::TMeasurement::Mat R;
+    R << varzr_, 0, 0, varzb_;
     R *= zNoiseInflation_;
     psoslam_->mModelPtr_->setNoise(R);
     psoslam_->mModelPtr_->config.probabilityOfDetection_ = Pd_;
@@ -507,7 +521,7 @@ public:
           filenameBestLandmarkEstFile += "landmarkEst.dat";
           pBestLandmarkEstFile = fopen(filenameBestLandmarkEstFile.data(), "w");
         }
-    MotionModel_Odometry1d::TState x_i;
+    MotionModel_Odometry2d::TState x_i;
     int zIdx = 0;
 
     psoslam_->init();
@@ -533,7 +547,7 @@ public:
       for (int i = 0; i < psoslam_->config.nParticles_; i++) {
         fprintf(pLandmarkEstFile, "%d    ",  iteration);
         for (int l  = 0; l < psoslam_->getParticles()->at(i).landmarks.size() ; l++){
-          MeasurementModel_Rng1D::TLandmark landmark;
+          MeasurementModel_RngBrg::TLandmark landmark;
           landmark = psoslam_->getParticles()->at(i).landmarks[l];
           fprintf(pLandmarkEstFile, "%f   ",landmark[0]);
         }
@@ -596,7 +610,7 @@ public:
         for (int i = 0; i < psoslam_->config.nParticles_; i++) {
           fprintf(pLandmarkEstFile, "%d    ",  iteration);
           for (int l  = 0; l < psoslam_->getParticles()->at(i).landmarks.size() ; l++){
-            MeasurementModel_Rng1D::TLandmark landmark;
+            MeasurementModel_RngBrg::TLandmark landmark;
             landmark = psoslam_->getParticles()->at(i).landmarks[l];
             fprintf(pLandmarkEstFile, "%f   ",landmark[0]);
           }
@@ -635,16 +649,20 @@ private:
   // Trajectory
   int nSegments_;
   double max_dx_;
+  double max_dy_;
+  double max_dz_;
   double min_dx_;
   double vardx_;
-  std::vector<MotionModel_Odometry1d::TInput> groundtruth_displacement_;
-  std::vector<MotionModel_Odometry1d::TState> groundtruth_pose_;
-  std::vector<MotionModel_Odometry1d::TInput> odometry_;
-  std::vector<MotionModel_Odometry1d::TState> deadReckoning_pose_;
+  double vardy_;
+  double vardz_;
+  std::vector<MotionModel_Odometry2d::TInput> groundtruth_displacement_;
+  std::vector<MotionModel_Odometry2d::TState> groundtruth_pose_;
+  std::vector<MotionModel_Odometry2d::TInput> odometry_;
+  std::vector<MotionModel_Odometry2d::TState> deadReckoning_pose_;
 
   // Landmarks 
   int nLandmarks_;
-  std::vector<MeasurementModel_Rng1D::TLandmark> groundtruth_landmark_;
+  std::vector<MeasurementModel_RngBrg::TLandmark> groundtruth_landmark_;
 
   std::vector<double> lmkFirstObsTime_;
 
@@ -655,12 +673,13 @@ private:
   double Pd_;
   double c_;
   double varzr_;
-  std::vector<MeasurementModel_Rng1D::TMeasurement> measurements_;
+  double varzb_;
+  std::vector<MeasurementModel_RngBrg::TMeasurement> measurements_;
   std::vector<int> groundtruthDataAssociation_;
 
   // Filters
-  RFSPSOSLAM<MotionModel_Odometry1d,
-              MeasurementModel_Rng1D > *psoslam_;
+  RFSPSOSLAM<MotionModel_Odometry2d,
+              MeasurementModel_RngBrg > *psoslam_;
   int nParticles_;
   double ospa_c_;
   double initMapProb_;
@@ -687,7 +706,7 @@ int main(int argc, char* argv[]) {
 
 
 
-  Simulator_RFSPSOSLAM_1d sim;
+  Simulator_RFSPSOSLAM_2d sim;
   int seed = time(NULL);
   srand(seed);
   int trajNum = rand();
@@ -695,7 +714,7 @@ int main(int argc, char* argv[]) {
   boost::program_options::options_description desc("Options");
   desc.add_options()
     ("help,h", "produce this help message")
-    ("cfg,c", boost::program_options::value<std::string>(&cfgFileName)->default_value("cfg/rfspsoslam1dSim.xml"), "configuration xml file")
+    ("cfg,c", boost::program_options::value<std::string>(&cfgFileName)->default_value("cfg/rfspsoslam2dSim.xml"), "configuration xml file")
     ("trajectory,t", boost::program_options::value<int>(&trajNum), "trajectory number (default: a random integer)")
     ("seed,s", boost::program_options::value<int>(&seed), "random seed for running the simulation (default: based on current system time)");
   boost::program_options::variables_map vm;

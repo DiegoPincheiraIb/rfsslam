@@ -1,0 +1,67 @@
+<!-- Simulator_RBPHDSLAM_2d configuration file -->
+
+<config>
+  
+  <logging>
+    <logToFile>1</logToFile>
+    <logDirPrefix>data/rfspso1dslam/</logDirPrefix>
+  </logging>
+
+  <timesteps>50</timesteps>
+  <sec_per_timestep>1.0</sec_per_timestep>
+
+  <trajectory>
+    <nSegments>5</nSegments> <!-- number of constant velocity segments -->
+    <max_dx_per_sec>0.30</max_dx_per_sec> <!-- max x-displacement per second -->
+    <min_dx_per_sec>-0.30</min_dx_per_sec> <!-- min x-displacement per second -->
+    <vardx>0.010</vardx> <!-- variance in x displacement per second -->
+  </trajectory>
+
+  <landmarks>
+    <nLandmarks>5</nLandmarks> <!-- number of landmarks -->
+  </landmarks>
+
+  <measurements>
+    <rangeLimitMax>6.0</rangeLimitMax> <!-- measurement range limit -->
+    <rangeLimitMin>0.5</rangeLimitMin> <!-- measurement range limit				 -->
+    <rangeLimitBuffer>0.05</rangeLimitBuffer> <!-- buffer zone around range limit in which negative information has no effects -->
+    <probDetection>0.9</probDetection> <!-- probability of detection -->
+    <clutterIntensity>0.01</clutterIntensity> <!-- uniform clutter intensity -->
+    <varzr>0.0001</varzr> <!-- range measurement variance -->
+  </measurements>
+  
+  <optimizer>
+    <optimizeIter>10</optimizeIter>
+    <iterations>10000</iterations>
+    <nParticles>50</nParticles> <!-- number of particles -->
+    <ospaC>10.0</ospaC>
+    <initMapProb>0.100</initMapProb>
+    <w>0.721</w>
+    <phi_global>1.193</phi_global>
+    <card_phi_global>0.01</card_phi_global>
+    <phi_particle>1.193</phi_particle>
+    <card_phi_particle>0.01</card_phi_particle>
+    <K>3</K>
+    <global>0 </global>
+    <predict>
+      <processNoiseInflationFactor>1.0</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
+      
+    </predict>
+    <MLThreshold>1e-4</MLThreshold> <!-- measurement likelihoods below this will be assumed to be 0 -->
+    <update>
+      <measurementNoiseInflationFactor>1.0</measurementNoiseInflationFactor> <!-- inflation factor of measurement covariance -->
+      
+    </update>
+    
+    
+
+
+
+
+
+
+  </optimizer>
+
+</config>
+
+

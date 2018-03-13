@@ -1,0 +1,59 @@
+<!-- Simulator_RBPHDSLAM_2d configuration file -->
+
+<config>
+  
+  <logging>
+    <logToFile>1</logToFile>
+    <logDirPrefix>data/rfsceres1dslam/</logDirPrefix>
+  </logging>
+
+  <timesteps>30</timesteps>
+  <sec_per_timestep>1.0</sec_per_timestep>
+
+  <trajectory>
+    <nSegments>5</nSegments> <!-- number of constant velocity segments -->
+    <max_dx_per_sec>0.30</max_dx_per_sec> <!-- max x-displacement per second -->
+    <min_dx_per_sec>-0.30</min_dx_per_sec> <!-- min x-displacement per second -->
+    <vardx>0.010</vardx> <!-- variance in x displacement per second -->
+  </trajectory>
+
+  <landmarks>
+    <nLandmarks>1</nLandmarks> <!-- number of landmarks -->
+  </landmarks>
+
+  <measurements>
+    <rangeLimitMax>6.0</rangeLimitMax> <!-- measurement range limit -->
+    <rangeLimitMin>0.5</rangeLimitMin> <!-- measurement range limit				 -->
+    <rangeLimitBuffer>0.05</rangeLimitBuffer> <!-- buffer zone around range limit in which negative information has no effects -->
+    <probDetection>0.99</probDetection> <!-- probability of detection -->
+    <clutterIntensity>0.000001</clutterIntensity> <!-- uniform clutter intensity -->
+    <varzr>0.0001</varzr> <!-- range measurement variance -->
+  </measurements>
+  
+  <optimizer>
+    <iterations>100</iterations>
+    <ospaC>10</ospaC>
+    <useDataAssociation>0</useDataAssociation>
+    <initMapProb>0.05</initMapProb>
+    <predict>
+      <processNoiseInflationFactor>10.0</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
+      
+    </predict>
+    <MLThreshold>-50000</MLThreshold> <!-- measurement likelihoods below this will be assumed to be 0 -->
+    <update>
+      <measurementNoiseInflationFactor>1.</measurementNoiseInflationFactor> <!-- inflation factor of measurement covariance -->
+      
+    </update>
+    
+    
+
+
+
+
+
+
+  </optimizer>
+
+</config>
+
+

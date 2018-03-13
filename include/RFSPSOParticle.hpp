@@ -56,6 +56,7 @@ namespace rfs {
     std::vector<typename MeasurementModel::TLandmark> landmarks , bestLandmarks;
 
     std::vector<typename RobotProcessModel::TInput> inputs_velocity, bestInputs_velocity;
+    std::vector<typename RobotProcessModel::TState> trajectory_velocity , bestTrajectory_velocity;
     std::vector<typename MeasurementModel::TLandmark> landmarks_velocity, bestLandmarks_velocity;
 
     double currentLikelihood = -std::numeric_limits<double>::infinity()
