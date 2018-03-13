@@ -72,7 +72,7 @@ namespace rfs{
   }
 
 
-  void MeasurementModel_VictoriaPark::inverseMeasure(const Pose2d &pose, const Measurement3d &measurement, Landmark3d &landmark){
+  void MeasurementModel_VictoriaPark::inverseMeasure(const Pose2d &pose, const Measurement3d &measurement, Landmark3d &landmark) const{
 
     Eigen::Matrix3d covLand,covMeas;
     Eigen::Vector3d meanLand,meanMeas,poseMean;
@@ -103,7 +103,7 @@ namespace rfs{
 
   bool MeasurementModel_VictoriaPark::measure( const Pose2d &pose, const Landmark3d &landmark,
 					       Measurement3d &measurement, Eigen::Matrix3d *jacobian_wrt_lmk, 
-					       Eigen::Matrix3d *jacobian_wrt_pose){
+					       Eigen::Matrix3d *jacobian_wrt_pose) const{
 
     Eigen::Matrix3d cov,covMeas;
     Eigen::Vector3d mean,meanMeas,poseMean;
@@ -152,7 +152,7 @@ namespace rfs{
 
   double MeasurementModel_VictoriaPark::probabilityOfDetection( const Pose2d &pose,
 								const Landmark3d &landmark,
-								bool &isCloseToSensingLimit){
+								bool &isCloseToSensingLimit) const{
 
 
     Eigen::Vector3d circleMean,measMean,circleMean2,poseMean;
@@ -201,7 +201,7 @@ namespace rfs{
 
   double MeasurementModel_VictoriaPark::probabilityOfDetection2( const Pose2d &pose,
 								 const Landmark3d &landmark,
-								 bool &isCloseToSensingLimit){
+								 bool &isCloseToSensingLimit) const{
     //std::cout<< "pD"<<std::endl;
     isCloseToSensingLimit=false;
     Eigen::Vector3d circleMean,measMean;
@@ -280,12 +280,12 @@ namespace rfs{
      
   }
 
-  double MeasurementModel_VictoriaPark::clutterIntensity( Measurement3d &z, int nZ ){
+  double MeasurementModel_VictoriaPark::clutterIntensity( const Measurement3d &z, int nZ ) const{
 
     return clutterIntensity_;
   }
 
-  double MeasurementModel_VictoriaPark::clutterIntensityIntegral( int nZ){
+  double MeasurementModel_VictoriaPark::clutterIntensityIntegral( int nZ) const{
 
     return config.expectedClutterNumber_;
   }

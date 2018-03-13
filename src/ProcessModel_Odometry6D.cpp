@@ -39,9 +39,9 @@ MotionModel_Odometry6d::MotionModel_Odometry6d( Pose6d::Mat &Q ) : ProcessModel(
 MotionModel_Odometry6d::~MotionModel_Odometry6d(){}
 
 void MotionModel_Odometry6d::step(  Pose6d &s_k,
-				   Pose6d &s_km,
-				   Odometry6d &input_k,
-				   TimeStamp const &dT , Eigen::Matrix<double,7,7> *H){
+                                    const Pose6d &s_km,
+                                    const Odometry6d &input_k,
+				   TimeStamp const &dT , Eigen::Matrix<double,7,7> *H) const{
  
 
   if (H != NULL){
@@ -51,7 +51,8 @@ void MotionModel_Odometry6d::step(  Pose6d &s_k,
   Pose6d::PosVec p_k_i_;   /* \f[ \begin{bmatrix} x \\ y \\ z\end{bmatrix}_{k} \f]*/
   Pose6d::PosVec p_km_i_;  /* \f[ \begin{bmatrix} x \\ y \\ z\end{bmatrix}_{k-1} \f]*/
   Eigen::Quaterniond q_k_;          /* \f[ q_k \f\] */
-  
+  Pose6d::Cov zero;
+  zero.setZero();
 
   Eigen::Matrix3d Sd_k_km_; /* uncertainty of translation input */
   Odometry6d::PosVec dp_k_km_; /* translation input */
@@ -77,7 +78,7 @@ void MotionModel_Odometry6d::step(  Pose6d &s_k,
 
 
 
-
+  s_k.setCov(zero);
   s_k.setPos(p_k_i_);
   s_k.setRot(q_k_.coeffs(), t_k);
 }

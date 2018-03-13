@@ -71,7 +71,7 @@ namespace rfs{
      * \return true if a valid measurement is produced
      */
     bool measure( const Pose2d &pose, const Landmark3d &landmark,
-		  Measurement3d &measurement, Eigen::Matrix3d *jacobian_wrt_lmk = NULL, Eigen::Matrix3d *jacobian_wrt_pose = NULL);
+		  Measurement3d &measurement, Eigen::Matrix3d *jacobian_wrt_lmk = NULL, Eigen::Matrix3d *jacobian_wrt_pose = NULL) const;
 
     /**
      * \f[ \mathbf{m} = \mathbf{h}^{-1}(\mathbf{x}, \mathbf{z} )\f]
@@ -81,7 +81,7 @@ namespace rfs{
      * \param[in] measurement  \f$\mathbf{z}\f$ measurement, for which the uncertainty is \f$\mathbf{R}\f$
      * \param[out] landmark  \f$\mathbf{m}\f$, predicted landmark position with uncertainty
      */
-    void inverseMeasure(const Pose2d &pose, const Measurement3d &measurement, Landmark3d &landmark);
+    void inverseMeasure(const Pose2d &pose, const Measurement3d &measurement, Landmark3d &landmark) const;
 
 
     /**
@@ -94,7 +94,7 @@ namespace rfs{
      */
     double probabilityOfDetection( const Pose2d &pose,
 				   const Landmark3d &landmark,
-				   bool &isCloseToSensingLimit);
+				   bool &isCloseToSensingLimit) const;
 
     /**
      * \brief Function to calculate the probability of detection at a known exact landmark position.
@@ -105,7 +105,7 @@ namespace rfs{
      */
     double probabilityOfDetection2( const Pose2d &pose,
 				    const Landmark3d &landmark,
-				    bool &isCloseToSensingLimit);
+				    bool &isCloseToSensingLimit) const;
 
     /**
      * Determine the clutter intensity in measurement space.
@@ -114,7 +114,7 @@ namespace rfs{
      * \param[in] nZ the cardinality of Z, of which z is a member.
      * \return clutter intensity
      */
-    double clutterIntensity( Measurement3d &z, int nZ );
+    double clutterIntensity( const Measurement3d &z, int nZ ) const;
 
     /**
      * Determine the clutter intensity integral in measurement space.
@@ -123,7 +123,7 @@ namespace rfs{
      * \param[in] nZ the cardinality of Z
      * \return clutter intensity
      */
-    double clutterIntensityIntegral( int nZ = 0);
+    double clutterIntensityIntegral( int nZ = 0) const;
 
 
     /**

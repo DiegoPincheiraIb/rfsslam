@@ -68,7 +68,7 @@ bool MeasurementModel_Rng1D::measure(const Pose1d &pose,
 				     const Landmark1d &landmark, 
 				     Measurement1d &measurement, 
 				     Eigen::Matrix<double, 1, 1> *jacobian_wrt_lmk,
-				     Eigen::Matrix<double, 1, 1> *jacobian_wrt_pose){
+				     Eigen::Matrix<double, 1, 1> *jacobian_wrt_pose) const{
 
   Pose1d::Vec robotPos;
   Pose1d::Mat robotUncertainty;
@@ -103,7 +103,7 @@ bool MeasurementModel_Rng1D::measure(const Pose1d &pose,
 
 void MeasurementModel_Rng1D::inverseMeasure(const Pose1d &pose, 
 					const Measurement1d &measurement, 
-					Landmark1d &landmark){
+					Landmark1d &landmark) const{
 
   Pose1d::Vec x;
   Measurement1d::Vec z;
@@ -120,7 +120,7 @@ void MeasurementModel_Rng1D::inverseMeasure(const Pose1d &pose,
 
 double MeasurementModel_Rng1D::probabilityOfDetection( const Pose1d &pose,
 						   const Landmark1d &landmark,
-						   bool &isCloseToSensingLimit ){
+						   bool &isCloseToSensingLimit ) const{
 
   Pose1d::Vec robotPose;
   Landmark1d::Vec landmarkState;
@@ -147,13 +147,13 @@ double MeasurementModel_Rng1D::probabilityOfDetection( const Pose1d &pose,
   return Pd;
 }
 
-double MeasurementModel_Rng1D::clutterIntensity( Measurement1d &z,
-					     int nZ){
+double MeasurementModel_Rng1D::clutterIntensity( const Measurement1d &z,
+					     int nZ) const{
   return config.uniformClutterIntensity_;
 }
 
 
-double MeasurementModel_Rng1D::clutterIntensityIntegral( int nZ ){
+double MeasurementModel_Rng1D::clutterIntensityIntegral( int nZ ) const{
   double sensingLength = config.rangeLimMax_ - config.rangeLimMin_;
   return ( config.uniformClutterIntensity_ * sensingLength );
 }

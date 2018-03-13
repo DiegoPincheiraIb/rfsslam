@@ -112,7 +112,7 @@ public:
 			::Eigen::Matrix<double,
 			                MeasurementType::Vec::RowsAtCompileTime,
 					PoseType::Vec::RowsAtCompileTime> *jacobian_wrt_pose = NULL 
-			) = 0;
+			) const = 0;
   
   /**
    * Sample a measurement with noise parameters from the model, robot pose, and landmark position.
@@ -130,7 +130,7 @@ public:
 	       MeasurementType &measurement,
       	       bool useAdditiveWhiteGaussianNoise = true,		       
 	       bool usePoseWhiteGaussianNoise = false,
-	       bool useLandmarkWhiteGaussianNoise = false){
+	       bool useLandmarkWhiteGaussianNoise = false) const{
 	      
     PoseType pose_sample; /**< Sampled pose*/
     LandmarkType landmark_sample; /**< Sampled landmark*/
@@ -171,7 +171,7 @@ public:
    */
   virtual void inverseMeasure( const PoseType &pose,
 			       const MeasurementType &measurement, 
-			       LandmarkType &landmark ) = 0;
+			       LandmarkType &landmark ) const = 0;
 
   /**
    * Abstract function of determining a landmark's probability of detection, and if the landmark is close to the sensing limit.
@@ -188,7 +188,7 @@ public:
    */
   virtual double probabilityOfDetection( const PoseType &pose,
 					 const LandmarkType &landmark,
-					 bool &isCloseToSensingLimit){
+					 bool &isCloseToSensingLimit) const{
     isCloseToSensingLimit = false;
     return 1;
   }
@@ -200,8 +200,8 @@ public:
    * \param[in] nZ the cardinality of measurement set Z, of which z is a member.
    * \return clutter intensity
    */
-  virtual double clutterIntensity( MeasurementType &z,
-				   int nZ ){
+  virtual double clutterIntensity( const MeasurementType &z,
+                                    int nZ ) const{
     return 0;
   }
 
@@ -212,7 +212,7 @@ public:
    * \param[in] nZ the cardinality of Z, of which z is a member.
    * \return clutter intensity integral
    */
-  virtual double clutterIntensityIntegral( int nZ ){
+  virtual double clutterIntensityIntegral( int nZ ) const{
     return 0;
   }  
 

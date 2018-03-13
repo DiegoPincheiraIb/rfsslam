@@ -71,7 +71,7 @@ bool MeasurementModel_RngBrg::measure(const Pose2d &pose,
 				      const Landmark2d &landmark, 
 				      Measurement2d &measurement,
 				      Eigen::Matrix2d *jacobian_wrt_lmk,
-				      Eigen::Matrix<double, 2, 3> *jacobian_wrt_pose){
+				      Eigen::Matrix<double, 2, 3> *jacobian_wrt_pose) const{
   
   Eigen::Vector3d robotPose;
   Eigen::Vector2d mean, landmarkState;
@@ -116,7 +116,7 @@ bool MeasurementModel_RngBrg::measure(const Pose2d &pose,
 
 void MeasurementModel_RngBrg::inverseMeasure(const Pose2d &pose, 
 				       const Measurement2d &measurement, 
-				       Landmark2d &landmark){
+				       Landmark2d &landmark) const{
   Eigen::Vector3d poseState;
   Eigen::Vector2d measurementState, mean;
   Eigen::Matrix2d measurementUncertainty, covariance, Hinv;
@@ -137,7 +137,7 @@ void MeasurementModel_RngBrg::inverseMeasure(const Pose2d &pose,
 
 double MeasurementModel_RngBrg::probabilityOfDetection( const Pose2d &pose,
 						  const Landmark2d &landmark,
-						  bool &isCloseToSensingLimit ){
+						  bool &isCloseToSensingLimit ) const{
 
   Pose2d::Vec robotPose;
   Landmark2d::Vec landmarkState;
@@ -166,13 +166,13 @@ double MeasurementModel_RngBrg::probabilityOfDetection( const Pose2d &pose,
   return Pd;
 }
 
-double MeasurementModel_RngBrg::clutterIntensity( Measurement2d &z,
-					    int nZ){
+double MeasurementModel_RngBrg::clutterIntensity( const Measurement2d &z,
+					    int nZ) const{
   return config.uniformClutterIntensity_;
 }
 
 
-double MeasurementModel_RngBrg::clutterIntensityIntegral( int nZ ){
+double MeasurementModel_RngBrg::clutterIntensityIntegral( int nZ ) const{
   double sensingArea_ = 2 * PI * (config.rangeLimMax_ - config.rangeLimMin_);
   return ( config.uniformClutterIntensity_ * sensingArea_ );
 }

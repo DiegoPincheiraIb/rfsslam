@@ -214,6 +214,14 @@ namespace rfs
       assert(n >= 0 && n < nDim);
       return x_(n);
     }
+    /**
+     * const [] Operator for looking up the value of an element of x without changing anything
+     * \return the value of element n of vector x
+     */
+    const double& operator[] (const int n) const{
+      assert(n >= 0 && n < nDim);
+      return x_(n);
+    }
 
     /** Comparison operator */
     bool operator> (const RandomVec &rhs) const{
@@ -487,28 +495,76 @@ namespace rfs
           *mDist2 = md2;
         return l;
       }
+      /**
+       * Calculate the Gaussian log likelihood of a given evaluation point, also gives normalized error, useful for calculating gradients
+       * \param[in] x_eval the evaluation point
+       * \param[out] n_error pointer to vector to store normalized error
+       * \param[out] mDist2 if not NULL, the pointed to variable will be overwritten by the
+       * squared mahalanobis distance used to calculate the likelihood
+       */
+      double
+      evalGaussianLogLikelihood (const RandomVec<nDim> &x_eval, Vec &n_error, double* mDist2 = NULL) {
+        if (!isValid_Sx_det_) {
+          Sx_det_ = Sx_.determinant();
+          gaussian_pdf_factor_ = sqrt(pow(2 * PI, nDim) * Sx_det_);
+          isValid_Sx_det_ = true;
+        }
+        if (!isValid_Sx_inv_) {
+          Sx_inv_ = Sx_.inverse();
+          isValid_Sx_inv_ = true;
+        }
+        e_ = x_eval.x_ - x_;
+        n_error = Sx_inv_ * e_;
+        double md2 = e_.transpose() *n_error;
+        double l = -0.5 * md2 - log(gaussian_pdf_factor_);
 
-    /**
-     * Calculate likelihood
-     * \param[in] x_eval the evaluation point
-     * \param[out] mDist2 if not NULL, the pointed to variable will be overwritten by the 
-     * squared mahalanobis distance used to calculate the likelihood
-     */ 
-    double evalGaussianLikelihood(const typename RandomVec<nDim>::Vec &x_eval,
-				  double* mDist2 = NULL){
-      if(!isValid_Sx_det_){
-	Sx_det_ = Sx_.determinant();
-	gaussian_pdf_factor_ = sqrt( pow( 2*PI, nDim ) * Sx_det_ );
-	isValid_Sx_det_ = true;
+        if (mDist2 != NULL)
+          *mDist2 = md2;
+        return l;
       }
-      double md2 = mahalanobisDist2( x_eval );
-      double l = ( exp(-0.5 * md2 ) / gaussian_pdf_factor_ );
-      if( l != l) //If md2 is very large, l will become NAN;
-	l = 0;
-      if(mDist2 != NULL)
-	*mDist2 = md2;
-      return l;
-    }
+
+      /**
+       * Calculate likelihood
+       * \param[in] x_eval the evaluation point
+       * \param[out] mDist2 if not NULL, the pointed to variable will be overwritten by the
+       * squared mahalanobis distance used to calculate the likelihood
+       */
+      double evalGaussianLikelihood(const typename RandomVec<nDim>::Vec &x_eval,
+                                    double* mDist2 = NULL){
+        if(!isValid_Sx_det_){
+          Sx_det_ = Sx_.determinant();
+          gaussian_pdf_factor_ = sqrt( pow( 2*PI, nDim ) * Sx_det_ );
+          isValid_Sx_det_ = true;
+        }
+        double md2 = mahalanobisDist2( x_eval );
+        double l = ( exp(-0.5 * md2 ) / gaussian_pdf_factor_ );
+        if( l != l) //If md2 is very large, l will become NAN;
+          l = 0;
+        if(mDist2 != NULL)
+          *mDist2 = md2;
+        return l;
+      }
+
+      /**
+       * Calculate the log likelihood (more stable than using the log after)
+       * \param[in] x_eval the evaluation point
+       * \param[out] mDist2 if not NULL, the pointed to variable will be overwritten by the
+       * squared mahalanobis distance used to calculate the likelihood
+       */
+      double evalGaussianLogLikelihood(const typename RandomVec<nDim>::Vec &x_eval,
+                                    double* mDist2 = NULL){
+        if(!isValid_Sx_det_){
+          Sx_det_ = Sx_.determinant();
+          gaussian_pdf_factor_ = sqrt( pow( 2*PI, nDim ) * Sx_det_ );
+          isValid_Sx_det_ = true;
+        }
+        double md2 = mahalanobisDist2( x_eval );
+        double l = -0.5 * md2  - log( gaussian_pdf_factor_ );
+
+        if(mDist2 != NULL)
+          *mDist2 = md2;
+        return l;
+      }
 
     /** 
      * Sample this random vector
@@ -562,7 +618,7 @@ namespace rfs
 
     }
     /**
-     * returns true if covariance is  aproximatelly symmetric
+     * returns true if covariance is  approximately symmetric
      **/
     bool checkCov(){
       Mat t=Sx_-Sx_.transpose();

@@ -74,8 +74,8 @@ public:
    * \param[in] input_k input to process model
    * \param[in] dT size of time-step (not used)
    */
-  void step( Pose1d &s_k, Pose1d &s_km, Odometry1d &input_k, 
-	     TimeStamp const &dT , Eigen::Matrix< double, 1 , 1 > * H = NULL);
+  void step( Pose1d &s_k, const Pose1d &s_km, const Odometry1d &input_k,
+	     TimeStamp const &dT , Eigen::Matrix< double, 1 , 1 > * H = NULL) const;
 
 };
 

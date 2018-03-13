@@ -132,7 +132,7 @@ public:
     landmark.desc = measurement.desc ;
   };
 
-  double clutterIntensity( TMeasurement &z,
+  double clutterIntensity( const TMeasurement &z,
                                    int nZ ){
     return MeasurementModelType::clutterIntensity(z , nZ) * z.desc.falseAlarmLikelihood();
   }

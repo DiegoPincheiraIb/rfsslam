@@ -66,7 +66,7 @@ public:
    * \param[in] a Amplitude value to calculate the measurement likelihood.
    * \return the amplitude value
    */
-  double getAmplitude(){
+  double getAmplitude()const{
     return amplitude_;
   }
   

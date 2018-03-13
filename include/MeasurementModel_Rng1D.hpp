@@ -100,7 +100,7 @@ public:
   bool measure( const Pose1d &pose, const Landmark1d &landmark, 
 		Measurement1d &measurement, 
 		::Eigen::Matrix<double, 1, 1> *jacobian_wrt_lmk = NULL,
-		::Eigen::Matrix<double, 1, 1> *jacobian_wrt_pose = NULL);
+		::Eigen::Matrix<double, 1, 1> *jacobian_wrt_pose = NULL) const;
 
   /** 
    * \f[ m = h^{-1}(x, z)\f] 
@@ -110,7 +110,7 @@ public:
    * \param[in] measurement  \f$z\f$ measurement, for which the uncertainty is \f$\sigma^2\f$
    * \param[out] landmark  \f$m\f$, predicted landmark position with uncertainty
    */
-  void inverseMeasure(const Pose1d &pose, const Measurement1d &measurement, Landmark1d &landmark);
+  void inverseMeasure(const Pose1d &pose, const Measurement1d &measurement, Landmark1d &landmark) const;
 
   /**
    * Abstract function of determining a landmark's probability of detection, and if the landmark is close to the sensing limit.
@@ -125,7 +125,7 @@ public:
    */
   double probabilityOfDetection( const Pose1d &pose,
 				 const Landmark1d &landmark,
-				 bool &isCloseToSensingLimit);
+				 bool &isCloseToSensingLimit) const;
 
   /**
    * Determine the clutter intensity in measurement space.
@@ -134,8 +134,8 @@ public:
    * \param[in] nZ the cardinality of Z, of which z is a member.
    * \return clutter intensity
    */
-  double clutterIntensity( Measurement1d &z,
-			   int nZ );
+  double clutterIntensity( const Measurement1d &z,
+			   int nZ ) const;
 
   /**
    * Determine the clutter intensity integral in measurement space.
@@ -144,7 +144,7 @@ public:
    * \param[in] nZ the cardinality of Z
    * \return clutter intensity
    */
-  double clutterIntensityIntegral( int nZ = 0);
+  double clutterIntensityIntegral( int nZ = 0) const;
 
 };
 

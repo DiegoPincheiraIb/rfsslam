@@ -93,7 +93,7 @@ namespace rfs{
      * \param[in] input_k input to process model
      * \param[in] dT size of time-step
      */
-    void step( Pose2d &s_k, Pose2d &s_km, AckermanInput &input_k, TimeStamp const &dT, Pose2d::Mat *H=NULL);
+    void step( Pose2d &s_k, const Pose2d &s_km, const AckermanInput &input_k, TimeStamp const &dT, Pose2d::Mat *H=NULL) const;
 
   private:
     

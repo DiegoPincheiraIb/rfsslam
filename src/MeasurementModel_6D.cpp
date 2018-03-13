@@ -73,7 +73,7 @@ bool MeasurementModel_6D::measure(const Pose6d &pose,
 				      const Landmark3d &landmark,
 				      Measurement3d &measurement,
 				      Eigen::Matrix3d *jacobian_wrt_lmk,
-				      Eigen::Matrix<double, 3, 7> *jacobian_wrt_pose){
+				      Eigen::Matrix<double, 3, 7> *jacobian_wrt_pose) const{
 
 
   Eigen::Vector3d mean, landmarkState;
@@ -127,7 +127,7 @@ bool MeasurementModel_6D::measure(const Pose6d &pose,
 
 void MeasurementModel_6D::inverseMeasure(const Pose6d &pose,
 					 const Measurement3d &measurement,
-					 Landmark3d &landmark){
+					 Landmark3d &landmark) const{
 
   Eigen::Vector3d measurementState, mean;
   Eigen::Matrix3d measurementUncertainty, covariance, Hinv;
@@ -152,7 +152,7 @@ void MeasurementModel_6D::inverseMeasure(const Pose6d &pose,
 
 double MeasurementModel_6D::probabilityOfDetection( const Pose6d &pose,
 						    const Landmark3d &landmark,
-						    bool &isCloseToSensingLimit ){
+						    bool &isCloseToSensingLimit ) const{
 
   Pose6d::PosVec robotPose;
   Landmark3d::Vec landmarkState,diff;
@@ -182,12 +182,12 @@ double MeasurementModel_6D::probabilityOfDetection( const Pose6d &pose,
 }
 
 double MeasurementModel_6D::clutterIntensity( Measurement3d &z,
-					    int nZ){
+					    int nZ) const{
   return config.uniformClutterIntensity_;
 }
 
 
-double MeasurementModel_6D::clutterIntensityIntegral( int nZ ){
+double MeasurementModel_6D::clutterIntensityIntegral( int nZ ) const{
   double sensingVolume_ = 4.0/3.0 * PI * (pow(config.rangeLimMax_,3) - pow(config.rangeLimMin_,3));
   return ( config.uniformClutterIntensity_ * sensingVolume_ );
 }

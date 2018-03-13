@@ -46,7 +46,7 @@ void MotionModel_Ackerman2d::setAckermanParams(double h, double l, double dx, do
   poi_offset_y_ = dy;
 }
 
-void MotionModel_Ackerman2d::step( Pose2d &s_k, Pose2d &s_km, AckermanInput &input_k, TimeStamp const &dT, Pose2d::Mat *H){
+void MotionModel_Ackerman2d::step( Pose2d &s_k, const Pose2d &s_km, const AckermanInput &input_k, TimeStamp const &dT, Pose2d::Mat *H) const{
 
   if (H != NULL){
     std::cerr << "Ackerman2d: jacobian calculation not implemented!!!\n";
