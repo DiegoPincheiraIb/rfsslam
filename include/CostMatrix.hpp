@@ -101,11 +101,14 @@ public:
   bool getPartition(int p, double** &Cp, unsigned int &nRows, unsigned int &nCols,
 		    unsigned int* &row_indices, unsigned int* &col_indices, bool allocateExtendedMatrix = false);
 
+  double MIN_LIKELIHOOD = 0; //< minimum likelihood considered nonzero, can be set to a negative number to account for log-likelihoods
 private:
   
   double** C_; /**< pointer to matrix */
   unsigned int nR_; /**< number of row */
   unsigned int nC_; /**< number of columns */
+
+
 
   std::vector<unsigned int> *components_i; /**< row partitioning */
   std::vector<unsigned int> *components_j; /**< column partitioning */
