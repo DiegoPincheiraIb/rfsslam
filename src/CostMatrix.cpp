@@ -98,12 +98,12 @@ unsigned int CostMatrixGeneral::partition(){
   ::boost::adjacency_list< ::boost::vecS, ::boost::vecS, ::boost::undirectedS> G;
   for(int i = 0; i < nR_; i++){
     for(int j = 0; j < nC_; j++){
-      if (C_[i][j] != 0 ){
+      if (C_[i][j] > MIN_LIKELIHOOD ){
 	::boost::add_edge(i, j+nR_, G);
       }
     }
   }
-  ::boost::add_edge(nR_+nC_-1, nR_+nC_-1, G); // add edge to self so the graph has the desired number of vetices
+  ::boost::add_edge(nR_+nC_-1, nR_+nC_-1, G); // add edge to self so the graph has the desired number of vertices
 
   std::vector<int> cc_results( nR_+nC_, -1 );
   int ncc = ::boost::connected_components(G, &cc_results[0]);
