@@ -296,6 +296,7 @@ namespace rfs {
       std::sort(inputs_.begin(), inputs_.begin());
 
       time_.resize(inputs_.size() + 1);
+      time_[0] =0;
       for (int i = 0; i < inputs_.size(); i++) {
         time_[i + 1] = inputs_[i].getTime();
       }

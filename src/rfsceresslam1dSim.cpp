@@ -638,7 +638,7 @@ public:
         ceres::CostFunction* cost_function = ObsevationError1d::Create(odometry_[i][0], sqrt(vardx_));
         problem.AddResidualBlock(cost_function,
         NULL /* squared loss */,
-                                 params + i - 1, params + i);
+                                 params + i , params + i+1);
       }
       for (int k = 0; k < ceresslam_->Z_.size(); k++) {
         for (int j = 0; j < ceresslam_->Z_[k].size(); j++) {

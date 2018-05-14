@@ -304,9 +304,9 @@ public:
 
         TimeStamp t;
 
-        for (int k = 1; k < kMax_; k++) {
+        for (int k = 0; k < kMax_; k++) {
 
-          t += dTimeStamp_;
+
 
           groundtruth_pose_[k];
 
@@ -353,6 +353,7 @@ public:
             groundtruthDataAssociation_.push_back(-2);
           }
 
+          t += dTimeStamp_;
         }
 
       }
@@ -535,7 +536,7 @@ public:
           fprintf(pParticlePoseFile, "%f   ",  psoslam_->getParticles()->at(i).currentLikelihood);
           for (int k  = 0; k < psoslam_->getParticles()->at(i).trajectory.size() ; k++){
             x_i =  psoslam_->getParticles()->at(i).trajectory[k];
-            fprintf(pParticlePoseFile, "%f   ",  x_i.get(0));
+            fprintf(pParticlePoseFile, "%f   %f   %f   ",  x_i.get(0),  x_i.get(1),  x_i.get(2));
           }
           fprintf(pParticlePoseFile, "\n");
       }
@@ -549,7 +550,7 @@ public:
         for (int l  = 0; l < psoslam_->getParticles()->at(i).landmarks.size() ; l++){
           MeasurementModel_RngBrg::TLandmark landmark;
           landmark = psoslam_->getParticles()->at(i).landmarks[l];
-          fprintf(pLandmarkEstFile, "%f   ",landmark[0]);
+          fprintf(pLandmarkEstFile, "%f   %f   ", landmark[0], landmark[1]);
         }
         fprintf(pLandmarkEstFile, "\n");
 
@@ -600,7 +601,7 @@ public:
             fprintf(pParticlePoseFile, "%f   ",  psoslam_->getParticles()->at(i).currentLikelihood);
             for (int k  = 0; k < psoslam_->getParticles()->at(i).trajectory.size() ; k++){
               x_i =  psoslam_->getParticles()->at(i).trajectory[k];
-              fprintf(pParticlePoseFile, "%f   ",  x_i.get(0));
+              fprintf(pParticlePoseFile, "%f   %f   %f   ",  x_i.get(0),  x_i.get(1),  x_i.get(2));
             }
             fprintf(pParticlePoseFile, "\n");
         }
@@ -612,7 +613,7 @@ public:
           for (int l  = 0; l < psoslam_->getParticles()->at(i).landmarks.size() ; l++){
             MeasurementModel_RngBrg::TLandmark landmark;
             landmark = psoslam_->getParticles()->at(i).landmarks[l];
-            fprintf(pLandmarkEstFile, "%f   ",landmark[0]);
+            fprintf(pLandmarkEstFile, "%f   %f   ",landmark[0],landmark[1]);
           }
           fprintf(pLandmarkEstFile, "\n");
 

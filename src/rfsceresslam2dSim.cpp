@@ -53,29 +53,118 @@
 
 using namespace rfs;
 
-struct ObsevationError1d {
-  ObsevationError1d (double obs, double std_dev) :
-      obs(obs), std_dev(std_dev) {
+// Normalizes the angle in radians between [-pi and pi).
+template <typename T>
+inline T NormalizeAngle(const T& angle_radians) {
+  // Use ceres::floor because it is specialized for double and Jet types.
+  T two_pi(2.0 * M_PI);
+  return angle_radians -
+      two_pi * ceres::floor((angle_radians + T(M_PI)) / two_pi);
+}
+
+template <typename T>
+Eigen::Matrix<T, 2, 2> RotationMatrix2D(T yaw_radians) {
+  const T cos_yaw = ceres::cos(yaw_radians);
+  const T sin_yaw = ceres::sin(yaw_radians);
+
+  Eigen::Matrix<T, 2, 2> rotation;
+  rotation << cos_yaw, -sin_yaw, sin_yaw, cos_yaw;
+  return rotation;
+}
+
+class PoseGraph2dErrorTerm {
+ public:
+  PoseGraph2dErrorTerm(double x_ab, double y_ab, double yaw_ab_radians,
+                       const Eigen::Matrix3d& sqrt_information)
+      : p_ab_(x_ab, y_ab),
+        yaw_ab_radians_(yaw_ab_radians),
+        sqrt_information_(sqrt_information) {}
+
+  template <typename T>
+  bool operator()(const T* const x_a,
+                  const T* const x_b,
+                  T* residuals_ptr) const {
+    const Eigen::Matrix<T, 2, 1> p_a(x_a[0], x_a[1]);
+    const Eigen::Matrix<T, 2, 1> p_b(x_b[0], x_b[1]);
+
+    Eigen::Map<Eigen::Matrix<T, 3, 1> > residuals_map(residuals_ptr);
+
+    residuals_map.template head<2>() =
+        RotationMatrix2D(x_a[2]).transpose() * (p_b - p_a) -
+        p_ab_.cast<T>();
+    residuals_map(2) = NormalizeAngle(
+        (x_b[2] - x_a[2]) - static_cast<T>(yaw_ab_radians_));
+
+    // Scale the residuals by the square root information matrix to account for
+    // the measurement uncertainty.
+    residuals_map = sqrt_information_.template cast<T>() * residuals_map;
+
+    return true;
   }
 
-  template<typename T>
-    bool
-    operator() (const T* const pose, const T* const landmark, T* residuals) const {
-
-      residuals[0] = (landmark[0] - pose[0] - T(obs)) / std_dev;
-      return true;
-    }
-
-  // Factory to hide the construction of the CostFunction object from
-  // the client code.
-  static ceres::CostFunction*
-  Create (const double obs, const double std_dev) {
-    return (new ceres::AutoDiffCostFunction<ObsevationError1d, 1, 1, 1>(new ObsevationError1d(obs, std_dev)));
+  static ceres::CostFunction* Create(double x_ab, double y_ab,
+                                     double yaw_ab_radians,
+                                     const Eigen::Matrix3d& sqrt_information) {
+    return (new ceres::AutoDiffCostFunction<PoseGraph2dErrorTerm, 3, 3, 3>(new PoseGraph2dErrorTerm(
+        x_ab, y_ab, yaw_ab_radians, sqrt_information)));
   }
 
-private:
-  double obs, std_dev;
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+ private:
+  // The position of B relative to A in the A frame.
+  const Eigen::Vector2d p_ab_;
+  // The orientation of frame B relative to frame A.
+  const double yaw_ab_radians_;
+  // The inverse square root of the measurement covariance matrix.
+  const Eigen::Matrix3d sqrt_information_;
 };
+
+class Observation2dErrorTerm {
+ public:
+  Observation2dErrorTerm(double r, double yaw_radians,
+                       const Eigen::Matrix2d& sqrt_information)
+      : r_(r),
+        yaw_radians_(yaw_radians),
+        sqrt_information_(sqrt_information) {}
+
+  template <typename T>
+  bool operator()(const T* const x_a,
+                  const T* const x_b,
+                  T* residuals_ptr) const {
+
+    Eigen::Map<Eigen::Matrix<T, 2, 1> > residuals_map(residuals_ptr);
+
+    residuals_map(0) = sqrt( (x_a[0] -x_b[0])*(x_a[0] -x_b[0]) + (x_a[1] -x_b[1])*(x_a[1] -x_b[1]) )- static_cast<T>(r_);
+
+    residuals_map(1) = NormalizeAngle(
+        atan2((x_b[1] -x_a[1]),(x_b[0] - x_a[0]))- x_a[2] - static_cast<T>(yaw_radians_));
+
+    // Scale the residuals by the square root information matrix to account for
+    // the measurement uncertainty.
+    residuals_map = sqrt_information_.template cast<T>() * residuals_map;
+
+    return true;
+  }
+
+  static ceres::CostFunction* Create(double r, double yaw_radians,
+                                     const Eigen::Matrix2d& sqrt_information) {
+    return (new ceres::AutoDiffCostFunction<Observation2dErrorTerm, 2, 3, 2>(new Observation2dErrorTerm(
+        r, yaw_radians, sqrt_information)));
+  }
+
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+ private:
+
+  // The range measurement.
+  const double r_;
+  // The bearing measurement.
+  const double yaw_radians_;
+  // The inverse square root of the measurement covariance matrix.
+  const Eigen::Matrix2d sqrt_information_;
+};
+
 
 /**
  * \class Simulator_RFSPSOSLAM_2d
@@ -323,9 +412,9 @@ public:
 
       TimeStamp t;
 
-      for (int k = 1; k < kMax_; k++) {
+      for (int k = 0; k < kMax_; k++) {
 
-        t += dTimeStamp_;
+
 
         groundtruth_pose_[k];
 
@@ -372,6 +461,7 @@ public:
           groundtruthDataAssociation_.push_back(-2);
         }
 
+        t += dTimeStamp_;
       }
 
     }
@@ -644,41 +734,50 @@ public:
 
     if (useDataAssociation_) {
       ceres::Problem problem;
-      double * params = new double[ceresslam_->NumParameters() + 1];
+      double * params = new double[ceresslam_->NumParameters() + 3];
       params[0] = 0;
+      params[1] = 0;
+      params[2] = 0;
       for (int i = 0; i < ceresslam_->NumParameters(); i++) {
-        params[i + 1] = initParams[i];
+        params[i + 3] = initParams[i];
       }
-      for (int i = 0; i < odometry_.size(); ++i) {
+      MotionModel_Odometry2d::TState::Mat pose_info_sqrt;
+
+      pose_info_sqrt << 1/sqrt(vardx_), 0, 0, 0, 1/sqrt(vardy_), 0, 0, 0, 1/sqrt(vardz_);
+      for (int i = 0; i < odometry_.size(); i++) {
         // Each Residual block takes a point and a camera as input and outputs a 2
         // dimensional residual. Internally, the cost function stores the observed
         // image location and compares the reprojection against the observation.
 
-        ceres::CostFunction* cost_function = ObsevationError1d::Create(odometry_[i][0], sqrt(vardx_));
+
+        ceres::CostFunction* cost_function = PoseGraph2dErrorTerm::Create(odometry_[i][0] , odometry_[i][1] , odometry_[i][2] , pose_info_sqrt);
         problem.AddResidualBlock(cost_function,
         NULL /* squared loss */,
-                                 params + i - 1, params + i);
+                                 params + (i)*ceresslam_->PoseDim, params + (i+1)*ceresslam_->PoseDim);
       }
+      MeasurementModel_RngBrg::TMeasurement::Mat z_info_sqrt;
+      z_info_sqrt << 1/sqrt(varzr_), 0, 0, 1/sqrt(varzb_);
       for (int k = 0; k < ceresslam_->Z_.size(); k++) {
         for (int j = 0; j < ceresslam_->Z_[k].size(); j++) {
           if (ceresslam_->DA_[k][j] < 0)
             continue;
 
-          ceres::CostFunction* cost_function = ObsevationError1d::Create(ceresslam_->Z_[k][j][0], sqrt(varzr_));
+          ceres::CostFunction* cost_function = Observation2dErrorTerm::Create(ceresslam_->Z_[k][j][0], ceresslam_->Z_[k][j][1],  z_info_sqrt);
           problem.AddResidualBlock(cost_function,
           NULL /* squared loss */,
-                                   params + k, params + ceresslam_->trajectory_.size() + ceresslam_->DA_[k][j]);
+                                   params + k*ceresslam_->PoseDim, params + ceresslam_->trajectory_.size()*ceresslam_->PoseDim + ceresslam_->DA_[k][j]*ceresslam_->LandmarkDim);
         }
       }
       problem.SetParameterBlockConstant(params);
       ceres::Solver::Options options;
       options.linear_solver_type = ceres::DENSE_SCHUR;
       options.minimizer_progress_to_stdout = true;
+      options.max_num_iterations = 500;
       ceres::Solver::Summary summary;
       ceres::Solve(options, &problem, &summary);
       std::cout << summary.FullReport() << "\n";
       for (int i = 0; i < ceresslam_->NumParameters(); i++) {
-        initParams[i] = params[i + 1];
+        initParams[i] = params[i + 3];
       }
     }
     else {

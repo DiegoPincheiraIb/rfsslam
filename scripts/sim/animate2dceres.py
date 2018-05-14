@@ -117,6 +117,8 @@ measurementFileHandle = open(measurementFile, "r");
 
 estimateImageFile = 'estimate.pdf';
 estimateImageFile = dataDir + estimateImageFile;
+errorImageFile = 'error.pdf';
+errorImageFile = dataDir + errorImageFile;
 estimateMovieFile = 'estimate.mp4';
 estimateMovieFile = dataDir + estimateMovieFile;
 
@@ -187,9 +189,14 @@ for i in range(0, nLandmarksDrawMax) :
 
 xLim = axTr.get_xlim();
 yLim = axTr.get_ylim();
-axMap.set_xlim([-10,10]);
 txt = axTr.text(xLim[1]*0.5, yLim[1]*0.9, " ",zorder=20);
 
+#axMap.set_title("Map")
+axMap.set_xlabel("x [m]")
+axMap.set_ylabel("y [m]")
+#axTr.set_title("Trajectory")
+axTr.set_xlabel("x [m]")
+axTr.set_ylabel("y [m]")
 
 def animateInit():
 
@@ -297,7 +304,13 @@ if saveFig:
 
     plt.setp(gtPoseHandle, linewidth=2.0)
     txt.set_text(" ");
-    plt.legend([gtPoseHandle,  gtMapHandle, landmarks[0]], ["Ground-truth trajectory", "Ground-truth landmark", "Estimated landmark" ], loc='best');
+    axTr.autoscale()
+    
+    axMap.autoscale()
+    axMap.margins(0.05)
+    axTr.legend([gtPoseHandle , bestPoseHandle  ], ["Ground-truth trajectory" , "Estimated trajectory" ], loc='best')
+    
+    axMap.legend([ gtMapHandle, bestLandmarks, measurementHandle], [r"$\mathcal{M}$" , r"$\widehat{\mathcal{M}}$" , r"$\mathcal{Z}_{1:k}$"], loc='best');
     plt.setp(plt.gca().get_legend().get_texts(), fontsize='18')
     scale = 10;
     ticks = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*scale))
@@ -307,4 +320,15 @@ if saveFig:
     plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
     #plt.savefig('estimate.eps', format='eps', bbox_inches='tight')
 
+
+    errorfig = plt.figure( figsize=(12,10), facecolor='w')
+    axError = errorfig.gca()
+    print( np.abs(gtPose_x-bestPoseHandle.get_xdata()) )
+    print( np.abs(gtPose_y-bestPoseHandle.get_ydata()) )
+    xerrorHandle, = axError.plot(gtPose_t , np.abs(gtPose_x-bestPoseHandle.get_xdata())  ,'b-')
+    yerrorHandle, = axError.plot(gtPose_t , np.abs(gtPose_y-bestPoseHandle.get_ydata())  ,'r-')
+    axError.legend([xerrorHandle , yerrorHandle ], ["Absolute error in x" , "Absolute error in y" ], loc='best')
+    axError.set_xlabel("time [s]")
+    axError.set_ylabel("error [m]")
+    plt.savefig(errorImageFile, format='pdf', bbox_inches='tight')
 measurementFileHandle.close();

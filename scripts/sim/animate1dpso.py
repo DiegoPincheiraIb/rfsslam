@@ -49,13 +49,13 @@ import matplotlib.ticker as ticker
 
 matplotlib.rcParams.update({'font.size': 20})
 
-saveMovie = False;
+saveMovie = True;
 saveFig = True
 timestepStart = 0
 
-nLandmarksDrawMax = 5000;
-nMeasurementsDrawMax =5000;
-nTrDrawMax = 5000
+nLandmarksDrawMax = 2000;
+nMeasurementsDrawMax =2000;
+nTrDrawMax = 2000
 if len(sys.argv) < 2:
     print "Usage: animate1dSim DATA_DIR\n";
     sys.exit(0);
@@ -118,6 +118,8 @@ measurementFileHandle = open(measurementFile, "r");
 
 estimateImageFile = 'estimate.pdf';
 estimateImageFile = dataDir + estimateImageFile;
+errorImageFile = 'error.pdf';
+errorImageFile = dataDir + errorImageFile;
 estimateMovieFile = 'estimate.mp4';
 estimateMovieFile = dataDir + estimateMovieFile;
 
@@ -149,7 +151,7 @@ fig = plt.figure( figsize=(12,10), facecolor='w')
 axTr = plt.subplot2grid((2, 1), (0, 0))
 axMap = plt.subplot2grid((2, 1), (1, 0))
 
-gtMapHandle, = axMap.plot(gtMap_x, -1*np.ones(len(gtMap_x)), 'r*', markersize=15);
+gtMapHandle, = axMap.plot(gtMap_x, -1*np.ones(len(gtMap_x)), 'r*', markersize=15, zorder= 15);
 ax = plt.gca();
 
 axMap.set_ylim([-2 , 2000])
@@ -176,6 +178,12 @@ for i in range(0, nLandmarksDrawMax) :
 
 xLim = axTr.get_xlim();
 yLim = axTr.get_ylim();
+
+axMap.set_xlabel("x [m]")
+axMap.set_ylabel("Particle number")
+#axTr.set_title("Trajectory")
+axTr.set_xlabel("time [s]")
+axTr.set_ylabel("x [m]")
 txt = axTr.text(xLim[0]+(xLim[1]-xLim[0])*0.1, yLim[0]+(yLim[1]-yLim[0])*0.9, " ",zorder=20);
 
 def animateInit():
@@ -259,7 +267,7 @@ def animate(i):
 
     return drawnObjects;
 print(len(drPose_t))
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timestepStart, 10000 , 10), interval=1,
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timestepStart, 10000 , 100), interval=1,
                                init_func=animateInit, blit=True,  repeat=False);
 if saveMovie:
     FFMpegWriter = matplotlib.animation.writers['ffmpeg']
@@ -279,14 +287,20 @@ if saveFig:
 
     plt.setp(gtPoseHandle, linewidth=2.0)
     txt.set_text(" ");
-    plt.legend([gtPoseHandle,  gtMapHandle, landmarks[0]], ["Ground-truth trajectory", "Ground-truth landmark", "Estimated landmark" ], loc='best');
-    plt.setp(plt.gca().get_legend().get_texts(), fontsize='18')
-    scale = 10;
-    ticks = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*scale))
-    plt.gca().xaxis.set_major_formatter(ticks)
-    ticks = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y*scale))
-    plt.gca().yaxis.set_major_formatter(ticks)
+    axTr.legend([gtPoseHandle , bestPoseHandle , trajectories[0] ], ["Ground-truth trajectory" , "Estimated trajectory" , "Particle trajectory"], loc='best')
+    axMap.margins(0.2)
+    axMap.legend([ gtMapHandle,bestLandmarks, landmarks[0]], [r"$\mathcal{M}$" , r"$\widehat{\mathcal{M}}$" , r"$\mathcal{M}^i$" ], loc='best');
+    
+    
     plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')
     #plt.savefig('estimate.eps', format='eps', bbox_inches='tight')
 
+    errorfig = plt.figure( figsize=(12,10), facecolor='w')
+    axError = errorfig.gca()
+    print(np.abs(gtPose_x-bestPoseHandle.get_ydata()))
+    xerrorHandle, = axError.plot(gtPose_t , np.abs(gtPose_x-bestPoseHandle.get_ydata())  ,'b-')
+    axError.legend([xerrorHandle ], ["Absolute error " ], loc='best')
+    axError.set_xlabel("time [s]")
+    axError.set_ylabel("error [m]")
+    plt.savefig(errorImageFile, format='pdf', bbox_inches='tight')
 measurementFileHandle.close();
