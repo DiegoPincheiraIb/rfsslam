@@ -38,7 +38,7 @@
   <optimizer>
     <iterations>100</iterations>
     <ospaC>10</ospaC>
-    <useDataAssociation>0</useDataAssociation>
+    <useDataAssociation>1</useDataAssociation>
     <initMapProb>0.05</initMapProb>
     <predict>
       <processNoiseInflationFactor>10.0</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->

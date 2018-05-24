@@ -7,7 +7,7 @@
     <logDirPrefix>data/rfspso1dslam/</logDirPrefix>
   </logging>
 
-  <timesteps>50</timesteps>
+  <timesteps>30</timesteps>
   <sec_per_timestep>1.0</sec_per_timestep>
 
   <trajectory>
@@ -31,16 +31,16 @@
   </measurements>
   
   <optimizer>
-    <optimizeIter>10</optimizeIter>
+    <optimizeIter>100</optimizeIter>
     <iterations>10000</iterations>
-    <nParticles>50</nParticles> <!-- number of particles -->
+    <nParticles>200</nParticles> <!-- number of particles -->
     <ospaC>10.0</ospaC>
-    <initMapProb>0.100</initMapProb>
+    <initMapProb>0.150</initMapProb>
     <w>0.721</w>
     <phi_global>1.193</phi_global>
-    <card_phi_global>0.01</card_phi_global>
+    <card_phi_global>0.05</card_phi_global>
     <phi_particle>1.193</phi_particle>
-    <card_phi_particle>0.01</card_phi_particle>
+    <card_phi_particle>0.05</card_phi_particle>
     <K>3</K>
     <global>0 </global>
     <predict>
