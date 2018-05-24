@@ -833,8 +833,9 @@ public:
       fclose(pParticlePoseFile);
       fclose(pLandmarkEstFile);
     }
-
-delete problem_general_unconstrained; //< deletes ceresslam_ object
+if(!useDataAssociation_){
+	delete problem_general_unconstrained; //< deletes ceresslam_ object
+}
 ceresslam_ = NULL;
   }
 
