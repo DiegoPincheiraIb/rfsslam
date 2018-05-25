@@ -302,8 +302,8 @@ if saveFig:
     #plt.savefig('estimate.eps', format='eps', bbox_inches='tight')
     errorfig = plt.figure( figsize=(12,10), facecolor='w')
     axError = errorfig.gca()
+    np.savetxt(dataDir+'error.txt', np.abs(gtPose_x-bestPoseHandle.get_ydata()))
     
-    print(np.abs(gtPose_x-bestPoseHandle.get_ydata()))
     xerrorHandle, = axError.plot(gtPose_t , np.abs(gtPose_x-bestPoseHandle.get_ydata())  ,'b-')
     axError.legend([xerrorHandle ], ["Absolute error " ], loc='best')
     axError.set_xlabel("time [s]")

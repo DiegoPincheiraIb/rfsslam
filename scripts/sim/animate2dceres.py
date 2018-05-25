@@ -323,6 +323,7 @@ if saveFig:
 
     errorfig = plt.figure( figsize=(12,10), facecolor='w')
     axError = errorfig.gca()
+    np.savetxt(dataDir+'error.txt', np.column_stack( ( np.abs(gtPose_x-bestPoseHandle.get_ydata()) ,  np.abs(gtPose_y-bestPoseHandle.get_ydata()) ) ) )
     print( np.abs(gtPose_x-bestPoseHandle.get_xdata()) )
     print( np.abs(gtPose_y-bestPoseHandle.get_ydata()) )
     xerrorHandle, = axError.plot(gtPose_t , np.abs(gtPose_x-bestPoseHandle.get_xdata())  ,'b-')
