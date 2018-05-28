@@ -142,7 +142,12 @@ gtMap = np.atleast_2d( np.genfromtxt(gtMapFile)) ;
 gtMap_x = gtMap[:,0];
 
 
-
+max_line_length=10000;
+estPoseFileHandle.seek(-max_line_length, os.SEEK_END)
+line = estPoseFileHandle.readlines()[-1]
+p =np.fromstring(line,dtype=float,sep=' ');
+final_iteration = p[0]
+print('final it: ' +str(final_iteration))
 
 # Plotting
 
@@ -267,13 +272,15 @@ def animate(i):
 
     return drawnObjects;
 print(len(drPose_t))
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(timestepStart, 10000 , 100), interval=1,
+animation = anim.FuncAnimation(plt.figure(1), animate, np.linspace(timestepStart, final_iteration , 180, dtype=int), interval=1,
                                init_func=animateInit, blit=True,  repeat=False);
 if saveMovie:
     FFMpegWriter = matplotlib.animation.writers['ffmpeg']
     animation.save(estimateMovieFile, writer=FFMpegWriter(fps = 30))
 else:
-    plt.show(block=False)
+    animateInit()
+    animate(final_iteration)
+    
 
 if saveFig:
     # Necessary to generate Type 1 fonts for pdf figures as required by IEEE for paper submissions

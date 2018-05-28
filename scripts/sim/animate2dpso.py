@@ -292,7 +292,7 @@ def animate(i):
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(90000, 100000 ,1000), interval=1,
+animation = anim.FuncAnimation(plt.figure(1), animate, np.linspace(timestepStart, final_iteration , 180, dtype=int), interval=1,
                                init_func=animateInit, blit=True,  repeat=False);
 if saveMovie:
     FFMpegWriter = matplotlib.animation.writers['ffmpeg']
