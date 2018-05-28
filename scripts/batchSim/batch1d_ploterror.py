@@ -42,6 +42,7 @@ import time
 import signal
 import shutil
 import matplotlib
+import numpy as np
 matplotlib.use("TkAgg");
 
 
