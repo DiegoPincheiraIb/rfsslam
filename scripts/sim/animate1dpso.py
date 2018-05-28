@@ -49,7 +49,7 @@ import matplotlib.ticker as ticker
 
 matplotlib.rcParams.update({'font.size': 20})
 
-saveMovie = True;
+saveMovie = False;
 saveFig = True
 timestepStart = 0
 
@@ -237,7 +237,7 @@ def animate(i):
         p =np.fromstring(poseLine,dtype=float,sep=' ');
         nparticle = nparticle + 1
     axMap.set_ylim([-2 , nparticle])
-    axMap.set_xlim([-10,10])
+    #axMap.set_xlim([-10,10])
     #print('traj ' + str(nparticle) + ' i ' + str(i) + '  p   '+ str(p))
     bestPoseHandle.set_data(trajectories[bestparticle].get_xdata() , trajectories[bestparticle].get_ydata())
     nparticle=0;

@@ -37,7 +37,7 @@ import numpy as np
 import time
 
 import matplotlib
-matplotlib.use("TkAgg");
+matplotlib.use("Agg");
 
 #print matplotlib.__version__
 
@@ -147,7 +147,7 @@ gtMap_y = gtMap[:,1];
 print('Reading ' + measurementFile);
 measurements = np.genfromtxt(measurementFile);
 measurements_i = measurements[:,0].astype(int);
-print(measurements_i);
+
 measurements_r = measurements[:,1];
 measurements_b = measurements[:,2];
 
@@ -176,7 +176,7 @@ angles = [None] * nTrDrawMax
 for i in range(0, nTrDrawMax) :
     trajectories_line, = axTr.plot([], [], 'b-');
     trajectories.append( trajectories_line );
-    
+
 measurementHandle, = axMap.plot([], [], 'g*',zorder = 9);
 bestLandmarks, = axMap.plot([],[], linestyle='', marker='o', color='r', zorder=9)
 landmarks = [];
@@ -203,15 +203,17 @@ def animateInit():
     txt.set_text("Iteration: ");
     global p;
     global m;
+    estPoseFileHandle.seek(0)
     poseLine = estPoseFileHandle.readline()
     p =np.fromstring(poseLine,dtype=float,sep=' ');
+    estMapFileHandle.seek(0)
     mapline = estMapFileHandle.readline()
     m = np.fromstring(mapline,dtype=float,sep=' ');
 
     for i in range(0, nLandmarksDrawMax):
         landmarks[i].set_data([],[])
     return [];
-
+    
 def animate(i):
 
     global p;
@@ -228,14 +230,13 @@ def animate(i):
 
     p_idx_maxWeight = 0
     p_maxWeight = 0
-
-
     nparticle=0;
     while len(p)>0 and p[0] < i:
       poseLine = estPoseFileHandle.readline()
       p =np.fromstring(poseLine,dtype=float,sep=' ');
-    bestparticle = 0;
+    bestparticle = -1;
     bestweight = -float("inf");
+
     while len(p)>0 and p[0] == i:
 
         if(bestweight<p[1]):
@@ -246,6 +247,7 @@ def animate(i):
         angles[nparticle] = p[4::3]
         drawnObjects.append(trajectories[nparticle]);
 
+        
         poseLine = estPoseFileHandle.readline()
         p =np.fromstring(poseLine,dtype=float,sep=' ');
         nparticle = nparticle + 1
@@ -312,7 +314,7 @@ if saveFig:
     
     axMap.legend([ gtMapHandle, bestLandmarks, measurementHandle], [r"$\mathcal{M}$" , r"$\widehat{\mathcal{M}}$" , r"$\mathcal{Z}_{1:k}$"], loc='best');
     plt.setp(plt.gca().get_legend().get_texts(), fontsize='18')
-    scale = 10;
+    scale = 1;
     ticks = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*scale))
     plt.gca().xaxis.set_major_formatter(ticks)
     ticks = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y*scale))
@@ -323,9 +325,8 @@ if saveFig:
 
     errorfig = plt.figure( figsize=(12,10), facecolor='w')
     axError = errorfig.gca()
-    np.savetxt(dataDir+'error.txt', np.column_stack( ( np.abs(gtPose_x-bestPoseHandle.get_ydata()) ,  np.abs(gtPose_y-bestPoseHandle.get_ydata()) ) ) )
-    print( np.abs(gtPose_x-bestPoseHandle.get_xdata()) )
-    print( np.abs(gtPose_y-bestPoseHandle.get_ydata()) )
+    np.savetxt(dataDir+'error.txt', np.column_stack( ( np.abs(gtPose_x-bestPoseHandle.get_xdata()) ,  np.abs(gtPose_y-bestPoseHandle.get_ydata()) ) ) )
+
     xerrorHandle, = axError.plot(gtPose_t , np.abs(gtPose_x-bestPoseHandle.get_xdata())  ,'b-')
     yerrorHandle, = axError.plot(gtPose_t , np.abs(gtPose_y-bestPoseHandle.get_ydata())  ,'r-')
     axError.legend([xerrorHandle , yerrorHandle ], ["Absolute error in x" , "Absolute error in y" ], loc='best')

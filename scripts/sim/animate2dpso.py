@@ -49,7 +49,7 @@ import matplotlib.ticker as ticker
 
 matplotlib.rcParams.update({'font.size': 20})
 
-saveMovie = True;
+saveMovie = False;
 saveFig = True
 
 
@@ -137,7 +137,12 @@ drPose_x = drPose[:,1];
 drPose_y = drPose[:,2];
 drPose_th = drPose[:,3];
 
-
+max_line_length=10000;
+estPoseFileHandle.seek(-max_line_length, os.SEEK_END)
+line = estPoseFileHandle.readlines()[-1]
+p =np.fromstring(line,dtype=float,sep=' ');
+final_iteration = p[0]
+print('final it: ' +str(final_iteration))
 print('Reading ' + gtMapFile);
 gtMap = np.atleast_2d(np.genfromtxt(gtMapFile) );
 gtMap_x = gtMap[:,0];
@@ -202,8 +207,10 @@ def animateInit():
     txt.set_text("Iteration: ");
     global p;
     global m;
+    estPoseFileHandle.seek(0)
     poseLine = estPoseFileHandle.readline()
     p =np.fromstring(poseLine,dtype=float,sep=' ');
+    estMapFileHandle.seek(0)
     mapline = estMapFileHandle.readline()
     m = np.fromstring(mapline,dtype=float,sep=' ');
 
@@ -285,13 +292,15 @@ def animate(i):
 
     return drawnObjects;
 
-animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(0, 100000 ,1000), interval=1,
+animation = anim.FuncAnimation(plt.figure(1), animate, np.arange(90000, 100000 ,1000), interval=1,
                                init_func=animateInit, blit=True,  repeat=False);
 if saveMovie:
     FFMpegWriter = matplotlib.animation.writers['ffmpeg']
     animation.save(estimateMovieFile, writer=FFMpegWriter(fps = 30))
 else:
-    plt.show(block=False)
+    animateInit()
+    animate(final_iteration)
+    
 
 if saveFig:
     # Necessary to generate Type 1 fonts for pdf figures as required by IEEE for paper submissions
@@ -319,9 +328,12 @@ if saveFig:
     #plt.savefig('estimate.eps', format='eps', bbox_inches='tight')
     errorfig = plt.figure( figsize=(12,10), facecolor='w')
     axError = errorfig.gca()
-    np.savetxt(dataDir+'error.txt', np.column_stack( ( np.abs(gtPose_x-bestPoseHandle.get_ydata()) ,  np.abs(gtPose_y-bestPoseHandle.get_ydata()) ) ) )
+    print(gtPose_x)
+    print(bestPoseHandle.get_xdata())
     print( np.abs(gtPose_x-bestPoseHandle.get_xdata()) )
     print( np.abs(gtPose_y-bestPoseHandle.get_ydata()) )
+    np.savetxt(dataDir+'error.txt', np.column_stack( ( np.abs(gtPose_x-bestPoseHandle.get_xdata()) ,  np.abs(gtPose_y-bestPoseHandle.get_ydata()) ) ) )
+
     xerrorHandle, = axError.plot(gtPose_t , np.abs(gtPose_x-bestPoseHandle.get_xdata())  ,'b-')
     yerrorHandle, = axError.plot(gtPose_t , np.abs(gtPose_y-bestPoseHandle.get_ydata())  ,'r-')
     axError.legend([xerrorHandle , yerrorHandle ], ["Absolute error in x" , "Absolute error in y" ], loc='best')
