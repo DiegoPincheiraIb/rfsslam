@@ -115,9 +115,9 @@ for error in cereserrors:
 ceresavgerror= ceresavgerror/len(cereserrors)
 
 
-xerrorpso = psoavgerror[:,0]
+xerrorpso = psoavgerror
 
-ceresxerror = ceresavgerror[:,0]
+ceresxerror = ceresavgerror
 
 
 
