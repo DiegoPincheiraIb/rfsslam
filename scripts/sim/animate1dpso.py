@@ -3,7 +3,7 @@
  #
  # Software License Agreement (New BSD License)
  #
- # Copyright (c) 2013, Keith Leung
+ # Copyright (c) 2018, Felipe Inostroza
  # All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
@@ -196,8 +196,10 @@ def animateInit():
     txt.set_text("Iteration: ");
     global p;
     global m;
+    estPoseFileHandle.seek(0)
     poseLine = estPoseFileHandle.readline()
     p =np.fromstring(poseLine,dtype=float,sep=' ');
+    estMapFileHandle.seek(0)
     mapline = estMapFileHandle.readline()
     m = np.fromstring(mapline,dtype=float,sep=' ');
 

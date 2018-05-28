@@ -32,7 +32,7 @@
   
   <optimizer>
     <optimizeIter>100</optimizeIter>
-    <iterations>10000</iterations>
+    <iterations>20000</iterations>
     <nParticles>200</nParticles> <!-- number of particles -->
     <ospaC>10.0</ospaC>
     <initMapProb>0.150</initMapProb>
