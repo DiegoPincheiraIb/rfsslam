@@ -406,9 +406,9 @@ namespace rfs {
           double rand_num_1 = drand48();
           double rand_num_2 = drand48();
           for (int dim = 0; dim < particles_[i].trajectory_velocity[k].getNDim(); dim++) {
-            v[dim] += config.phi_p * (rand_num_1*100+drand48())/101.0 * (particles_[i].bestTrajectory[k].get()[dim] - particles_[i].trajectory[k].get()[dim]);
+            v[dim] += config.phi_p * (rand_num_1*10+drand48())/11.0 * (particles_[i].bestTrajectory[k].get()[dim] - particles_[i].trajectory[k].get()[dim]);
             if(best_i!=i)
-              v[dim] += config.phi_g * (rand_num_2*100+drand48())/101.0 * (particles_[best_i].bestTrajectory[k].get()[dim] - particles_[i].trajectory[k].get()[dim]);
+              v[dim] += config.phi_g * (rand_num_2*10+drand48())/11.0 * (particles_[best_i].bestTrajectory[k].get()[dim] - particles_[i].trajectory[k].get()[dim]);
           }
           particles_[i].trajectory_velocity[k].set(v);
 
@@ -550,7 +550,7 @@ namespace rfs {
             todelete[i] = true;
         }
         else {
-          if (drand48() < 0.01)
+          if (drand48() < 0.05)
             todelete[i] = true;
           toadd_particle[j_p] = false;
           for (int dim = 0; dim < particles_[particleIdx].landmarks_velocity[i].getNDim(); dim++) {

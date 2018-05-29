@@ -31,11 +31,11 @@
   </measurements>
   
   <optimizer>
-    <optimizeIter>100</optimizeIter>
-    <iterations>20000</iterations>
-    <nParticles>200</nParticles> <!-- number of particles -->
-    <ospaC>10.0</ospaC>
-    <initMapProb>0.150</initMapProb>
+    <optimizeIter>50</optimizeIter>
+    <iterations>10000</iterations>
+    <nParticles>400</nParticles> <!-- number of particles -->
+    <ospaC>1.0</ospaC>
+    <initMapProb>0.10</initMapProb>
     <w>0.721</w>
     <phi_global>1.193</phi_global>
     <card_phi_global>0.05</card_phi_global>
