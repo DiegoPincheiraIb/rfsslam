@@ -196,8 +196,10 @@ def animateInit():
     txt.set_text("Iteration: ");
     global p;
     global m;
+    estPoseFileHandle.seek(0)
     poseLine = estPoseFileHandle.readline()
     p =np.fromstring(poseLine,dtype=float,sep=' ');
+    estMapFileHandle.seek(0)
     mapline = estMapFileHandle.readline()
     m = np.fromstring(mapline,dtype=float,sep=' ');
 
