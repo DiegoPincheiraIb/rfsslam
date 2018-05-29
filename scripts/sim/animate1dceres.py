@@ -37,7 +37,7 @@ import numpy as np
 import time
 
 import matplotlib
-matplotlib.use("TkAgg");
+matplotlib.use("Agg");
 
 #print matplotlib.__version__
 
