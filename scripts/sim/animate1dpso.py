@@ -296,9 +296,9 @@ if saveFig:
 
     plt.setp(gtPoseHandle, linewidth=2.0)
     txt.set_text(" ");
-    axTr.legend([gtPoseHandle , bestPoseHandle , trajectories[0] ], ["Ground-truth trajectory" , "Estimated trajectory" , "Particle trajectory"], loc='best')
+    axTr.legend([gtPoseHandle , bestPoseHandle , trajectories[0] , drPoseHandle ], ["Ground-truth trajectory" , "Estimated trajectory" , "Particle trajectory", "Dead Reckoning"], loc='best', handletextpad = 0.0, borderpad=0.2 , labelspacing=0.1)
     axMap.margins(0.2)
-    axMap.legend([ gtMapHandle,bestLandmarks, landmarks[0]], [r"$\mathcal{M}$" , r"$\widehat{\mathcal{M}}$" , r"$\mathcal{M}^i$" ], loc='best');
+    axMap.legend([ gtMapHandle,bestLandmarks, landmarks[0]], [r"$\mathcal{M}$" , r"$\widehat{\mathcal{M}}$" , r"$\mathcal{M}^i$" ], loc='best', handletextpad = 0.0, borderpad=0.2 , labelspacing=0.1);
     
     
     plt.savefig(estimateImageFile, format='pdf', bbox_inches='tight')

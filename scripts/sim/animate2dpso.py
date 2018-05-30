@@ -316,8 +316,8 @@ if saveFig:
 
     plt.setp(gtPoseHandle, linewidth=2.0)
     txt.set_text(" ");
-    axMap.legend([ gtMapHandle, bestLandmarks, landmarks[0]], [r"$\mathcal{M}$" , r"$\widehat{\mathcal{M}}$" , r"$\mathcal{M}^i$" ], loc='best');
-    axTr.legend([gtPoseHandle , bestPoseHandle , trajectories[0] ], ["Ground-truth trajectory" , "Estimated trajectory" , "Particle trajectory"], loc='best')
+    axMap.legend([ gtMapHandle, bestLandmarks, landmarks[0]], [r"$\mathcal{M}$" , r"$\widehat{\mathcal{M}}$" , r"$\mathcal{M}^i$" ], loc='best', handletextpad = 0.0, borderpad=0.2 , labelspacing=0.1);
+    axTr.legend([gtPoseHandle , bestPoseHandle , trajectories[0] ], ["Ground-truth trajectory" , "Estimated trajectory" , "Particle trajectory"], loc='best', handletextpad = 0.0, borderpad=0.2 , labelspacing=0.1)
     
     #scale = 10;
     #ticks = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*scale))

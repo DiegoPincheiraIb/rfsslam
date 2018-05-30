@@ -295,7 +295,7 @@ if saveFig:
 
     plt.setp(gtPoseHandle, linewidth=2.0)
     txt.set_text(" ");
-    axTr.legend([gtPoseHandle , bestPoseHandle , trajectories[0] ], ["Ground-truth trajectory" , "Estimated trajectory" , "Particle trajectory"], loc='best')
+    axTr.legend([gtPoseHandle , bestPoseHandle , trajectories[0] , drPoseHandle ], ["Ground-truth trajectory" , "Estimated trajectory" , "Particle trajectory" , "Dead Reckoning"], loc='best' , handletextpad = 0.0, borderpad=0.2 , labelspacing=0.1)
     #axMap.legend([ gtMapHandle, landmarks[0], measurementHandle], ["Ground-truth landmarks", "Estimated landmarks" , "Measurements"], loc='best');
     
     axMap.set_yticks([-1 , 0 , 1])

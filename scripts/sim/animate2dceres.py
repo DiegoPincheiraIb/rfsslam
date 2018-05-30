@@ -310,9 +310,9 @@ if saveFig:
     
     axMap.autoscale()
     axMap.margins(0.05)
-    axTr.legend([gtPoseHandle , bestPoseHandle  ], ["Ground-truth trajectory" , "Estimated trajectory" ], loc='best')
+    axTr.legend([gtPoseHandle , bestPoseHandle  ], ["Ground-truth trajectory" , "Estimated trajectory" ], loc='best', handletextpad = 0.0, borderpad=0.2 , labelspacing=0.1)
     
-    axMap.legend([ gtMapHandle, bestLandmarks, measurementHandle], [r"$\mathcal{M}$" , r"$\widehat{\mathcal{M}}$" , r"$\mathcal{Z}_{1:k}$"], loc='best');
+    axMap.legend([ gtMapHandle, bestLandmarks, measurementHandle], [r"$\mathcal{M}$" , r"$\widehat{\mathcal{M}}$" , r"$\mathcal{Z}_{1:k}$"], loc='best', handletextpad = 0.0, borderpad=0.2 , labelspacing=0.1);
     plt.setp(plt.gca().get_legend().get_texts(), fontsize='18')
     scale = 1;
     ticks = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x*scale))
