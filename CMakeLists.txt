@@ -71,6 +71,10 @@ FIND_PACKAGE(Eigen REQUIRED)
 
 FIND_PACKAGE(Ceres REQUIRED)
 
+# G2O 
+
+FIND_PACKAGE(g2o REQUIRED)
+
 # Google perftools
 FIND_PACKAGE(Perftools)
 IF(Perftools_FOUND)
