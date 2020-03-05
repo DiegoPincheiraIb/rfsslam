@@ -48,6 +48,8 @@
 #include "TimeStamp.hpp"
 #include "GaussianGenerators.hpp"
 
+#include <boost/random/mersenne_twister.hpp>
+
 
 namespace rfs
 {
@@ -429,7 +431,7 @@ namespace rfs
 	isValid_Sx_inv_ = true;
       }
       e_ = to.x_ - x_;
-      return (e_.transpose() * Sx_inv_ * e_);
+      return (e_.transpose() * Sx_inv_ * e_).value();
     }
 
     /**
@@ -442,7 +444,7 @@ namespace rfs
 	isValid_Sx_inv_ = true;
       }
       e_ = to_x - x_;
-      return (e_.transpose() * Sx_inv_ * e_);
+      return (e_.transpose() * Sx_inv_ * e_).value();
     }
 
     /**
@@ -466,6 +468,29 @@ namespace rfs
 	*mDist2 = md2;
       return l;
     }
+    /**
+     * Calculate the Gaussian log-likelihood of a given evaluation point
+     * \param[in] x_eval the evaluation point
+     * \param[out] mDist2 if not NULL, the pointed to variable will be overwritten by the
+     * squared mahalanobis distance used to calculate the likelihood
+     */
+    double evalGaussianLogLikelihood(const RandomVec<nDim> &x_eval,
+				  double* mDist2 = NULL){
+      if(!isValid_Sx_det_){
+	Sx_det_ = Sx_.determinant();
+	gaussian_pdf_factor_ = sqrt( pow( 2*PI, nDim ) * Sx_det_ );
+	isValid_Sx_det_ = true;
+      }
+      double md2 = mahalanobisDist2( x_eval );
+
+      double l = -0.5 * md2 - log(gaussian_pdf_factor_);
+      if( l != l) //If md2 is very large, l will become NAN;
+	l = 0;
+      if(mDist2 != NULL)
+	*mDist2 = md2;
+      return l;
+    }
+
 
       /**
        * Calculate the Gaussian likelihood of a given evaluation point, also gives normalized error, useful for calculating gradients
@@ -570,24 +595,24 @@ namespace rfs
      * Sample this random vector
      * \param[out] s_sample The sampled vector, with time and covariance copied from this random vector
      */
-    void sample( RandomVec<nDim> &s_sample ){
+    void sample( RandomVec<nDim> &s_sample ) const{
     
       Vec x_sample, indep_noise;
       int threadnum=0;
 #ifdef _OPENMP
       threadnum = omp_get_thread_num();
 #endif
-      if(!isValid_Sx_L_){
-	::Eigen::LLT<Mat> cholesky( Sx_ );
-	Sx_L_ = cholesky.matrixL();
-	isValid_Sx_L_ = true;
-      }
-
       int n = Sx_L_.cols();
       for(int i = 0; i < n; i++){
-	indep_noise(i) = gaussianGenerators_[threadnum]();
+	indep_noise(i) = gaussianGenerators_[threadnum](randomGenerators_[threadnum]);
       }
+      if(isValid_Sx_L_){
       x_sample = x_ + Sx_L_ * indep_noise;
+      }else{
+    	  ::Eigen::LLT<Mat> cholesky( Sx_ );
+    	  Mat Sx_L  = cholesky.matrixL();
+          x_sample = x_ + Sx_L * indep_noise;
+      }
       s_sample.set( x_sample, Sx_, t_ );
 
     }
@@ -612,7 +637,7 @@ namespace rfs
     
       int n = Sx_L_.cols();
       for(int i = 0; i < n; i++){
-	indep_noise(i) = gaussianGenerators_[threadnum]();
+	indep_noise(i) = gaussianGenerators_[threadnum].operator ()<boost::mt19937>(randomGenerators_[threadnum]);
       }
       x_ += Sx_L_ * indep_noise;
 

@@ -35,9 +35,9 @@
 
 namespace rfs
 {
+	std::vector<  ::boost::mt19937 > randomGenerators_;
   /** normal distribution random number generators, one for each thread */
-    std::vector< ::boost::variate_generator< ::boost::mt19937,
-  ::boost::normal_distribution<double> > > gaussianGenerators_;
+    std::vector<  ::boost::normal_distribution<double>  > gaussianGenerators_;
 
    void  initializeGaussianGenerators(){
     gaussianGenerators_.clear();
@@ -45,9 +45,11 @@ namespace rfs
 #ifdef _OPENMP
     nThreads = omp_get_max_threads();
 #endif
-    for(int i=0; i< nThreads ;i++)
-      gaussianGenerators_.push_back(::boost::variate_generator< ::boost::mt19937,
-                                    ::boost::normal_distribution<double> >(::boost::mt19937(lrand48()), ::boost::normal_distribution<double>()));
+    for(int i=0; i< nThreads ;i++){
+    	randomGenerators_.push_back( ::boost::mt19937(lrand48()) );
+      gaussianGenerators_.push_back( ::boost::normal_distribution<double>() );
+
+    }
     std::cout << "N generators: " << gaussianGenerators_.size() << "\n";
 
 

@@ -37,9 +37,12 @@
 
 namespace rfs
 {
-  /** normal distribution random number generators, one for each thread */
-   extern std::vector< ::boost::variate_generator< ::boost::mt19937,
-  ::boost::normal_distribution<double> > > gaussianGenerators_;
+/** random number generator engine, one for each thread */
+	extern std::vector<  ::boost::mt19937  > randomGenerators_;
+
+
+	/** normal distribution random number generators, one for each thread */
+   extern std::vector<  ::boost::normal_distribution<double>  > gaussianGenerators_;
 
   void  initializeGaussianGenerators();
 
