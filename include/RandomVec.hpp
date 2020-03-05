@@ -646,9 +646,8 @@ namespace rfs
      * returns true if covariance is  approximately symmetric
      **/
     bool checkCov(){
-      Mat t=Sx_-Sx_.transpose();
 
-      return t.isZero();
+      return Sx_.isApprox(Sx_.transpose() );
     }
 
   protected:
