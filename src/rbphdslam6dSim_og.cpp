@@ -41,7 +41,6 @@
 #include <stdio.h>
 #include <string>
 #include <sys/ioctl.h>
-#include "rapidcsv.h"
 
 #ifdef _PERFTOOLS_CPU
 #include <gperftools/profiler.h>
@@ -214,7 +213,7 @@ public:
 
 			t += dTimeStamp_;
 
-			if (k <= 2) {
+			if (k <= 50) {
 				double dx = 0;
 				double dy = 0;
 				double dz = 0;
@@ -291,22 +290,15 @@ public:
 		for (int k = 1; k < kMax_; k++) {
 
 			t += dTimeStamp_;
-			double dt = dTimeStamp_.getTimeAsDouble(); // 1/kMax?
+			double dt = dTimeStamp_.getTimeAsDouble();
 
-			MotionModel_Odometry6d::TInput in = groundtruth_displacement_[k]; // Setear a 0?
+			MotionModel_Odometry6d::TInput in = groundtruth_displacement_[k];
 			MotionModel_Odometry6d::TState::Mat Qk = Q * dt * dt;
 			in.setCov(Qk);
 			MotionModel_Odometry6d::TInput out;
-			in.sample(out); // agregar ruido a in
+			in.sample(out);
 
-
-			/*
-			genero out
-			out.setmean << x_mov, y_mov, .....
-			out.setCov << cov....
-			*/
-
-			odometry_.push_back(out); // Reemplazar out por input asociado
+			odometry_.push_back(out);
 
 			MotionModel_Odometry6d::TState p;
 			motionModel.step(p, deadReckoning_pose_[k - 1], odometry_[k],
@@ -386,77 +378,26 @@ public:
 		}
 
 		TimeStamp t;
-		// Here I load the name of the files with the measurements. E.g. timestamp_1623445632.csv
-		// I will store these in list_timestamps_obj.
-		// E.g. list_timestamps_obj = [ "timestamp_16234234.csv" , "timestamp_16234236.csv", ..... ]
-		rapidcsv::Document tstp_csv("/home/diego/RFS_SLAM/rfsslam/data/timestamps/main_timestamp_list.csv");
-		std::vector<std::string> list_timestamps_obj;
-		unsigned int idx_tstp, rows_tstp_csv = tstp_csv.GetRowCount();
-		for(int i = 0; i < rows_tstp_csv ; i++){
-			// std::cout << i << std::endl;
-			std::string col = tstp_csv.GetRow<std::string>(i)[0];
-			list_timestamps_obj.push_back(col);
-		}
-		for (int k = 1; k < kMax_; k++) {// 59
 
-			t += dTimeStamp_; // dTimeStamp is frame rate
+		for (int k = 1; k < kMax_; k++) {
 
-			groundtruth_pose_[k];// Pose real del robot en K
+			t += dTimeStamp_;
+
+			groundtruth_pose_[k];
 
 			// Real detections
-			// Para cada landmark conocido, se toma una medición
-			// Aqui se debe iterar por cada uno de las mediciones
-
-			// Se cargan las mediciones del frame k
-			// I Will load here the measurements 
-			rapidcsv::Document doc(
-				"/home/diego/RFS_SLAM/rfsslam/data/rgbd/19_jul_2022_18_48_49/"
-				"csv_files/" + list_timestamps_obj[k]);
-			std::vector<std::vector<float>> measurements_k;
-
-			// rows contains the number of rows (measurements) taken in frame K
-			unsigned int idx, rows = doc.GetRowCount();
-
-			// Iterates over each measurement (x, y, z) and stores them in measurements_k
-			// measurements_k = [ [0.3, 0.4, 0.5] , [1.2, 0.5, 0.5] ,  [2.5, 2.3, 7.0] , .... ]
-			for(int i = 0; i < rows ; i++){
-				std::vector<float> row = doc.GetRow<float>(i);
-				measurements_k.push_back(row);
-			}
-
-			// For each measurement (x, y, z) m:
-			for (int m = 0; m < rows; m++) {
-			// for (int m = 0; m < groundtruth_landmark_.size(); m++) {
+			for (int m = 0; m < groundtruth_landmark_.size(); m++) {
 
 				bool success;
 				MeasurementModel_6D::TMeasurement z_m_k;
 				success = measurementModel.sample(groundtruth_pose_[k],
 						groundtruth_landmark_[m], z_m_k);
-				if (true) {// if (success) {
+				if (success) {
 
 					if ( drand48() <= Pd_) {
 						z_m_k.setTime(t);
 						// z_m_k.setCov(R);
-
-						// Aqui se empiezan las modificaciones
-						// /*
-						Measurement3d measurement;
-						Eigen::Vector3d mean;
-						// Save [0.3, 0.4, 0.5] into mean variable
-						mean << measurements_k[m][0], measurements_k[m][1], measurements_k[m][2];
-						Eigen::Matrix3d  cov;
-						cov << 1 , 0 ,0,
-						0, 1, 0,
-						0 , 0, 1; // test covariance value
-						// std::cout << measurements_k[m][0] << measurements_k[m][1] << measurements_k[m][2]<< std::endl;
-						// For a measurement to be registered I need three things to be set:
-						// 1. Mean -> Mean of the measurement took
-						// 2. Covariance -> Covariance of the measurement took
-						// 3. Time -> Timestamp of the measurement a
-						measurement.set(mean, cov);
-						measurement.setTime(t);
-						// */
-						measurements_.push_back(measurement);
+						measurements_.push_back(z_m_k);
 					}
 
 					if (lmkFirstObsTime_[m] == -1) {
@@ -482,7 +423,7 @@ public:
 				} while (z.norm() < rangeLimitMax_ && z.norm() > rangeLimitMin_);
 
 				z_clutter.set(z, t);
-				// measurements_.push_back(z_clutter); // Se borraron falsas alarmas
+				measurements_.push_back(z_clutter);
 
 			}
 
@@ -749,7 +690,7 @@ public:
 
 			pFilter_->predict(odometry_[k], dTimeStamp_);
 
-			if (k <= 2) {
+			if (k <= 50) {
 				for (int i = 0; i < nParticles_; i++)
 					pFilter_->setParticlePose(i, groundtruth_pose_[k]);
 			}
@@ -1074,7 +1015,7 @@ int main(int argc, char* argv[]) {
 	sim.generateOdometry();
 	sim.generateMeasurements();
 	sim.exportSimData();
-	sim.setupRBPHDFilter(); // Inicialza slam
+	sim.setupRBPHDFilter();
 
 	if (vm.count("seed")) {
 		seed = vm["seed"].as<int>();
@@ -1085,7 +1026,7 @@ int main(int argc, char* argv[]) {
 
 	// boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
 
-	sim.run(); // Run algorithm
+	sim.run();
 
 	// std::cout << "mem use: " << MemProfile::getCurrentRSS() << "(" << MemProfile::getPeakRSS() << ")\n";
 	//delete timer;

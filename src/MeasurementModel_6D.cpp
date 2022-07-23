@@ -166,6 +166,10 @@ double MeasurementModel_6D::probabilityOfDetection( const Pose6d &pose,
 
   range = diff.norm();
 
+  // if (x, y, z) está en cono dado FoV de la camara o no está en el cono
+  // if (x, y, z) no está en cono : return Pd = 0;
+  // else: continuar con el código
+
   if( range <= config.rangeLimMax_ && range >= config.rangeLimMin_){
     Pd = config.probabilityOfDetection_;
     if( range >= (config.rangeLimMax_ - config.rangeLimBuffer_ ) ||
