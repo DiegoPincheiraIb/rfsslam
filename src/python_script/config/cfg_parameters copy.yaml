@@ -1,0 +1,15 @@
+---
+  calibr:
+    calibr_status: False
+    chessboard_size: (7,6)
+  camera:
+    width: 640
+    height: 480
+  orb_features:
+    n_feats: 20
+  modes:
+    realtime: True
+    timestamps: True
+  frames:
+    path_obj: "data/timestamps"
+    list_timestamps: []
