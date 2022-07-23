@@ -10,26 +10,26 @@
     <logDirPrefix>data/rbphdslam6d</logDirPrefix>
   </logging>
 
-  <timesteps>3000</timesteps>
-  <sec_per_timestep>0.1</sec_per_timestep>
+  <timesteps>382</timesteps>
+  <sec_per_timestep>3</sec_per_timestep>
 
   <trajectory>
     <nSegments>5</nSegments> <!-- number of constant velocity segments -->
     <max_dx_per_sec>0.30</max_dx_per_sec> <!-- max x-displacement per second -->
     <max_dy_per_sec>0.10</max_dy_per_sec> <!-- max y-displacement per second -->
-    <max_dz_per_sec>0.10</max_dz_per_sec> <!-- max z-displacement per second -->
+    <max_dz_per_sec>0.00</max_dz_per_sec> <!-- max z-displacement per second -->
     <min_dx_per_sec>0.10</min_dx_per_sec> <!-- min x-displacement per second -->
-    <max_dqx_per_sec>0.10</max_dqx_per_sec> <!-- max x-rotation per second (quaternion-based)-->
-    <max_dqy_per_sec>0.05</max_dqy_per_sec> <!-- max y-rotation per second (quaternion-based)-->
-    <max_dqz_per_sec>0.050</max_dqz_per_sec> <!-- max z-rotation per second (quaternion-based)-->
-    <max_dqw_per_sec>0.050</max_dqw_per_sec> <!-- max w-rotation per second (quaternion-based)-->
-    <vardx>0.00200</vardx> <!-- variance in x displacement per second -->
-    <vardy>0.00200</vardy> <!-- variance in y displacement per second -->
-    <vardz>0.00200</vardz> <!-- variance in z displacement per second -->
-    <vardqx>0.00200</vardx> <!-- variance in qx rotation per second -->
+    <max_dqx_per_sec>0.000</max_dqx_per_sec> <!-- max x-rotation per second (quaternion-based)-->
+    <max_dqy_per_sec>0.012</max_dqy_per_sec> <!-- max y-rotation per second (quaternion-based)-->
+    <max_dqz_per_sec>0.000</max_dqz_per_sec> <!-- max z-rotation per second (quaternion-based)-->
+    <max_dqw_per_sec>0.000</max_dqw_per_sec> <!-- max w-rotation per second (quaternion-based)-->
+    <vardx>0.00300</vardx> <!-- variance in x displacement per second -->
+    <vardy>0.00400</vardy> <!-- variance in y displacement per second -->
+    <vardz>0.00000</vardz> <!-- variance in z displacement per second -->
+    <vardqx>0.00000</vardx> <!-- variance in qx rotation per second -->
     <vardqy>0.00200</vardy> <!-- variance in qy rotation per second -->
-    <vardqz>0.00200</vardz> <!-- variance in qz rotation per second -->
-    <vardqw>0.00200</vardw> <!-- variance in qz rotation per second -->
+    <vardqz>0.00000</vardz> <!-- variance in qz rotation per second -->
+    <vardqw>0.00200</vardw> <!-- variance in qw rotation per second -->
   </trajectory>
 
   <landmarks>
@@ -51,7 +51,7 @@
   </measurements>
   
   <filter>
-    <nParticles>1000</nParticles> <!-- number of particles -->
+    <nParticles>200</nParticles> <!-- number of particles -->
     
     <predict>
       <processNoiseInflationFactor>1.0</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
