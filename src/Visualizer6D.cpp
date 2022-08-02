@@ -20,14 +20,21 @@ void Visualizer6D::setup(const std::vector<MeasurementModel_6D::TLandmark> &grou
 		const std::vector<MotionModel_Odometry6d::TState> &deadreckoning_pose){
 
 	groundtruth_pose_ = &groundtruth_pose;
+
+	vtkSmartPointer<vtkChartXY> chart = vtkSmartPointer<vtkChartXY>::New();
+	// chart->GetAxis(0)->SetGridVisible(true);
+	// chart->GetAxis(0)->SetGridVisible(true);
+
+	vtkSmartPointer<vtkAxesActor> axesActor =
+            vtkSmartPointer<vtkAxesActor>::New();
 	renderer_ = vtkSmartPointer<vtkRenderer>::New();
+	renderer_ -> AddActor(axesActor);
 	renderWindow_ = vtkSmartPointer<vtkRenderWindow>::New();
 	renderWindow_->AddRenderer(renderer_);
 	renderWindowInteractor_ = vtkSmartPointer<vtkRenderWindowInteractor>::New();
 	renderWindowInteractor_->SetRenderWindow(renderWindow_);
 
 	sphereSource_ = vtkSmartPointer<vtkSphereSource>::New();
-
 
 	mapPoints_ = vtkSmartPointer<vtkPoints>::New();
 	mapColors_ = vtkSmartPointer<vtkUnsignedCharArray>::New();
