@@ -3,6 +3,8 @@ frames_class.py
     Class that work with frames.
 """
 import os
+import shutil
+from shutil import SameFileError
 import sys
 import copy
 import time
@@ -78,6 +80,8 @@ class FrameDisplay():
         self.current_id = 0
         self.timestamp = self.main_yaml["frames"]["list_timestamps"][0]
 
+        self.new_timestamp = self.main_yaml["new_timestamp"]
+
         # Initializes amount of processed images
         self.amount_img_calc = 0
 
@@ -85,10 +89,11 @@ class FrameDisplay():
 
         # Initializes pandas dataframe to store pose estimation
         self.df_pose = pd.DataFrame(
-            float(0),
+            [[float(0), float(0), float(0.1),
+             float(0), float(0), float(0), float(0)]],
             index=range(len(self.main_yaml["frames"]["list_timestamps"])),
             columns=["dx", "dy", "dz", "dqx", "dqy", "dqz", "dqw"])
-        self.df_pose.loc[0] = [float(0) for _ in range(7)]
+        self.df_pose.loc[0] = [float(0) for _ in range(6)].append(float(1))
 
         # Set to calculate 3d points
         self.are_3d_points_loaded = False
@@ -205,7 +210,7 @@ class FrameDisplay():
                 # Show the final image
                 cv2.imshow("Matches", final_img)
 
-            mode_obj = "visualization"
+            mode_obj = "visualization"  # "3d points" # "visualization"
 
             if mode_obj == "3d points":
 
@@ -242,16 +247,10 @@ class FrameDisplay():
                     # self.save_3dpoints_mtx()
                     self.measurement_process()
 
-            # Depth 16 bit to 8 bit
-            if not self.is_depth_processed:
-                # self.fill_misdetect_depth()
-                self.invert_depth_image()
-                self.convert_depth_16b_2_8bit()
-                # self.fill_misdetect_depth()
-                self.is_depth_processed = True
-
             # input_pose_estimation
             self.input_pose_estimation(key_press)
+
+            self.copy_current_file_to_new_timestamp(key_press)
 
             # Shows frames
             self.show_frames()
@@ -780,3 +779,33 @@ class FrameDisplay():
             sys.exit(
                 "Chosen id: " + str(self.main_yaml["frames"]["chosen_id"])
                 + "not in data/rgbd/.")
+
+    def copy_current_file_to_new_timestamp(self, key_press):
+        """
+        Copy current timestamp to folder: new_timestamp.
+        """
+        if key_press == ord("t"):
+            src_folder = (
+                "data/rgbd/" + self.main_yaml["frames"]["chosen_id"]
+                + "/images/")
+            dst_folder = (
+                "data/rgbd/" + self.new_timestamp + "/images/")
+
+            for frame_type in ["rgb", "depth", "ir"]:
+                # file names
+                src_file = (
+                    src_folder + frame_type + "/" + "frame_" + frame_type
+                    + "_" + self.timestamp + ".npy")
+                dst_file = (
+                    dst_folder + frame_type + "/" + "frame_" + frame_type
+                    + "_" + self.timestamp + ".npy")
+
+                try:
+                    # copy file
+                    shutil.copyfile(src_file, dst_file)
+                    # destination folder after copying
+                    print("Destination after copying", os.listdir(dst_folder))
+                except SameFileError:
+                    print("We are trying to copy the same File")
+                except IsADirectoryError:
+                    print("The destination is a directory")
