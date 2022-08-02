@@ -286,6 +286,21 @@ public:
 		deadReckoning_pose_.reserve(kMax_);
 		deadReckoning_pose_.push_back(groundtruth_pose_[0]);
 
+		// 
+		rapidcsv::Document doc_pose(
+			"/home/diego/RFS_SLAM/rfsslam/data/rgbd/"
+			"24_jul_2022_16_59_00/"
+			"df_pose_24_jul_2022_16_59_00.csv");
+		std::vector<std::vector<float>> vector_pose;
+
+		unsigned int idx_pose, rows_pose = doc_pose.GetRowCount();
+
+		for(int i = 0; i < rows_pose ; i++){
+			std::vector<float> row = doc_pose.GetRow<float>(i);
+			vector_pose.push_back(row);
+			// std::cout << "Prueba: " << row[4] << std::endl;
+		}
+
 		TimeStamp t;
 
 		for (int k = 1; k < kMax_; k++) {
@@ -295,17 +310,17 @@ public:
 
 			MotionModel_Odometry6d::TInput in = groundtruth_displacement_[k]; // Setear a 0?
 			MotionModel_Odometry6d::TState::Mat Qk = Q * dt * dt;
-			in.setCov(Qk);
+			// in.setCov(Qk);
 			MotionModel_Odometry6d::TInput out;
-			in.sample(out); // agregar ruido a in
-
-
-			/*
-			genero out
-			out.setmean << x_mov, y_mov, .....
-			out.setCov << cov....
-			*/
-
+			// in.sample(out); // agregar ruido a in
+			// mean_pose_obj << vector_pose[k][0], vector_pose[k][1], vector_pose[k][2], vector_pose[k][3], vector_pose[k][4], vector_pose[k][5], vector_pose[k][6];
+			MotionModel_Odometry6d::TInput::Vec mean_pose_obj;
+			MotionModel_Odometry6d::TInput::Vec dCovDiag;
+			mean_pose_obj << vector_pose[k][0], vector_pose[k][1], vector_pose[k][2], vector_pose[k][3], vector_pose[k][4], vector_pose[k][5], 1 + vector_pose[k][6];
+			std::cout << k << ' ' << vector_pose[k][6] << std::endl;
+			dCovDiag << 1, 1, 1, 0, 1, 0, 1;
+			out = MotionModel_Odometry6d::TInput(mean_pose_obj,
+					dCovDiag.asDiagonal(), k);
 			odometry_.push_back(out); // Reemplazar out por input asociado
 
 			MotionModel_Odometry6d::TState p;
@@ -389,7 +404,7 @@ public:
 		// Here I load the name of the files with the measurements. E.g. timestamp_1623445632.csv
 		// I will store these in list_timestamps_obj.
 		// E.g. list_timestamps_obj = [ "timestamp_16234234.csv" , "timestamp_16234236.csv", ..... ]
-		rapidcsv::Document tstp_csv("/home/diego/RFS_SLAM/rfsslam/data/timestamps/main_timestamp_list.csv");
+		rapidcsv::Document tstp_csv("/home/diego/RFS_SLAM/rfsslam/data/rgbd/24_jul_2022_16_59_00/timestamp_list_24_jul_2022_16_59_00.csv");
 		std::vector<std::string> list_timestamps_obj;
 		unsigned int idx_tstp, rows_tstp_csv = tstp_csv.GetRowCount();
 		for(int i = 0; i < rows_tstp_csv ; i++){
@@ -410,8 +425,9 @@ public:
 			// Se cargan las mediciones del frame k
 			// I Will load here the measurements 
 			rapidcsv::Document doc(
-				"/home/diego/RFS_SLAM/rfsslam/data/rgbd/19_jul_2022_18_48_49/"
-				"csv_files/" + list_timestamps_obj[k]);
+				"/home/diego/RFS_SLAM/rfsslam/data/rgbd/"
+				"24_jul_2022_16_59_00/"
+				"/csv_files/" + list_timestamps_obj[k]);
 			std::vector<std::vector<float>> measurements_k;
 
 			// rows contains the number of rows (measurements) taken in frame K
