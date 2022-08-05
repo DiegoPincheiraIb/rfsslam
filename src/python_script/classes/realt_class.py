@@ -6,10 +6,12 @@ import numpy as np
 import sys
 import freenect
 import cv2
+import copy
 import os
 import time
 import yaml
 from datetime import datetime
+from utils.misc_tools import create_folder
 
 
 class VideoDisplay():
@@ -42,6 +44,7 @@ class VideoDisplay():
 
         self.flags = {
             "is recording": False,
+            "was initial tstmp folder created": True
         }
 
         self.video_objects = {
@@ -52,6 +55,8 @@ class VideoDisplay():
 
         self.paths = {
             "main path": "data/rgbd/",
+            "initial timestamp": copy.deepcopy(
+                datetime.now().strftime("%d_%b_%Y_%H_%M_%S")),
             "current timestamp": None,
         }
         # Imports main configuration file
@@ -73,7 +78,8 @@ class VideoDisplay():
             self.get_depth()
             self.get_ir()
             for video_type in ["rgb", "depth", "ir"]:
-                print(video_type + " dtype: ", self.img_cache[video_type].dtype)
+                print(
+                    video_type + " dtype: ", self.img_cache[video_type].dtype)
 
             # Begin capture video
             self.begin_capture_video(key_press)
@@ -119,17 +125,30 @@ class VideoDisplay():
         Save frames onto disk.
         """
         if key_press == ord("c"):
-            timestamp_obj = time.time()
+            timestamp_obj = datetime.now().strftime(
+                "%d_%b_%Y_%H_%M_%S")
+            # Create folders (omitted if folder was created)
+            path_tstmp_folder = create_folder(
+                    self.paths["main path"], self.paths["current timestamp"]
+            )
+            path_imgs_folder = create_folder(
+                    path_tstmp_folder, "images"
+            )
+            for str_type in ["rgb", "depth", "ir"]:
+                _ = create_folder(
+                        path_imgs_folder, str_type
+                )
             for str_type in list(self.img_cache.keys()):
                 # Saves frame with corresponding type.
                 # E.g. frame_rgb_23847234.npy corresponds to a rgb image.
                 np.save(
-                    self.main_yaml["frames"]["path_obj"] + "/"
+                    path_imgs_folder + "/"
+                    + str_type + "/"
                     + "frame_" + str_type + "_" + str(timestamp_obj) + ".npy",
                     self.img_cache[str_type])
 
                 # Rewrites yaml with new information
-                self.rewrite_yaml(timestamp_obj)
+                # self.rewrite_yaml(timestamp_obj)
 
     def rewrite_yaml(self, timestamp_obj):
         """
@@ -200,7 +219,7 @@ class VideoDisplay():
                 self.img_cache[video_type])
 
             # Rewrites yaml with new information
-            self.rewrite_yaml(str_current_frame)
+            # self.rewrite_yaml(str_current_frame)
 
     def stop_capture_video(self, key_press):
         """
