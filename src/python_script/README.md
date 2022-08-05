@@ -64,7 +64,9 @@ This mode has a series of key presses that allows you a set of actions:
 
 ## Frame processing
 
-This mode **REQUIRES** you to have a database recorded, shall it be with screen capture or stream input recording. For you to activate this mode, you need to set both `mode` in `config/cfg_parameters.yaml` to **framebyframe** and also `chosen_id` to your folder database name. E.g, if you will use folder `24_jul_2022_16_59_00`:
+This mode **REQUIRES** you to have a database recorded, shall it be with screen capture or stream input recording. For you to activate this mode, you need to set both `mode` in `config/cfg_parameters.yaml` to **framebyframe** and also `chosen_id` to your folder database name.
+
+E.g, if you will use folder `24_jul_2022_16_59_00`:
 ```
 (...)
 frames:
@@ -76,3 +78,5 @@ key_press:
 mode: framebyframe
 (...)
 ```
+
+This mode mainly handles 3d coordinate extraction from keypoints calculated in certain folder.
