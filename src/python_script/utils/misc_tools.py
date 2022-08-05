@@ -4,6 +4,7 @@ A
 import json
 import numpy as np
 import yaml
+import os
 
 
 def open_calibr_dict():
@@ -184,3 +185,31 @@ class MyEncoder(json.JSONEncoder):
         if isinstance(o, np.ndarray):
             return o.tolist()
         return json.JSONEncoder.default(self, o)
+
+
+def create_folder(main_path: str, new_folder: str) -> str:
+    """
+    Creates new folder given a main path.
+    Eg. create_folder(/home/user/, new_folder) will create a folder that will
+    have this path: /home/user/new_folder.
+
+    Parameters
+    ----------
+    main_path: str
+        Parent path of new folder.
+    new_folder: str
+        Name of the folder to create.
+
+    Returns
+    -------
+    path_obj: str
+        Path of output folder.
+    """
+    # Merges main path and new folder paths
+    path_obj = os.path.join(main_path, new_folder)
+    try:
+        os.mkdir(path_obj)
+        print("Created folder at ", path_obj)
+    except OSError as error:
+        print(error)
+    return path_obj
