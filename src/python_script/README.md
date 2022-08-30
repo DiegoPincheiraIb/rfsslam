@@ -79,4 +79,8 @@ mode: framebyframe
 (...)
 ```
 
-This mode mainly handles 3d coordinate extraction from keypoints calculated in certain folder.
+This mode mainly handles 3d coordinate extraction from keypoints calculated in certain folder. This is done by the following steps:
+1. Using ORB detector, detects keypoints and descriptors of objects of interest in the image.
+2. With the depth information, creates a matrix that stores 3d points of every pixel in the depth camera.
+3. using the 3d points matrix, it estimates its (u, v) position in the RGB camera using that camera intrisic parameters. This (u,v) and (x, y, z) are stored in a dictionary.
+4. Makes a matching of the (u, v) coordinates of the ORB features with the (u, v) coordinates contained in the 3d points dictionary.

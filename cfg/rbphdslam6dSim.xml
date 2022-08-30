@@ -23,13 +23,13 @@
     <max_dqy_per_sec>0.40</max_dqy_per_sec> <!-- max y-rotation per second (quaternion-based)-->
     <max_dqz_per_sec>0.000</max_dqz_per_sec> <!-- max z-rotation per second (quaternion-based)-->
     <max_dqw_per_sec>0.40</max_dqw_per_sec> <!-- max w-rotation per second (quaternion-based)-->
-    <vardx>0.00010</vardx> <!-- variance in x displacement per second -->
-    <vardy>0.00001</vardy> <!-- variance in y displacement per second -->
-    <vardz>0.00030</vardz> <!-- variance in z displacement per second -->
+    <vardx>0.000010</vardx> <!-- variance in x displacement per second -->
+    <vardy>0.000001</vardy> <!-- variance in y displacement per second -->
+    <vardz>0.0001</vardz> <!-- variance in z displacement per second -->
     <vardqx>0.00000</vardx> <!-- variance in qx rotation per second -->
-    <vardqy>0.00005</vardy> <!-- variance in qy rotation per second -->
+    <vardqy>0.00001</vardy> <!-- variance in qy rotation per second -->
     <vardqz>0.00000</vardz> <!-- variance in qz rotation per second -->
-    <vardqw>0.00005</vardw> <!-- variance in qw rotation per second -->
+    <vardqw>0.00001</vardw> <!-- variance in qw rotation per second -->
   </trajectory>
 
   <landmarks>
