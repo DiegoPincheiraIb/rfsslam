@@ -129,7 +129,7 @@ class VideoDisplay():
                 "%d_%b_%Y_%H_%M_%S")
             # Create folders (omitted if folder was created)
             path_tstmp_folder = create_folder(
-                    self.paths["main path"], self.paths["current timestamp"]
+                    self.paths["main path"], self.paths["initial timestamp"]
             )
             path_imgs_folder = create_folder(
                     path_tstmp_folder, "images"

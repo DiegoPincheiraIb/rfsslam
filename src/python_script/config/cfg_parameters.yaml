@@ -5,7 +5,7 @@ camera:
   width: 640
 filter_kps:
   ret_pts: 600
-  tol: 0.9
+  tol: 0.1
 frames:
   chosen_id: 24_jul_2022_16_59_00
   folder_ids:
@@ -21,7 +21,7 @@ frames:
 key_press:
   '110': 1
   '98': -1
-mode: framebyframe
+mode: framebyframe # calibration, realtime, framebyframe
 new_timestamp: 24_jul_2022_16_52_00
 orb_features:
   n_feats: 600

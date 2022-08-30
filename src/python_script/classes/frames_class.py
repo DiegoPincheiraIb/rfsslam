@@ -15,6 +15,7 @@ import pandas as pd
 from datetime import datetime
 from utils.ssc import ssc
 from utils.misc_tools import (
+    create_folder,
     merge_R_t_one_mtx,
     load_frames, change_img
 )
@@ -43,7 +44,15 @@ class FrameDisplay():
     """
     def __init__(self, main_yaml, dict_calibr):
         """
-            Initialization method.
+            Class that processes frames in a certain folder.
+            Given a certain image, it can do the following procedures:
+            - Capture photo of frame.
+            - Calculate ORB features.
+            - Estimate 3D coordinates of these ORB features.
+            - Save these 3D coordinates to CSV file.
+            - Generate blank pose data for every frame, and modify it.
+            - Filter current database by copying selected frames to given
+            folder.
 
             Parameters
             ----------
@@ -137,11 +146,17 @@ class FrameDisplay():
     def load_first_frame(self):
         """
         Loads first frame onto img_cache.
-        Parameters
-        ----------
 
-        Returns
-        ------
+        Reads
+        -----
+        - main_yaml -> Reads first timestamp of folder, and also all timestamps
+        contained onto chosen database folder.
+
+        Updates
+        -------
+        - frames_dict -> Saves all information of all frames into dict.
+        - img_cache -> Saves into image cache every image of the first
+        timestamp. 
         """
         # Fills dictionary with array of frames.
         path_obj = ("data/rgbd/" + self.main_yaml["frames"]["chosen_id"]
@@ -171,13 +186,11 @@ class FrameDisplay():
 
     def run_algorithms(self):
         """
-        Run main algorithms.
+        Run main algorithms on a loop.
 
-        Parameters
-        ----------
-
-        Returns
-        ------
+        Steps
+        -----
+        1. Calculates 3d points of current frame
         """
         # Begin main loop
         while True:
@@ -210,9 +223,9 @@ class FrameDisplay():
                 # Show the final image
                 cv2.imshow("Matches", final_img)
 
-            mode_obj = "visualization"  # "3d points" # "visualization"
+            mode_obj = "3d points"  # "3d points" # "visualization"
 
-            if mode_obj == "3d points":
+            if mode_obj == "visualization":
 
                 # Gets 3d points of current frame and saves them onto RAM.
                 self.get_3dpts()
@@ -607,6 +620,9 @@ class FrameDisplay():
         Run measurement process.
         """
         current_df = pd.DataFrame(self.list_3dpts, columns=["x", "y", "z"])
+        create_folder(
+            "data/rgbd/"
+            + self.main_yaml["frames"]["chosen_id"], "csv_files")
         current_df.to_csv(
             "data/rgbd/"
             + self.main_yaml["frames"]["chosen_id"] + "/csv_files/"
