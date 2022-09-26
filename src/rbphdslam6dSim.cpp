@@ -184,7 +184,8 @@ public:
 	 *  \param[in] randSeed random seed for generating trajectory
 	 */
 	void generateTrajectory(int randSeed = 0) {
-
+		// Aquí se ingresa el groundtruth trajectory
+		std::cout << randSeed << std::endl;
 		srand48(randSeed);
 		initializeGaussianGenerators();
 
@@ -195,60 +196,54 @@ public:
 		Q(0, 0) = vardx_;
 		Q(1, 1) = vardy_;
 		Q(2, 2) = vardz_;
-		Q(3, 3) = vardqw_;
-		Q(4, 4) = vardqx_;
-		Q(5, 5) = vardqy_;
-		Q(6, 6) = vardqz_;
+		Q(3, 3) = vardqx_;
+		Q(4, 4) = vardqy_;
+		Q(5, 5) = vardqz_;
+		Q(6, 6) = vardqw_;
+		// Setting variables for k = 0 
 		MotionModel_Odometry6d motionModel(Q);
 		MotionModel_Odometry6d::TInput input_k(t);
 		MotionModel_Odometry6d::TState pose_k(t);
-		pose_k[6]=1.0;
+		pose_k[6]=1.0; // k. Set to change 6 to w=3
 		MotionModel_Odometry6d::TState pose_km(t);
-		pose_km[6]=1.0;
-		groundtruth_displacement_.reserve(kMax_);
+		pose_km[6]=1.0; // k minus 1. Set to change 6 to w=3
+		groundtruth_displacement_.reserve(kMax_); // Difference between k and k-1
 		groundtruth_pose_.reserve(kMax_);
 		groundtruth_displacement_.push_back(input_k);
 		groundtruth_pose_.push_back(pose_k);
+
+		rapidcsv::Document doc_pose(
+			"/home/diego/RFS_SLAM/rfsslam/data/rgbd/"
+			"24_jul_2022_16_59_00/"
+			"df_pose_24_jul_2022_16_59_00.csv");
+		std::vector<std::vector<float>> vector_pose;
+
+		unsigned int idx_pose, rows_pose = doc_pose.GetRowCount();
+
+		for(int i = 0; i < rows_pose ; i++){
+			std::vector<float> row = doc_pose.GetRow<float>(i);
+			vector_pose.push_back(row);
+			// std::cout << "Prueba: " << row[4] << std::endl;
+		}
 
 		for (int k = 1; k < kMax_; k++) {
 
 			t += dTimeStamp_;
 
-			if (k <= 2) {
-				double dx = 0;
-				double dy = 0;
-				double dz = 0;
-				double dqx = 0;
-				double dqy = 0;
-				double dqz = 0;
-				double dqw = 1;
-				MotionModel_Odometry6d::TInput::Vec d;
-				MotionModel_Odometry6d::TInput::Vec dCovDiag;
-				d << dx, dy, dz, dqx, dqy, dqz, dqw;
-				dCovDiag << 0, 0, 0, 0, 0, 0, 0;
-				input_k = MotionModel_Odometry6d::TInput(d,
-						dCovDiag.asDiagonal(), k);
-			} else if (k >= kMax_ / nSegments_ * seg) {
-				seg++;
-				double dx = drand48() * (max_dx_ - min_dx_) * dT_
-						+ min_dx_ * dT_;
-
-				double dy = (drand48() * max_dy_ * 2 - max_dy_) * dT_;
-				double dz = (drand48() * max_dz_ * 2 - max_dz_) * dT_;
-				double dqx = (drand48() * max_dqx_ * 2 - max_dqx_) * dT_;
-				double dqy = (drand48() * max_dqy_ * 2 - max_dqy_) * dT_;
-				double dqz = (drand48() * max_dqz_ * 2 - max_dqz_) * dT_;
-				double dqw = 1+(drand48() * max_dqw_ * 2 - max_dqw_) * dT_;
-
-				MotionModel_Odometry6d::TInput::Vec d;
-				MotionModel_Odometry6d::TInput::Vec dCovDiag;
-				d << dx, dy, dz, dqx, dqy, dqz, dqw;
-
-				dCovDiag << Q(0, 0), Q(1, 1), Q(2, 2), Q(3, 3), Q(4, 4), Q(5,
-						5), Q(6, 6);
-				input_k = MotionModel_Odometry6d::TInput(d,
-						dCovDiag.asDiagonal(), k);
-			}
+			MotionModel_Odometry6d::TInput::Vec mean_pose_obj;
+			MotionModel_Odometry6d::TInput::Vec dCovDiag;
+			mean_pose_obj << vector_pose[k][0],
+					vector_pose[k][1],
+					vector_pose[k][2],
+					vector_pose[k][3],
+					vector_pose[k][4],
+					vector_pose[k][5],
+					vector_pose[k][6];
+			// std::cout << k << ' '<< vector_pose[k][0] << ' '<< vector_pose[k][1] << ' '<< vector_pose[k][2]  << ' '<< vector_pose[k][3] << ' '<< vector_pose[k][4] << ' '<< vector_pose[k][5] << ' '<< 1 + vector_pose[k][6] << std::endl;
+			dCovDiag << Q(0, 0), Q(1, 1), Q(2, 2), Q(3, 3), Q(4, 4), Q(5,
+					5), Q(6, 6);
+			input_k = MotionModel_Odometry6d::TInput(mean_pose_obj,
+					dCovDiag.asDiagonal(), k);
 
 			groundtruth_displacement_.push_back(input_k);
 			groundtruth_displacement_.back().setTime(t);
@@ -278,10 +273,10 @@ public:
 		Q(0, 0) = vardx_;
 		Q(1, 1) = vardy_;
 		Q(2, 2) = vardz_;
-		Q(3, 3) = vardqw_;
-		Q(4, 4) = vardqx_;
-		Q(5, 5) = vardqy_;
-		Q(6, 6) = vardqz_;
+		Q(3, 3) = vardqx_;
+		Q(4, 4) = vardqy_;
+		Q(5, 5) = vardqz_;
+		Q(6, 6) = vardqw_;
 		MotionModel_Odometry6d motionModel(Q);
 		deadReckoning_pose_.reserve(kMax_);
 		deadReckoning_pose_.push_back(groundtruth_pose_[0]);
@@ -301,27 +296,20 @@ public:
 			// std::cout << "Prueba: " << row[4] << std::endl;
 		}
 
-		TimeStamp t;
+		TimeStamp t; // Edit here
 
 		for (int k = 1; k < kMax_; k++) {
 
 			t += dTimeStamp_;
-			double dt = dTimeStamp_.getTimeAsDouble(); // 1/kMax?
+			double dt = dTimeStamp_.getTimeAsDouble();
 
-			MotionModel_Odometry6d::TInput in = groundtruth_displacement_[k]; // Setear a 0?
+			MotionModel_Odometry6d::TInput in = groundtruth_displacement_[k];
 			MotionModel_Odometry6d::TState::Mat Qk = Q * dt * dt;
-			// in.setCov(Qk);
+			in.setCov(Qk);
 			MotionModel_Odometry6d::TInput out;
-			// in.sample(out); // agregar ruido a in
-			// mean_pose_obj << vector_pose[k][0], vector_pose[k][1], vector_pose[k][2], vector_pose[k][3], vector_pose[k][4], vector_pose[k][5], vector_pose[k][6];
-			MotionModel_Odometry6d::TInput::Vec mean_pose_obj;
-			MotionModel_Odometry6d::TInput::Vec dCovDiag;
-			mean_pose_obj << vector_pose[k][0], vector_pose[k][1], vector_pose[k][2], vector_pose[k][3], vector_pose[k][4], vector_pose[k][5], 1 + vector_pose[k][6];
-			std::cout << k << ' ' << vector_pose[k][6] << std::endl;
-			dCovDiag << 1, 1, 1, 0, 1, 0, 1;
-			out = MotionModel_Odometry6d::TInput(mean_pose_obj,
-					dCovDiag.asDiagonal(), k);
-			odometry_.push_back(out); // Reemplazar out por input asociado
+			in.sample(out);
+
+			odometry_.push_back(out);
 
 			MotionModel_Odometry6d::TState p;
 			motionModel.step(p, deadReckoning_pose_[k - 1], odometry_[k],
@@ -765,7 +753,7 @@ public:
 
 			pFilter_->predict(odometry_[k], dTimeStamp_);
 
-			if (k <= 2) {
+			if (k <= 1) {
 				for (int i = 0; i < nParticles_; i++)
 					pFilter_->setParticlePose(i, groundtruth_pose_[k]);
 			}

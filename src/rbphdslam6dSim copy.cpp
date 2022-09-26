@@ -41,6 +41,7 @@
 #include <stdio.h>
 #include <string>
 #include <sys/ioctl.h>
+#include "rapidcsv.h"
 
 #ifdef _PERFTOOLS_CPU
 #include <gperftools/profiler.h>
@@ -183,7 +184,7 @@ public:
 	 *  \param[in] randSeed random seed for generating trajectory
 	 */
 	void generateTrajectory(int randSeed = 0) {
-
+		// Aquí se ingresa el groundtruth trajectory
 		srand48(randSeed);
 		initializeGaussianGenerators();
 
@@ -213,7 +214,7 @@ public:
 
 			t += dTimeStamp_;
 
-			if (k <= 50) {
+			if (k <= 2) {
 				double dx = 0;
 				double dy = 0;
 				double dz = 0;
@@ -285,20 +286,43 @@ public:
 		deadReckoning_pose_.reserve(kMax_);
 		deadReckoning_pose_.push_back(groundtruth_pose_[0]);
 
+		// 
+		rapidcsv::Document doc_pose(
+			"/home/diego/RFS_SLAM/rfsslam/data/rgbd/"
+			"24_jul_2022_16_59_00/"
+			"df_pose_24_jul_2022_16_59_00.csv");
+		std::vector<std::vector<float>> vector_pose;
+
+		unsigned int idx_pose, rows_pose = doc_pose.GetRowCount();
+
+		for(int i = 0; i < rows_pose ; i++){
+			std::vector<float> row = doc_pose.GetRow<float>(i);
+			vector_pose.push_back(row);
+			// std::cout << "Prueba: " << row[4] << std::endl;
+		}
+
 		TimeStamp t;
 
 		for (int k = 1; k < kMax_; k++) {
 
 			t += dTimeStamp_;
-			double dt = dTimeStamp_.getTimeAsDouble();
+			double dt = dTimeStamp_.getTimeAsDouble(); // 1/kMax?
 
-			MotionModel_Odometry6d::TInput in = groundtruth_displacement_[k];
+			MotionModel_Odometry6d::TInput in = groundtruth_displacement_[k]; // Setear a 0?
 			MotionModel_Odometry6d::TState::Mat Qk = Q * dt * dt;
-			in.setCov(Qk);
+			// in.setCov(Qk);
 			MotionModel_Odometry6d::TInput out;
-			in.sample(out);
-
-			odometry_.push_back(out);
+			// in.sample(out); // agregar ruido a in
+			// mean_pose_obj << vector_pose[k][0], vector_pose[k][1], vector_pose[k][2], vector_pose[k][3], vector_pose[k][4], vector_pose[k][5], vector_pose[k][6];
+			MotionModel_Odometry6d::TInput::Vec mean_pose_obj;
+			MotionModel_Odometry6d::TInput::Vec dCovDiag;
+			mean_pose_obj << vector_pose[k][0], vector_pose[k][1], vector_pose[k][2], vector_pose[k][3], vector_pose[k][4], vector_pose[k][5], 1 + vector_pose[k][6];
+			std::cout << k << ' ' << vector_pose[k][0] << vector_pose[k][1] << vector_pose[k][2] << vector_pose[k][6] << std::endl;
+			// dCovDiag << 700, 700, 700, 700, 700, 700, 700;
+			// out = MotionModel_Odometry6d::TInput(mean_pose_obj,
+			//		dCovDiag.asDiagonal(), k);
+			out = MotionModel_Odometry6d::TInput(mean_pose_obj, Qk, k);
+			odometry_.push_back(out); // Reemplazar out por input asociado
 
 			MotionModel_Odometry6d::TState p;
 			motionModel.step(p, deadReckoning_pose_[k - 1], odometry_[k],
@@ -378,26 +402,78 @@ public:
 		}
 
 		TimeStamp t;
+		// Here I load the name of the files with the measurements. E.g. timestamp_1623445632.csv
+		// I will store these in list_timestamps_obj.
+		// E.g. list_timestamps_obj = [ "timestamp_16234234.csv" , "timestamp_16234236.csv", ..... ]
+		rapidcsv::Document tstp_csv("/home/diego/RFS_SLAM/rfsslam/data/rgbd/24_jul_2022_16_59_00/timestamp_list_24_jul_2022_16_59_00.csv");
+		std::vector<std::string> list_timestamps_obj;
+		unsigned int idx_tstp, rows_tstp_csv = tstp_csv.GetRowCount();
+		for(int i = 0; i < rows_tstp_csv ; i++){
+			// std::cout << i << std::endl;
+			std::string col = tstp_csv.GetRow<std::string>(i)[0];
+			list_timestamps_obj.push_back(col);
+		}
+		for (int k = 1; k < kMax_; k++) {// 59
 
-		for (int k = 1; k < kMax_; k++) {
+			t += dTimeStamp_; // dTimeStamp is frame rate
 
-			t += dTimeStamp_;
-
-			groundtruth_pose_[k];
+			groundtruth_pose_[k];// Pose real del robot en K
 
 			// Real detections
-			for (int m = 0; m < groundtruth_landmark_.size(); m++) {
+			// Para cada landmark conocido, se toma una medición
+			// Aqui se debe iterar por cada uno de las mediciones
+
+			// Se cargan las mediciones del frame k
+			// I Will load here the measurements 
+			rapidcsv::Document doc(
+				"/home/diego/RFS_SLAM/rfsslam/data/rgbd/"
+				"24_jul_2022_16_59_00/"
+				"/csv_files/" + list_timestamps_obj[k]);
+			std::vector<std::vector<float>> measurements_k;
+
+			// rows contains the number of rows (measurements) taken in frame K
+			unsigned int idx, rows = doc.GetRowCount();
+
+			// Iterates over each measurement (x, y, z) and stores them in measurements_k
+			// measurements_k = [ [0.3, 0.4, 0.5] , [1.2, 0.5, 0.5] ,  [2.5, 2.3, 7.0] , .... ]
+			for(int i = 0; i < rows ; i++){
+				std::vector<float> row = doc.GetRow<float>(i);
+				measurements_k.push_back(row);
+			}
+
+			// For each measurement (x, y, z) m:
+			for (int m = 0; m < rows; m++) {
+			// for (int m = 0; m < groundtruth_landmark_.size(); m++) {
 
 				bool success;
 				MeasurementModel_6D::TMeasurement z_m_k;
 				success = measurementModel.sample(groundtruth_pose_[k],
 						groundtruth_landmark_[m], z_m_k);
-				if (success) {
+				if (true) {// if (success) {
 
 					if ( drand48() <= Pd_) {
 						z_m_k.setTime(t);
 						// z_m_k.setCov(R);
-						measurements_.push_back(z_m_k);
+
+						// Aqui se empiezan las modificaciones
+						// /*
+						Measurement3d measurement;
+						Eigen::Vector3d mean;
+						// Save [0.3, 0.4, 0.5] into mean variable
+						mean << measurements_k[m][0], measurements_k[m][1], measurements_k[m][2];
+						Eigen::Matrix3d  cov;
+						cov << 1 , 0 ,0,
+						0, 1, 0,
+						0 , 0, 1; // test covariance value
+						// std::cout << measurements_k[m][0] << measurements_k[m][1] << measurements_k[m][2]<< std::endl;
+						// For a measurement to be registered I need three things to be set:
+						// 1. Mean -> Mean of the measurement took
+						// 2. Covariance -> Covariance of the measurement took
+						// 3. Time -> Timestamp of the measurement a
+						measurement.set(mean, cov);
+						measurement.setTime(t);
+						// */
+						measurements_.push_back(measurement);
 					}
 
 					if (lmkFirstObsTime_[m] == -1) {
@@ -423,7 +499,7 @@ public:
 				} while (z.norm() < rangeLimitMax_ && z.norm() > rangeLimitMin_);
 
 				z_clutter.set(z, t);
-				measurements_.push_back(z_clutter);
+				// measurements_.push_back(z_clutter); // Se borraron falsas alarmas
 
 			}
 
@@ -690,7 +766,7 @@ public:
 
 			pFilter_->predict(odometry_[k], dTimeStamp_);
 
-			if (k <= 50) {
+			if (k <= 1) {
 				for (int i = 0; i < nParticles_; i++)
 					pFilter_->setParticlePose(i, groundtruth_pose_[k]);
 			}
@@ -1015,7 +1091,7 @@ int main(int argc, char* argv[]) {
 	sim.generateOdometry();
 	sim.generateMeasurements();
 	sim.exportSimData();
-	sim.setupRBPHDFilter();
+	sim.setupRBPHDFilter(); // Inicialza slam
 
 	if (vm.count("seed")) {
 		seed = vm["seed"].as<int>();
@@ -1026,7 +1102,7 @@ int main(int argc, char* argv[]) {
 
 	// boost::timer::auto_cpu_timer *timer = new boost::timer::auto_cpu_timer(6, "Simulation run time: %ws\n");
 
-	sim.run();
+	sim.run(); // Run algorithm
 
 	// std::cout << "mem use: " << MemProfile::getCurrentRSS() << "(" << MemProfile::getPeakRSS() << ")\n";
 	//delete timer;
