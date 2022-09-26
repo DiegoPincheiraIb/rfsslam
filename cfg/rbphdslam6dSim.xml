@@ -25,7 +25,7 @@
     <max_dqw_per_sec>0.40</max_dqw_per_sec> <!-- max w-rotation per second (quaternion-based)-->
     <vardx>0.000010</vardx> <!-- variance in x displacement per second -->
     <vardy>0.000001</vardy> <!-- variance in y displacement per second -->
-    <vardz>0.0001</vardz> <!-- variance in z displacement per second -->
+    <vardz>0.000015</vardz> <!-- variance in z displacement per second -->
     <vardqx>0.00000</vardx> <!-- variance in qx rotation per second -->
     <vardqy>0.00001</vardy> <!-- variance in qy rotation per second -->
     <vardqz>0.00000</vardz> <!-- variance in qz rotation per second -->
@@ -51,7 +51,7 @@
   </measurements>
   
   <filter>
-    <nParticles>200</nParticles> <!-- number of particles -->
+    <nParticles>600</nParticles> <!-- number of particles -->
     
     <predict>
       <processNoiseInflationFactor>1.0</processNoiseInflationFactor> <!-- inflation factor of process noise covariance -->
