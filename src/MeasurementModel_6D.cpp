@@ -186,7 +186,7 @@ double MeasurementModel_6D::probabilityOfDetection( const Pose6d &pose,
   // (dado por el z), entonces:....
 
 
-  bool test_1 = true;
+  bool test_1 = false;
   if (test_1 == true)
   {
     // Print on console the positions of the landmark and the limits

@@ -213,7 +213,7 @@ public:
 		groundtruth_pose_.push_back(pose_k);
 
 		rapidcsv::Document doc_pose(
-			"/home/diego/RFS_SLAM/rfsslam/data/rgbd/"
+			"../data/rgbd/"
 			"24_jul_2022_16_59_00/"
 			"df_pose_24_jul_2022_16_59_00.csv");
 		std::vector<std::vector<float>> vector_pose;
@@ -257,6 +257,7 @@ public:
 		}
 
 	}
+	
 
 	/** Generate odometry measurements */
 	void generateOdometry() {
@@ -377,7 +378,7 @@ public:
 		// Here I load the name of the files with the measurements. E.g. timestamp_1623445632.csv
 		// I will store these in list_timestamps_obj.
 		// E.g. list_timestamps_obj = [ "timestamp_16234234.csv" , "timestamp_16234236.csv", ..... ]
-		rapidcsv::Document tstp_csv("/home/diego/RFS_SLAM/rfsslam/data/rgbd/24_jul_2022_16_59_00/timestamp_list_24_jul_2022_16_59_00.csv");
+		rapidcsv::Document tstp_csv("../data/rgbd/24_jul_2022_16_59_00/timestamp_list_24_jul_2022_16_59_00.csv");
 		std::vector<std::string> list_timestamps_obj;
 		unsigned int idx_tstp, rows_tstp_csv = tstp_csv.GetRowCount();
 		for(int i = 0; i < rows_tstp_csv ; i++){
@@ -398,7 +399,7 @@ public:
 			// Se cargan las mediciones del frame k
 			// I Will load here the measurements 
 			rapidcsv::Document doc(
-				"/home/diego/RFS_SLAM/rfsslam/data/rgbd/"
+				"../data/rgbd/"
 				"24_jul_2022_16_59_00/"
 				"/csv_files/" + list_timestamps_obj[k]);
 			std::vector<std::vector<float>> measurements_k;
@@ -576,13 +577,13 @@ public:
 		// configure robot motion model (only need to set once since timesteps are constant)
 		MotionModel_Odometry6d::TState::Mat Q;
 		Q.setZero();
-		Q(0, 0) = 0.000000;
-		Q(1, 1) = 0.000000;
-		Q(2, 2) = 0.000000;
-		Q(3, 3) = 0.00000;
-		Q(4, 4) = 0.00003;
-		Q(5, 5) = 0.00000;
-		Q(6, 6) = 0.00003;
+		Q(0, 0) = vardx_;
+		Q(1, 1) = vardy_;
+		Q(2, 2) = vardz_;
+		Q(3, 3) = vardqx_;
+		Q(4, 4) = vardqy_;
+		Q(5, 5) = vardqz_;
+		Q(6, 6) = vardqw_;
 		Q *= (pNoiseInflation_ * dt * dt);
 		pFilter_->getProcessModel()->setNoise(Q);
 

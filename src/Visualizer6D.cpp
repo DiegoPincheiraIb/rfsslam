@@ -218,6 +218,7 @@ void Visualizer6D::setup(const std::vector<MeasurementModel_6D::TLandmark> &grou
 	gtmapColors_->SetNumberOfComponents(3);
 	gtmapColors_->SetNumberOfTuples(gtmapSize);
 	gtmapPoints_->SetNumberOfPoints(gtmapSize);
+	// Se dibujan Landmarks Ground Truth
 	for (int m = 0; m < gtmapSize; m++) {
 		MeasurementModel_6D::TLandmark::Vec u;
 
@@ -299,6 +300,7 @@ void Visualizer6D::update(RBPHDFilter<MotionModel_Odometry6d, StaticProcessModel
 	particleColors_->SetNumberOfComponents(3);
 	particleColors_->SetNumberOfTuples(pFilter_->getParticleCount());
 	particlePoints_->SetNumberOfPoints(pFilter_->getParticleCount());
+	// Se dibujan partículas
 	for (int i = 0; i < pFilter_->getParticleCount(); i++) {
 		x_i = *(pFilter_->getParticleSet()->at(i));
 		double w = pFilter_->getParticleSet()->at(i)->getWeight();
@@ -317,7 +319,7 @@ void Visualizer6D::update(RBPHDFilter<MotionModel_Odometry6d, StaticProcessModel
 
 	int mapSize = 0;
 
-
+	// Preguntar a Felipe diferencia entre esto y línea 431 en adelante
 	mapColors_->SetNumberOfComponents(3);
 	mapColors_->SetNumberOfTuples(gmSize);
 	mapPoints_->SetNumberOfPoints(gmSize);
@@ -398,8 +400,8 @@ void Visualizer6D::update(RBPHDFilter<MotionModel_Odometry6d, StaticProcessModel
 
 }
 void Visualizer6D::update(RBLMBFilter<MotionModel_Odometry6d, StaticProcessModel<Landmark3d>,
-                MeasurementModel_6D,
-                KalmanFilter<StaticProcessModel<Landmark3d>, MeasurementModel_6D> > *pFilter_){
+			MeasurementModel_6D,
+			KalmanFilter<StaticProcessModel<Landmark3d>, MeasurementModel_6D> > *pFilter_){
         display_mutex_->lock();
         // particles
         int i_w_max = 0;
@@ -430,6 +432,7 @@ void Visualizer6D::update(RBLMBFilter<MotionModel_Odometry6d, StaticProcessModel
         mapColors_->SetNumberOfComponents(3);
         mapColors_->SetNumberOfTuples(trackNum);
         mapPoints_->SetNumberOfPoints(trackNum);
+		// Se dibujan los puntos pertenecientes al mapa
         for (int m = 0; m < trackNum; m++) {
                 MeasurementModel_6D::TLandmark::Vec u;
                 MeasurementModel_6D::TLandmark::Mat S;
