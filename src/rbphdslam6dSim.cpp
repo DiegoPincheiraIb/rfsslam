@@ -281,21 +281,6 @@ public:
 		deadReckoning_pose_.reserve(kMax_);
 		deadReckoning_pose_.push_back(groundtruth_pose_[0]);
 
-		// 
-		rapidcsv::Document doc_pose(
-			"/home/diego/RFS_SLAM/rfsslam/data/rgbd/"
-			"24_jul_2022_16_59_00/"
-			"df_pose_24_jul_2022_16_59_00.csv");
-		std::vector<std::vector<float>> vector_pose;
-
-		unsigned int idx_pose, rows_pose = doc_pose.GetRowCount();
-
-		for(int i = 0; i < rows_pose ; i++){
-			std::vector<float> row = doc_pose.GetRow<float>(i);
-			vector_pose.push_back(row);
-			// std::cout << "Prueba: " << row[4] << std::endl;
-		}
-
 		TimeStamp t; // Edit here
 
 		for (int k = 1; k < kMax_; k++) {
@@ -591,13 +576,13 @@ public:
 		// configure robot motion model (only need to set once since timesteps are constant)
 		MotionModel_Odometry6d::TState::Mat Q;
 		Q.setZero();
-		Q(0, 0) = vardx_;
-		Q(1, 1) = vardy_;
-		Q(2, 2) = vardz_;
-		Q(3, 3) = vardqx_;
-		Q(4, 4) = vardqy_;
-		Q(5, 5) = vardqz_;
-		Q(6, 6) = vardqw_;
+		Q(0, 0) = 0.000000;
+		Q(1, 1) = 0.000000;
+		Q(2, 2) = 0.000000;
+		Q(3, 3) = 0.00000;
+		Q(4, 4) = 0.00003;
+		Q(5, 5) = 0.00000;
+		Q(6, 6) = 0.00003;
 		Q *= (pNoiseInflation_ * dt * dt);
 		pFilter_->getProcessModel()->setNoise(Q);
 
