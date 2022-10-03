@@ -105,6 +105,7 @@ public:
 		dT_ = pt.get<double>("config.sec_per_timestep");
 		dTimeStamp_ = TimeStamp(dT_);
 
+		db_name = pt.get<std::string>("config.database.db_name");
 		nSegments_ = pt.get<int>("config.trajectory.nSegments");
 		max_dx_ = pt.get<double>("config.trajectory.max_dx_per_sec");
 		max_dy_ = pt.get<double>("config.trajectory.max_dy_per_sec");
@@ -213,9 +214,8 @@ public:
 		groundtruth_pose_.push_back(pose_k);
 
 		rapidcsv::Document doc_pose(
-			"../data/rgbd/"
-			"24_jul_2022_16_59_00/"
-			"df_pose_24_jul_2022_16_59_00.csv");
+			"../data/rgbd/" + db_name +
+			"/df_pose_" + db_name + ".csv");
 		std::vector<std::vector<float>> vector_pose;
 
 		unsigned int idx_pose, rows_pose = doc_pose.GetRowCount();
@@ -378,7 +378,7 @@ public:
 		// Here I load the name of the files with the measurements. E.g. timestamp_1623445632.csv
 		// I will store these in list_timestamps_obj.
 		// E.g. list_timestamps_obj = [ "timestamp_16234234.csv" , "timestamp_16234236.csv", ..... ]
-		rapidcsv::Document tstp_csv("../data/rgbd/24_jul_2022_16_59_00/timestamp_list_24_jul_2022_16_59_00.csv");
+		rapidcsv::Document tstp_csv("../data/rgbd/" + db_name + "/timestamp_list_" + db_name +".csv");
 		std::vector<std::string> list_timestamps_obj;
 		unsigned int idx_tstp, rows_tstp_csv = tstp_csv.GetRowCount();
 		for(int i = 0; i < rows_tstp_csv ; i++){
@@ -399,8 +399,7 @@ public:
 			// Se cargan las mediciones del frame k
 			// I Will load here the measurements 
 			rapidcsv::Document doc(
-				"../data/rgbd/"
-				"24_jul_2022_16_59_00/"
+				"../data/rgbd/" + db_name +
 				"/csv_files/" + list_timestamps_obj[k]);
 			std::vector<std::vector<float>> measurements_k;
 
@@ -772,6 +771,10 @@ public:
 					fprintf(pParticlePoseFile, "%f   %d   %f   %f   %f   %f   %f   %f   %f   %f\n",
 							time.getTimeAsDouble(), i, x_i.get(0), x_i.get(1),
 							x_i.get(2), x_i.get(3), x_i.get(4), x_i.get(5), x_i.get(6), w);
+					if (w == NAN) {
+						std::cout << time.getTimeAsDouble() << i << x_i.get(0)<< x_i.get(1) <<
+							x_i.get(2) << x_i.get(3) << x_i.get(4)<< x_i.get(5)<< x_i.get(6) << std::endl;
+					}
 				}
 				fprintf(pParticlePoseFile, "\n");
 			}
@@ -1018,6 +1021,7 @@ private:
 
 public:
 	std::string logDirPrefix_;
+	std::string db_name;
 };
 
 int main(int argc, char* argv[]) {

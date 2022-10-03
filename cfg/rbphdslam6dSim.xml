@@ -13,6 +13,10 @@
   <timesteps>194</timesteps>
   <sec_per_timestep>3</sec_per_timestep>
 
+  <database>
+    <db_name>24_jul_2022_16_59_00</db_name>
+  </database>
+
   <trajectory>
     <nSegments>5</nSegments> <!-- number of constant velocity segments -->
     <max_dx_per_sec>0.00</max_dx_per_sec> <!-- max x-displacement per second -->
