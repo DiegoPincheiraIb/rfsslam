@@ -106,6 +106,10 @@ public:
 		dTimeStamp_ = TimeStamp(dT_);
 
 		db_name = pt.get<std::string>("config.database.db_name");
+		fov_hor = pt.get<int>("config.fov.horizontal");
+		fov_vert = pt.get<int>("config.fov.vertical");
+		enable_fov = pt.get<bool>("config.experimental_feats.enable_fov");
+		debug_fov_bool = pt.get<bool>("config.debug_bools.fov_bool");
 		nSegments_ = pt.get<int>("config.trajectory.nSegments");
 		max_dx_ = pt.get<double>("config.trajectory.max_dx_per_sec");
 		max_dy_ = pt.get<double>("config.trajectory.max_dy_per_sec");
@@ -353,6 +357,10 @@ public:
 		measurementModel.config.rangeLimMin_ = rangeLimitMin_;
 		measurementModel.config.probabilityOfDetection_ = Pd_;
 		measurementModel.config.uniformClutterIntensity_ = c_;
+		measurementModel.config.fov_hor_ = fov_hor;
+		measurementModel.config.fov_vert_ = fov_vert;
+		measurementModel.config.enable_fov_ = enable_fov;
+		measurementModel.config.debug_fov_bool_ = debug_fov_bool;
 		double meanClutter = measurementModel.clutterIntensityIntegral();
 
 		double expNegMeanClutter = exp(-meanClutter);
@@ -1014,6 +1022,9 @@ private:
 
 	bool logResultsToFile_;
 	bool logTimingToFile_;
+
+	int fov_hor, fov_vert;
+	bool enable_fov, debug_fov_bool;
 
 	// 3D visualization
 	bool use_gui_;

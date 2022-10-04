@@ -68,6 +68,10 @@ public:
     double rangeLimMax_; /**< sensing range limit, beyond which \f$ P_D = 0 \f$*/
     double rangeLimMin_; /**< sensing range limit, below which \f$ P_D = 0 \f$*/
     double rangeLimBuffer_; /**< Used to define a buffer zone around rangeLimMax_ and rangeLimMin_ to indicate a measurement is close to to the sensing limit */
+    int fov_hor_;
+    int fov_vert_;
+    bool enable_fov_;
+    bool debug_fov_bool_;
   }config;
 
  /** Default constructor */

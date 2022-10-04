@@ -40,6 +40,10 @@ MeasurementModel_6D::MeasurementModel_6D(){
   config.rangeLimMax_ = 5;
   config.rangeLimMin_ = 0.3;
   config.rangeLimBuffer_ = 0.25;
+  config.fov_hor_ = 60;
+  config.fov_vert_ = 30;
+  config.enable_fov_ = true;
+  config.debug_fov_bool_ = false;
 }
 
 
@@ -51,6 +55,10 @@ MeasurementModel_6D::MeasurementModel_6D(::Eigen::Matrix3d &covZ){
   config.rangeLimMax_ = 5;
   config.rangeLimMin_ = 0.3;
   config.rangeLimBuffer_ = 0.25;
+  config.fov_hor_ = 60;
+  config.fov_vert_ = 30;
+  config.enable_fov_ = true;
+  config.debug_fov_bool_ = false;
 }
 
 MeasurementModel_6D::MeasurementModel_6D(double Sx, double Sy, double Sz){
@@ -65,6 +73,10 @@ MeasurementModel_6D::MeasurementModel_6D(double Sx, double Sy, double Sz){
   config.rangeLimMax_ = 5;
   config.rangeLimMin_ = 0.3;
   config.rangeLimBuffer_ = 0.25;
+  config.fov_hor_ = 60;
+  config.fov_vert_ = 30;
+  config.enable_fov_ = true;
+  config.debug_fov_bool_ = false;
 }
 
 MeasurementModel_6D::~MeasurementModel_6D(){}
@@ -156,7 +168,7 @@ double MeasurementModel_6D::probabilityOfDetection( const Pose6d &pose,
 
   Pose6d::PosVec robotPose;
   Landmark3d::Vec landmarkState,diff;
-  Eigen::Matrix3d H_lmk;
+  Eigen::Matrix3d H_rbt_pose;
   Eigen::Vector3d translated_lmark;
   double range, Pd;
 
@@ -167,58 +179,53 @@ double MeasurementModel_6D::probabilityOfDetection( const Pose6d &pose,
   diff=landmarkState-robotPose;
 
   range = diff.norm();
-  // std::cout << "robotPose" << pose[0] << " " <<  pose[1] << " "  << pose[2] << " "  << pose[3] << " "  << pose[4] << " "  << pose[5] << " "  << pose[6] << " "  <<  std::endl;
-  // std::cout << "position of landmark" << landmarkState[0] << " " <<  landmarkState[1] << " "  << landmarkState[2] << " "  <<  std::endl;
-  // if (x, y, z) está en cono dado FoV de la camara o no está en el cono
-  // if (x, y, z) no está en cono : return Pd = 0;
-  // else: continuar con el código
-  // Aplicar des rotación a diff
-  Eigen::Quaterniond robotQ(pose.getRot());
-  H_lmk = robotQ.conjugate().toRotationMatrix();
-  translated_lmark = H_lmk * diff;
-  // std::cout << "position of landmark " << translated_lmark[0] << " " <<  translated_lmark[1] << " "  << translated_lmark[2] << " "  <<  std::endl;
-  // Obtengo z del landmark
-  // std::cout << "z landmark: " << translated_lmark[2] << " "  <<  std::endl;
-  // Ahora, si (x,y) del landmark están en (x,y) del rectangulo de la pirámide
-  Eigen::Vector3d rect_fov_upper, rect_fov_lower;
-  rect_fov_upper << (-1 * translated_lmark[2] * std::tan(29.25))/std::cos(22.8), translated_lmark[2]/std::sin(22.8), 0;
-  rect_fov_lower << translated_lmark[2] * std::tan(29.25)/std::cos(22.8), (-1 * translated_lmark[2])/std::sin(22.8), 0;
-  // (dado por el z), entonces:....
 
-
-  bool test_1 = false;
-  if (test_1 == true)
+  // If FoV modified is enabled, prepares vectors for FoV and landmarks.
+  if (config.enable_fov_ == true)
   {
-    // Print on console the positions of the landmark and the limits
-    bool print_coords = false;
-    if (print_coords == true){
-      std::cout << "x izq:" << rect_fov_lower[0] <<
-                  " x position landmark: " << translated_lmark[0] <<
-                  " x derecha" << rect_fov_upper[0] << std::endl;
+    Eigen::Quaterniond robotQ(pose.getRot());
+    H_rbt_pose = robotQ.conjugate().toRotationMatrix();
+    translated_lmark = H_rbt_pose * diff;
+    
+    Eigen::Vector3d vector_fov;
+    vector_fov << 0, 0, 10;
 
-      std::cout << "y izq:" << rect_fov_upper[1] <<
-                  " y position landmark: " << translated_lmark[1] <<
-                  " y derecha" << rect_fov_lower[1] << std::endl;
-    }
-    if (rect_fov_upper[0] >= translated_lmark[0] >= rect_fov_lower[0]
-        && rect_fov_lower[1] >= translated_lmark[1] >= rect_fov_upper[1]){
-      if( range <= config.rangeLimMax_ && range >= config.rangeLimMin_){
-        Pd = config.probabilityOfDetection_;
-        if( range >= (config.rangeLimMax_ - config.rangeLimBuffer_ ) ||
-            range <= (config.rangeLimMin_ + config.rangeLimBuffer_ ) )
-          isCloseToSensingLimit = true;
-      }else{
-        Pd = 0;
-        if( range <= (config.rangeLimMax_ + config.rangeLimBuffer_ ) &&
-            range >= (config.rangeLimMin_ - config.rangeLimBuffer_ ) )
-          isCloseToSensingLimit = true;
+    /*
+    // Horizontal FoV:
+    Stores values of X and Z in 2D Vector, and then calculates angle
+    between FoV center and landmark position using dot product.
+    */
+    Eigen::Vector2d fov_hor, lmark_hor;
+    fov_hor << vector_fov[0], vector_fov[2];
+    lmark_hor << translated_lmark[0], translated_lmark[2];
+    double result_hor = acos(fov_hor.dot(lmark_hor)/(fov_hor.norm() * lmark_hor.norm()));
+
+    /*
+    // Vertical FoV:
+    Stores values of Y and Z in 2D Vector, and then calculates angle
+    between FoV center and landmark position using dot product.
+    */
+    Eigen::Vector2d fov_vert, lmark_vert;
+    fov_vert << vector_fov[1], vector_fov[2];
+    lmark_vert << translated_lmark[1], translated_lmark[2];
+    double result_vert = acos(fov_vert.dot(lmark_vert)/(fov_vert.norm() * lmark_vert.norm()));
+
+    // Now, if both results are below the threshold of the FoV,
+    // the landmark is indeed inside the FoV.
+    if (result_hor < (config.fov_hor_/2 * (3.14159265359 / 180)) && result_vert < (config.fov_vert_ /2 * (3.14159265359 / 180)))
+    {
+      // Prints information of FoV
+      if (config.debug_fov_bool_ == true)
+      {
+        std::cout << "---------" << std::endl;
+        std::cout << "Landmark coord. w.r.t. robot " <<
+        translated_lmark[0] << " " <<  translated_lmark[1] << " "  << translated_lmark[2] << " "  <<  std::endl;
+        std::cout << "Horz. angle: " <<
+        result_hor << " [rad] <==> " << ((result_hor * 180)/3.14159265359) << " °" << std::endl;
+        std::cout << "Vert. angle: " <<
+        result_vert << " [rad] <==> " << ((result_vert * 180)/3.14159265359) << " °" << std::endl;
       }
-    }
-    else{
-      Pd = 0;
-    }
-  }
-  else{
+      // Assigns probability of detection if inside of range min and max.
       if( range <= config.rangeLimMax_ && range >= config.rangeLimMin_){
         Pd = config.probabilityOfDetection_;
         if( range >= (config.rangeLimMax_ - config.rangeLimBuffer_ ) ||
@@ -230,6 +237,32 @@ double MeasurementModel_6D::probabilityOfDetection( const Pose6d &pose,
       range >= (config.rangeLimMin_ - config.rangeLimBuffer_ ) )
           isCloseToSensingLimit = true;
         }
+    }
+    // Otherwise, assigns Probability = 0
+    else{
+      Pd = 0;
+    }
+    if (config.debug_fov_bool_ == true)
+    {
+      std::cout << "Prob. of landmark located in ("
+      << translated_lmark[0] << " " <<  translated_lmark[1] << " "  << translated_lmark[2] << ") : "<< Pd << std::endl;
+    }
+
+  }
+  // Loads default configuration
+  else
+  {
+    if( range <= config.rangeLimMax_ && range >= config.rangeLimMin_){
+      Pd = config.probabilityOfDetection_;
+      if( range >= (config.rangeLimMax_ - config.rangeLimBuffer_ ) ||
+    range <= (config.rangeLimMin_ + config.rangeLimBuffer_ ) )
+        isCloseToSensingLimit = true;
+    }else{
+      Pd = 0;
+      if( range <= (config.rangeLimMax_ + config.rangeLimBuffer_ ) &&
+    range >= (config.rangeLimMin_ - config.rangeLimBuffer_ ) )
+        isCloseToSensingLimit = true;
+      }
   }
   return Pd;
 }

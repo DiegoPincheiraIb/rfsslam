@@ -13,8 +13,21 @@
   <timesteps>194</timesteps>
   <sec_per_timestep>3</sec_per_timestep>
 
+  <debug_bools>
+    <fov_bool>false</fov_bool> <!-- Shows (true) or hides (false) debug information for experimental FoV. -->>
+  </debug_bools>
+
+  <experimental_feats>
+    <enable_fov>true</enable_fov> <!-- Enables(true)/disables(false) experimental FoV. -->>
+  </experimental_feats>
+
+  <fov>
+    <horizontal>60</horizontal> <!-- Sets horizontal FoV (degrees). -->>
+    <vertical>45</vertical> <!-- Sets vertical FoV (degrees). -->>
+  </fov>
+
   <database>
-    <db_name>24_jul_2022_16_59_00</db_name>
+    <db_name>24_jul_2022_16_59_00</db_name> <!-- Database name. -->>
   </database>
 
   <trajectory>
@@ -31,9 +44,9 @@
     <vardy>0.000001</vardy> <!-- variance in y displacement per second -->
     <vardz>0.000015</vardz> <!-- variance in z displacement per second -->
     <vardqx>0.00000</vardx> <!-- variance in qx rotation per second -->
-    <vardqy>0.001</vardy> <!-- variance in qy rotation per second -->
+    <vardqy>0.0001</vardy> <!-- variance in qy rotation per second -->
     <vardqz>0.00000</vardz> <!-- variance in qz rotation per second -->
-    <vardqw>0.003</vardw> <!-- variance in qw rotation per second -->
+    <vardqw>0.0001</vardw> <!-- variance in qw rotation per second -->
   </trajectory>
 
   <landmarks>
@@ -84,7 +97,7 @@
 
     <resampling>
       <effNParticle>300.0</effNParticle> <!-- Threshold for resampling -->
-      <minTimesteps>2</minTimesteps> <!-- Minimum number of timesteps between resampling -->
+      <minTimesteps>5</minTimesteps> <!-- Minimum number of timesteps between resampling -->
     </resampling>
 
     <merge>
