@@ -442,9 +442,7 @@ public:
 						// Save [0.3, 0.4, 0.5] into mean variable
 						mean << measurements_k[m][0], measurements_k[m][1], measurements_k[m][2];
 						Eigen::Matrix3d  cov;
-						cov << 1 , 0 ,0,
-						0, 1, 0,
-						0 , 0, 1; // test covariance value
+						cov << varzx_, 0, 0, 0, varzy_, 0, 0, 0, varzz_; // test covariance value
 						// std::cout << measurements_k[m][0] << measurements_k[m][1] << measurements_k[m][2]<< std::endl;
 						// For a measurement to be registered I need three things to be set:
 						// 1. Mean -> Mean of the measurement took
@@ -763,8 +761,9 @@ public:
 			}
 
 			////////// Update Step //////////
+			// std::cout << "Frame n°: " << k << std::endl;
 			pFilter_->update(Z);
-
+			
 			// Log particle poses
 			int i_w_max = 0;
 			double w_max = 0;

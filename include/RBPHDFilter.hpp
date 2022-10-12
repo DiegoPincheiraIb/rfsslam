@@ -752,14 +752,14 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       bool closeToSensingLim;
       this->particleSet_[particleIdx]->getData()->getGaussian(m, plm_temp, w, w_prev);
       if(w < config.importanceWeightingEvalPointGuassianWeight_)
-	break;
+	      break;
       double Pd = this->pMeasurementModel_->probabilityOfDetection(x, *plm_temp, closeToSensingLim);
       if( Pd > 0 ){
-	evalPointIdx.push_back(m);
-	evalPointPd.push_back(Pd);
+        evalPointIdx.push_back(m);
+        evalPointPd.push_back(Pd);
       }
       if(nEvalPoints != -1 && evalPointIdx.size() >= nEvalPoints)
-	break;
+        break;
     }
     nEvalPoints = evalPointIdx.size();
 
@@ -788,14 +788,14 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
       double intensity_at_evalPt_afterUpdate = std::numeric_limits<double>::denorm_min();
 
       for(int m = 0; m < nM; m++){
-	TLandmark* plm;
-	double w, w_prev;
-	this->particleSet_[particleIdx]->getData()->getGaussian(m, plm, w, w_prev);
-	// New Gaussians from update will have w_prev = 0
-	// Old Gaussians (missed-detection) will not have been updated, but weights will have changed
-	double likelihood = plm->evalGaussianLikelihood( *lm_evalPt );
-	intensity_at_evalPt_beforeUpdate += w_prev * likelihood; // w_prev for newly created Gaussians are 0
-	intensity_at_evalPt_afterUpdate += w * likelihood;
+        TLandmark* plm;
+        double w, w_prev;
+        this->particleSet_[particleIdx]->getData()->getGaussian(m, plm, w, w_prev);
+        // New Gaussians from update will have w_prev = 0
+        // Old Gaussians (missed-detection) will not have been updated, but weights will have changed
+        double likelihood = plm->evalGaussianLikelihood( *lm_evalPt );
+        intensity_at_evalPt_beforeUpdate += w_prev * likelihood; // w_prev for newly created Gaussians are 0
+        intensity_at_evalPt_afterUpdate += w * likelihood;
       }
       intensityProd_beforeUpdate *= intensity_at_evalPt_beforeUpdate;
       intensityProd_afterUpdate *= intensity_at_evalPt_afterUpdate;
@@ -804,14 +804,44 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
     // 4. calculate measurement likelihood at eval points
     // note that rfsMeasurementLikelihood uses maps_[particleIdx] which is already sorted by weight
     double measurementLikelihood = rfsMeasurementLikelihood( particleIdx, evalPointIdx, evalPointPd );
-    //printf("Particle %d measurement likelihood = %f\n", i, measurementLikelihood);
 
     // 5. calculate overall weight
+
     double overall_weight = measurementLikelihood * intensityProd_beforeUpdate / intensityProd_afterUpdate *
       exp( gaussianWeightSumAfterUpdate - gaussianWeightSumBeforeUpdate); 
-    
+
+
     double prev_weight = this->particleSet_[particleIdx]->getWeight();
+    /*
+    if (isnan(prev_weight) == 1)
+    {
+      std::cout << "ID: " << particleIdx << ". Prev weight: " << prev_weight << std::endl;
+      prev_weight = 0;
+    }
+    if (isnan(overall_weight) == 1)
+    {
+      std::cout << "overall weight: " << overall_weight << std::endl;
+      overall_weight = 0;
+    }
+    */
     this->particleSet_[particleIdx]->setWeight( overall_weight * prev_weight );
+    /*
+    bool test_1 = false;
+    if (test_1 == true)
+    {  
+      printf("Particle %d measurement likelihood = %f\n", particleIdx, measurementLikelihood);
+      std::cout << "ID: " << particleIdx
+      << ". intensityProd_afterUpdate after update: " << intensityProd_afterUpdate
+      << "Exp()" <<  exp( gaussianWeightSumAfterUpdate - gaussianWeightSumBeforeUpdate) << std::endl;
+      std::cout << "Test 1: " << measurementLikelihood * intensityProd_beforeUpdate << std::endl;
+      std::cout << "Test 2: " << measurementLikelihood * intensityProd_beforeUpdate / intensityProd_afterUpdate << std::endl;
+      std::cout << "Test 3: " << 1/ intensityProd_afterUpdate *
+      exp( gaussianWeightSumAfterUpdate - gaussianWeightSumBeforeUpdate) << std::endl;
+      std::cout << "overall_weight: " << overall_weight
+      << ". prev_weight" << prev_weight
+      << ". weight mult: " << overall_weight * prev_weight << std::endl;
+    }
+    */
     /*if (overall_weight == 0 || overall_weight!=overall_weight )
       std::cout << "P" << idx << ".w "
 	      << std::setw(15) << intensityProd_beforeUpdate
