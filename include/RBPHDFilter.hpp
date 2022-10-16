@@ -812,43 +812,7 @@ void RBPHDFilter< RobotProcessModel, LmkProcessModel, MeasurementModel, KalmanFi
 
 
     double prev_weight = this->particleSet_[particleIdx]->getWeight();
-    /*
-    if (isnan(prev_weight) == 1)
-    {
-      std::cout << "ID: " << particleIdx << ". Prev weight: " << prev_weight << std::endl;
-      prev_weight = 0;
-    }
-    if (isnan(overall_weight) == 1)
-    {
-      std::cout << "overall weight: " << overall_weight << std::endl;
-      overall_weight = 0;
-    }
-    */
     this->particleSet_[particleIdx]->setWeight( overall_weight * prev_weight );
-    /*
-    bool test_1 = false;
-    if (test_1 == true)
-    {  
-      printf("Particle %d measurement likelihood = %f\n", particleIdx, measurementLikelihood);
-      std::cout << "ID: " << particleIdx
-      << ". intensityProd_afterUpdate after update: " << intensityProd_afterUpdate
-      << "Exp()" <<  exp( gaussianWeightSumAfterUpdate - gaussianWeightSumBeforeUpdate) << std::endl;
-      std::cout << "Test 1: " << measurementLikelihood * intensityProd_beforeUpdate << std::endl;
-      std::cout << "Test 2: " << measurementLikelihood * intensityProd_beforeUpdate / intensityProd_afterUpdate << std::endl;
-      std::cout << "Test 3: " << 1/ intensityProd_afterUpdate *
-      exp( gaussianWeightSumAfterUpdate - gaussianWeightSumBeforeUpdate) << std::endl;
-      std::cout << "overall_weight: " << overall_weight
-      << ". prev_weight" << prev_weight
-      << ". weight mult: " << overall_weight * prev_weight << std::endl;
-    }
-    */
-    /*if (overall_weight == 0 || overall_weight!=overall_weight )
-      std::cout << "P" << idx << ".w "
-	      << std::setw(15) << intensityProd_beforeUpdate
-	      << std::setw(15) << intensityProd_afterUpdate
-	      << std::setw(15) << measurementLikelihood
-	      << std::setw(15) << overall_weight << std::setw(15) << prev_weight << std::endl;*/
-
 }
 
 template< class RobotProcessModel, class LmkProcessModel, class MeasurementModel, class KalmanFilter >

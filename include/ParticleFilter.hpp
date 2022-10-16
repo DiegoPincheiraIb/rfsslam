@@ -364,10 +364,34 @@ void ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::normaliz
   for( int i = 0; i < nParticles_; i++ ){
     sum += particleSet_[i]->getWeight();
   }
-  for( int i = 0; i < nParticles_; i++ ){
-    particleSet_[i]->setWeight( particleSet_[i]->getWeight() / sum );
-  }
 
+  // Begin experimental -NaN fix
+  bool experimental = true;
+  if (experimental)
+  {
+    if (sum == 0)
+    {
+      std::cout << "Caso del Nan" << std::endl;
+      double final_weight = 1 / (double)nParticles_ ;
+      std::cout << "N particulas: " << std::setprecision(6) << final_weight << std::endl;
+      for( int i = 0; i < nParticles_; i++ ){
+        particleSet_[i]->setWeight( final_weight);
+      }
+
+    }
+    else
+    {
+      for( int i = 0; i < nParticles_; i++ ){
+        particleSet_[i]->setWeight( particleSet_[i]->getWeight() / sum );
+    }
+    }
+  }
+  else
+  {
+    for( int i = 0; i < nParticles_; i++ ){
+      particleSet_[i]->setWeight( particleSet_[i]->getWeight() / sum );
+    }
+  }
 }
 
 
