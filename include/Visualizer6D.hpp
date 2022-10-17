@@ -101,6 +101,13 @@ public:
 	vtkSmartPointer<vtkPolyData> mapPolydata_, gtmapPolydata_, particlePolydata_, gtTrajectoryPolydata_, estTrajectoryPolydata_, drTrajectoryPolydata_, measurementPolydata_;
 	vtkSmartPointer<vtkActor> mapActor_, gtmapActor_, particleActor_, gtTrajectoryActor_, estTrajectoryActor_, drTrajectoryActor_, measurementActor_;
 	vtkSmartPointer<vtkPolyDataMapper> mapMapper_, gtmapMapper_, particleMapper_, gtTrajectoryMapper_, estTrajectoryMapper_, drTrajectoryMapper_, measurementMapper_;
+	// extras
+	vtkSmartPointer<vtkLineSource> lineSource_ ;
+	vtkSmartPointer<vtkPolyDataMapper> lineMapper_, followMapper_ ;
+	vtkSmartPointer<vtkActor> lineActor_, followActor_ ;
+	vtkSmartPointer<vtkPoints> followPoints_ ;
+	vtkSmartPointer<vtkCellArray> followCells_ ;
+	vtkSmartPointer<vtkPolyData> followPolyData_ ;
 
 	std::vector<MotionModel_Odometry6d::TState> const *groundtruth_pose_;
 	double sphere_radius_ = 0.1;

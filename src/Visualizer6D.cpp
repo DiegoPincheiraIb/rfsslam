@@ -219,6 +219,7 @@ void Visualizer6D::setup(const std::vector<MeasurementModel_6D::TLandmark> &grou
 	gtmapColors_->SetNumberOfTuples(gtmapSize);
 	gtmapPoints_->SetNumberOfPoints(gtmapSize);
 	// Se dibujan Landmarks Ground Truth
+	/*
 	for (int m = 0; m < gtmapSize; m++) {
 		MeasurementModel_6D::TLandmark::Vec u;
 
@@ -227,8 +228,47 @@ void Visualizer6D::setup(const std::vector<MeasurementModel_6D::TLandmark> &grou
  		gtmapPoints_->SetPoint(m, u(0), u(1), u(2));
 		gtmapColors_->SetTuple3(m,00,191,255);
 	}
+	*/
 
+	// dibujar una línea test
+	//double p0[3] = {1.0, 1.0, 0.0};
+	//double p1[3] = {0.0, 1.0, 0.0};
 
+	//lineSource_ = vtkSmartPointer<vtkLineSource>::New();
+	//lineSource_->SetPoint1(p0);
+	//lineSource_->SetPoint2(p1);
+
+	//lineMapper_ = vtkSmartPointer<vtkPolyDataMapper>::New();
+	//lineMapper_->SetInputConnection(lineSource_->GetOutputPort());
+
+	//lineActor_ = vtkSmartPointer<vtkActor>::New();
+	//lineActor_->SetMapper(lineMapper_);
+	//lineActor_->GetProperty()->SetLineWidth(4);
+	//lineActor_->GetProperty()->SetColor(255.0, 0.0, .0);
+
+	// línea de robotPose a punto fijo
+	followPoints_ = vtkSmartPointer<vtkPoints>::New();
+	followPoints_->SetNumberOfPoints(1);
+
+	followCells_ = vtkSmartPointer<vtkCellArray>::New();
+	followCells_->InsertNextCell(1);
+	followCells_->InsertCellPoint(0);
+
+	followPolyData_ = vtkSmartPointer<vtkPolyData>::New();
+	followPolyData_->SetPoints(followPoints_);
+	followPolyData_->SetLines(followCells_);
+
+	followMapper_ = vtkSmartPointer<vtkPolyDataMapper>::New();
+#if VTK_MAJOR_VERSION <= 5
+	followMapper_->SetInput(followPolydata_);
+#else
+        followMapper_->SetInputData(followPolyData_);
+#endif
+
+    followMapper_->Update();
+	followActor_ = vtkSmartPointer<vtkActor>::New();
+	followActor_->SetMapper(followMapper_);
+	followActor_->GetProperty()->SetColor(0.9, 0.9, 0.0);
 
 
 	renderer_->AddActor(mapActor_);
@@ -238,6 +278,8 @@ void Visualizer6D::setup(const std::vector<MeasurementModel_6D::TLandmark> &grou
 	renderer_->AddActor(estTrajectoryActor_);
 	renderer_->AddActor(drTrajectoryActor_);
 	renderer_->AddActor(measurementActor_);
+	//renderer_->AddActor(lineActor_);
+	renderer_->AddActor(followActor_);
 
 	double center[3];
 	center[0]=0;
@@ -319,19 +361,71 @@ void Visualizer6D::update(RBPHDFilter<MotionModel_Odometry6d, StaticProcessModel
 
 	int mapSize = 0;
 
-	// Preguntar a Felipe diferencia entre esto y línea 431 en adelante
 	mapColors_->SetNumberOfComponents(3);
 	mapColors_->SetNumberOfTuples(gmSize);
 	mapPoints_->SetNumberOfPoints(gmSize);
+
+	// Set variables for experimental visualization of landmarks in FoV
+	x_i = *(pFilter_->getParticleSet()->at(i_w_max)); // This NEEDS to be here! DO NOT TOUCH
+	Pose6d::PosVec robotPose;
+	Landmark3d::Vec landmarkState,diff;
+	Eigen::Matrix3d H_rbt_pose;
+	Eigen::Vector3d translated_lmark;
+	Eigen::Quaterniond robotQ(x_i.get(3), x_i.get(4), x_i.get(5), x_i.get(6));
+    Eigen::Vector3d vector_fov;
+	bool cond;
+
+    vector_fov << 0, 0, 10;
+	robotPose << x_i.get(0), x_i.get(1), x_i.get(2);
+    H_rbt_pose = robotQ.conjugate().toRotationMatrix();
+
+	// Proceeds with drawing landmarks
 	for (int m = 0; m < gmSize; m++) {
 		MeasurementModel_6D::TLandmark::Vec u;
 		MeasurementModel_6D::TLandmark::Mat S;
 		double w;
 		pFilter_->getLandmark(i_w_max, m, u, S, w);
+
+		// Prepare information of landmark. After completing, set inside w > 0.5
+		landmarkState = u;
+  		diff=landmarkState-robotPose;
+    	translated_lmark = H_rbt_pose * diff;
+		/*
+		// Horizontal FoV:
+		Stores values of X and Z in 2D Vector, and then calculates angle
+		between FoV center and landmark position using dot product.
+		*/
+		Eigen::Vector2d fov_hor, lmark_hor;
+		fov_hor << vector_fov[0], vector_fov[2];
+		lmark_hor << translated_lmark[0], translated_lmark[2];
+		double result_hor = acos(fov_hor.dot(lmark_hor)/(fov_hor.norm() * lmark_hor.norm()));
+
+		/*
+		// Vertical FoV:
+		Stores values of Y and Z in 2D Vector, and then calculates angle
+		between FoV center and landmark position using dot product.
+		*/
+		Eigen::Vector2d fov_vert, lmark_vert;
+		fov_vert << vector_fov[1], vector_fov[2];
+		lmark_vert << translated_lmark[1], translated_lmark[2];
+		double result_vert = acos(fov_vert.dot(lmark_vert)/(fov_vert.norm() * lmark_vert.norm()));
+
 		if(w > 0.5){
-		  mapPoints_->SetPoint(mapSize, u(0), u(1), u(2));
-		  mapColors_->SetTuple3(mapSize,200,200,200);
-		  mapSize++;
+		  	mapPoints_->SetPoint(mapSize, u(0), u(1), u(2));
+
+			// Add Landmark conditions:
+			// If it is within the FoV, sets the color to yellow (255, 255, 0).
+			// Otherwise, sets it to light gray (200, 200, 200).
+		  	cond = result_hor < (60/2.0 * (3.14159265359 / 180)) && result_vert < (45/2.0 * (3.14159265359 / 180));
+			if (cond == true)
+		  	{
+				mapColors_->SetTuple3(mapSize,255,255,0);
+		  	}
+		  	else
+		  	{
+				mapColors_->SetTuple3(mapSize,200,200,200);
+		  	}
+		  	mapSize++;
 		}
 	}
 
@@ -339,7 +433,6 @@ void Visualizer6D::update(RBPHDFilter<MotionModel_Odometry6d, StaticProcessModel
         mapPoints_->SetNumberOfPoints(mapSize);
 
 	// estimated Trajectory
-	x_i = *(pFilter_->getParticleSet()->at(i_w_max));
 	if (!init_trajectory){
 	  estTrajectoryPoints_->SetPoint(estTrajectoryCells_->GetNumberOfCells()-1 , x_i.get(0),x_i.get(1),x_i.get(2));
 	  init_trajectory= true;
@@ -391,14 +484,105 @@ void Visualizer6D::update(RBPHDFilter<MotionModel_Odometry6d, StaticProcessModel
 	measurementCells_->Modified();
 	measurementPoints_->Modified();
 
+	// Test FoV
+	// Line from robot pose to frustrum center
+	followPoints_->SetNumberOfPoints(6);
+	followPoints_->SetPoint(0, x_i.get(0), x_i.get(1), x_i.get(2)); // robotPose
+	followCells_->Reset();
+
+	Eigen::Vector3d center_FoV;
+	double max_range = 4;
+	double pi_basic = atan(1)*4; // Quick fix for pi inclusion
+	// std::cout << pi_basic << std::endl; //Because I know you would want to check Jay hehehe
+	double fov_hor = 60 * pi_basic / 180; // Degress to radians
+	double fov_vert = 45 * pi_basic / 180; // Degress to radians
+    vector_fov << 0, 0, max_range;
+	center_FoV = H_rbt_pose*vector_fov;
+
+	followPoints_->SetPoint(
+		1, center_FoV[0]+x_i.get(0), center_FoV[1]+x_i.get(1),
+		center_FoV[2]+x_i.get(2)); // fixed point
+	followCells_->InsertNextCell(2);
+	followCells_->InsertCellPoint(0);
+	followCells_->InsertCellPoint(1);
+
+	// Frustrum:
+	/*
+	Diego: Hey Jay! Ignacio!
+	I'm pushing this code on the repository to keep you updated on what I did.
+	The FoV is working mostly fine, but I still want to do some small
+	adjustments (like assigning a certain color to the minimal range
+	(0.5 meters)). If you have any questions, please let me know!
+
+	I'll be commenting the code so you can understand it better, but for now
+	(it's 2 AM when I'm writing this) don't try to overthink it, it is just
+	an automatizated version of your codes.
+	The "max_range * tan( for_hor / 2.0)" is geometry: if it is hard to see,
+	draw a right triangle like this:
+	
+	  	    /|
+	       / |                    * You have to keep in mind that:
+	      / O|                      1. The angles NEEDS to be converted to
+	     /   |                         radians!
+		/    | max_range            2. The FoV angles is calculated with the
+	   /     |                         WHOLE angle, and so because this is 
+	  /      |                         half of the circumference, you need
+	 /       |                         to divide by half (for_hor / 2.0).
+	----------						   Put in the case where FoV = 90° in
+		X  							   https://www.smeenk.com/webgl/kinectfovexplorer.html
+									   so you can understand better.
+						            3. To calculate "O": 
+		                               tan(O) = x / max_range
+		                            => x = max_range * tan(O)
+									   And, because O = FoV angle / 2:
+									=> x = max_range * tan(FoV_angle / 2.0)
+	*/
+	Eigen::Vector2d first_bin, second_bin;
+	first_bin << 1, -1;
+	second_bin << 1, -1;
+
+	int idx_obj = 0;
+
+	for (int i=0; i < 2; i++)
+	{
+		for (int j=0; j < 2; j++)
+		{
+			// Initializes "leg" of fustrum before and after rotation
+			Eigen::Vector3d frustrum_leg_init, frustrum_leg_rotated;
+			// Sets values for both cases
+			frustrum_leg_init << first_bin[i] * max_range * tan(fov_hor / 2.0),
+			second_bin[j] * max_range * tan(fov_vert / 2.0), max_range;
+			// Orientates legs to align it with robot orientation
+			frustrum_leg_rotated = H_rbt_pose*frustrum_leg_init;
+			// Assigns translated position for the rotated leg to ID: 2 + idx_obj
+			followPoints_->SetPoint(
+				2 + idx_obj, frustrum_leg_rotated[0] + x_i.get(0),
+				frustrum_leg_rotated[1] + x_i.get(1),
+				frustrum_leg_rotated[2] + x_i.get(2));
+			// Draws lins from pt 0 (Robot pose) to pt 2 + idx_obj(frustrum leg)
+			followCells_->InsertNextCell(2);
+			followCells_->InsertCellPoint(0);
+			followCells_->InsertCellPoint(2 + idx_obj);
+
+			// Draws lines from each coords. of the frustrum so it can
+			// have a better "shape".
+			for (int k=2; k < (2 + idx_obj); k++)
+			{
+				followCells_->InsertNextCell(2);
+				followCells_->InsertCellPoint(k);
+				followCells_->InsertCellPoint(2 + idx_obj);
+			}
+			idx_obj++;
+		}
+	}
+	followCells_->Modified();
+	followPoints_->Modified();
+
 	renderWindowInteractor_->Render();
 	display_mutex_->unlock();
 
-
-
-
-
 }
+
 void Visualizer6D::update(RBLMBFilter<MotionModel_Odometry6d, StaticProcessModel<Landmark3d>,
 			MeasurementModel_6D,
 			KalmanFilter<StaticProcessModel<Landmark3d>, MeasurementModel_6D> > *pFilter_){
