@@ -96,7 +96,7 @@ bool MeasurementModel_6D::measure(const Pose6d &pose,
 
   pose.getPos(robotPosition);
   landmark.get(landmarkState);
-  Eigen::Quaterniond robotQ(pose.getRot());
+  Eigen::Quaterniond robotQ(pose.get(3), pose.get(4), pose.get(5), pose.get(6));
   H_lmk = robotQ.conjugate().toRotationMatrix();
 
 
@@ -147,7 +147,7 @@ void MeasurementModel_6D::inverseMeasure(const Pose6d &pose,
   Eigen::Vector3d robotPosition;
 
   pose.getPos(robotPosition);
-  Eigen::Quaterniond robotQ(pose.getRot());
+  Eigen::Quaterniond robotQ(pose.get(3), pose.get(4), pose.get(5), pose.get(6));
   Hinv = robotQ.toRotationMatrix();
 
 
@@ -183,7 +183,7 @@ double MeasurementModel_6D::probabilityOfDetection( const Pose6d &pose,
   // If FoV modified is enabled, prepares vectors for FoV and landmarks.
   if (config.enable_fov_ == true)
   {
-    Eigen::Quaterniond robotQ(pose.getRot());
+    Eigen::Quaterniond robotQ(pose.get(3), pose.get(4), pose.get(5), pose.get(6));
     H_rbt_pose = robotQ.conjugate().toRotationMatrix();
     translated_lmark = H_rbt_pose * diff;
     
@@ -212,7 +212,7 @@ double MeasurementModel_6D::probabilityOfDetection( const Pose6d &pose,
 
     // Now, if both results are below the threshold of the FoV,
     // the landmark is indeed inside the FoV.
-    if (result_hor < (config.fov_hor_/2 * (3.14159265359 / 180)) && result_vert < (config.fov_vert_ /2 * (3.14159265359 / 180)))
+    if (result_hor < (config.fov_hor_/2.0 * (3.14159265359 / 180)) && result_vert < (config.fov_vert_ /2.0 * (3.14159265359 / 180)))
     {
       // Prints information of FoV
       if (config.debug_fov_bool_ == true)
