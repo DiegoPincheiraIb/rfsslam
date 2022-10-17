@@ -371,9 +371,10 @@ void ParticleFilter<ProcessModel, MeasurementModel, ParticleExtraData>::normaliz
   {
     if (sum == 0)
     {
-      std::cout << "Caso del Nan" << std::endl;
+      std::cout << "Particle weights = Zeros detected!" << std::endl;
       double final_weight = 1 / (double)nParticles_ ;
-      std::cout << "N particulas: " << std::setprecision(6) << final_weight << std::endl;
+      std::cout << "Assigning them the following weight (1/n_particles): " 
+      << std::setprecision(6) << final_weight << std::endl;
       for( int i = 0; i < nParticles_; i++ ){
         particleSet_[i]->setWeight( final_weight);
       }
