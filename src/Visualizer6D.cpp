@@ -374,8 +374,9 @@ void Visualizer6D::update(RBPHDFilter<MotionModel_Odometry6d, StaticProcessModel
 	Eigen::Quaterniond robotQ(x_i.get(3), x_i.get(4), x_i.get(5), x_i.get(6));
     Eigen::Vector3d vector_fov;
 	bool cond;
+	double max_range = 6;
 
-    vector_fov << 0, 0, 10;
+    vector_fov << 0, 0, max_range;
 	robotPose << x_i.get(0), x_i.get(1), x_i.get(2);
     H_rbt_pose = robotQ.conjugate().toRotationMatrix();
 
@@ -491,7 +492,6 @@ void Visualizer6D::update(RBPHDFilter<MotionModel_Odometry6d, StaticProcessModel
 	followCells_->Reset();
 
 	Eigen::Vector3d center_FoV;
-	double max_range = 4;
 	double pi_basic = atan(1)*4; // Quick fix for pi inclusion
 	// std::cout << pi_basic << std::endl; //Because I know you would want to check Jay hehehe
 	double fov_hor = 60 * pi_basic / 180; // Degress to radians

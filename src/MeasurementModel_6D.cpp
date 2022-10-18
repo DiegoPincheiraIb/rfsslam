@@ -188,7 +188,7 @@ double MeasurementModel_6D::probabilityOfDetection( const Pose6d &pose,
     translated_lmark = H_rbt_pose * diff;
     
     Eigen::Vector3d vector_fov;
-    vector_fov << 0, 0, 10;
+    vector_fov << 0, 0, config.rangeLimMax_;
 
     /*
     // Horizontal FoV:
@@ -212,7 +212,8 @@ double MeasurementModel_6D::probabilityOfDetection( const Pose6d &pose,
 
     // Now, if both results are below the threshold of the FoV,
     // the landmark is indeed inside the FoV.
-    if (result_hor < (config.fov_hor_/2.0 * (3.14159265359 / 180)) && result_vert < (config.fov_vert_ /2.0 * (3.14159265359 / 180)))
+    if (result_hor < (config.fov_hor_/2.0 * (3.14159265359 / 180))
+        && result_vert < (config.fov_vert_ /2.0 * (3.14159265359 / 180)))
     {
       // Prints information of FoV
       if (config.debug_fov_bool_ == true)
@@ -229,12 +230,12 @@ double MeasurementModel_6D::probabilityOfDetection( const Pose6d &pose,
       if( range <= config.rangeLimMax_ && range >= config.rangeLimMin_){
         Pd = config.probabilityOfDetection_;
         if( range >= (config.rangeLimMax_ - config.rangeLimBuffer_ ) ||
-      range <= (config.rangeLimMin_ + config.rangeLimBuffer_ ) )
+            range <= (config.rangeLimMin_ + config.rangeLimBuffer_ ) )
           isCloseToSensingLimit = true;
       }else{
         Pd = 0;
         if( range <= (config.rangeLimMax_ + config.rangeLimBuffer_ ) &&
-      range >= (config.rangeLimMin_ - config.rangeLimBuffer_ ) )
+            range >= (config.rangeLimMin_ - config.rangeLimBuffer_ ) )
           isCloseToSensingLimit = true;
         }
     }

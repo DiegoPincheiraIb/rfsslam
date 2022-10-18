@@ -423,35 +423,50 @@ public:
 
 			// For each measurement (x, y, z) m:
 			for (int m = 0; m < rows; m++) {
-			// for (int m = 0; m < groundtruth_landmark_.size(); m++) {
-
-				bool success;
-				MeasurementModel_6D::TMeasurement z_m_k;
-				success = measurementModel.sample(groundtruth_pose_[k],
-						groundtruth_landmark_[m], z_m_k);
-				if (true) {// if (success) {
+				if (true) {
 
 					if ( drand48() <= Pd_) {
-						z_m_k.setTime(t);
-						// z_m_k.setCov(R);
-
-						// Aqui se empiezan las modificaciones
-						// /*
-						Measurement3d measurement;
-						Eigen::Vector3d mean;
-						// Save [0.3, 0.4, 0.5] into mean variable
-						mean << measurements_k[m][0], measurements_k[m][1], measurements_k[m][2];
-						Eigen::Matrix3d  cov;
-						cov << varzx_, 0, 0, 0, varzy_, 0, 0, 0, varzz_; // test covariance value
-						// std::cout << measurements_k[m][0] << measurements_k[m][1] << measurements_k[m][2]<< std::endl;
 						// For a measurement to be registered I need three things to be set:
 						// 1. Mean -> Mean of the measurement took
 						// 2. Covariance -> Covariance of the measurement took
 						// 3. Time -> Timestamp of the measurement a
-						measurement.set(mean, cov);
-						measurement.setTime(t);
-						// */
-						measurements_.push_back(measurement);
+						Measurement3d measurement;
+						Eigen::Vector3d mean;
+						mean << measurements_k[m][0], measurements_k[m][1], measurements_k[m][2];
+
+						Eigen::Vector3d vector_fov;
+						vector_fov << 0, 0, rangeLimitMax_;
+
+						/*
+						// Horizontal FoV:
+						Stores values of X and Z in 2D Vector, and then calculates angle
+						between FoV center and landmark position using dot product.
+						*/
+						Eigen::Vector2d vector_fov_hor, lmark_hor;
+						vector_fov_hor << vector_fov[0], vector_fov[2];
+						lmark_hor << mean[0], mean[2];
+						double result_hor = acos(
+							vector_fov_hor.dot(lmark_hor)/(vector_fov_hor.norm() * lmark_hor.norm()));
+
+						/*
+						// Vertical FoV:
+						Stores values of Y and Z in 2D Vector, and then calculates angle
+						between FoV center and landmark position using dot product.
+						*/
+						Eigen::Vector2d vector_fov_vert, lmark_vert;
+						vector_fov_vert << vector_fov[1], vector_fov[2];
+						lmark_vert << mean[1], mean[2];
+						double result_vert = acos(
+							vector_fov_vert.dot(lmark_vert)/(vector_fov_vert.norm() * lmark_vert.norm()));
+
+						if (result_hor < (fov_hor/2.0 * (3.14159265359 / 180))
+							&& result_vert < (fov_vert /2.0 * (3.14159265359 / 180))
+							&& mean[2] < rangeLimitMax_)
+						{
+							measurement.set(mean, R);
+							measurement.setTime(t);
+							measurements_.push_back(measurement);
+						}
 					}
 
 					if (lmkFirstObsTime_[m] == -1) {
@@ -477,7 +492,7 @@ public:
 				} while (z.norm() < rangeLimitMax_ && z.norm() > rangeLimitMin_);
 
 				z_clutter.set(z, t);
-				// measurements_.push_back(z_clutter); // Se borraron falsas alarmas
+				measurements_.push_back(z_clutter); // Se borraron falsas alarmas
 
 			}
 
@@ -744,7 +759,7 @@ public:
 
 			pFilter_->predict(odometry_[k], dTimeStamp_);
 
-			if (k <= 1) {
+			if (k <= 2) {
 				for (int i = 0; i < nParticles_; i++)
 					pFilter_->setParticlePose(i, groundtruth_pose_[k]);
 			}
@@ -761,7 +776,7 @@ public:
 			}
 
 			////////// Update Step //////////
-			// std::cout << "Frame n°: " << k << std::endl;
+			std::cout << "Frame n°: " << k << std::endl;
 			pFilter_->update(Z);
 			
 			// Log particle poses
@@ -774,18 +789,23 @@ public:
 					if (w > w_max) {
 						i_w_max = i;
 						w_max = w;
-					}
+						}
 					fprintf(pParticlePoseFile, "%f   %d   %f   %f   %f   %f   %f   %f   %f   %f\n",
 							time.getTimeAsDouble(), i, x_i.get(0), x_i.get(1),
 							x_i.get(2), x_i.get(3), x_i.get(4), x_i.get(5), x_i.get(6), w);
-					if (w == NAN) {
-						std::cout << time.getTimeAsDouble() << i << x_i.get(0)<< x_i.get(1) <<
-							x_i.get(2) << x_i.get(3) << x_i.get(4)<< x_i.get(5)<< x_i.get(6) << std::endl;
+				if (isnan(w)) {
+					std::cout << "-nan en k = " << k << std::endl;
+					//std::cout << " " << time.getTimeAsDouble() << " " << i << " " << x_i.get(0)<< " " << x_i.get(1) <<
+					//	" " << x_i.get(2) << " " << x_i.get(3) << " " << x_i.get(4)<< " " << x_i.get(5)<< " " << x_i.get(6) << std::endl;
+					//std::cout << "-----------------" << std::endl;
 					}
 				}
 				fprintf(pParticlePoseFile, "\n");
 			}
-
+			if (k == 500)
+			{
+				exit(1);
+			}
 			// Log landmark estimates
 			if (logResultsToFile_) {
 
